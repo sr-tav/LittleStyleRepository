@@ -1,0 +1,128 @@
+/* Navbar y pantallas de inicio por rol (placeholders de UI-3, UI-18 y UI-25) */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 2rem;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ls-border);
+}
+
+.navbar-brand {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--ls-primary-dark);
+
+  strong {
+    font-weight: 800;
+  }
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ls-primary-soft);
+  color: var(--ls-primary-dark);
+  font-weight: 800;
+}
+
+.navbar-name {
+  font-weight: 700;
+}
+
+.role-badge {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: var(--ls-secondary-soft);
+  color: var(--ls-primary-dark);
+
+  &[data-rol='VENDEDOR'] {
+    background: var(--ls-palette-1);
+    color: #6b6210;
+  }
+
+  &[data-rol='ADMINISTRADOR'] {
+    background: var(--ls-palette-2);
+    color: #3f5a12;
+  }
+}
+
+.home {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+  }
+}
+
+.home-sub {
+  margin: 0.35rem 0 2rem;
+  color: var(--ls-muted);
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.home-tile {
+  padding: 1.5rem;
+  border-radius: 20px;
+  background: var(--ls-surface);
+  border: 1px solid var(--ls-border);
+  box-shadow: 0 10px 30px -20px rgba(35, 49, 39, 0.3);
+
+  span {
+    font-size: 2rem;
+  }
+
+  h2 {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 1.15rem;
+  }
+
+  p {
+    color: var(--ls-muted);
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar-name {
+    display: none;
+  }
+
+  .home {
+    padding: 1.75rem 1rem;
+  }
+}
