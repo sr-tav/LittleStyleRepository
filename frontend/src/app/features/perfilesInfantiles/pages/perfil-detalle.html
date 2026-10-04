@@ -1,0 +1,690 @@
+<app-navbar />
+<main class="profiles-page profile-detail-page">
+  <a class="back-link" routerLink="/cliente/hijos" aria-label="Volver a mis hijos"
+    >← Volver a mis hijos</a
+  >
+
+  @if (cargando()) {
+    <div class="profiles-state" role="status">
+      <span class="spinner"></span>
+      <p>Cargando perfil...</p>
+    </div>
+  } @else {
+    @if (!esNuevo() && perfil() && !esEditando()) {
+      <header class="detail-hero">
+        <div>
+          <p class="profiles-eyebrow">Perfil infantil</p>
+          <h1>{{ perfil()!.nombre }}</h1>
+          <p>
+            {{ edad(perfil()!) }} · {{ etiquetaContextura(perfil()!.contextura) }} · Talla
+            {{ talla(perfil()!) }}
+          </p>
+        </div>
+        <div class="detail-hero-actions">
+          <button class="btn-ghost recommendation-button" type="button" disabled>Recomendaciones</button>
+          <button
+            class="edit-icon"
+            type="button"
+            (click)="editarPerfil()"
+            [attr.aria-label]="'Editar perfil de ' + perfil()!.nombre"
+            title="Editar perfil"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 5 4 4M4 20l4-.8L19 8a2.8 2.8 0 0 0-4-4L4 15l-1 5Z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+    } @else {
+      <header class="profiles-heading detail-heading">
+        <div>
+          <p class="profiles-eyebrow">Perfiles infantiles</p>
+          <h1>{{ esNuevo() ? 'Agregar hijo' : 'Editar perfil de ' + perfil()?.nombre }}</h1>
+          <p class="profiles-subtitle">
+            {{
+              esNuevo()
+                ? 'Completa sus datos para crear su perfil.'
+                : 'Actualiza su información y registra su crecimiento.'
+            }}
+          </p>
+        </div>
+      </header>
+    }
+
+    @if (errorGeneral()) {
+      <div class="alert alert-error" role="alert">{{ errorGeneral() }}</div>
+    }
+
+    @if (!esNuevo() && perfil() && !esEditando()) {
+      <section class="detail-cards" aria-label="Información del perfil">
+        <article class="detail-card">
+          <h2>Información</h2>
+          <dl>
+            <div>
+              <dt>Nombre</dt>
+              <dd>{{ perfil()!.nombre }}</dd>
+            </div>
+            <div>
+              <dt>Fecha de nacimiento</dt>
+              <dd>{{ perfil()!.fechaNacimiento }}</dd>
+            </div>
+            <div>
+              <dt>Edad</dt>
+              <dd>{{ edad(perfil()!) }}</dd>
+            </div>
+          </dl>
+        </article>
+        <article class="detail-card">
+          <h2>Medidas actuales</h2>
+          @if (perfil()!.ultimaMedicion; as ultima) {
+            <dl>
+              <div>
+                <dt>Estatura</dt>
+                <dd>{{ ultima.estaturaCm }} cm</dd>
+              </div>
+              <div>
+                <dt>Peso</dt>
+                <dd>{{ ultima.pesoKg }} kg</dd>
+              </div>
+              <div>
+                <dt>Contextura</dt>
+                <dd>{{ etiquetaContextura(perfil()!.contextura) }}</dd>
+              </div>
+              <div>
+                <dt>Última medición</dt>
+                <dd>{{ ultima.fechaMedicion }}</dd>
+              </div>
+            </dl>
+          } @else {
+            <p class="detail-muted">Aún no hay mediciones registradas.</p>
+          }
+        </article>
+        <article class="detail-card">
+          <h2>Preferencias</h2>
+          <h3>Colores</h3>
+          <div class="detail-chips">
+            @for (color of perfil()!.coloresPreferidos; track color) {
+              <span class="detail-chip">{{ etiquetaColor(color) }}</span>
+            } @empty {
+              <span class="detail-muted">Sin preferencias registradas</span>
+            }
+            @if (perfil()!.otroColor) {
+              <span class="detail-chip">{{ perfil()!.otroColor }}</span>
+            }
+          </div>
+          <h3>Estampados</h3>
+          <div class="detail-chips">
+            @for (estampado of perfil()!.estampadosPreferidos; track estampado) {
+              <span class="detail-chip">{{ etiquetaEstampado(estampado) }}</span>
+            } @empty {
+              <span class="detail-muted">Sin preferencias registradas</span>
+            }
+            @if (perfil()!.otroEstampado) {
+              <span class="detail-chip">{{ perfil()!.otroEstampado }}</span>
+            }
+          </div>
+          <p class="detail-fit">
+            Holgura: <strong>{{ etiquetaHolgura(perfil()!.holgura) }}</strong>
+          </p>
+        </article>
+        <article class="detail-card">
+          <h2>Restricciones textiles</h2>
+          <div class="detail-chips">
+            @if (perfil()!.sinAlergias || perfil()!.alergias.length === 0) {
+              <span class="detail-muted">Sin alergias</span>
+            } @else {
+              @for (alergia of perfil()!.alergias; track alergia) {
+                <span class="detail-chip detail-chip-danger">{{
+                  alergia === 'OTRA' && perfil()!.otraAlergia
+                    ? 'Otra: ' + perfil()!.otraAlergia
+                    : etiquetaAlergia(alergia)
+                }}</span>
+              }
+            }
+          </div>
+        </article>
+      </section>
+    } @else if (esNuevo() && perfil()) {
+      <section class="profile-section">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 20 20 4M7 17l-2-2M10 14l-2-2M13 11l-2-2M16 8l-2-2" />
+            </svg>
+          </span>
+          <div>
+            <h2>Medidas iniciales</h2>
+            <p>El perfil ya se creó. Registra su primera medición para finalizar.</p>
+          </div>
+        </div>
+        @if (errorMedicion()) {
+          <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
+        }
+        <form
+          class="measurement-form"
+          [formGroup]="medicionForm"
+          (ngSubmit)="reintentarMedicionInicial()"
+          novalidate
+        >
+          <div class="field">
+            <label for="fechaMedicion">Fecha de medición</label>
+            <input
+              id="fechaMedicion"
+              type="date"
+              formControlName="fechaMedicion"
+              [min]="form.controls.fechaNacimiento.value"
+              [max]="hoy"
+            />
+            @if (esInvalido(medicionForm.controls.fechaMedicion)) {
+              <small class="field-error">{{ mensaje(medicionForm.controls.fechaMedicion) }}</small>
+            }
+          </div>
+          <div class="field">
+            <label for="estaturaCm">Estatura (cm)</label>
+            <input
+              id="estaturaCm"
+              type="number"
+              formControlName="estaturaCm"
+              min="40"
+              max="200"
+              step="0.1"
+            />
+            @if (esInvalido(medicionForm.controls.estaturaCm)) {
+              <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
+            }
+          </div>
+          <div class="field">
+            <label for="pesoKg">Peso (kg)</label>
+            <input
+              id="pesoKg"
+              type="number"
+              formControlName="pesoKg"
+              min="2"
+              max="120"
+              step="0.1"
+            />
+            @if (esInvalido(medicionForm.controls.pesoKg)) {
+              <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
+            }
+          </div>
+          <button class="btn-primary btn-inline" type="submit" [disabled]="guardandoMedicion()">
+            @if (guardandoMedicion()) {
+              <span class="spinner"></span> Registrando...
+            } @else {
+              Reintentar medición
+            }
+          </button>
+        </form>
+      </section>
+    } @else if (esNuevo() || (perfil() && esEditando())) {
+      <form class="profile-form" [formGroup]="form" (ngSubmit)="guardarPerfil()" novalidate>
+        <section class="profile-section">
+          <div class="section-heading">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="7" r="3.5" />
+                <path d="M5.5 21v-2.5a6.5 6.5 0 0 1 13 0V21" />
+              </svg>
+            </span>
+            <div>
+              <h2>Datos básicos</h2>
+              <p>Cuéntanos un poco sobre tu hijo.</p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input
+              id="nombre"
+              type="text"
+              formControlName="nombre"
+              maxlength="60"
+              autocomplete="given-name"
+            />
+            @if (esInvalido(form.controls.nombre)) {
+              <small class="field-error">{{ mensaje(form.controls.nombre) }}</small>
+            }
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="fechaNacimiento">Fecha de nacimiento</label>
+              <input
+                id="fechaNacimiento"
+                type="date"
+                formControlName="fechaNacimiento"
+                [max]="hoy"
+              />
+              @if (esInvalido(form.controls.fechaNacimiento)) {
+                <small class="field-error">{{ mensaje(form.controls.fechaNacimiento) }}</small>
+              }
+            </div>
+            <div class="field">
+              <label for="contextura">Contextura</label>
+              <select id="contextura" formControlName="contextura">
+                <option value="">Selecciona una opción</option>
+                @for (opcion of contexturas; track opcion.valor) {
+                  <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+                }
+              </select>
+              @if (esInvalido(form.controls.contextura)) {
+                <small class="field-error">{{ mensaje(form.controls.contextura) }}</small>
+              }
+            </div>
+          </div>
+        </section>
+
+        @if (!esNuevo()) {
+          <section class="profile-section">
+            <div class="section-heading">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 20 20 4M7 17l-2-2M10 14l-2-2M13 11l-2-2M16 8l-2-2" />
+                </svg>
+              </span>
+              <div>
+                <h2>Medidas actuales</h2>
+                <p>Registra una nueva medición para mantener la talla al día.</p>
+              </div>
+            </div>
+            <div class="measurement-highlight">
+              @if (perfil()?.ultimaMedicion; as ultima) {
+                <span
+                  ><small>Estatura actual</small><strong>{{ ultima.estaturaCm }} cm</strong></span
+                >
+                <span
+                  ><small>Peso actual</small><strong>{{ ultima.pesoKg }} kg</strong></span
+                >
+                <span
+                  ><small>Medida del</small><strong>{{ ultima.fechaMedicion }}</strong></span
+                >
+              } @else {
+                <p>Aún no hay medidas registradas.</p>
+              }
+            </div>
+          </section>
+        }
+
+        <section class="profile-section">
+          <div class="section-heading">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 4h10l2 3-2 3H7L5 7l2-3ZM7 10v10h10V10M9 14h6M9 17h6" />
+              </svg>
+            </span>
+            <div>
+              <h2>Alergias textiles</h2>
+              <p>Selecciona las alergias conocidas o marca “Sin alergias”.</p>
+            </div>
+          </div>
+          <label class="checkbox profile-checkbox">
+            <input
+              id="sinAlergias"
+              type="checkbox"
+              formControlName="sinAlergias"
+              (change)="cambiarSinAlergias($event)"
+            />
+            Sin alergias
+          </label>
+          <div class="allergy-options" role="group" aria-label="Alergias textiles">
+            @for (opcion of alergiasDisponibles; track opcion.valor) {
+              <label class="checkbox profile-checkbox">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="opcion.etiqueta"
+                  [checked]="form.controls.alergias.value.includes(opcion.valor)"
+                  [disabled]="form.controls.sinAlergias.value"
+                  (change)="alternarAlergia(opcion.valor, $event)"
+                />
+                {{ opcion.etiqueta }}
+              </label>
+            }
+          </div>
+          @if (esOtraAlergia()) {
+            <div class="field other-text-field">
+              <label for="otraAlergia">Describe la otra alergia</label>
+              <input
+                id="otraAlergia"
+                type="text"
+                formControlName="otraAlergia"
+                required
+                maxlength="60"
+                autocomplete="off"
+              />
+              @if (esInvalido(form.controls.otraAlergia)) {
+                <small class="field-error">{{ mensaje(form.controls.otraAlergia) }}</small>
+              }
+            </div>
+          }
+          @if (esInvalido(form.controls.alergias)) {
+            <small class="field-error">{{ mensaje(form.controls.alergias) }}</small>
+          }
+        </section>
+
+        <section class="profile-section">
+          <div class="section-heading">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.7-3.1 1.5 1.5 0 0 1 1.3-2.3H18a3 3 0 0 0 3-3 9 9 0 0 0-9-9Z" />
+                <circle cx="7.5" cy="11" r="1" />
+                <circle cx="10" cy="7.5" r="1" />
+                <circle cx="15" cy="8" r="1" />
+              </svg>
+            </span>
+            <div>
+              <h2>Preferencias</h2>
+              <p>Elige hasta 10 opciones por categoría.</p>
+            </div>
+          </div>
+          <fieldset class="preference-group">
+            <legend>Colores preferidos</legend>
+            <div class="option-chip-grid">
+              @for (opcion of coloresDisponibles; track opcion.valor) {
+                <button
+                  class="option-chip color-option"
+                  type="button"
+                  [attr.aria-pressed]="form.controls.coloresPreferidos.value.includes(opcion.valor)"
+                  [class.is-selected]="form.controls.coloresPreferidos.value.includes(opcion.valor)"
+                  [disabled]="
+                    !form.controls.coloresPreferidos.value.includes(opcion.valor) &&
+                    mostrarLimiteColores()
+                  "
+                  (click)="alternarColor(opcion.valor)"
+                >
+                  <span class="color-swatch" [style.background-color]="opcion.muestra"></span>
+                  {{ opcion.etiqueta }}
+                </button>
+              }
+            </div>
+            @if (mostrarLimiteColores()) {
+              <p class="selection-limit" role="status">Límite alcanzado: máximo 10 colores.</p>
+            }
+            <div class="field other-text-field">
+              <label for="otroColor">Otro color (opcional)</label>
+              <input
+                id="otroColor"
+                type="text"
+                formControlName="otroColor"
+                minlength="2"
+                maxlength="30"
+                [disabled]="bloquearOtroColor()"
+              />
+              @if (esInvalido(form.controls.otroColor)) {
+                <small class="field-error">{{ mensaje(form.controls.otroColor) }}</small>
+              }
+            </div>
+          </fieldset>
+          <fieldset class="preference-group">
+            <legend>Estampados preferidos</legend>
+            <div class="option-chip-grid">
+              @for (opcion of estampadosDisponibles; track opcion.valor) {
+                <button
+                  class="option-chip"
+                  type="button"
+                  [attr.aria-pressed]="
+                    form.controls.estampadosPreferidos.value.includes(opcion.valor)
+                  "
+                  [class.is-selected]="
+                    form.controls.estampadosPreferidos.value.includes(opcion.valor)
+                  "
+                  [disabled]="
+                    !form.controls.estampadosPreferidos.value.includes(opcion.valor) &&
+                    mostrarLimiteEstampados()
+                  "
+                  (click)="alternarEstampado(opcion.valor)"
+                >
+                  {{ opcion.etiqueta }}
+                </button>
+              }
+            </div>
+            @if (mostrarLimiteEstampados()) {
+              <p class="selection-limit" role="status">Límite alcanzado: máximo 10 estampados.</p>
+            }
+            <div class="field other-text-field">
+              <label for="otroEstampado">Otro estampado (opcional)</label>
+              <input
+                id="otroEstampado"
+                type="text"
+                formControlName="otroEstampado"
+                minlength="2"
+                maxlength="30"
+                [disabled]="bloquearOtroEstampado()"
+              />
+              @if (esInvalido(form.controls.otroEstampado)) {
+                <small class="field-error">{{ mensaje(form.controls.otroEstampado) }}</small>
+              }
+            </div>
+          </fieldset>
+          <div class="field">
+            <label for="holgura">Holgura preferida</label>
+            <select id="holgura" formControlName="holgura">
+              <option value="">Selecciona una opción</option>
+              @for (opcion of holguras; track opcion.valor) {
+                <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+              }
+            </select>
+            @if (esInvalido(form.controls.holgura)) {
+              <small class="field-error">{{ mensaje(form.controls.holgura) }}</small>
+            }
+          </div>
+        </section>
+
+        @if (esNuevo()) {
+          <section class="profile-section" [formGroup]="medicionForm">
+            <div class="section-heading">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 20 20 4M7 17l-2-2M10 14l-2-2M13 11l-2-2M16 8l-2-2" />
+                </svg>
+              </span>
+              <div>
+                <h2>Medidas iniciales</h2>
+                <p>Registra la fecha, estatura y peso actuales.</p>
+              </div>
+            </div>
+            <div class="measurement-form">
+              <div class="field">
+                <label for="fechaMedicion">Fecha de medición</label>
+                <input
+                  id="fechaMedicion"
+                  type="date"
+                  formControlName="fechaMedicion"
+                  [min]="form.controls.fechaNacimiento.value"
+                  [max]="hoy"
+                />
+                @if (esInvalido(medicionForm.controls.fechaMedicion)) {
+                  <small class="field-error">{{
+                    mensaje(medicionForm.controls.fechaMedicion)
+                  }}</small>
+                }
+              </div>
+              <div class="field">
+                <label for="estaturaCm">Estatura (cm)</label>
+                <input
+                  id="estaturaCm"
+                  type="number"
+                  formControlName="estaturaCm"
+                  min="40"
+                  max="200"
+                  step="0.1"
+                />
+                @if (esInvalido(medicionForm.controls.estaturaCm)) {
+                  <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
+                }
+              </div>
+              <div class="field">
+                <label for="pesoKg">Peso (kg)</label>
+                <input
+                  id="pesoKg"
+                  type="number"
+                  formControlName="pesoKg"
+                  min="2"
+                  max="120"
+                  step="0.1"
+                />
+                @if (esInvalido(medicionForm.controls.pesoKg)) {
+                  <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
+                }
+              </div>
+            </div>
+          </section>
+        }
+
+        <div class="profile-actions">
+          <button class="btn-primary btn-inline" type="submit" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner"></span>
+              {{ esNuevo() ? 'Creando perfil y guardando medida...' : 'Guardando...' }}
+            } @else {
+              {{ esNuevo() ? 'Crear perfil' : 'Guardar cambios' }}
+            }
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (!esNuevo() && perfil() && !esEditando()) {
+      <section class="profile-section growth-section">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19V5M4 19h17M7 15l4-4 3 2 6-7M16 6h4v4" />
+            </svg>
+          </span>
+          <div>
+            <h2>Historial de crecimiento</h2>
+            <p>Las medidas deben corresponder a la edad del perfil.</p>
+          </div>
+        </div>
+        @if (errorMedicion()) {
+          <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
+        }
+        <form
+          class="measurement-form"
+          [formGroup]="medicionForm"
+          (ngSubmit)="guardarMedicion()"
+          novalidate
+        >
+          <div class="field">
+            <label for="fechaMedicion">Fecha</label>
+            <input
+              id="fechaMedicion"
+              type="date"
+              formControlName="fechaMedicion"
+              [min]="form.controls.fechaNacimiento.value"
+              [max]="hoy"
+            />
+            @if (esInvalido(medicionForm.controls.fechaMedicion)) {
+              <small class="field-error">{{ mensaje(medicionForm.controls.fechaMedicion) }}</small>
+            }
+          </div>
+          <div class="field">
+            <label for="estaturaCm">Estatura (cm)</label>
+            <input
+              id="estaturaCm"
+              type="number"
+              formControlName="estaturaCm"
+              min="40"
+              max="200"
+              step="0.1"
+            />
+            @if (esInvalido(medicionForm.controls.estaturaCm)) {
+              <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
+            }
+          </div>
+          <div class="field">
+            <label for="pesoKg">Peso (kg)</label>
+            <input
+              id="pesoKg"
+              type="number"
+              formControlName="pesoKg"
+              min="2"
+              max="120"
+              step="0.1"
+            />
+            @if (esInvalido(medicionForm.controls.pesoKg)) {
+              <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
+            }
+          </div>
+          <button class="btn-primary btn-inline" type="submit" [disabled]="guardandoMedicion()">
+            @if (guardandoMedicion()) {
+              <span class="spinner"></span> Registrando...
+            } @else {
+              Agregar medición
+            }
+          </button>
+        </form>
+        @if (mediciones().length === 0) {
+          <p class="history-empty">Todavía no hay mediciones en el historial.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Estatura</th>
+                  <th>Peso</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (medicion of mediciones(); track medicion.id) {
+                  <tr>
+                    <td>{{ medicion.fechaMedicion }}</td>
+                    <td>{{ medicion.estaturaCm }} cm</td>
+                    <td>{{ medicion.pesoKg }} kg</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <div class="delete-profile-action">
+          <button class="btn-danger" type="button" (click)="confirmarEliminacion.set(true)">
+            Eliminar perfil
+          </button>
+        </div>
+      </section>
+    }
+  }
+
+  @if (confirmarEliminacion()) {
+    <div class="confirm-backdrop" role="presentation">
+      <section
+        class="confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+      >
+        <h2 id="confirm-title">¿Eliminar este perfil?</h2>
+        <p>
+          Se eliminará el perfil y todo su historial de crecimiento. Esta acción no se puede
+          deshacer.
+        </p>
+        <div class="confirm-actions">
+          <button
+            class="btn-ghost"
+            type="button"
+            (click)="confirmarEliminacion.set(false)"
+            [disabled]="eliminando()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn-danger"
+            type="button"
+            (click)="eliminarPerfil()"
+            [disabled]="eliminando()"
+          >
+            {{ eliminando() ? 'Eliminando...' : 'Sí, eliminar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+</main>

@@ -10,7 +10,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.85rem 2rem;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ls-surface);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--ls-border);
 }
@@ -60,12 +60,12 @@
 
   &[data-rol='VENDEDOR'] {
     background: var(--ls-palette-1);
-    color: #6b6210;
+    color: var(--ls-primary-dark);
   }
 
   &[data-rol='ADMINISTRADOR'] {
     background: var(--ls-palette-2);
-    color: #3f5a12;
+    color: var(--ls-primary-dark);
   }
 }
 
@@ -87,29 +87,173 @@
 
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.25rem;
 }
 
 .home-tile {
-  padding: 1.5rem;
-  border-radius: 20px;
-  background: var(--ls-surface);
+  display: flex;
+  min-height: 150px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1.5rem 1rem;
+  border-radius: 16px;
+  background: #fff;
   border: 1px solid var(--ls-border);
-  box-shadow: 0 10px 30px -20px rgba(35, 49, 39, 0.3);
+  box-shadow: var(--ls-shadow);
+  color: var(--ls-ink);
+  text-align: center;
+  text-decoration: none;
 
-  span {
-    font-size: 2rem;
+  &:hover {
+    text-decoration: none;
   }
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-primary-dark);
+    outline-offset: 3px;
+  }
+
+  &:not(.home-tile-disabled) {
+    transition: transform 160ms ease, border-color 160ms ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      border-color: var(--ls-primary);
+    }
+  }
+}
+
+.home-welcome {
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 800;
+  }
+}
+
+.home-eyebrow {
+  margin-bottom: 0.35rem;
+  color: var(--ls-primary-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.active-profile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 22px;
+  background: var(--ls-primary-soft);
 
   h2 {
-    margin: 0.75rem 0 0.25rem;
-    font-size: 1.15rem;
+    margin-bottom: 0.35rem;
+    font-size: 1.4rem;
   }
 
-  p {
-    color: var(--ls-muted);
-    font-size: 0.92rem;
+  p:not(.home-eyebrow) {
+    color: var(--ls-ink);
+  }
+}
+
+.active-profile-empty {
+  background: var(--ls-surface);
+}
+
+.provisional-label {
+  color: var(--ls-muted);
+  font-size: 0.82rem;
+}
+
+.home-tile-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  border-radius: 14px;
+
+  svg {
+    width: 27px;
+    height: 27px;
+  }
+}
+
+.home-tile > span[aria-hidden='true'] {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+
+  svg {
+    width: 27px;
+    height: 27px;
+  }
+}
+
+.home-tile-icon-children {
+  background: var(--ls-palette-2);
+  color: var(--ls-primary-dark);
+}
+
+.home-tile-icon-catalog {
+  background: var(--ls-palette-3);
+  color: var(--ls-primary-dark);
+}
+
+.home-tile-icon-orders {
+  background: var(--ls-info-soft);
+  color: #2563a8;
+}
+
+.home-tile-icon-cart {
+  background: var(--ls-palette-1);
+  color: #b4531a;
+}
+
+.home-tile-label {
+  color: var(--ls-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.home-tile-disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.active-profile-skeleton {
+  min-height: 130px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.home-skeleton-line {
+  width: min(320px, 75%);
+  height: 0.85rem;
+  border-radius: 99px;
+  background: var(--ls-border);
+}
+
+.home-skeleton-line:first-child {
+  width: min(190px, 45%);
+  height: 1.2rem;
+}
+
+@media (max-width: 760px) {
+  .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -124,5 +268,23 @@
 
   .home {
     padding: 1.75rem 1rem;
+  }
+
+  .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .home-tile {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .active-profile {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .active-profile .btn-primary {
+    width: 100%;
   }
 }

@@ -1,0 +1,164 @@
+<app-navbar />
+<main class="profiles-page">
+  <header class="profiles-heading">
+    <div>
+      @if (modoSeleccion()) {
+        <p class="profiles-eyebrow">Cambiar perfil</p>
+        <h1>¿Quién usará LittleStyle?</h1>
+        <p class="profiles-subtitle">Elige un perfil para continuar</p>
+      } @else {
+        <p class="profiles-eyebrow">Perfiles infantiles</p>
+        <h1>Mis hijos</h1>
+        <p class="profiles-subtitle">Administra los perfiles de tus hijos</p>
+      }
+    </div>
+    @if (modoSeleccion()) {
+      <a class="btn-ghost btn-inline" routerLink="/cliente">Volver</a>
+    } @else {
+      <div class="profile-actions">
+        <a class="btn-ghost btn-inline" routerLink="/cliente" aria-label="Volver al inicio"
+          >← Volver al inicio</a
+        >
+        <a
+          class="btn-primary btn-inline"
+          routerLink="/cliente/hijos/nuevo"
+          aria-label="Agregar un perfil infantil"
+          >+ Agregar hijo</a
+        >
+      </div>
+    }
+  </header>
+
+  @if (confirmacion()) {
+    <p class="profiles-success" role="status" aria-live="polite">{{ confirmacion() }}</p>
+  }
+
+  @if (cargando()) {
+    <section class="profiles-grid" aria-label="Cargando perfiles" aria-busy="true">
+      @for (item of [1, 2, 3]; track item) {
+        <article class="profile-card profile-skeleton" aria-hidden="true">
+          <span class="skeleton-avatar"></span>
+          <span class="skeleton-line skeleton-name"></span>
+          <span class="skeleton-line"></span>
+          <span class="skeleton-line skeleton-short"></span>
+          <span class="skeleton-actions"></span>
+        </article>
+      }
+    </section>
+  } @else if (error()) {
+    <div class="alert alert-error" role="alert">{{ error() }}</div>
+  } @else if (perfiles().length === 0) {
+    <section class="profiles-empty">
+      <span class="empty-illustration" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="7" r="3.5" />
+          <path d="M5.5 21v-2.5a6.5 6.5 0 0 1 13 0V21" />
+        </svg>
+      </span>
+      @if (modoSeleccion()) {
+        <h2>Aún no tienes perfiles infantiles</h2>
+        <p>Crea un perfil para poder seleccionarlo.</p>
+        <a class="btn-primary btn-inline" routerLink="/cliente/hijos/nuevo">+ Agregar hijo</a>
+      } @else {
+        <h2>Aún no tienes perfiles infantiles</h2>
+        <p>Agrega el perfil de tu hijo para registrar sus medidas y preferencias.</p>
+      }
+    </section>
+  } @else if (modoSeleccion()) {
+    <section class="profile-picker-grid" aria-label="Selecciona un perfil">
+      @for (perfil of perfiles(); track perfil.id) {
+        <button
+          class="profile-picker"
+          type="button"
+          [class.is-active]="esActivo(perfil)"
+          [attr.aria-pressed]="esActivo(perfil)"
+          [attr.aria-label]="'Usar el perfil de ' + perfil.nombre"
+          (click)="seleccionarYVolver(perfil)"
+        >
+          <span class="profile-picker-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="7" r="3.5" />
+              <path d="M5.5 21v-2.5a6.5 6.5 0 0 1 13 0V21" />
+            </svg>
+          </span>
+          <span class="profile-picker-name">{{ perfil.nombre }}</span>
+          @if (esActivo(perfil)) {
+            <span class="profile-picker-current">Perfil actual</span>
+          }
+        </button>
+      }
+    </section>
+  } @else {
+    <section class="profiles-grid" aria-label="Perfiles infantiles">
+      @for (perfil of perfiles(); track perfil.id) {
+        <article class="profile-card">
+          <div class="profile-card-top">
+            <span class="profile-avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="7" r="3.5" />
+                <path d="M5.5 21v-2.5a6.5 6.5 0 0 1 13 0V21" />
+              </svg>
+            </span>
+            <span class="completion-badge" [class.is-complete]="perfil.porcentajeCompletitud >= 90">
+              {{ perfil.porcentajeCompletitud >= 90 ? 'Completo' : 'Incompleto' }}
+            </span>
+          </div>
+          <h2>{{ perfil.nombre }}</h2>
+          <p class="profile-age">{{ edad(perfil) }} · Talla {{ talla(perfil) }}</p>
+          <div class="profile-measures">
+            <span>
+              <small>Estatura</small>
+              <strong>{{
+                perfil.ultimaMedicion ? `${perfil.ultimaMedicion.estaturaCm} cm` : 'Sin registrar'
+              }}</strong>
+            </span>
+            <span>
+              <small>Peso</small>
+              <strong>{{
+                perfil.ultimaMedicion ? `${perfil.ultimaMedicion.pesoKg} kg` : 'Sin registrar'
+              }}</strong>
+            </span>
+            <span>
+              <small>Contextura</small>
+              <strong>{{ contextura(perfil) }}</strong>
+            </span>
+          </div>
+          @if (perfil.alergias.length > 0) {
+            <p class="profile-allergies"><strong>Alergias:</strong> {{ alergias(perfil) }}</p>
+          }
+          @if (colores(perfil) || estampados(perfil)) {
+            <p class="profile-preferences">
+              @if (colores(perfil)) {
+                <span><strong>Colores:</strong> {{ colores(perfil) }}</span>
+              }
+              @if (estampados(perfil)) {
+                <span><strong>Estampados:</strong> {{ estampados(perfil) }}</span>
+              }
+            </p>
+          }
+          <div class="profile-card-actions">
+            <a
+              class="btn-primary btn-inline"
+              [routerLink]="['/cliente/hijos', perfil.id]"
+              >Ver perfil</a
+            >
+            <a
+              class="btn-ghost btn-inline profile-edit-link"
+              [routerLink]="['/cliente/hijos', perfil.id]"
+              [queryParams]="{ editar: true }"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m15 5 4 4M4 20l4-.8L19 8a2.8 2.8 0 0 0-4-4L4 15l-1 5Z" />
+              </svg>
+              Editar perfil
+            </a>
+          </div>
+        </article>
+      }
+    </section>
+  }
+</main>

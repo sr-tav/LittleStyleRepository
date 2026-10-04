@@ -14,6 +14,14 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
+    path: 'cliente/hijos',
+    title: 'Mis hijos | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadChildren: () =>
+      import('./features/perfilesInfantiles/perfiles.routes').then((m) => m.PERFILES_ROUTES),
+  },
+  {
     path: 'cliente',
     title: 'Inicio | LittleStyle',
     canActivate: [roleGuard],
@@ -34,7 +42,8 @@ export const routes: Routes = [
     title: 'Panel administrativo | LittleStyle',
     canActivate: [roleGuard],
     data: { roles: ['ADMINISTRADOR'] },
-    loadComponent: () => import('./features/home/pages/admin-panel/admin-panel').then((m) => m.AdminPanel),
+    loadComponent: () =>
+      import('./features/home/pages/admin-panel/admin-panel').then((m) => m.AdminPanel),
   },
   {
     path: 'acceso-denegado',
@@ -45,6 +54,7 @@ export const routes: Routes = [
   {
     path: '**',
     title: 'Página no encontrada | LittleStyle',
-    loadComponent: () => import('./shared/pages/no-encontrado/no-encontrado').then((m) => m.NoEncontrado),
+    loadComponent: () =>
+      import('./shared/pages/no-encontrado/no-encontrado').then((m) => m.NoEncontrado),
   },
 ];

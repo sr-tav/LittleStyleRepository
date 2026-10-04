@@ -22,7 +22,14 @@
             [attr.aria-pressed]="!esVendedor()"
             (click)="seleccionarRol('CLIENTE')"
           >
-            <span class="role-emoji" aria-hidden="true">👨‍👩‍👧</span>
+            <span class="role-emoji" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="7" r="3" />
+                <circle cx="17" cy="9" r="2.5" />
+                <path d="M2.5 20v-1a5.5 5.5 0 0 1 11 0v1M14 15a4.5 4.5 0 0 1 7.5 3.3V20" />
+              </svg>
+            </span>
             <span class="role-title">Cliente</span>
             <span class="role-desc">Padre, madre o acudiente</span>
           </button>
@@ -33,7 +40,12 @@
             [attr.aria-pressed]="esVendedor()"
             (click)="seleccionarRol('VENDEDOR')"
           >
-            <span class="role-emoji" aria-hidden="true">🏪</span>
+            <span class="role-emoji" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 10h18l-2-6H5l-2 6ZM5 10v10h14V10M9 20v-6h6v6M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" />
+              </svg>
+            </span>
             <span class="role-title">Vendedor</span>
             <span class="role-desc">Vendo ropa infantil</span>
           </button>
