@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.auth.service;
 
 import co.edu.uniquindio.littlestyle.config.security.JwtService;
+import co.edu.uniquindio.littlestyle.modules.auth.dto.ActualizarCuentaRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.AuthResponse;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.LoginRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.RegistroRequest;
@@ -97,6 +98,68 @@ public class AuthService {
         return usuarioRepository.findByEmail(email)
                 .map(UsuarioResponse::from)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+    }
+
+    @Transactional
+    public AuthResponse actualizarCuenta(Long id, ActualizarCuentaRequest request) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        String email = request.email() == null || request.email().isBlank()
+                ? usuario.getEmail()
+                : normalizarEmail(request.email());
+        if (!email.equals(usuario.getEmail()) && usuarioRepository.existsByEmail(email)) {
+            throw new EmailYaRegistradoException(email);
+        }
+
+        boolean cambiarPassword = request.nuevaPassword() != null && !request.nuevaPassword().isBlank();
+        boolean envioPasswordActual = request.passwordActual() != null && !request.passwordActual().isBlank();
+        boolean envioConfirmacion = request.confirmarNuevaPassword() != null
+                && !request.confirmarNuevaPassword().isBlank();
+        if (cambiarPassword) {
+            if (!envioPasswordActual
+                    || !passwordEncoder.matches(request.passwordActual(), usuario.getPassword())) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "La contraseña actual no es correcta", "passwordActual");
+            }
+            if (!request.nuevaPassword().equals(request.confirmarNuevaPassword())) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "Las contraseñas no coinciden", "confirmarNuevaPassword");
+            }
+        } else if (envioPasswordActual || envioConfirmacion) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "Para cambiar la contraseña indique la nueva contraseña", "nuevaPassword");
+        }
+
+        if (request.nombre() != null && !request.nombre().isBlank()) {
+            usuario.setNombre(request.nombre().trim());
+        }
+        if (request.apellido() != null && !request.apellido().isBlank()) {
+            usuario.setApellido(request.apellido().trim());
+        }
+        usuario.setEmail(email);
+        if (request.telefono() != null) {
+            usuario.setTelefono(request.telefono().isBlank() ? null : request.telefono().trim());
+        }
+        if (usuario.getRol() == Rol.VENDEDOR && request.nombreTienda() != null) {
+            if (request.nombreTienda().isBlank()) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "El nombre de la tienda no puede estar vacío", "nombreTienda");
+            }
+            usuario.setNombreTienda(request.nombreTienda().trim());
+        }
+        if (cambiarPassword) {
+            usuario.setPassword(passwordEncoder.encode(request.nuevaPassword()));
+        }
+        return construirRespuesta(usuarioRepository.save(usuario));
+    }
+
+    @Transactional
+    public void desactivarCuenta(Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        usuario.setEstado(EstadoUsuario.SUSPENDIDO);
+        usuarioRepository.save(usuario);
     }
 
     private AuthResponse construirRespuesta(Usuario usuario) {

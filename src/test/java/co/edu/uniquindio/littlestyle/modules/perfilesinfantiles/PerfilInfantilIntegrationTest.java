@@ -73,10 +73,18 @@ class PerfilInfantilIntegrationTest {
         mockMvc.perform(get("/api/cliente/perfiles/{id}", id).header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.porcentajeCompletitud").value(75))
+                .andExpect(jsonPath("$.camposPendientes[0]").value("Estatura"))
+                .andExpect(jsonPath("$.camposPendientes[1]").value("Peso"))
                 .andExpect(jsonPath("$.mesesRestantes").exists())
                 .andExpect(jsonPath("$.mesesCalculada").doesNotExist());
 
+        jdbcTemplate.update("UPDATE perfiles_infantiles SET fecha_actualizacion = ? WHERE id = ?",
+                java.time.LocalDateTime.of(2000, 1, 1, 0, 0), id);
         agregarMedicion(token, id, "2025-01-15", "108", "19");
+        mockMvc.perform(get("/api/cliente/perfiles/{id}", id).header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaActualizacion").value(
+                        org.hamcrest.Matchers.not("2000-01-01T00:00:00")));
         agregarMedicion(token, id, "2025-04-15", "110", "21");
         String fechaCifrada = jdbcTemplate.queryForObject(
                 "SELECT fecha_medicion FROM mediciones_crecimiento WHERE perfil_id = ? ORDER BY id DESC LIMIT 1",
@@ -112,6 +120,115 @@ class PerfilInfantilIntegrationTest {
         mockMvc.perform(get("/api/cliente/perfiles/{id}/mediciones", id)
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void corrigeMedicionPropiaActualizaFechaDelPerfilYRechazaMedicionAjena() throws Exception {
+        String token = registrarCliente("perfil-corregir-medicion@correo.com");
+        String otroToken = registrarCliente("perfil-otra-medicion@correo.com");
+        int perfilId = JsonPath.read(crearPerfil(token, "Nicolás"), "$.id");
+        String fechaInicial = LocalDate.now().minusDays(1).toString();
+        String medicionJson = mockMvc.perform(post("/api/cliente/perfiles/{id}/mediciones", perfilId)
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fechaMedicion":"%s","estaturaCm":110,"pesoKg":20}
+                                """.formatted(fechaInicial)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        int medicionId = JsonPath.read(medicionJson, "$.id");
+
+        mockMvc.perform(post("/api/cliente/perfiles/{id}/mediciones", perfilId)
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fechaMedicion":"%s","estaturaCm":109,"pesoKg":19}
+                                """.formatted(LocalDate.now().minusDays(2))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.fechaMedicion").exists());
+        mockMvc.perform(post("/api/cliente/perfiles/{id}/mediciones", perfilId)
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fechaMedicion":"%s","estaturaCm":109,"pesoKg":19}
+                                """.formatted(LocalDate.now())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.estaturaCm").exists());
+        String ultimaJson = mockMvc.perform(post("/api/cliente/perfiles/{id}/mediciones", perfilId)
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fechaMedicion":"%s","estaturaCm":111,"pesoKg":19}
+                                """.formatted(LocalDate.now())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        int ultimaId = JsonPath.read(ultimaJson, "$.id");
+
+        mockMvc.perform(put("/api/cliente/perfiles/{id}/mediciones/{medicionId}",
+                                perfilId, medicionId)
+                        .header("Authorization", bearer(otroToken)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fechaMedicion":"%s","estaturaCm":109,"pesoKg":19}
+                                """.formatted(LocalDate.now())))
+                .andExpect(status().isNotFound());
+
+        jdbcTemplate.update("UPDATE perfiles_infantiles SET fecha_actualizacion = ? WHERE id = ?",
+                java.time.LocalDateTime.of(2000, 1, 1, 0, 0), perfilId);
+        mockMvc.perform(put("/api/cliente/perfiles/{id}/mediciones/{medicionId}",
+                                perfilId, medicionId)
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fechaMedicion":"%s","estaturaCm":109,"pesoKg":18}
+                                """.formatted(fechaInicial)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(medicionId))
+                .andExpect(jsonPath("$.estaturaCm").value(109))
+                .andExpect(jsonPath("$.pesoKg").value(18));
+
+        mockMvc.perform(get("/api/cliente/perfiles/{id}", perfilId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fechaActualizacion")
+                        .value(org.hamcrest.Matchers.not("2000-01-01T00:00:00")))
+                .andExpect(jsonPath("$.ultimaMedicion.id").value(ultimaId))
+                .andExpect(jsonPath("$.ultimaMedicion.estaturaCm").value(111))
+                .andExpect(jsonPath("$.ultimaMedicion.pesoKg").value(19));
+        mockMvc.perform(get("/api/cliente/perfiles/{id}/mediciones", perfilId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].id").value(medicionId))
+                .andExpect(jsonPath("$[1].estaturaCm").value(109))
+                .andExpect(jsonPath("$[1].pesoKg").value(18));
+    }
+
+    @Test
+    void creaPerfilYMedicionInicialAtomicos() throws Exception {
+        String token = registrarCliente("perfil-atomico@correo.com");
+        mockMvc.perform(post("/api/cliente/perfiles/con-medicion-inicial")
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"perfil":{"nombre":"Lucía","fechaNacimiento":"2020-05-10",
+                                 "contextura":"MEDIA","holgura":"REGULAR","alergias":[],
+                                 "sinAlergias":true,"coloresPreferidos":[],"estampadosPreferidos":[]},
+                                 "medicionInicial":{"fechaMedicion":"2025-04-15",
+                                 "estaturaCm":110,"pesoKg":20}}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ultimaMedicion.fechaMedicion").value("2025-04-15"))
+                .andExpect(jsonPath("$.ultimaMedicion.estaturaCm").value(110));
+
+        String tokenFallido = registrarCliente("perfil-atomico-falla@correo.com");
+        mockMvc.perform(post("/api/cliente/perfiles/con-medicion-inicial")
+                        .header("Authorization", bearer(tokenFallido)).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"perfil":{"nombre":"Mateo","fechaNacimiento":"2020-05-10",
+                                 "contextura":"MEDIA","holgura":"REGULAR","alergias":[],
+                                 "sinAlergias":true,"coloresPreferidos":[],"estampadosPreferidos":[]},
+                                 "medicionInicial":{"fechaMedicion":"2019-04-15",
+                                 "estaturaCm":110,"pesoKg":20}}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.fechaMedicion").exists());
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM perfiles_infantiles p JOIN usuarios u ON u.id = p.cliente_id
+                WHERE u.email = 'perfil-atomico-falla@correo.com'
+                """, Integer.class)).isZero();
     }
 
     @Test

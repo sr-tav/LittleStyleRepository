@@ -35,6 +35,7 @@ class CalculadoraCompletitudTest {
                 .build();
 
         assertThat(calculadora.calcular(perfil, medicion)).isEqualTo(100);
+        assertThat(calculadora.camposPendientes(perfil, medicion)).isEmpty();
     }
 
     @Test
@@ -48,6 +49,8 @@ class CalculadoraCompletitudTest {
         perfil.setSinAlergias(true);
 
         assertThat(calculadora.calcular(perfil, null)).isEqualTo(63);
+        assertThat(calculadora.camposPendientes(perfil, null))
+                .containsExactly("Estatura", "Peso", "Agrega al menos un color o estampado preferido");
     }
 
     @Test

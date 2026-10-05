@@ -40,6 +40,7 @@ perfilesInfantiles/
 | `*.spec.ts` | Pruebas unitarias de modelos/servicios y pruebas de componentes con infraestructura HTTP de prueba. |
 
 La pantalla de inicio de cliente que presenta “Perfil activo” y el acceso “Cambiar perfil” reside en `frontend/src/app/features/home/pages/cliente-inicio`, fuera de este directorio feature.
+La gestión de cuenta asociada a US-06 está en `frontend/src/app/features/cuenta/pages/` y se abre desde “Mi cuenta” en la barra de navegación.
 
 ## Flujos principales
 
@@ -47,8 +48,9 @@ La pantalla de inicio de cliente que presenta “Perfil activo” y el acceso �
 - “Cambiar perfil” navega a la lista con `modo=seleccionar`. Ese modo presenta perfiles como botones de selección, sin acciones de administración. Al elegir, guarda el ID y regresa a `/cliente`.
 - Al entrar a UI-5 se consultan el perfil y sus mediciones; la interfaz ordena la colección de historial por fecha descendente.
 - El frontend recibe valores legibles desde la API autenticada; el cifrado en reposo y la migración de datos existentes se realizan en backend/JPA. No se persisten fichas infantiles en `localStorage`.
-- El alta valida ambos formularios, crea primero el perfil y luego crea la medición inicial usando el ID devuelto. Si falla la segunda solicitud, conserva perfil y valores de medición para reintentar únicamente esa solicitud.
-- La edición envía `PUT`; el detalle puede agregar nuevas mediciones con `POST`. La eliminación requiere confirmación en diálogo.
+- El alta valida ambos formularios y envía perfil y primera medición en una sola solicitud transaccional. Si la medición no puede persistirse, backend revierte también el perfil.
+- La edición envía `PUT`; las mediciones se pueden agregar desde la edición o desde el historial. Una alta nueva no admite una fecha anterior ni una estatura menor que la última; el peso sí puede variar. Las correcciones individuales se pueden hacer sin límite de tiempo desde el historial o sobre la última medición en edición, y usan `PUT` sin enviar el formulario del perfil. La eliminación del perfil requiere confirmación en diálogo.
+- Los perfiles incompletos muestran los grupos pendientes; si falta una preferencia, la indicación es “Agrega al menos un color o estampado preferido”.
 - Alergias se eligen con checkboxes; “Sin alergias” limpia y deshabilita las opciones. “Otra alergia” revela un campo obligatorio. Colores y estampados se eligen en chips con límite de diez por categoría.
 
 La talla mostrada es una aproximación calculada por edad, no una recomendación de producto; el código la marca como provisional hasta US-07.
@@ -61,7 +63,7 @@ Desde `frontend/`:
 ng test --watch=false
 ```
 
-También puede usarse el comando configurado en los scripts del paquete del frontend. Las pruebas de esta feature están en `models/`, `services/` y `pages/`; una prueba de UI-3 relacionada con el acceso “Cambiar perfil” se encuentra en `features/home/pages/cliente-inicio/cliente-inicio.spec.ts`.
+También puede usarse el comando configurado en los scripts del paquete del frontend. Las pruebas de esta feature están en `models/`, `services/` y `pages/`; una prueba de UI-3 relacionada con el acceso “Cambiar perfil” se encuentra en `features/home/pages/cliente-inicio/cliente-inicio.spec.ts`. La página de cuenta y sus pruebas están en `features/cuenta/pages/`.
 
 ## Decisiones de diseño
 

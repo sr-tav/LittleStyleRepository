@@ -8,6 +8,7 @@ import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Holgura;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 public record PerfilResponse(
@@ -28,6 +29,7 @@ public record PerfilResponse(
         LocalDateTime fechaCreacion,
         LocalDateTime fechaActualizacion,
         MedicionResponse ultimaMedicion,
-        int porcentajeCompletitud
+        int porcentajeCompletitud,
+        List<String> camposPendientes
 ) {
 }

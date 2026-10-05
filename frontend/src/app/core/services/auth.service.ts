@@ -4,7 +4,14 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { AuthResponse, LoginRequest, RegistroRequest, Rol, Usuario } from '../models/auth.models';
+import {
+  ActualizarCuentaRequest,
+  AuthResponse,
+  LoginRequest,
+  RegistroRequest,
+  Rol,
+  Usuario,
+} from '../models/auth.models';
 
 const TOKEN_KEY = 'ls_token';
 const SESSION_KEY = 'ls_session';
@@ -52,6 +59,16 @@ export class AuthService {
 
   perfil(): Observable<Usuario> {
     return this.http.get<Usuario>(`${this.baseUrl}/me`);
+  }
+
+  actualizarCuenta(request: ActualizarCuentaRequest): Observable<AuthResponse> {
+    return this.http
+      .put<AuthResponse>(`${this.baseUrl}/me`, request)
+      .pipe(tap((response) => this.guardarSesion(response)));
+  }
+
+  desactivarCuenta(): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/me`);
   }
 
   logout(redirigir = true): void {
