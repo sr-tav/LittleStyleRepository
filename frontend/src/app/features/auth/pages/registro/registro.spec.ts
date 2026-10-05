@@ -104,6 +104,41 @@ describe('Registro (UI-2)', () => {
     expect(el.querySelector('#email')?.closest('.field')?.classList).toContain('has-error');
   });
 
+  it('muestra los términos sin marcar el checkbox y los acepta desde el modal', async () => {
+    const { fixture, el } = crear();
+    const checkbox = el.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+
+    el.querySelector<HTMLButtonElement>('.link-button')!.click();
+    await fixture.whenStable();
+
+    const dialogo = el.querySelector('[role="dialog"]');
+    expect(dialogo).not.toBeNull();
+    expect(dialogo!.textContent).toContain('Política de tratamiento de datos personales');
+    expect(checkbox.checked).toBe(false);
+
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.terms-actions button'))
+      .find((b) => b.textContent?.includes('acepto'))!
+      .click();
+    await fixture.whenStable();
+
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('cerrar el modal no acepta los términos', async () => {
+    const { fixture, el } = crear();
+
+    el.querySelector<HTMLButtonElement>('.link-button')!.click();
+    await fixture.whenStable();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.terms-actions button'))
+      .find((b) => b.textContent?.includes('Cerrar'))!
+      .click();
+    await fixture.whenStable();
+
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
+    expect(el.querySelector<HTMLInputElement>('input[type=checkbox]')!.checked).toBe(false);
+  });
+
   it('tras un registro exitoso navega al inicio del rol', async () => {
     const router = TestBed.inject(Router);
     const { fixture, el, escribir } = crear();

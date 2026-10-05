@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.config.security;
 
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
+import co.edu.uniquindio.littlestyle.modules.auth.service.EstadoCuentaService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -29,6 +30,8 @@ class JwtAuthenticationFilterTest {
     @Mock
     private JwtService jwtService;
     @Mock
+    private EstadoCuentaService estadoCuentaService;
+    @Mock
     private FilterChain chain;
 
     private JwtAuthenticationFilter filter;
@@ -37,7 +40,7 @@ class JwtAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthenticationFilter(jwtService);
+        filter = new JwtAuthenticationFilter(jwtService, estadoCuentaService);
         request = new MockHttpServletRequest("GET", "/api/auth/me");
         response = new MockHttpServletResponse();
         SecurityContextHolder.clearContext();
@@ -53,7 +56,7 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(chain).doFilter(request, response);
-        verifyNoInteractions(jwtService);
+        verifyNoInteractions(jwtService, estadoCuentaService);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
@@ -74,6 +77,7 @@ class JwtAuthenticationFilterTest {
         request.addHeader("Authorization", "Bearer token-valido");
         when(jwtService.validarToken("token-valido")).thenReturn(claims);
         when(jwtService.toAuthenticatedUser(claims)).thenReturn(user);
+        when(estadoCuentaService.estaActiva(3L)).thenReturn(true);
 
         filter.doFilter(request, response, chain);
 
@@ -82,6 +86,23 @@ class JwtAuthenticationFilterTest {
         assertThat(auth.isAuthenticated()).isTrue();
         assertThat(auth.getPrincipal()).isEqualTo(user);
         assertThat(auth.getAuthorities()).extracting(GrantedAuthority::getAuthority).containsExactly("ROLE_CLIENTE");
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void tokenValidoDeCuentaSuspendidaNoAutentica() throws Exception {
+        Claims claims = mock(Claims.class);
+        AuthenticatedUser user = new AuthenticatedUser(3L, "ana@correo.com", "Ana", Rol.CLIENTE);
+        request.addHeader("Authorization", "Bearer token-valido");
+        when(jwtService.validarToken("token-valido")).thenReturn(claims);
+        when(jwtService.toAuthenticatedUser(claims)).thenReturn(user);
+        when(estadoCuentaService.estaActiva(3L)).thenReturn(false);
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        assertThat(request.getAttribute(JwtAuthenticationFilter.JWT_ERROR_ATTRIBUTE))
+                .isEqualTo(JwtAuthenticationFilter.CUENTA_SUSPENDIDA);
         verify(chain).doFilter(request, response);
     }
 

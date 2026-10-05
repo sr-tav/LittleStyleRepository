@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { RolRegistro } from '../../../../core/models/auth.models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { AuthBrand } from '../../components/auth-brand/auth-brand';
+import { TerminosModal } from '../../components/terminos-modal/terminos-modal';
 import {
   PATRON_CELULAR,
   PATRON_EMAIL,
@@ -31,7 +32,7 @@ const NIVELES = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Excelente'];
 /** UI-2: Registro de usuarios (clientes y vendedores). */
 @Component({
   selector: 'app-registro',
-  imports: [ReactiveFormsModule, RouterLink, AuthBrand],
+  imports: [ReactiveFormsModule, RouterLink, AuthBrand, TerminosModal],
   templateUrl: './registro.html',
 })
 export class Registro {
@@ -43,6 +44,7 @@ export class Registro {
   protected readonly enviado = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly mostrarPassword = signal(false);
+  protected readonly mostrarTerminos = signal(false);
 
   protected readonly form = this.fb.nonNullable.group(
     {
@@ -82,6 +84,19 @@ export class Registro {
 
   protected seleccionarRol(rol: RolRegistro): void {
     this.form.controls.rol.setValue(rol);
+  }
+
+  protected abrirTerminos(evento: Event): void {
+    // El enlace está dentro del <label>: evita que el clic marque el checkbox sin haber leído
+    evento.preventDefault();
+    this.mostrarTerminos.set(true);
+  }
+
+  protected aceptarTerminos(): void {
+    const control = this.form.controls.aceptaTerminos;
+    control.setValue(true);
+    control.markAsTouched();
+    this.mostrarTerminos.set(false);
   }
 
   protected invalido(campo: Campo): boolean {

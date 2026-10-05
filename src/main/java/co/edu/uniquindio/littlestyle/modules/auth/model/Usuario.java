@@ -61,6 +61,16 @@ public class Usuario {
     @Column(name = "fecha_registro", nullable = false, updatable = false)
     private LocalDateTime fechaRegistro;
 
+    /**
+     * Evidencia de la autorización de tratamiento de datos (Ley 1581 de 2012, art. 9).
+     * Nulo solo para cuentas creadas fuera del registro público (p. ej. el administrador inicial).
+     */
+    @Column(name = "version_terminos", length = 10)
+    private String versionTerminos;
+
+    @Column(name = "fecha_aceptacion_terminos")
+    private LocalDateTime fechaAceptacionTerminos;
+
     @PrePersist
     void prePersist() {
         if (fechaRegistro == null) {

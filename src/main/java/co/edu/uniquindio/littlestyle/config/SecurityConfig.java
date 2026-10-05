@@ -5,6 +5,7 @@ import co.edu.uniquindio.littlestyle.config.security.JwtProperties;
 import co.edu.uniquindio.littlestyle.config.security.JwtService;
 import co.edu.uniquindio.littlestyle.config.security.RestAccessDeniedHandler;
 import co.edu.uniquindio.littlestyle.config.security.RestAuthenticationEntryPoint;
+import co.edu.uniquindio.littlestyle.modules.auth.service.EstadoCuentaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -48,6 +49,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtService jwtService,
+                                                   EstadoCuentaService estadoCuentaService,
                                                    RestAuthenticationEntryPoint authenticationEntryPoint,
                                                    RestAccessDeniedHandler accessDeniedHandler) throws Exception {
         http
@@ -71,7 +73,7 @@ public class SecurityConfig {
                     auth.requestMatchers("/api/cliente/**").hasRole("CLIENTE");
                     auth.anyRequest().authenticated();
                 })
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, estadoCuentaService), UsernamePasswordAuthenticationFilter.class);
 
         if (h2ConsoleEnabled) {
             // La consola H2 se renderiza en frames

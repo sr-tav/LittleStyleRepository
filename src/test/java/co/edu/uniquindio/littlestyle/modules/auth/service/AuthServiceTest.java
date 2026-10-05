@@ -91,6 +91,8 @@ class AuthServiceTest {
             assertThat(guardado.getRol()).isEqualTo(Rol.CLIENTE);
             assertThat(guardado.getEstado()).isEqualTo(EstadoUsuario.ACTIVO);
             assertThat(guardado.getNombreTienda()).as("los clientes no tienen tienda").isNull();
+            assertThat(guardado.getVersionTerminos()).isEqualTo(AuthService.VERSION_TERMINOS_VIGENTE);
+            assertThat(guardado.getFechaAceptacionTerminos()).isNotNull();
 
             assertThat(response.token()).isEqualTo("jwt-token");
             assertThat(response.tipo()).isEqualTo("Bearer");
