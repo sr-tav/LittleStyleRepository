@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.config.security;
 
+import co.edu.uniquindio.littlestyle.modules.auth.service.EstadoCuentaService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -18,9 +19,9 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Lee el header {@code Authorization: Bearer <token>}, valida el JWT y, si es correcto,
- * autentica la petición. Si el token falta o es inválido la petición sigue sin autenticar
- * y Spring Security responde 401 en los endpoints protegidos.
+ * Lee el header {@code Authorization: Bearer <token>}, valida el JWT y, si es correcto y la cuenta
+ * sigue activa, autentica la petición. Si el token falta, es inválido o pertenece a una cuenta
+ * suspendida, la petición sigue sin autenticar y Spring Security responde 401 en los endpoints protegidos.
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -28,10 +29,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /** Atributo de request con la causa del fallo, leído por {@link RestAuthenticationEntryPoint}. */
     public static final String JWT_ERROR_ATTRIBUTE = "jwt_error";
 
-    private final JwtService jwtService;
+    static final String CUENTA_SUSPENDIDA = "La cuenta se encuentra suspendida. Contacte al administrador";
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    private final JwtService jwtService;
+    private final EstadoCuentaService estadoCuentaService;
+
+    public JwtAuthenticationFilter(JwtService jwtService, EstadoCuentaService estadoCuentaService) {
         this.jwtService = jwtService;
+        this.estadoCuentaService = estadoCuentaService;
     }
 
     @Override
@@ -48,10 +53,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtService.validarToken(token);
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 AuthenticatedUser user = jwtService.toAuthenticatedUser(claims);
-                UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
-                        user, null, List.of(new SimpleGrantedAuthority(user.rol().authority())));
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                // La firma no basta: una cuenta suspendida no debe seguir operando con tokens ya emitidos
+                if (estadoCuentaService.estaActiva(user.id())) {
+                    UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
+                            user, null, List.of(new SimpleGrantedAuthority(user.rol().authority())));
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    request.setAttribute(JWT_ERROR_ATTRIBUTE, CUENTA_SUSPENDIDA);
+                }
             }
         } catch (ExpiredJwtException ex) {
             request.setAttribute(JWT_ERROR_ATTRIBUTE, "La sesión ha expirado, inicie sesión nuevamente");

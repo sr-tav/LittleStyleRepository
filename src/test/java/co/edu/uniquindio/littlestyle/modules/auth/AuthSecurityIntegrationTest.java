@@ -1,5 +1,9 @@
 package co.edu.uniquindio.littlestyle.modules.auth;
 
+import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
+import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
+import co.edu.uniquindio.littlestyle.modules.auth.service.AuthService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,6 +30,8 @@ class AuthSecurityIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
     private String registrar(String email, String rol, String tienda) throws Exception {
         String body = """
@@ -52,6 +59,30 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("laura@correo.com"));
+    }
+
+    @Test
+    void registroGuardaLaAceptacionDeTerminos() throws Exception {
+        registrar("terminos@correo.com", "CLIENTE", null);
+
+        Usuario usuario = usuarioRepository.findByEmail("terminos@correo.com").orElseThrow();
+        assertThat(usuario.getVersionTerminos()).isEqualTo(AuthService.VERSION_TERMINOS_VIGENTE);
+        assertThat(usuario.getFechaAceptacionTerminos()).isNotNull();
+    }
+
+    @Test
+    void tokenDeCuentaSuspendidaDejaDeSerValidoDeInmediato() throws Exception {
+        String token = registrar("suspendido@correo.com", "CLIENTE", null);
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        Usuario usuario = usuarioRepository.findByEmail("suspendido@correo.com").orElseThrow();
+        usuario.setEstado(EstadoUsuario.SUSPENDIDO);
+        usuarioRepository.save(usuario);
+
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.mensaje").value("La cuenta se encuentra suspendida. Contacte al administrador"));
     }
 
     @Test

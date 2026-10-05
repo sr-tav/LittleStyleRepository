@@ -20,11 +20,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    /**
+     * Versión de los términos y la política de tratamiento de datos que se muestran en el registro.
+     * Debe coincidir con {@code VERSION_TERMINOS} en el frontend (terminos-contenido.ts).
+     */
+    public static final String VERSION_TERMINOS_VIGENTE = "1.0";
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
@@ -64,6 +71,8 @@ public class AuthService {
                 .rol(request.rol())
                 .nombreTienda(esVendedor ? request.nombreTienda().trim() : null)
                 .estado(EstadoUsuario.ACTIVO)
+                .versionTerminos(VERSION_TERMINOS_VIGENTE)
+                .fechaAceptacionTerminos(LocalDateTime.now())
                 .build();
 
         return construirRespuesta(usuarioRepository.save(usuario));

@@ -137,8 +137,11 @@
           <label class="checkbox">
             <input type="checkbox" formControlName="aceptaTerminos" />
             <span>
-              Acepto los términos y condiciones y autorizo el tratamiento de mis datos personales
-              conforme a la Ley de Habeas Data.
+              Acepto los
+              <button type="button" class="link-button" (click)="abrirTerminos($event)">
+                términos y condiciones
+              </button>
+              y autorizo el tratamiento de mis datos personales conforme a la Ley de Habeas Data.
             </span>
           </label>
           @if (invalido('aceptaTerminos')) {
@@ -160,4 +163,8 @@
       </p>
     </section>
   </div>
+
+  @if (mostrarTerminos()) {
+    <app-terminos-modal (aceptar)="aceptarTerminos()" (cerrar)="mostrarTerminos.set(false)" />
+  }
 </main>
