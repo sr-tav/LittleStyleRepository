@@ -56,6 +56,16 @@ export class AuthService {
     return this.http.get<Usuario>(`${this.baseUrl}/me`);
   }
 
+  actualizarCuenta(request: ActualizarCuentaRequest): Observable<AuthResponse> {
+    return this.http
+      .put<AuthResponse>(`${this.baseUrl}/me`, request)
+      .pipe(tap((response) => this.guardarSesion(response)));
+  }
+
+  desactivarCuenta(): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/me`);
+  }
+
   logout(redirigir = true): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);

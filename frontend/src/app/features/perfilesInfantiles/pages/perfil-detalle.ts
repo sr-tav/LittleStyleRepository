@@ -85,6 +85,8 @@ export class PerfilDetalle implements OnInit {
   protected readonly cargando = signal(true);
   protected readonly guardando = signal(false);
   protected readonly guardandoMedicion = signal(false);
+  protected readonly agregandoMedicion = signal(false);
+  protected readonly medicionEditandoId = signal<number | null>(null);
   protected readonly eliminando = signal(false);
   protected readonly confirmarEliminacion = signal(false);
   protected readonly enviado = signal(false);
@@ -157,6 +159,8 @@ export class PerfilDetalle implements OnInit {
       next: ({ perfil, mediciones }) => {
         this.perfil.set(perfil);
         this.mediciones.set(this.ordenarMediciones(mediciones));
+        this.medicionForm.controls.fechaMedicion.updateValueAndValidity();
+        this.medicionForm.controls.estaturaCm.updateValueAndValidity();
         this.form.patchValue({
           nombre: perfil.nombre,
           fechaNacimiento: perfil.fechaNacimiento,
@@ -193,6 +197,13 @@ export class PerfilDetalle implements OnInit {
     }
     const anios = `${perfil.edadAnios} ${perfil.edadAnios === 1 ? 'año' : 'años'}`;
     return perfil.mesesRestantes > 0 ? `${anios} · ${perfil.mesesRestantes} meses` : anios;
+  }
+
+  protected fechaMinimaMedicion(): string {
+    const nacimiento = this.form.controls.fechaNacimiento.value;
+    if (this.medicionEditandoId() !== null) return nacimiento;
+    const ultimaFecha = this.perfil()?.ultimaMedicion?.fechaMedicion;
+    return ultimaFecha && ultimaFecha > nacimiento ? ultimaFecha : nacimiento;
   }
 
   protected etiquetaContextura(contextura: Contextura): string {
@@ -287,10 +298,6 @@ export class PerfilDetalle implements OnInit {
 
   protected guardarPerfil(): void {
     if (this.guardando()) return;
-    if (this.esNuevo() && this.perfil()) {
-      this.reintentarMedicionInicial();
-      return;
-    }
     this.limpiarErroresServidor(this.form);
     this.enviado.set(true);
     this.errorGeneral.set(null);
@@ -318,27 +325,16 @@ export class PerfilDetalle implements OnInit {
     };
     this.guardando.set(true);
     const solicitud = this.esNuevo()
-      ? this.perfilesService.crear(request)
+      ? this.perfilesService.crearConMedicionInicial({
+          perfil: request,
+          medicionInicial: this.requestMedicion(),
+        })
       : this.perfilesService.actualizar(this.perfil()!.id, request);
     solicitud.pipe(take(1)).subscribe({
       next: (perfil) => {
         if (this.esNuevo()) {
           this.perfil.set(perfil);
-          this.guardandoMedicion.set(true);
-          this.perfilesService
-            .crearMedicion(perfil.id, this.requestMedicion())
-            .pipe(take(1))
-            .subscribe({
-              next: () => {
-                this.guardandoMedicion.set(false);
-                this.volverAlListado('creado');
-              },
-              error: (err: unknown) => {
-                this.guardandoMedicion.set(false);
-                this.guardando.set(false);
-                this.errorMedicion.set(procesarErrorApi(err, this.medicionForm));
-              },
-            });
+          this.volverAlListado('creado');
           return;
         }
         this.volverAlListado('actualizado');
@@ -350,31 +346,6 @@ export class PerfilDetalle implements OnInit {
     });
   }
 
-  protected reintentarMedicionInicial(): void {
-    const perfil = this.perfil();
-    if (!this.esNuevo() || !perfil || this.guardandoMedicion()) return;
-    this.limpiarErroresServidor(this.medicionForm);
-    this.errorMedicion.set(null);
-    this.medicionForm.markAllAsTouched();
-    this.medicionForm.updateValueAndValidity();
-    if (this.medicionForm.invalid) return;
-
-    this.guardandoMedicion.set(true);
-    this.perfilesService
-      .crearMedicion(perfil.id, this.requestMedicion())
-      .pipe(take(1))
-      .subscribe({
-        next: () => {
-          this.guardandoMedicion.set(false);
-          this.volverAlListado('creado');
-        },
-        error: (err: unknown) => {
-          this.guardandoMedicion.set(false);
-          this.errorMedicion.set(procesarErrorApi(err, this.medicionForm));
-        },
-      });
-  }
-
   protected guardarMedicion(): void {
     if (this.guardandoMedicion()) return;
     this.limpiarErroresServidor(this.medicionForm);
@@ -384,18 +355,23 @@ export class PerfilDetalle implements OnInit {
     if (this.medicionForm.invalid) return;
 
     this.guardandoMedicion.set(true);
-    this.perfilesService
-      .crearMedicion(this.perfil()!.id, this.medicionForm.getRawValue())
-      .subscribe({
+    const perfilId = this.perfil()!.id;
+    const medicionId = this.medicionEditandoId();
+    const solicitud = medicionId === null
+      ? this.perfilesService.crearMedicion(perfilId, this.medicionForm.getRawValue())
+      : this.perfilesService.actualizarMedicion(perfilId, medicionId, this.medicionForm.getRawValue());
+    solicitud.subscribe({
         next: () => {
           forkJoin({
-            perfil: this.perfilesService.obtener(this.perfil()!.id),
-            mediciones: this.perfilesService.listarMediciones(this.perfil()!.id),
+            perfil: this.perfilesService.obtener(perfilId),
+            mediciones: this.perfilesService.listarMediciones(perfilId),
           }).subscribe({
             next: ({ perfil, mediciones }) => {
               this.perfil.set(perfil);
               this.mediciones.set(this.ordenarMediciones(mediciones));
-              this.medicionForm.reset({ fechaMedicion: HOY, estaturaCm: 0, pesoKg: 0 });
+              this.restablecerFormularioMedicion();
+              this.agregandoMedicion.set(false);
+              this.errorMedicion.set(null);
               this.guardandoMedicion.set(false);
             },
             error: (err: unknown) => {
@@ -409,6 +385,35 @@ export class PerfilDetalle implements OnInit {
           this.errorMedicion.set(procesarErrorApi(err, this.medicionForm));
         },
       });
+  }
+
+  protected iniciarNuevaMedicion(): void {
+      this.errorMedicion.set(null);
+      this.medicionForm.reset({ fechaMedicion: HOY, estaturaCm: 0, pesoKg: 0 });
+      this.medicionEditandoId.set(null);
+      this.agregandoMedicion.set(true);
+  }
+
+  protected cancelarNuevaMedicion(): void {
+      this.restablecerFormularioMedicion();
+      this.errorMedicion.set(null);
+      this.agregandoMedicion.set(false);
+  }
+
+  protected editarMedicion(medicion: Medicion): void {
+    this.medicionEditandoId.set(medicion.id);
+    this.medicionForm.reset({
+      fechaMedicion: medicion.fechaMedicion,
+      estaturaCm: medicion.estaturaCm,
+      pesoKg: medicion.pesoKg,
+    });
+    this.errorMedicion.set(null);
+    this.agregandoMedicion.set(true);
+  }
+
+  private restablecerFormularioMedicion(): void {
+    this.medicionForm.reset({ fechaMedicion: HOY, estaturaCm: 0, pesoKg: 0 });
+    this.medicionEditandoId.set(null);
   }
 
   protected eliminarPerfil(): void {
@@ -456,6 +461,10 @@ export class PerfilDetalle implements OnInit {
     if (errors['mayorEdad']) return 'El perfil debe corresponder a una persona menor de 18 años.';
     if (errors['fechaAntesNacimiento'])
       return 'La medición no puede ser anterior a la fecha de nacimiento.';
+    if (errors['fechaAnteriorUltimaMedicion'])
+      return 'La nueva medición no puede ser anterior a la última registrada. Usa “Corregir” para ajustar una medición existente.';
+    if (errors['estaturaMenorUltimaMedicion'])
+      return 'La estatura no puede ser menor que la última registrada. Usa “Corregir” para ajustar una medición existente.';
     if (errors['min']) {
       return control === this.medicionForm.controls.estaturaCm
         ? 'La estatura debe ser mínimo 40 cm.'
@@ -591,7 +600,12 @@ export class PerfilDetalle implements OnInit {
       if (!fecha) return null;
       if (fecha > HOY) return { fechaFutura: true };
       const nacimiento = this.form.controls.fechaNacimiento.value;
-      return nacimiento && fecha < nacimiento ? { fechaAntesNacimiento: true } : null;
+      if (nacimiento && fecha < nacimiento) return { fechaAntesNacimiento: true };
+      if (this.medicionEditandoId() === null) {
+        const ultimaFecha = this.perfil()?.ultimaMedicion?.fechaMedicion;
+        if (ultimaFecha && fecha < ultimaFecha) return { fechaAnteriorUltimaMedicion: true };
+      }
+      return null;
     };
   }
 
@@ -622,6 +636,16 @@ export class PerfilDetalle implements OnInit {
                   ? [120, 200]
                   : [25, 120];
       const valor = Number(control.value);
+      if (tipo === 'estatura' && this.medicionEditandoId() === null) {
+        const ultima = this.perfil()?.ultimaMedicion;
+        if (
+          ultima &&
+          String(fechaMedicion) >= ultima.fechaMedicion &&
+          valor < ultima.estaturaCm
+        ) {
+          return { estaturaMenorUltimaMedicion: true };
+        }
+      }
       return valor < rango[0] || valor > rango[1] ? { rangoEdad: true } : null;
     };
   }

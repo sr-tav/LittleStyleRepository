@@ -26,6 +26,7 @@ const perfilEjemplo: PerfilInfantil = {
   fechaActualizacion: '2025-01-01T12:00:00',
   ultimaMedicion: { id: 4, fechaMedicion: '2025-05-01', estaturaCm: 110, pesoKg: 20 },
   porcentajeCompletitud: 100,
+  camposPendientes: [],
 };
 
 describe('PerfilesLista (UI-4)', () => {
@@ -173,10 +174,15 @@ describe('PerfilesLista (UI-4)', () => {
     const { fixture, el } = crear();
     httpMock
       .expectOne('/api/cliente/perfiles')
-      .flush([{ ...perfilEjemplo, porcentajeCompletitud: 89 }]);
+      .flush([{
+        ...perfilEjemplo,
+        porcentajeCompletitud: 89,
+        camposPendientes: ['Agrega al menos un color o estampado preferido'],
+      }]);
     fixture.detectChanges();
 
     expect(el.querySelector('.completion-badge')?.textContent?.trim()).toBe('Incompleto');
+    expect(el.textContent).toContain('Agrega al menos un color o estampado preferido');
   });
 
   it('mantiene un único CTA de alta y no agrega tarjeta duplicada', () => {

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import {
+  CrearPerfilConMedicionRequest,
   Medicion,
   MedicionRequest,
   PerfilInfantil,
@@ -27,6 +28,10 @@ export class PerfilesService {
     return this.http.post<PerfilInfantil>(this.baseUrl, request);
   }
 
+  crearConMedicionInicial(request: CrearPerfilConMedicionRequest): Observable<PerfilInfantil> {
+    return this.http.post<PerfilInfantil>(`${this.baseUrl}/con-medicion-inicial`, request);
+  }
+
   actualizar(id: number, request: PerfilRequest): Observable<PerfilInfantil> {
     return this.http.put<PerfilInfantil>(`${this.baseUrl}/${id}`, request);
   }
@@ -41,5 +46,9 @@ export class PerfilesService {
 
   crearMedicion(id: number, request: MedicionRequest): Observable<Medicion> {
     return this.http.post<Medicion>(`${this.baseUrl}/${id}/mediciones`, request);
+  }
+
+  actualizarMedicion(id: number, medicionId: number, request: MedicionRequest): Observable<Medicion> {
+    return this.http.put<Medicion>(`${this.baseUrl}/${id}/mediciones/${medicionId}`, request);
   }
 }

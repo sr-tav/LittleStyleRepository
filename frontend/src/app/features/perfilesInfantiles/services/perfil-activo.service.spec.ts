@@ -22,6 +22,7 @@ const perfil = (id: number, nombre: string): PerfilInfantil => ({
   fechaActualizacion: '2025-01-01T12:00:00',
   ultimaMedicion: null,
   porcentajeCompletitud: 100,
+  camposPendientes: [],
 });
 
 describe('PerfilActivoService', () => {

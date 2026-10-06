@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -83,6 +84,33 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value("La cuenta se encuentra suspendida. Contacte al administrador"));
+    }
+
+    @Test
+    void usuarioActualizaSuCuentaYConservaAccesoConSesionRenovada() throws Exception {
+        String token = registrar("cuenta-us06@correo.com", "CLIENTE", null);
+        String respuesta = mockMvc.perform(put("/api/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Laura Isabel","apellido":"Pérez","email":"laura.us06@correo.com",
+                                 "telefono":"3007654321","passwordActual":"Clave1234",
+                                 "nuevaPassword":"NuevaClave567","confirmarNuevaPassword":"NuevaClave567"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.email").value("laura.us06@correo.com"))
+                .andReturn().getResponse().getContentAsString();
+        String tokenActualizado = JsonPath.read(respuesta, "$.token");
+
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + tokenActualizado))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Laura Isabel"))
+                .andExpect(jsonPath("$.telefono").value("3007654321"));
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"laura.us06@correo.com","password":"NuevaClave567"}
+                                """))
+                .andExpect(status().isOk());
     }
 
     @Test

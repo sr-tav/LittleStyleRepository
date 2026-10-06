@@ -14,12 +14,27 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
+    path: 'cuenta',
+    title: 'Mi cuenta | LittleStyle',
+    canActivate: [roleGuard],
+    loadComponent: () =>
+      import('./features/cuenta/pages/cuenta').then((m) => m.Cuenta),
+  },
+  {
     path: 'cliente/hijos',
     title: 'Mis hijos | LittleStyle',
     canActivate: [roleGuard],
     data: { roles: ['CLIENTE'] },
     loadChildren: () =>
       import('./features/perfilesInfantiles/perfiles.routes').then((m) => m.PERFILES_ROUTES),
+  },
+  {
+    path: 'cliente/recomendaciones',
+    title: 'Talla sugerida | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadComponent: () =>
+      import('./features/recomendacion/pages/recomendaciones-lista').then((m) => m.RecomendacionesLista),
   },
   {
     path: 'cliente',
