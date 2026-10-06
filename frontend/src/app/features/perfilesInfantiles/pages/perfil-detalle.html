@@ -21,7 +21,7 @@
           </p>
         </div>
         <div class="detail-hero-actions">
-          <button class="btn-ghost recommendation-button" type="button" disabled>Recomendaciones</button>
+          <a class="btn-ghost recommendation-button" [routerLink]="['/cliente/recomendaciones']" [queryParams]="{ perfilId: perfil()!.id }">Recomendaciones</a>
           <button
             class="edit-icon"
             type="button"

@@ -41,7 +41,6 @@ import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.s
                   ? perfil.ultimaMedicion.estaturaCm + ' cm'
                   : 'Estatura sin registrar'
               }}
-              · Talla {{ talla(perfil) }} <span class="provisional-label">(provisional)</span>
             </p>
           </div>
           <a
@@ -133,6 +132,11 @@ export class ClienteInicio implements OnInit {
     });
   }
 
+  /**
+   * @deprecated Provisional de US-06
+   * @param perfil
+   * @protected
+   */
   protected talla(perfil: PerfilInfantil): number {
     return tallaProvisional(perfil.edadAnios);
   }
