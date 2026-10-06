@@ -4,14 +4,8 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import {
-  ActualizarCuentaRequest,
-  AuthResponse,
-  LoginRequest,
-  RegistroRequest,
-  Rol,
-  Usuario,
-} from '../models/auth.models';
+import { PerfilActivoService } from '../../features/perfilesInfantiles/services/perfil-activo.service';
+import { AuthResponse, LoginRequest, RegistroRequest, Rol, Usuario } from '../models/auth.models';
 
 const TOKEN_KEY = 'ls_token';
 const SESSION_KEY = 'ls_session';
@@ -37,6 +31,7 @@ export const HOME_POR_ROL: Record<Rol, string> = {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly perfilActivo = inject(PerfilActivoService);
   private readonly baseUrl = `${environment.apiUrl}/auth`;
 
   private readonly sesion = signal<Sesion | null>(this.restaurarSesion());
@@ -75,6 +70,7 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
     this.sesion.set(null);
+    this.perfilActivo.limpiar();
     if (redirigir) {
       this.router.navigate(['/auth/login']);
     }
@@ -127,6 +123,7 @@ export class AuthService {
       if (sesion.token !== token || !expiraEn || Date.now() >= expiraEn) {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(SESSION_KEY);
+        this.perfilActivo.limpiar();
         return null;
       }
       return { ...sesion, expiraEn };

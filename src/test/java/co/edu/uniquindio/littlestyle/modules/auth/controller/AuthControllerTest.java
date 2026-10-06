@@ -8,6 +8,7 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.service.AuthService;
 import co.edu.uniquindio.littlestyle.shared.exception.EmailYaRegistradoException;
 import co.edu.uniquindio.littlestyle.shared.exception.GlobalExceptionHandler;
+import co.edu.uniquindio.littlestyle.shared.exception.LoginBloqueadoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,10 +21,14 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.Duration;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -113,7 +118,7 @@ class AuthControllerTest {
 
     @Test
     void loginValidoDevuelve200() throws Exception {
-        when(authService.login(any(LoginRequest.class))).thenReturn(RESPUESTA);
+        when(authService.login(any(LoginRequest.class), anyString())).thenReturn(RESPUESTA);
 
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"maria@correo.com\",\"password\":\"Clave1234\"}"))
@@ -123,7 +128,7 @@ class AuthControllerTest {
 
     @Test
     void loginConCredencialesIncorrectasDevuelve401() throws Exception {
-        when(authService.login(any(LoginRequest.class))).thenThrow(new BadCredentialsException("bad"));
+        when(authService.login(any(LoginRequest.class), anyString())).thenThrow(new BadCredentialsException("bad"));
 
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"maria@correo.com\",\"password\":\"mala\"}"))
@@ -132,8 +137,21 @@ class AuthControllerTest {
     }
 
     @Test
+    void loginBloqueadoPorIntentosDevuelve429ConRetryAfter() throws Exception {
+        when(authService.login(any(LoginRequest.class), anyString()))
+                .thenThrow(new LoginBloqueadoException(Duration.ofSeconds(90)));
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"maria@correo.com\",\"password\":\"Clave1234\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "90"))
+                .andExpect(jsonPath("$.mensaje").value(
+                        "Demasiados intentos fallidos de inicio de sesión. Intente de nuevo en 2 minutos"));
+    }
+
+    @Test
     void loginDeCuentaSuspendidaDevuelve403() throws Exception {
-        when(authService.login(any(LoginRequest.class))).thenThrow(new DisabledException("disabled"));
+        when(authService.login(any(LoginRequest.class), anyString())).thenThrow(new DisabledException("disabled"));
 
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"maria@correo.com\",\"password\":\"Clave1234\"}"))

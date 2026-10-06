@@ -28,6 +28,13 @@ export class PerfilActivoService {
     this.persistirId(perfil.id);
   }
 
+  /** Olvida el perfil activo (memoria y localStorage); se llama al cerrar sesión. */
+  limpiar(): void {
+    this.perfiles = [];
+    this.activo.set(null);
+    this.persistirId(null);
+  }
+
   private leerIdGuardado(): number | null {
     const valor = globalThis.localStorage?.getItem(CLAVE_PERFIL_ACTIVO);
     if (!valor) return null;

@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
+import { PerfilActivoService } from '../../features/perfilesInfantiles/services/perfil-activo.service';
 import { crearAuthResponse } from '../testing/auth-testing';
 import { AuthService, decodificarExpiracion } from './auth.service';
 
@@ -92,6 +93,20 @@ describe('AuthService', () => {
     expect(auth.autenticado()).toBe(false);
     expect(localStorage.getItem('ls_session')).toBeNull();
     expect(navigate).toHaveBeenCalledWith(['/auth/login']);
+  });
+
+  it('logout limpia el perfil infantil activo de la cuenta', () => {
+    const auth = crearServicio();
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const perfilActivo = TestBed.inject(PerfilActivoService);
+    localStorage.setItem('littleStyle.perfilActivoId', '7');
+    auth.login({ email: 'a@b.co', password: 'x' }).subscribe();
+    http.expectOne('/api/auth/login').flush(crearAuthResponse('CLIENTE'));
+
+    auth.logout();
+
+    expect(perfilActivo.perfil()).toBeNull();
+    expect(localStorage.getItem('littleStyle.perfilActivoId')).toBeNull();
   });
 
   it('decodificarExpiracion lee el claim exp en milisegundos', () => {
