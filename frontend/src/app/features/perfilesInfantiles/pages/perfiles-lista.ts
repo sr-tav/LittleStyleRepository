@@ -67,6 +67,11 @@ export class PerfilesLista implements OnInit {
     return perfil.mesesRestantes > 0 ? `${anios}, ${perfil.mesesRestantes} meses` : anios;
   }
 
+  /**
+   * @deprecated Provisional de US-06
+   * @param perfil
+   * @protected
+   */
   protected talla(perfil: PerfilInfantil): number {
     return tallaProvisional(perfil.edadAnios);
   }

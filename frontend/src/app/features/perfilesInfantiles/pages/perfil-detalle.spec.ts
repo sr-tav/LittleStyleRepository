@@ -579,8 +579,8 @@ describe('PerfilDetalle (UI-5)', () => {
     expect(creado.el.querySelectorAll('.detail-card')).toHaveLength(4);
     expect(creado.el.textContent).toContain('Restricciones textiles');
     expect(creado.el.textContent).toContain('Sin alergias');
-    const recomendaciones = creado.el.querySelector<HTMLButtonElement>('.recommendation-button');
+    const recomendaciones = creado.el.querySelector<HTMLAnchorElement>('.recommendation-button');
     expect(recomendaciones?.textContent?.trim()).toBe('Recomendaciones');
-    expect(recomendaciones?.disabled).toBe(true);
+    expect(recomendaciones?.getAttribute('href')).toContain('/cliente/recomendaciones');
   });
 });
