@@ -14,6 +14,13 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
+    path: 'cuenta',
+    title: 'Mi cuenta | LittleStyle',
+    canActivate: [roleGuard],
+    loadComponent: () =>
+      import('./features/cuenta/pages/cuenta').then((m) => m.Cuenta),
+  },
+  {
     path: 'cliente/hijos',
     title: 'Mis hijos | LittleStyle',
     canActivate: [roleGuard],

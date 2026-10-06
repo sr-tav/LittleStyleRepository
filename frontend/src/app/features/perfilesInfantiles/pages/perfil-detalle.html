@@ -145,79 +145,6 @@
           </div>
         </article>
       </section>
-    } @else if (esNuevo() && perfil()) {
-      <section class="profile-section">
-        <div class="section-heading">
-          <span class="section-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 20 20 4M7 17l-2-2M10 14l-2-2M13 11l-2-2M16 8l-2-2" />
-            </svg>
-          </span>
-          <div>
-            <h2>Medidas iniciales</h2>
-            <p>El perfil ya se creó. Registra su primera medición para finalizar.</p>
-          </div>
-        </div>
-        @if (errorMedicion()) {
-          <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
-        }
-        <form
-          class="measurement-form"
-          [formGroup]="medicionForm"
-          (ngSubmit)="reintentarMedicionInicial()"
-          novalidate
-        >
-          <div class="field">
-            <label for="fechaMedicion">Fecha de medición</label>
-            <input
-              id="fechaMedicion"
-              type="date"
-              formControlName="fechaMedicion"
-              [min]="form.controls.fechaNacimiento.value"
-              [max]="hoy"
-            />
-            @if (esInvalido(medicionForm.controls.fechaMedicion)) {
-              <small class="field-error">{{ mensaje(medicionForm.controls.fechaMedicion) }}</small>
-            }
-          </div>
-          <div class="field">
-            <label for="estaturaCm">Estatura (cm)</label>
-            <input
-              id="estaturaCm"
-              type="number"
-              formControlName="estaturaCm"
-              min="40"
-              max="200"
-              step="0.1"
-            />
-            @if (esInvalido(medicionForm.controls.estaturaCm)) {
-              <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
-            }
-          </div>
-          <div class="field">
-            <label for="pesoKg">Peso (kg)</label>
-            <input
-              id="pesoKg"
-              type="number"
-              formControlName="pesoKg"
-              min="2"
-              max="120"
-              step="0.1"
-            />
-            @if (esInvalido(medicionForm.controls.pesoKg)) {
-              <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
-            }
-          </div>
-          <button class="btn-primary btn-inline" type="submit" [disabled]="guardandoMedicion()">
-            @if (guardandoMedicion()) {
-              <span class="spinner"></span> Registrando...
-            } @else {
-              Reintentar medición
-            }
-          </button>
-        </form>
-      </section>
     } @else if (esNuevo() || (perfil() && esEditando())) {
       <form class="profile-form" [formGroup]="form" (ngSubmit)="guardarPerfil()" novalidate>
         <section class="profile-section">
@@ -286,7 +213,7 @@
               </span>
               <div>
                 <h2>Medidas actuales</h2>
-                <p>Registra una nueva medición para mantener la talla al día.</p>
+                <p>Registra una medición nueva o corrige la última captura.</p>
               </div>
             </div>
             <div class="measurement-highlight">
@@ -300,9 +227,88 @@
                 <span
                   ><small>Medida del</small><strong>{{ ultima.fechaMedicion }}</strong></span
                 >
+                <button
+                  class="btn-ghost btn-inline"
+                  type="button"
+                  (click)="editarMedicion(ultima)"
+                >
+                  Corregir última medición
+                </button>
               } @else {
                 <p>Aún no hay medidas registradas.</p>
               }
+            </div>
+            <div class="profile-measurement-entry" [formGroup]="medicionForm">
+              @if (errorMedicion()) {
+                <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
+              }
+              <div class="measurement-form">
+                <div class="field">
+                  <label for="fechaMedicion">Fecha de medición</label>
+                  <input
+                    id="fechaMedicion"
+                    type="date"
+                    formControlName="fechaMedicion"
+                    [min]="fechaMinimaMedicion()"
+                    [max]="hoy"
+                  />
+                  @if (esInvalido(medicionForm.controls.fechaMedicion)) {
+                    <small class="field-error">{{ mensaje(medicionForm.controls.fechaMedicion) }}</small>
+                  }
+                </div>
+                <div class="field">
+                  <label for="estaturaCm">Estatura (cm)</label>
+                  <input
+                    id="estaturaCm"
+                    type="number"
+                    formControlName="estaturaCm"
+                    min="40"
+                    max="200"
+                    step="0.1"
+                  />
+                  @if (esInvalido(medicionForm.controls.estaturaCm)) {
+                    <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
+                  }
+                </div>
+                <div class="field">
+                  <label for="pesoKg">Peso (kg)</label>
+                  <input
+                    id="pesoKg"
+                    type="number"
+                    formControlName="pesoKg"
+                    min="2"
+                    max="120"
+                    step="0.1"
+                  />
+                  @if (esInvalido(medicionForm.controls.pesoKg)) {
+                    <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
+                  }
+                </div>
+                <button
+                  class="btn-primary btn-inline"
+                  type="button"
+                  [disabled]="guardandoMedicion()"
+                  (click)="guardarMedicion()"
+                >
+                  {{
+                    guardandoMedicion()
+                      ? 'Guardando...'
+                      : medicionEditandoId() === null
+                        ? 'Agregar medición'
+                        : 'Actualizar medición'
+                  }}
+                </button>
+                @if (medicionEditandoId() !== null) {
+                  <button
+                    class="btn-ghost btn-inline"
+                    type="button"
+                    [disabled]="guardandoMedicion()"
+                    (click)="cancelarNuevaMedicion()"
+                  >
+                    Cancelar corrección
+                  </button>
+                }
+              </div>
             </div>
           </section>
         }
@@ -494,7 +500,7 @@
                   id="fechaMedicion"
                   type="date"
                   formControlName="fechaMedicion"
-                  [min]="form.controls.fechaNacimiento.value"
+                  [min]="fechaMinimaMedicion()"
                   [max]="hoy"
                 />
                 @if (esInvalido(medicionForm.controls.fechaMedicion)) {
@@ -550,7 +556,7 @@
 
     @if (!esNuevo() && perfil() && !esEditando()) {
       <section class="profile-section growth-section">
-        <div class="section-heading">
+        <div class="section-heading growth-heading">
           <span class="section-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
               stroke-linecap="round" stroke-linejoin="round">
@@ -561,65 +567,83 @@
             <h2>Historial de crecimiento</h2>
             <p>Las medidas deben corresponder a la edad del perfil.</p>
           </div>
-        </div>
-        @if (errorMedicion()) {
-          <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
-        }
-        <form
-          class="measurement-form"
-          [formGroup]="medicionForm"
-          (ngSubmit)="guardarMedicion()"
-          novalidate
-        >
-          <div class="field">
-            <label for="fechaMedicion">Fecha</label>
-            <input
-              id="fechaMedicion"
-              type="date"
-              formControlName="fechaMedicion"
-              [min]="form.controls.fechaNacimiento.value"
-              [max]="hoy"
-            />
-            @if (esInvalido(medicionForm.controls.fechaMedicion)) {
-              <small class="field-error">{{ mensaje(medicionForm.controls.fechaMedicion) }}</small>
-            }
-          </div>
-          <div class="field">
-            <label for="estaturaCm">Estatura (cm)</label>
-            <input
-              id="estaturaCm"
-              type="number"
-              formControlName="estaturaCm"
-              min="40"
-              max="200"
-              step="0.1"
-            />
-            @if (esInvalido(medicionForm.controls.estaturaCm)) {
-              <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
-            }
-          </div>
-          <div class="field">
-            <label for="pesoKg">Peso (kg)</label>
-            <input
-              id="pesoKg"
-              type="number"
-              formControlName="pesoKg"
-              min="2"
-              max="120"
-              step="0.1"
-            />
-            @if (esInvalido(medicionForm.controls.pesoKg)) {
-              <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
-            }
-          </div>
-          <button class="btn-primary btn-inline" type="submit" [disabled]="guardandoMedicion()">
-            @if (guardandoMedicion()) {
-              <span class="spinner"></span> Registrando...
-            } @else {
-              Agregar medición
-            }
+          <button
+            class="btn-ghost new-measurement-button"
+            type="button"
+            [disabled]="agregandoMedicion()"
+            (click)="iniciarNuevaMedicion()"
+          >
+            <span aria-hidden="true">＋</span> Nueva medición
           </button>
-        </form>
+        </div>
+        @if (agregandoMedicion()) {
+          <form
+            class="measurement-form"
+            [formGroup]="medicionForm"
+            (ngSubmit)="guardarMedicion()"
+            novalidate
+          >
+            @if (errorMedicion()) {
+              <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
+            }
+            <div class="field">
+              <label for="fechaMedicion">Fecha</label>
+              <input
+                id="fechaMedicion"
+                type="date"
+                formControlName="fechaMedicion"
+                [min]="fechaMinimaMedicion()"
+                [max]="hoy"
+              />
+              @if (esInvalido(medicionForm.controls.fechaMedicion)) {
+                <small class="field-error">{{ mensaje(medicionForm.controls.fechaMedicion) }}</small>
+              }
+            </div>
+            <div class="field">
+              <label for="estaturaCm">Estatura (cm)</label>
+              <input
+                id="estaturaCm"
+                type="number"
+                formControlName="estaturaCm"
+                min="40"
+                max="200"
+                step="0.1"
+              />
+              @if (esInvalido(medicionForm.controls.estaturaCm)) {
+                <small class="field-error">{{ mensaje(medicionForm.controls.estaturaCm) }}</small>
+              }
+            </div>
+            <div class="field">
+              <label for="pesoKg">Peso (kg)</label>
+              <input
+                id="pesoKg"
+                type="number"
+                formControlName="pesoKg"
+                min="2"
+                max="120"
+                step="0.1"
+              />
+              @if (esInvalido(medicionForm.controls.pesoKg)) {
+                <small class="field-error">{{ mensaje(medicionForm.controls.pesoKg) }}</small>
+              }
+            </div>
+            <button class="btn-primary btn-inline" type="submit" [disabled]="guardandoMedicion()">
+              @if (guardandoMedicion()) {
+                <span class="spinner"></span> Registrando...
+              } @else {
+                {{ medicionEditandoId() === null ? 'Guardar medición' : 'Actualizar medición' }}
+              }
+            </button>
+            <button
+              class="btn-ghost btn-inline"
+              type="button"
+              [disabled]="guardandoMedicion()"
+              (click)="cancelarNuevaMedicion()"
+            >
+              Cancelar
+            </button>
+          </form>
+        }
         @if (mediciones().length === 0) {
           <p class="history-empty">Todavía no hay mediciones en el historial.</p>
         } @else {
@@ -630,6 +654,7 @@
                   <th>Fecha</th>
                   <th>Estatura</th>
                   <th>Peso</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -638,6 +663,16 @@
                     <td>{{ medicion.fechaMedicion }}</td>
                     <td>{{ medicion.estaturaCm }} cm</td>
                     <td>{{ medicion.pesoKg }} kg</td>
+                    <td>
+                      <button
+                        class="btn-ghost"
+                        type="button"
+                        [disabled]="guardandoMedicion()"
+                        (click)="editarMedicion(medicion)"
+                      >
+                        Corregir
+                      </button>
+                    </td>
                   </tr>
                 }
               </tbody>

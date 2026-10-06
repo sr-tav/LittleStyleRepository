@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.controller;
 
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.CrearPerfilConMedicionRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.MedicionRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.MedicionResponse;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilRequest;
@@ -42,6 +43,13 @@ public class PerfilInfantilController {
         return ResponseEntity.status(HttpStatus.CREATED).body(perfilService.crear(request));
     }
 
+    @PostMapping("/con-medicion-inicial")
+    public ResponseEntity<PerfilResponse> crearConMedicionInicial(
+            @Valid @RequestBody CrearPerfilConMedicionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(perfilService.crearConMedicionInicial(request));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<PerfilResponse> actualizar(@PathVariable Long id,
                                                       @Valid @RequestBody PerfilRequest request) {
@@ -58,6 +66,13 @@ public class PerfilInfantilController {
     public ResponseEntity<MedicionResponse> crearMedicion(@PathVariable Long id,
                                                           @Valid @RequestBody MedicionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(perfilService.crearMedicion(id, request));
+    }
+
+    @PutMapping("/{id}/mediciones/{medicionId}")
+    public ResponseEntity<MedicionResponse> actualizarMedicion(@PathVariable Long id,
+                                                               @PathVariable Long medicionId,
+                                                               @Valid @RequestBody MedicionRequest request) {
+        return ResponseEntity.ok(perfilService.actualizarMedicion(id, medicionId, request));
     }
 
     @GetMapping("/{id}/mediciones")

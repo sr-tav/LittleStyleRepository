@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service;
 
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.CrearPerfilConMedicionRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.MedicionRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.MedicionResponse;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilRequest;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.Period;
 import java.text.Normalizer;
@@ -56,6 +58,29 @@ public class PerfilInfantilService {
 
     @Transactional
     public PerfilResponse crear(PerfilRequest request) {
+        return respuesta(crearPerfil(request));
+    }
+
+    @Transactional
+    public PerfilResponse crearConMedicionInicial(CrearPerfilConMedicionRequest request) {
+        PerfilInfantil perfil = crearPerfil(request.perfil());
+        MedicionRequest medicion = request.medicionInicial();
+        validadorMedidas.validar(perfil.getFechaNacimiento(), medicion.fechaMedicion(),
+                medicion.estaturaCm(), medicion.pesoKg());
+        perfil.setFechaActualizacion(LocalDateTime.now());
+        perfilRepository.save(perfil);
+        MedicionCrecimiento entidad = MedicionCrecimiento.builder()
+                .perfil(perfil)
+                .fechaMedicion(medicion.fechaMedicion())
+                .estaturaCm(medicion.estaturaCm())
+                .pesoKg(medicion.pesoKg())
+                .build();
+        medicionRepository.save(entidad);
+        perfil.getMediciones().add(entidad);
+        return respuesta(perfil);
+    }
+
+    private PerfilInfantil crearPerfil(PerfilRequest request) {
         Long clienteId = clienteActual().id();
         if (perfilRepository.countByClienteId(clienteId) >= maximoPerfiles) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
@@ -67,7 +92,7 @@ public class PerfilInfantilService {
         PerfilInfantil perfil = aplicar(request, new PerfilInfantil());
         aplicarPreferencias(preferencias, perfil);
         perfil.setCliente(Usuario.builder().id(clienteId).build());
-        return respuesta(perfilRepository.save(perfil));
+        return perfilRepository.save(perfil);
     }
 
     @Transactional
@@ -94,12 +119,45 @@ public class PerfilInfantilService {
         PerfilInfantil perfil = obtenerPropio(perfilId, clienteActual().id());
         validadorMedidas.validar(perfil.getFechaNacimiento(), request.fechaMedicion(),
                 request.estaturaCm(), request.pesoKg());
+        MedicionCrecimiento ultimaMedicion = ultimaMedicion(perfil);
+        if (ultimaMedicion != null
+                && request.fechaMedicion().isBefore(ultimaMedicion.getFechaMedicion())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "La nueva medición no puede ser anterior a la última registrada; corrige la medición existente",
+                    "fechaMedicion");
+        }
+        if (ultimaMedicion != null
+                && request.estaturaCm().compareTo(ultimaMedicion.getEstaturaCm()) < 0) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "La estatura no puede ser menor que la última registrada; usa corregir para ajustar una medición existente",
+                    "estaturaCm");
+        }
+        perfil.setFechaActualizacion(LocalDateTime.now());
+        perfilRepository.save(perfil);
         MedicionCrecimiento medicion = MedicionCrecimiento.builder()
                 .perfil(perfil)
                 .fechaMedicion(request.fechaMedicion())
                 .estaturaCm(request.estaturaCm())
                 .pesoKg(request.pesoKg())
                 .build();
+        return MedicionResponse.from(medicionRepository.save(medicion));
+    }
+
+    @Transactional
+    public MedicionResponse actualizarMedicion(Long perfilId, Long medicionId, MedicionRequest request) {
+        Long clienteId = clienteActual().id();
+        PerfilInfantil perfil = obtenerPropio(perfilId, clienteId);
+        MedicionCrecimiento medicion = medicionRepository
+                .findByIdAndPerfilIdAndPerfilClienteId(medicionId, perfilId, clienteId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
+                        "Medición no encontrada"));
+        validadorMedidas.validar(perfil.getFechaNacimiento(), request.fechaMedicion(),
+                request.estaturaCm(), request.pesoKg());
+        medicion.setFechaMedicion(request.fechaMedicion());
+        medicion.setEstaturaCm(request.estaturaCm());
+        medicion.setPesoKg(request.pesoKg());
+        perfil.setFechaActualizacion(LocalDateTime.now());
+        perfilRepository.save(perfil);
         return MedicionResponse.from(medicionRepository.save(medicion));
     }
 
@@ -244,11 +302,7 @@ public class PerfilInfantilService {
     }
 
     private PerfilResponse respuesta(PerfilInfantil perfil) {
-        MedicionCrecimiento ultima = perfil.getMediciones().stream()
-                .max(Comparator.comparing(MedicionCrecimiento::getFechaMedicion)
-                        .thenComparing(MedicionCrecimiento::getId,
-                                Comparator.nullsFirst(Comparator.naturalOrder())))
-                .orElse(null);
+        MedicionCrecimiento ultima = ultimaMedicion(perfil);
         Period edad = Period.between(perfil.getFechaNacimiento(), LocalDate.now());
         int meses = edad.getMonths();
         return new PerfilResponse(
@@ -259,7 +313,16 @@ public class PerfilInfantilService {
                 perfil.getOtroColor(), perfil.getOtroEstampado(),
                 perfil.getFechaCreacion(), perfil.getFechaActualizacion(),
                 ultima == null ? null : MedicionResponse.from(ultima),
-                calculadoraCompletitud.calcular(perfil, ultima));
+                calculadoraCompletitud.calcular(perfil, ultima),
+                calculadoraCompletitud.camposPendientes(perfil, ultima));
+    }
+
+    private MedicionCrecimiento ultimaMedicion(PerfilInfantil perfil) {
+        return perfil.getMediciones().stream()
+                .max(Comparator.comparing(MedicionCrecimiento::getFechaMedicion)
+                        .thenComparing(MedicionCrecimiento::getId,
+                                Comparator.nullsFirst(Comparator.naturalOrder())))
+                .orElse(null);
     }
 
     private AuthenticatedUser clienteActual() {

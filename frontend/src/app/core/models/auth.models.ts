@@ -38,6 +38,17 @@ export interface RegistroRequest {
   aceptaTerminos: boolean;
 }
 
+export interface ActualizarCuentaRequest {
+  nombre?: string;
+  apellido?: string;
+  email?: string;
+  telefono?: string | null;
+  nombreTienda?: string | null;
+  passwordActual?: string | null;
+  nuevaPassword?: string | null;
+  confirmarNuevaPassword?: string | null;
+}
+
 /** Formato de error que devuelve el backend (ErrorResponse). */
 export interface ApiError {
   timestamp: string;

@@ -2,11 +2,11 @@
 
 ## Objetivo y alcance
 
-La US-06 implementa, dentro del Proceso 1 de LittleStyle, la gestión por parte del cliente de perfiles infantiles asociados a su propia cuenta. El alcance observable en el código comprende el registro, consulta, actualización y eliminación de perfiles; el registro de mediciones y consulta del historial; la captura de alergias y preferencias; y la selección local de un perfil activo en la interfaz.
+La US-06 implementa, dentro del Proceso 1 de LittleStyle, la gestión de la cuenta propia del usuario y, para el cliente, sus perfiles infantiles asociados. El alcance observable comprende consultar, actualizar y desactivar la cuenta autenticada; gestionar perfiles infantiles; registrar mediciones y consultar su historial; capturar alergias y preferencias; y seleccionar localmente un perfil activo en la interfaz.
 
 El propósito del Proceso 1, según la Definición del Proyecto, es mantener información estructurada de varios menores —incluidos datos físicos, historial de crecimiento, preferencias y restricciones textiles— y dejarla disponible para funcionalidades posteriores. La recomendación personalizada de prendas no forma parte de la implementación funcional de esta historia: UI-5 muestra el control “Recomendaciones” deshabilitado como elemento próximo.
 
-El flujo empieza cuando un cliente autenticado consulta, crea, selecciona o edita uno de sus perfiles. Los datos se validan antes de persistirse. La historia no implementa edición ni eliminación individual de mediciones: las mediciones se agregan y se consultan como historial; eliminar un perfil elimina sus mediciones en cascada.
+El flujo empieza cuando un cliente autenticado consulta, crea, selecciona o edita uno de sus perfiles. Los datos se validan antes de persistirse. Las mediciones se pueden agregar desde el detalle o desde la edición del perfil, consultar en el historial y corregir individualmente; eliminar un perfil elimina sus mediciones en cascada.
 
 ## Actor e historia de usuario
 
@@ -18,16 +18,30 @@ Los roles `VENDEDOR` y `ADMINISTRADOR` no tienen autorización para las rutas `/
 
 ## Funcionalidades implementadas
 
+### Cuenta del usuario autenticado
+
+- Consultar los datos de la propia cuenta (`GET /api/auth/me`).
+- Actualizar datos personales: nombre, apellido, correo, teléfono y, para vendedores, nombre de tienda.
+- Cambiar contraseña de forma opcional, verificando contraseña actual, requisitos de seguridad y confirmación. Una actualización correcta devuelve JWT nuevo con los claims vigentes.
+- Desactivar la cuenta propia con confirmación. Es una baja lógica: cambia el estado a `SUSPENDIDO`, conserva los datos asociados y revoca de inmediato los tokens existentes.
+- No se permite cambiar rol, estado ni evidencia de aceptación de términos desde esta operación. No hay borrado físico de cuenta.
+
 ### Perfiles y mediciones
 
 - Crear, listar, consultar por identificador, actualizar y eliminar perfiles infantiles.
+- Crear el perfil y su medición inicial mediante una única operación de servicio `@Transactional`; un error al validar o guardar la medición revierte también el perfil.
 - Limitar el número de perfiles por cliente mediante `app.perfiles.max`; el valor predeterminado en código es 10. El servicio rechaza una nueva creación si el cliente ya alcanzó ese límite.
 - Registrar mediciones con fecha, estatura y peso.
+- Agregar mediciones tanto desde la edición del perfil como desde el botón “Nueva medición” en el historial del detalle.
+- Corregir cualquier medición propia desde el historial, sin una ventana de tiempo; la operación valida de nuevo la fecha y los rangos correspondientes a la edad.
+- Una medición nueva no puede tener fecha anterior a la última registrada ni una estatura menor que la última; las correcciones de registros existentes pueden ajustar estos datos. El peso puede aumentar o disminuir entre mediciones.
+- Actualizar `fechaActualizacion` del perfil al agregar una medición para que el orden de perfiles refleje actividad reciente.
+- Actualizar `fechaActualizacion` del perfil al corregir una medición.
 - Consultar el historial de mediciones en orden descendente por fecha.
 - Mostrar en la respuesta del perfil la medición más reciente, calculada por fecha y, en caso de empate, por identificador.
 - Eliminar las mediciones asociadas al eliminar un perfil mediante la relación JPA con cascada y `orphanRemoval`.
 
-No existe endpoint para actualizar o eliminar una medición individual.
+No existe endpoint para eliminar individualmente una medición; la corrección de una medición existente sí está disponible mediante `PUT`.
 
 ### Alergias
 
@@ -51,6 +65,8 @@ Los DTO utilizan conjuntos (`Set`), por lo que su representación no conserva du
 
 `CalculadoraCompletitud` evalúa ocho grupos de información: nombre, fecha de nacimiento, contextura, holgura, estatura de la última medición, peso de la última medición, declaración de alergias (incluida la declaración explícita de ausencia) y preferencias (al menos una opción enumerada o libre). La respuesta incluye `porcentajeCompletitud`, calculado como campos diligenciados sobre ocho y redondeado al entero más cercano. La lista muestra “Completo” desde 90 % y “Incompleto” por debajo de ese umbral.
 
+Para perfiles incompletos, la misma respuesta incluye `camposPendientes`; la lista muestra esos grupos bajo “Para completar” para indicar al cliente qué datos agregar. Cuando falten preferencias, el mensaje es explícito: “Agrega al menos un color o estampado preferido”.
+
 En frontend, `PerfilActivoService` mantiene el perfil seleccionado en un signal y persiste su identificador en `localStorage` con la clave `littleStyle.perfilActivoId`. Al sincronizar la lista valida que el identificador guardado aún exista; si no existe, selecciona el primer perfil y actualiza la persistencia. Sin perfiles, deja el estado activo en `null`. El selector abierto desde “Cambiar perfil” permite elegir un menor y volver al inicio.
 
 ### Talla provisional
@@ -71,7 +87,7 @@ En frontend, `PerfilActivoService` mantiene el perfil seleccionado en un signal 
 
 ### Mediciones
 
-La fecha de medición es obligatoria, no puede ser futura ni anterior a la fecha de nacimiento. Los límites generales son estatura de 40 a 200 cm y peso de 2 a 120 kg. Además, se aplican los siguientes intervalos inclusivos según la edad en años cumplidos a la fecha de medición:
+La fecha de medición es obligatoria, no puede ser futura ni anterior a la fecha de nacimiento. Al agregar una medición, su fecha no puede ser anterior a la última medición registrada y la estatura no puede ser menor que la última estatura; se permite que el peso aumente o disminuya. Para corregir una captura errónea se edita el registro existente, operación disponible sin límite de tiempo y que puede corregir también una estatura menor. Los límites generales son estatura de 40 a 200 cm y peso de 2 a 120 kg. Además, se aplican los siguientes intervalos inclusivos según la edad en años cumplidos a la fecha de medición:
 
 | Edad | Estatura | Peso |
 |---|---:|---:|
@@ -115,25 +131,36 @@ El módulo de perfiles y las páginas frontend examinadas no contienen llamadas 
 
 ## Endpoints
 
-Todas las rutas requieren rol `CLIENTE` y autenticación conforme a `SecurityConfig`. `{id}` identifica un perfil propiedad del usuario autenticado.
+Las operaciones de cuenta requieren un usuario autenticado y solo actúan sobre la identidad de su token.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/auth/me` | Consulta los datos de la cuenta autenticada. |
+| `PUT` | `/api/auth/me` | Actualiza los datos propios y devuelve una sesión/token actualizado. El cambio de contraseña es opcional. |
+| `DELETE` | `/api/auth/me` | Desactiva la cuenta propia, conserva sus datos y responde `204`. |
+
+Las rutas de perfiles y mediciones requieren rol `CLIENTE` y autenticación conforme a `SecurityConfig`. `{id}` identifica un perfil propiedad del usuario autenticado.
 
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | `GET` | `/api/cliente/perfiles` | `CLIENTE` | Lista perfiles propios, ordenados por fecha de actualización descendente. |
 | `GET` | `/api/cliente/perfiles/{id}` | `CLIENTE` | Consulta un perfil propio y su medición más reciente. |
 | `POST` | `/api/cliente/perfiles` | `CLIENTE` | Crea un perfil, sujeto al límite de perfiles y validaciones. Responde 201. |
+| `POST` | `/api/cliente/perfiles/con-medicion-inicial` | `CLIENTE` | Crea el perfil y la primera medición en una única transacción; ante error revierte ambos. Responde 201. |
 | `PUT` | `/api/cliente/perfiles/{id}` | `CLIENTE` | Actualiza el perfil propio; responde 200. |
 | `DELETE` | `/api/cliente/perfiles/{id}` | `CLIENTE` | Elimina el perfil propio y sus mediciones en cascada; responde 204. |
 | `POST` | `/api/cliente/perfiles/{id}/mediciones` | `CLIENTE` | Agrega una medición validada al perfil; responde 201. |
+| `PUT` | `/api/cliente/perfiles/{id}/mediciones/{medicionId}` | `CLIENTE` | Corrige una medición del perfil propio, valida los datos y actualiza la fecha del perfil; responde 200. Permite corregir mediciones históricas sin límite de tiempo. |
 | `GET` | `/api/cliente/perfiles/{id}/mediciones` | `CLIENTE` | Lista el historial propio en orden descendente de fecha. |
 
 ## Pantallas
 
 | Interfaz | Comportamiento que existe |
 |---|---|
+| Mi cuenta | Acceso desde la barra de navegación; permite consultar/editar datos propios, cambiar la contraseña verificando la actual y solicitar la desactivación lógica con confirmación. |
 | UI-3, inicio de cliente | Saludo y acceso a Mis hijos; muestra el perfil activo con edad, última estatura y talla provisional, o invitación si no existen perfiles. “Cambiar perfil” abre una selección de perfiles. Catálogo, pedidos y carrito son accesos deshabilitados sin ruta funcional. |
 | UI-4, lista de perfiles | Presenta perfiles con avatar SVG, edad/talla, completitud, medidas, contextura, alergias y preferencias disponibles. Tiene acciones para ver, editar y un único CTA para agregar. En modo selección presenta opciones y retorna al inicio tras elegir. |
-| UI-5, detalle/formulario | Muestra información básica, medidas actuales, preferencias, restricciones e historial descendente. Permite agregar mediciones, crear/editar el perfil y eliminarlo tras confirmación. El control “Recomendaciones” está deshabilitado. El alta envía primero el perfil y luego la medición inicial; si esta falla, permite reintentarla sin volver a crear el perfil. |
+| UI-5, detalle/formulario | Muestra información básica, medidas actuales, preferencias, restricciones e historial descendente. Permite agregar mediciones al editar el perfil o desde “Nueva medición” en el historial; desde el historial también permite corregir una medición. Crear o corregir una medición usa una operación separada de la actualización de los datos del perfil. El control “Recomendaciones” está deshabilitado. El alta envía el perfil y la primera medición en una sola solicitud atómica; ante un error conserva el formulario para corregir o reintentar sin dejar un perfil parcial. Las altas y correcciones también actualizan la fecha del perfil. |
 
 ## Trazabilidad de requisitos no funcionales
 
@@ -144,7 +171,7 @@ La columna de prueba identifica una prueba existente que respalda parte del meca
 | RNF-06, confidencialidad | Converters AES-GCM para datos personales, físicos, alergias y preferencias, migración de filas legadas, identidad y propiedad filtradas por usuario; sin logs explícitos de datos del menor en el módulo. | `CifradoPerfilConverterTest.cifraYDescifraFechaNacimientoSinGuardarTextoPlano`, `cifraYDescifraFechaMedicionSinGuardarTextoPlano`, `cifraYDescifraValoresDecimales`, `cifraYDescifraTextoLibreSinGuardarElValorEnClaro`, `cifraYDescifraAlergias`, `rechazaCifradoAlteradoEnLugarDeTratarloComoTextoPlano`; `PerfilInfantilIntegrationTest.crudMedicionesYEliminacionEnCascada`, `migraFilasLegadasYConservaLaLecturaDelPerfilYElHistorial`, `seguridadRequiereTokenYRechazaRolesDistintosDeCliente`; `PerfilInfantilServiceTest.ocultaPerfilesDeOtrosClientesComoNoEncontrados`. | La prueba no mide el umbral >96% del plan. TLS depende del despliegue y del esquema actualizado al desplegar. |
 | RNF-12, completitud | El DTO recoge datos básicos, declaración de alergias, preferencias y perfil; las mediciones se representan por separado. `CalculadoraCompletitud` computa ocho grupos y UI-4 muestra la insignia desde 90%. | `CalculadoraCompletitudTest.consideraElPerfilCompletoCuandoTieneDatosYMedicion`, `marcaComoDiligenciadaLaDeclaracionExplicitaDeNoAlergias`, `consideraLaPreferenciaLibreComoPreferenciaDiligenciada`; `perfiles-lista.spec.ts` (“marca Incompleto cuando la completitud es menor al 90 por ciento”). | No se mide qué porcentaje de todos los perfiles reales supera el 90% solicitado por el plan. |
 | RNF-16, prevención de errores en medidas | Validaciones de formulario Angular y `ValidadorMedidas` para fechas, rangos generales y coherencia por edad; el servidor repite la validación. | `ValidadorMedidasTest.aceptaMedidasCoherentesConLaEdad`, `rechazaMedicionAnteriorAlNacimientoEnElCampoCorrespondiente`, `rechazaEstaturaFueraDelRangoDelTramoEtario`; `PerfilInfantilIntegrationTest.validaPerfilYMedicionYNoExponePerfilAjeno`; `perfil-detalle.spec.ts` (“valida los datos obligatorios y alergias antes de enviar”). | No se ha medido la tasa de errores de captura (<5%) ni cada límite de cada tramo tiene una prueba unitaria dedicada. |
-| RNF-19, facilidad de actualización | Consulta y edición en UI-5, registro de nuevas medidas y vista del historial ordenado; el backend valida las mediciones y mantiene la más reciente. | `PerfilInfantilIntegrationTest.crudMedicionesYEliminacionEnCascada`; `perfil-detalle.spec.ts` (“actualiza el perfil existente y vuelve al listado sin crear otro”); `perfil-detalle.spec.ts` (“presenta cuatro tarjetas de información en el modo detalle”). | No se mide que más del 60% de perfiles se actualice en menos de seis meses. No existe edición/eliminación individual de mediciones. |
+| RNF-19, facilidad de actualización | Consulta y edición en UI-5, registro de nuevas medidas, corrección individual sin límite de tiempo y vista del historial ordenado; el backend valida las mediciones y mantiene la más reciente. | `PerfilInfantilIntegrationTest.crudMedicionesYEliminacionEnCascada`, `corrigeMedicionPropiaActualizaFechaDelPerfilYRechazaMedicionAjena`; `perfil-detalle.spec.ts` (edición de perfil, alta desde ambas pantallas y corrección desde historial). | No se mide que más del 60% de perfiles se actualice en menos de seis meses. No se implementa eliminación individual de mediciones. |
 
 ## Supuestos y limitaciones
 

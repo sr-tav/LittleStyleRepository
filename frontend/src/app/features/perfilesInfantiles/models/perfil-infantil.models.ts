@@ -64,6 +64,7 @@ export interface PerfilInfantil {
   fechaActualizacion: string;
   ultimaMedicion: Medicion | null;
   porcentajeCompletitud: number;
+  camposPendientes: string[];
 }
 
 export interface PerfilRequest {
@@ -84,4 +85,9 @@ export interface MedicionRequest {
   fechaMedicion: string;
   estaturaCm: number;
   pesoKg: number;
+}
+
+export interface CrearPerfilConMedicionRequest {
+  perfil: PerfilRequest;
+  medicionInicial: MedicionRequest;
 }
