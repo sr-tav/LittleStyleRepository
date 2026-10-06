@@ -65,6 +65,8 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll();
                     auth.requestMatchers("/error").permitAll();
+                    // Imágenes del almacenamiento local (desarrollo); en producción se sirven desde S3
+                    auth.requestMatchers(HttpMethod.GET, AlmacenamientoConfig.RUTA_MEDIA).permitAll();
                     if (h2ConsoleEnabled) {
                         auth.requestMatchers("/h2-console/**").permitAll();
                     }

@@ -5,7 +5,14 @@ import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { PerfilActivoService } from '../../features/perfilesInfantiles/services/perfil-activo.service';
-import { AuthResponse, LoginRequest, RegistroRequest, Rol, Usuario } from '../models/auth.models';
+import {
+  ActualizarCuentaRequest,
+  AuthResponse,
+  LoginRequest,
+  RegistroRequest,
+  Rol,
+  Usuario
+} from '../models/auth.models';
 
 const TOKEN_KEY = 'ls_token';
 const SESSION_KEY = 'ls_session';

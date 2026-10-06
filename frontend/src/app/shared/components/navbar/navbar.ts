@@ -37,4 +37,5 @@ import { AuthService } from '../../../core/services/auth.service';
 export class Navbar {
   protected readonly auth = inject(AuthService);
   protected readonly menuAbierto = signal(false);
+  abierto: any;
 }
