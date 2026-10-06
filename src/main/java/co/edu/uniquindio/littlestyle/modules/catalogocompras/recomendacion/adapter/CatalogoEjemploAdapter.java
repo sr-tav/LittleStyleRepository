@@ -4,9 +4,15 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.CatalogoRecomendacionPort;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.*;
 import java.math.BigDecimal; import java.util.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+/**
+ * Catálogo de ejemplo usado antes de US-08. Solo se activa con {@code app.recomendacion.catalogo=ejemplo};
+ * por defecto el motor usa {@link CatalogoRecomendacionAdapter}, que lee el catálogo real.
+ */
 @Component
+@ConditionalOnProperty(name = "app.recomendacion.catalogo", havingValue = "ejemplo")
 public class CatalogoEjemploAdapter implements CatalogoRecomendacionPort {
     @Override
     public List<PrendaRecomendable> listarPrendasPublicadas() {

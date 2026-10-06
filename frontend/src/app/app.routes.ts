@@ -45,6 +45,20 @@ export const routes: Routes = [
       import('./features/home/pages/cliente-inicio/cliente-inicio').then((m) => m.ClienteInicio),
   },
   {
+    path: 'vendedor/productos',
+    canActivate: [roleGuard],
+    data: { roles: ['VENDEDOR'] },
+    loadChildren: () =>
+      import('./features/catalogoCompras/catalogo.routes').then((m) => m.PRODUCTOS_ROUTES),
+  },
+  {
+    path: 'vendedor/inventario',
+    canActivate: [roleGuard],
+    data: { roles: ['VENDEDOR'] },
+    loadChildren: () =>
+      import('./features/catalogoCompras/catalogo.routes').then((m) => m.INVENTARIO_ROUTES),
+  },
+  {
     path: 'vendedor',
     title: 'Panel del vendedor | LittleStyle',
     canActivate: [roleGuard],

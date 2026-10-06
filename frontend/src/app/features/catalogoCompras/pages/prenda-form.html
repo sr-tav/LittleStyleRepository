@@ -1,0 +1,291 @@
+<app-navbar />
+<main class="catalog-page catalog-form-page">
+  <a class="back-link" routerLink="/vendedor/productos">← Volver</a>
+
+  <header class="catalog-heading">
+    <div>
+      <h1>{{ esNueva() ? 'Crear producto' : 'Editar producto' }}</h1>
+      <p class="catalog-subtitle">
+        {{ esNueva() ? 'Completa la información de tu nueva prenda' : 'Actualiza la información de tu prenda' }}
+      </p>
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando producto...</div>
+  } @else {
+    @if (errorGeneral()) {
+      <div class="alert alert-error" role="alert">{{ errorGeneral() }}</div>
+    }
+
+    <form class="catalog-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+      <!-- Información -->
+      <section class="profile-section catalog-section" aria-labelledby="sec-info">
+        <h2 id="sec-info" class="catalog-section-title"><span aria-hidden="true">👗</span> Información</h2>
+
+        <div class="field" [class.has-error]="invalido(form.controls.nombre)">
+          <label for="nombre">Nombre del producto</label>
+          <input id="nombre" type="text" formControlName="nombre" placeholder="Ej: Vestido Floral Rosa" maxlength="120" />
+          @if (invalido(form.controls.nombre)) {
+            <span class="field-error">
+              {{ form.controls.nombre.errors?.['servidor'] ?? 'El nombre debe tener entre 3 y 120 caracteres' }}
+            </span>
+          }
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="categoria">Categoría</label>
+            <select id="categoria" formControlName="categoria">
+              @for (c of categorias; track c.valor) {
+                <option [value]="c.valor">{{ c.etiqueta }}</option>
+              }
+            </select>
+          </div>
+          <div class="field" [class.has-error]="invalido(form.controls.marca)">
+            <label for="marca">Marca <span class="field-optional">(opcional)</span></label>
+            <input id="marca" type="text" formControlName="marca" placeholder="Por defecto, el nombre de tu tienda" maxlength="80" />
+          </div>
+        </div>
+
+        <div class="field" [class.has-error]="invalido(form.controls.descripcion)">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" formControlName="descripcion" rows="4" maxlength="2000"
+            placeholder="Describe la prenda, materiales, características..."></textarea>
+        </div>
+
+        <div class="field" [class.has-error]="invalido(form.controls.precio)">
+          <label for="precio">Precio (COP)</label>
+          <input id="precio" type="number" inputmode="numeric" formControlName="precio" placeholder="Ej: 45900" min="100" />
+          @if (invalido(form.controls.precio)) {
+            <span class="field-error">
+              {{ form.controls.precio.errors?.['servidor'] ?? 'Ingresa un precio entre $100 y $10.000.000' }}
+            </span>
+          }
+        </div>
+      </section>
+
+      <!-- Características -->
+      <section class="profile-section catalog-section" aria-labelledby="sec-caract">
+        <h2 id="sec-caract" class="catalog-section-title"><span aria-hidden="true">✨</span> Características</h2>
+
+        <fieldset class="preference-group">
+          <legend>Colores <span class="field-optional">({{ coloresSeleccionados().length }}/10)</span></legend>
+          <div class="option-chip-grid">
+            @for (color of colores; track color.valor) {
+              <button
+                type="button"
+                class="option-chip"
+                [class.is-selected]="coloresSeleccionados().includes(color.valor)"
+                [attr.aria-pressed]="coloresSeleccionados().includes(color.valor)"
+                (click)="alternarColor(color.valor)"
+              >
+                <span class="color-swatch" [style.background]="color.muestra" aria-hidden="true"></span>
+                {{ color.etiqueta }}
+              </button>
+            }
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label for="estampado">Estampado</label>
+          <select id="estampado" formControlName="estampado">
+            <option value="">Sin especificar</option>
+            @for (e of estampados; track e.valor) {
+              <option [value]="e.valor">{{ e.etiqueta }}</option>
+            }
+          </select>
+        </div>
+
+        <fieldset class="preference-group">
+          <legend>Información para alergias</legend>
+          <p class="field-hint">El motor de recomendaciones usa estos datos para advertir o excluir la prenda.</p>
+          <div class="catalog-checks">
+            <label class="profile-checkbox"><input type="checkbox" formControlName="tintesSinteticos" /> Tintes sintéticos</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="brochesMetalicos" /> Broches metálicos</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="contieneNiquel" /> Contiene níquel</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="tratamientoFormaldehido" /> Tratamiento con formaldehído</label>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Composición textil -->
+      <section class="profile-section catalog-section" aria-labelledby="sec-comp">
+        <h2 id="sec-comp" class="catalog-section-title"><span aria-hidden="true">🧵</span> Composición textil</h2>
+        <div formArrayName="composicion" class="dynamic-rows">
+          @for (fila of composicion.controls; track fila; let i = $index) {
+            <div class="dynamic-row composition-row" [formGroupName]="i">
+              <div class="field">
+                <label [for]="'material-' + i">Material</label>
+                <select [id]="'material-' + i" formControlName="material">
+                  @for (m of materiales; track m.valor) {
+                    <option [value]="m.valor">{{ m.etiqueta }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field" [class.has-error]="invalido(fila.get('porcentaje'))">
+                <label [for]="'porcentaje-' + i">Porcentaje (%)</label>
+                <input [id]="'porcentaje-' + i" type="number" formControlName="porcentaje" min="1" max="100" />
+              </div>
+              <button type="button" class="icon-button" (click)="quitarComponente(i)"
+                [disabled]="composicion.length <= 1" [attr.aria-label]="'Quitar material ' + (i + 1)" title="Quitar">✕</button>
+            </div>
+          }
+        </div>
+        <div class="dynamic-footer">
+          <span class="composition-total" [class.is-ok]="sumaComposicion() === 100">Total: {{ sumaComposicion() }}%</span>
+          @if (composicion.length < limites.maxMateriales) {
+            <button type="button" class="btn-ghost" (click)="agregarComponente()">+ Agregar material</button>
+          }
+        </div>
+        @if (invalido(composicion)) {
+          <span class="field-error">
+            @if (composicion.errors?.['materialRepetido']) {
+              No repitas materiales.
+            } @else if (composicion.errors?.['servidor']) {
+              {{ composicion.errors?.['servidor'] }}
+            } @else {
+              La composición debe sumar 100%.
+            }
+          </span>
+        }
+      </section>
+
+      <!-- Tabla de tallas -->
+      <section class="profile-section catalog-section" aria-labelledby="sec-tallas">
+        <h2 id="sec-tallas" class="catalog-section-title"><span aria-hidden="true">📏</span> Tabla de tallas</h2>
+        <p class="field-hint">
+          Indica la estatura y el peso que cubre cada talla. Así el sistema sugiere la talla correcta a cada cliente.
+          @if (!esNueva()) { El stock de las tallas existentes se actualiza desde el inventario. }
+        </p>
+        <div formArrayName="tallas" class="dynamic-rows">
+          @for (fila of tallas.controls; track fila; let i = $index) {
+            <div class="dynamic-row size-row" [formGroupName]="i" [class.has-error]="invalido(fila)">
+              <div class="field">
+                <label [for]="'talla-' + i">Talla</label>
+                <input [id]="'talla-' + i" type="text" formControlName="talla" placeholder="4" maxlength="10" />
+              </div>
+              <div class="field">
+                <label [for]="'emin-' + i">Estatura mín. (cm)</label>
+                <input [id]="'emin-' + i" type="number" formControlName="estaturaMinCm" step="0.1" />
+              </div>
+              <div class="field">
+                <label [for]="'emax-' + i">Estatura máx. (cm)</label>
+                <input [id]="'emax-' + i" type="number" formControlName="estaturaMaxCm" step="0.1" />
+              </div>
+              <div class="field">
+                <label [for]="'pmin-' + i">Peso mín. (kg)</label>
+                <input [id]="'pmin-' + i" type="number" formControlName="pesoMinKg" step="0.1" />
+              </div>
+              <div class="field">
+                <label [for]="'pmax-' + i">Peso máx. (kg)</label>
+                <input [id]="'pmax-' + i" type="number" formControlName="pesoMaxKg" step="0.1" />
+              </div>
+              <div class="field">
+                <label [for]="'stock-' + i">{{ fila.getRawValue()['existente'] ? 'Stock actual' : 'Stock inicial' }}</label>
+                <input [id]="'stock-' + i" type="number" formControlName="stock" min="0" />
+              </div>
+              <button type="button" class="icon-button" (click)="quitarTalla(i)"
+                [disabled]="tallas.length <= 1" [attr.aria-label]="'Quitar talla ' + (i + 1)" title="Quitar">✕</button>
+              @if (invalido(fila)) {
+                <span class="field-error size-row-error">
+                  @if (fila.errors?.['rangoEstatura']) { La estatura mínima supera a la máxima. }
+                  @if (fila.errors?.['rangoPeso']) { El peso mínimo supera al máximo. }
+                  @if (!fila.errors) { Completa la talla con estatura entre 40 y 200 cm y peso entre 2 y 120 kg. }
+                </span>
+              }
+            </div>
+          }
+        </div>
+        <div class="dynamic-footer">
+          <span class="field-hint">{{ tallas.length }}/{{ limites.maxTallas }} tallas</span>
+          @if (tallas.length < limites.maxTallas) {
+            <button type="button" class="btn-ghost" (click)="agregarTalla()">+ Agregar talla</button>
+          }
+        </div>
+        @if (invalido(tallas) && tallas.errors) {
+          <span class="field-error">
+            {{ tallas.errors['servidor'] ?? 'La talla ' + tallas.errors['tallaRepetida'] + ' está repetida.' }}
+          </span>
+        }
+      </section>
+
+      <!-- Inventario -->
+      <section class="profile-section catalog-section" aria-labelledby="sec-inv">
+        <h2 id="sec-inv" class="catalog-section-title"><span aria-hidden="true">📦</span> Inventario</h2>
+        <div class="field" [class.has-error]="invalido(form.controls.stockMinimo)">
+          <label for="stockMinimo">Stock mínimo de alerta</label>
+          <input id="stockMinimo" type="number" formControlName="stockMinimo" min="0" />
+          <span class="field-hint">Recibirás una alerta de reabastecimiento cuando el stock total llegue a este valor.</span>
+          @if (invalido(form.controls.stockMinimo)) {
+            <span class="field-error">Ingresa un número entero entre 0 y 10000.</span>
+          }
+        </div>
+      </section>
+
+      <!-- Fotos -->
+      <section class="profile-section catalog-section" aria-labelledby="sec-fotos">
+        <h2 id="sec-fotos" class="catalog-section-title"><span aria-hidden="true">📷</span> Fotos</h2>
+        <p class="field-hint">
+          JPG, PNG o WEBP de máximo {{ limites.maxTamanoImagenMb }} MB. Hasta {{ limites.maxImagenesPorPrenda }} fotos;
+          la primera es la principal.
+        </p>
+
+        @if (errorImagenes()) {
+          <div class="alert alert-error" role="alert">
+            {{ errorImagenes() }}
+            @if (!esNueva() && pendientes().length) {
+              <button type="button" class="link-button" (click)="reintentarFotos()" [disabled]="guardando()">
+                Reintentar subida
+              </button>
+            }
+          </div>
+        }
+
+        <div class="photo-grid">
+          @for (imagen of imagenes(); track imagen.id; let i = $index) {
+            <figure class="photo-card">
+              <img [src]="imagen.url" [alt]="'Foto ' + (i + 1)" loading="lazy" />
+              @if (i === 0) { <figcaption class="photo-badge">Principal</figcaption> }
+              <div class="photo-actions">
+                @if (confirmandoImagen() === imagen.id) {
+                  <button type="button" class="link-button danger" (click)="eliminarImagen(imagen)" [disabled]="procesandoImagen()">Eliminar</button>
+                  <button type="button" class="link-button" (click)="confirmandoImagen.set(null)">Cancelar</button>
+                } @else {
+                  @if (i > 0) {
+                    <button type="button" class="link-button" (click)="marcarPrincipal(imagen)" [disabled]="procesandoImagen()">Principal</button>
+                  }
+                  <button type="button" class="link-button danger" (click)="confirmandoImagen.set(imagen.id)">Quitar</button>
+                }
+              </div>
+            </figure>
+          }
+          @for (foto of pendientes(); track foto.vistaPrevia; let i = $index) {
+            <figure class="photo-card is-pending">
+              <img [src]="foto.vistaPrevia" [alt]="foto.archivo.name" />
+              <figcaption class="photo-badge photo-badge-pending">Por subir</figcaption>
+              <div class="photo-actions">
+                <button type="button" class="link-button danger" (click)="quitarPendiente(i)">Quitar</button>
+              </div>
+            </figure>
+          }
+          @if (totalFotos() < limites.maxImagenesPorPrenda) {
+            <label class="photo-drop">
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="seleccionarFotos($event)" />
+              <span aria-hidden="true">+</span>
+              Agregar fotos
+            </label>
+          }
+        </div>
+      </section>
+
+      <div class="catalog-form-actions">
+        <a class="btn-ghost" routerLink="/vendedor/productos">Cancelar</a>
+        <button type="submit" class="btn-primary btn-inline" [disabled]="guardando()">
+          @if (guardando()) { <span class="spinner"></span> Guardando... }
+          @else { {{ esNueva() ? 'Crear producto' : 'Guardar cambios' }} }
+        </button>
+      </div>
+    </form>
+  }
+</main>

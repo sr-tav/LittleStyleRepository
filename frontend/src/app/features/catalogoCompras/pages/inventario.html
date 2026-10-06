@@ -1,0 +1,113 @@
+<app-navbar />
+<main class="catalog-page">
+  <header class="catalog-heading">
+    <div>
+      <h1>Inventario</h1>
+      <p class="catalog-subtitle">Control de existencias de tus productos</p>
+    </div>
+    <a class="btn-alerts" routerLink="/vendedor/inventario/alertas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+      </svg>
+      Alertas
+      @if (alertasActivas() > 0) {
+        <span class="btn-alerts-count" [attr.aria-label]="alertasActivas() + ' alertas activas'">{{ alertasActivas() }}</span>
+      }
+    </a>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">
+      {{ error() }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+
+  <section class="catalog-card">
+    @if (cargando()) {
+      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando inventario...</div>
+    } @else if (items().length === 0) {
+      <div class="catalog-state">
+        <p>Aún no tienes productos para controlar.</p>
+        <a class="btn-primary btn-inline" routerLink="/vendedor/productos/nuevo">Crear producto</a>
+      </div>
+    } @else {
+      <div class="catalog-table-wrap">
+        <table class="catalog-table inventory-table">
+          <thead>
+            <tr>
+              <th scope="col">Producto</th>
+              <th scope="col">Stock actual</th>
+              <th scope="col">Stock mínimo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.prendaId) {
+              <tr [class.is-editing]="edicion()?.prendaId === item.prendaId">
+                <td>
+                  <div class="product-cell">
+                    <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
+                    <div>
+                      <strong>{{ item.nombre }}</strong>
+                      <span class="product-meta">
+                        {{ categoria(item) }}@if (item.estado === 'INACTIVA') { · Inactivo }
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="stock-number" [class]="'stock-number stock-number-' + item.nivel">{{ item.stockTotal }}</span>
+                </td>
+                <td class="muted-cell">{{ item.stockMinimo }}</td>
+                <td><app-nivel-stock-badge [nivel]="item.nivel" /></td>
+                <td>
+                  @if (edicion()?.prendaId !== item.prendaId) {
+                    <button type="button" class="btn-soft" (click)="editar(item)">Actualizar stock</button>
+                  }
+                </td>
+              </tr>
+              @if (edicion(); as e) {
+                @if (e.prendaId === item.prendaId) {
+                  <tr class="stock-editor-row">
+                    <td colspan="5">
+                      <div class="stock-editor" role="group" [attr.aria-label]="'Actualizar stock de ' + item.nombre">
+                        <div class="stock-editor-sizes">
+                          @for (t of e.tallas; track t.talla; let i = $index) {
+                            <label class="stock-editor-field">
+                              <span>Talla {{ t.talla }}</span>
+                              <input type="number" min="0" inputmode="numeric" [value]="t.stock ?? ''"
+                                (input)="cambiarStock(i, $any($event.target).value)" />
+                            </label>
+                          }
+                          <label class="stock-editor-field stock-editor-min">
+                            <span>Stock mínimo</span>
+                            <input type="number" min="0" inputmode="numeric" [value]="e.stockMinimo ?? ''"
+                              (input)="cambiarMinimo($any($event.target).value)" />
+                          </label>
+                        </div>
+                        <div class="stock-editor-footer">
+                          <span class="field-hint">Total: <strong>{{ totalEdicion() }}</strong> unidades</span>
+                          <div class="stock-editor-actions">
+                            <button type="button" class="btn-primary btn-inline btn-small" (click)="guardar()" [disabled]="guardando()">
+                              @if (guardando()) { <span class="spinner"></span> } Guardar
+                            </button>
+                            <button type="button" class="icon-button" (click)="cancelar()" aria-label="Cancelar edición" title="Cancelar">✕</button>
+                          </div>
+                        </div>
+                        @if (errorEdicion()) {
+                          <p class="field-error" role="alert">{{ errorEdicion() }}</p>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</main>
