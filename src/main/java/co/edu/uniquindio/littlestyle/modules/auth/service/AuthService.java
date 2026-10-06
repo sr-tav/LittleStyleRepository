@@ -11,10 +11,12 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.EmailYaRegistradoException;
+import co.edu.uniquindio.littlestyle.shared.exception.LoginBloqueadoException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+
+import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.LOG;
+import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.enmascararEmail;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final IntentosLoginService intentosLoginService;
 
     /**
      * Registra un cliente o vendedor y devuelve un token para que quede autenticado de inmediato.
@@ -45,6 +51,8 @@ public class AuthService {
     @Transactional
     public AuthResponse registrar(RegistroRequest request) {
         if (request.rol() == Rol.ADMINISTRADOR) {
+            LOG.warn("Registro rechazado: intento de auto-registro como administrador email={}",
+                    enmascararEmail(request.email()));
             throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "Solo es posible registrarse como cliente o vendedor", "rol");
         }
@@ -80,15 +88,32 @@ public class AuthService {
 
     /**
      * Verifica credenciales con el AuthenticationManager (BCrypt + estado de la cuenta) y emite el JWT.
+     * Los fallos de contraseña cuentan para el límite de intentos por correo + IP.
      */
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String ip) {
         String email = normalizarEmail(request.email());
-        authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
+        intentosLoginService.bloqueoRestante(email, ip).ifPresent(restante -> {
+            LOG.warn("Login rechazado: bloqueado por intentos fallidos email={} ip={}", enmascararEmail(email), ip);
+            throw new LoginBloqueadoException(restante);
+        });
+
+        try {
+            authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
+        } catch (BadCredentialsException ex) {
+            boolean bloqueado = intentosLoginService.registrarFallo(email, ip);
+            LOG.warn("Login rechazado: credenciales inválidas email={} ip={}{}", enmascararEmail(email), ip,
+                    bloqueado ? " (límite de intentos alcanzado, se bloquea temporalmente)" : "");
+            throw ex;
+        } catch (DisabledException ex) {
+            LOG.warn("Login rechazado: cuenta suspendida email={} ip={}", enmascararEmail(email), ip);
+            throw ex;
+        }
 
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
+        intentosLoginService.registrarExito(email, ip);
         return construirRespuesta(usuario);
     }
 

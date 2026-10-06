@@ -1,9 +1,12 @@
 package co.edu.uniquindio.littlestyle.shared.exception;
 
 import co.edu.uniquindio.littlestyle.shared.dto.ErrorResponse;
+import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
+import co.edu.uniquindio.littlestyle.shared.util.SeguridadLog;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -49,6 +52,15 @@ public class GlobalExceptionHandler {
         return build(ex.getStatus(), ex.getMessage(), req, errores);
     }
 
+    @ExceptionHandler(LoginBloqueadoException.class)
+    public ResponseEntity<ErrorResponse> handleLoginBloqueado(LoginBloqueadoException ex, HttpServletRequest req) {
+        ErrorResponse body = ErrorResponse.of(ex.getStatus().value(), ex.getStatus().getReasonPhrase(),
+                ex.getMessage(), req.getRequestURI(), null);
+        return ResponseEntity.status(ex.getStatus())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getSegundosRestantes()))
+                .body(body);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos", req, null);
@@ -61,6 +73,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest req) {
+        SeguridadLog.LOG.warn("Autenticación rechazada: {} {} ip={} causa={}", req.getMethod(), req.getRequestURI(),
+                req.getRemoteAddr(), ex.getClass().getSimpleName());
         return build(HttpStatus.UNAUTHORIZED, "No fue posible autenticar al usuario", req, null);
     }
 
@@ -71,6 +85,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+        // Rechazos de seguridad a nivel de método (@PreAuthorize), que no pasan por RestAccessDeniedHandler
+        SeguridadLog.LOG.warn("Acceso rechazado (403): {} {} ip={} {}", req.getMethod(), req.getRequestURI(),
+                req.getRemoteAddr(), SecurityUtils.describirUsuarioActual());
         return build(HttpStatus.FORBIDDEN, "No tiene permisos para acceder a este recurso", req, null);
     }
 

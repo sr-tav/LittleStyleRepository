@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.auth.dto.LoginRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.RegistroRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.UsuarioResponse;
 import co.edu.uniquindio.littlestyle.modules.auth.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,8 +31,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+                                              HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(authService.login(request, httpRequest.getRemoteAddr()));
     }
 
     @GetMapping("/me")

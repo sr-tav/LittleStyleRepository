@@ -58,4 +58,15 @@ describe('PerfilActivoService', () => {
     expect(service.perfil()?.id).toBe(1);
     expect(localStorage.getItem('littleStyle.perfilActivoId')).toBe('1');
   });
+
+  it('limpiar olvida el perfil activo y la selección guardada', () => {
+    service.sincronizar([perfil(1, 'Sofía'), perfil(2, 'Mateo')]);
+    service.seleccionar(2);
+
+    service.limpiar();
+
+    expect(service.perfil()).toBeNull();
+    expect(localStorage.getItem('littleStyle.perfilActivoId')).toBeNull();
+    expect(() => service.seleccionar(2)).toThrow(RangeError);
+  });
 });

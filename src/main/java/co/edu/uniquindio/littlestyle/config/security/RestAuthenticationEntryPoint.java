@@ -13,6 +13,8 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.LOG;
+
 /**
  * Responde 401 en JSON cuando una petición a un endpoint protegido no trae un JWT válido.
  */
@@ -30,6 +32,8 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          AuthenticationException authException) throws IOException {
         Object jwtError = request.getAttribute(JwtAuthenticationFilter.JWT_ERROR_ATTRIBUTE);
         String mensaje = jwtError != null ? jwtError.toString() : "Debe iniciar sesión para acceder a este recurso";
+        LOG.warn("Acceso rechazado (401): {} {} ip={} motivo=\"{}\"",
+                request.getMethod(), request.getRequestURI(), request.getRemoteAddr(), mensaje);
 
         HttpStatus status = HttpStatus.UNAUTHORIZED;
         response.setStatus(status.value());

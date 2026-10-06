@@ -95,6 +95,22 @@ class AuthSecurityIntegrationTest {
     }
 
     @Test
+    void loginSeBloqueaTrasCincoIntentosFallidos() throws Exception {
+        registrar("bloqueo@correo.com", "CLIENTE", null);
+        String incorrecta = "{\"email\":\"bloqueo@correo.com\",\"password\":\"Incorrecta1\"}";
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(incorrecta))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // Ni siquiera la contraseña correcta se acepta mientras dura el bloqueo
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"bloqueo@correo.com\",\"password\":\"Clave1234\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.mensaje").exists());
+    }
+
+    @Test
     void endpointProtegidoSinTokenDevuelve401() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
                 .andExpect(status().isUnauthorized())

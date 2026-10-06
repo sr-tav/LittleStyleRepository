@@ -11,6 +11,7 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.EmailYaRegistradoException;
+import co.edu.uniquindio.littlestyle.shared.exception.LoginBloqueadoException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,6 +50,8 @@ class AuthServiceTest {
     private AuthenticationManager authenticationManager;
     @Mock
     private JwtService jwtService;
+    @Mock
+    private IntentosLoginService intentosLoginService;
 
     @InjectMocks
     private AuthService authService;
@@ -170,6 +174,8 @@ class AuthServiceTest {
     @DisplayName("login")
     class Login {
 
+        private static final String IP = "10.0.0.1";
+
         @Test
         @DisplayName("autentica con el AuthenticationManager y devuelve el token")
         void loginExitoso() {
@@ -179,7 +185,7 @@ class AuthServiceTest {
             when(usuarioRepository.findByEmail("maria@correo.com")).thenReturn(Optional.of(u));
             when(jwtService.generarToken(u)).thenReturn(new JwtService.TokenEmitido("jwt", 999L));
 
-            AuthResponse response = authService.login(new LoginRequest(" MARIA@correo.com", "Clave1234"));
+            AuthResponse response = authService.login(new LoginRequest(" MARIA@correo.com", "Clave1234"), IP);
 
             ArgumentCaptor<Authentication> captor = ArgumentCaptor.forClass(Authentication.class);
             verify(authenticationManager).authenticate(captor.capture());
@@ -189,6 +195,7 @@ class AuthServiceTest {
 
             assertThat(response.token()).isEqualTo("jwt");
             assertThat(response.usuario().rol()).isEqualTo(Rol.VENDEDOR);
+            verify(intentosLoginService).registrarExito("maria@correo.com", IP);
         }
 
         @Test
@@ -197,8 +204,9 @@ class AuthServiceTest {
             when(authenticationManager.authenticate(any(Authentication.class)))
                     .thenThrow(new BadCredentialsException("Bad credentials"));
 
-            assertThatThrownBy(() -> authService.login(new LoginRequest("maria@correo.com", "mala")))
+            assertThatThrownBy(() -> authService.login(new LoginRequest("maria@correo.com", "mala"), IP))
                     .isInstanceOf(BadCredentialsException.class);
+            verify(intentosLoginService).registrarFallo("maria@correo.com", IP);
             verifyNoInteractions(jwtService);
         }
 
@@ -208,9 +216,22 @@ class AuthServiceTest {
             when(authenticationManager.authenticate(any(Authentication.class)))
                     .thenThrow(new DisabledException("disabled"));
 
-            assertThatThrownBy(() -> authService.login(new LoginRequest("maria@correo.com", "Clave1234")))
+            assertThatThrownBy(() -> authService.login(new LoginRequest("maria@correo.com", "Clave1234"), IP))
                     .isInstanceOf(DisabledException.class);
+            verify(intentosLoginService, never()).registrarFallo(any(), any());
             verifyNoInteractions(jwtService);
+        }
+
+        @Test
+        @DisplayName("rechaza con 429 sin verificar credenciales si el correo + IP está bloqueado")
+        void bloqueadoPorIntentos() {
+            when(intentosLoginService.bloqueoRestante("maria@correo.com", IP))
+                    .thenReturn(Optional.of(Duration.ofMinutes(10)));
+
+            assertThatThrownBy(() -> authService.login(new LoginRequest("Maria@correo.com", "Clave1234"), IP))
+                    .isInstanceOf(LoginBloqueadoException.class)
+                    .extracting("status").isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            verifyNoInteractions(authenticationManager, jwtService);
         }
     }
 
