@@ -29,7 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /** Atributo de request con la causa del fallo, leído por {@link RestAuthenticationEntryPoint}. */
     public static final String JWT_ERROR_ATTRIBUTE = "jwt_error";
 
-    static final String CUENTA_SUSPENDIDA = "La cuenta se encuentra suspendida. Contacte al administrador";
+    static final String CUENTA_NO_ACTIVA = "La cuenta no está activa";
 
     private final JwtService jwtService;
     private final EstadoCuentaService estadoCuentaService;
@@ -60,7 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
-                    request.setAttribute(JWT_ERROR_ATTRIBUTE, CUENTA_SUSPENDIDA);
+                    request.setAttribute(JWT_ERROR_ATTRIBUTE, CUENTA_NO_ACTIVA);
                 }
             }
         } catch (ExpiredJwtException ex) {

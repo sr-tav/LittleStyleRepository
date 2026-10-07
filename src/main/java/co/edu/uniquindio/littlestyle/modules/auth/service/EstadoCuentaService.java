@@ -15,7 +15,7 @@ public class EstadoCuentaService {
 
     private final UsuarioRepository usuarioRepository;
 
-    /** {@code false} si la cuenta está suspendida o ya no existe. */
+    /** {@code false} si la cuenta no está activa o ya no existe. */
     public boolean estaActiva(Long usuarioId) {
         if (usuarioId == null) {
             return false;

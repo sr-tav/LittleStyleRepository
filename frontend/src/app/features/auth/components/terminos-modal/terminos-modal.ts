@@ -4,7 +4,7 @@ import { AfterViewInit, Component, ElementRef, HostListener, output, viewChild }
  * Versión del texto mostrado. Debe coincidir con AuthService.VERSION_TERMINOS_VIGENTE en el backend,
  * que es la versión que queda registrada como aceptada por el usuario.
  */
-export const VERSION_TERMINOS = '1.0';
+export const VERSION_TERMINOS = '1.1';
 
 /** Términos y condiciones de uso y política de tratamiento de datos personales (Ley 1581 de 2012). */
 @Component({
@@ -92,7 +92,7 @@ export const VERSION_TERMINOS = '1.0';
             <li>Conocer, actualizar y rectificar tus datos personales.</li>
             <li>Solicitar prueba de la autorización otorgada.</li>
             <li>Ser informado sobre el uso que se ha dado a tus datos.</li>
-            <li>Revocar la autorización y solicitar la supresión de tus datos cuando no exista un deber legal o contractual de conservarlos.</li>
+            <li>Revocar la autorización y solicitar la supresión de tus datos personales, salvo que exista un deber legal o contractual de conservarlos.</li>
             <li>Presentar quejas ante la Superintendencia de Industria y Comercio.</li>
           </ul>
 
@@ -100,8 +100,12 @@ export const VERSION_TERMINOS = '1.0';
           <p>
             Aplicamos medidas técnicas como el cifrado de los datos sensibles en la base de datos, el
             almacenamiento de contraseñas mediante funciones hash y la transmisión exclusiva por HTTPS.
-            Los datos se conservan mientras la cuenta esté activa y durante el tiempo que exijan las
-            obligaciones legales aplicables.
+            Si solicitas eliminar tu cuenta, eliminaremos los perfiles infantiles, las mediciones y las
+            preferencias asociadas, y anonimizaremos los datos identificables de la cuenta. El correo
+            electrónico original quedará disponible para un nuevo registro y la cuenta eliminada no podrá
+            volver a iniciar sesión. La información que deba conservarse por obligaciones legales o
+            contractuales se limitará y protegerá para esa finalidad. Los plazos y las categorías de
+            conservación están pendientes de validación jurídica.
           </p>
 
           <h3>11. Cambios a estos términos</h3>

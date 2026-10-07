@@ -29,7 +29,7 @@ public class UsuarioDetailsService implements UserDetailsService {
         return User.withUsername(usuario.getEmail())
                 .password(usuario.getPassword())
                 .authorities(usuario.getRol().authority())
-                .disabled(usuario.getEstado() == EstadoUsuario.SUSPENDIDO)
+                .disabled(usuario.getEstado() != EstadoUsuario.ACTIVO)
                 .build();
     }
 }

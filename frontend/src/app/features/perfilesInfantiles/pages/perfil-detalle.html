@@ -181,7 +181,7 @@
                 id="fechaNacimiento"
                 type="date"
                 formControlName="fechaNacimiento"
-                [max]="hoy"
+                [max]="maxFechaNacimiento"
               />
               @if (esInvalido(form.controls.fechaNacimiento)) {
                 <small class="field-error">{{ mensaje(form.controls.fechaNacimiento) }}</small>

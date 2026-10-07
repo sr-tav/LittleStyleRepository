@@ -9,6 +9,7 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
+import co.edu.uniquindio.littlestyle.shared.event.CuentaEliminadaEvent;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.EmailYaRegistradoException;
 import co.edu.uniquindio.littlestyle.shared.exception.LoginBloqueadoException;
@@ -27,8 +28,10 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +47,8 @@ class AuthServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
     @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
@@ -257,6 +262,43 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.obtenerPerfil("x@correo.com"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("status").isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void desactivarEliminaPerfilesYAnonimizaDatosPersonales() {
+            Usuario cuenta = usuario(8L, "laura@correo.com", Rol.CLIENTE, EstadoUsuario.ACTIVO);
+            when(usuarioRepository.findByIdForUpdate(8L)).thenReturn(Optional.of(cuenta));
+            when(passwordEncoder.encode(any())).thenReturn("password-aleatorio-hash");
+            when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            authService.desactivarCuenta(8L);
+
+            verify(eventPublisher).publishEvent(new CuentaEliminadaEvent(8L));
+            verify(usuarioRepository).save(cuenta);
+            assertThat(cuenta.getNombre()).isEqualTo("Cuenta");
+            assertThat(cuenta.getApellido()).isEqualTo("eliminada");
+            assertThat(cuenta.getEmail()).matches("eliminada\\+[0-9a-f-]{36}@invalid\\.local");
+            assertThat(cuenta.getPassword()).isEqualTo("password-aleatorio-hash");
+            assertThat(cuenta.getTelefono()).isNull();
+            assertThat(cuenta.getNombreTienda()).isNull();
+            assertThat(cuenta.getFechaRegistro()).isEqualTo(LocalDateTime.of(1970, 1, 1, 0, 0));
+            assertThat(cuenta.getVersionTerminos()).isNull();
+            assertThat(cuenta.getFechaAceptacionTerminos()).isNull();
+            assertThat(cuenta.getEstado()).isEqualTo(EstadoUsuario.ELIMINADO);
+        }
+
+        @Test
+        void impideEliminarLaCuentaAdministradora() {
+            Usuario administrador = usuario(9L, "admin@correo.com", Rol.ADMINISTRADOR, EstadoUsuario.ACTIVO);
+            when(usuarioRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(administrador));
+
+            assertThatThrownBy(() -> authService.desactivarCuenta(9L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getStatus())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+
+            verifyNoInteractions(eventPublisher);
+            verify(usuarioRepository, never()).save(any());
         }
     }
 }

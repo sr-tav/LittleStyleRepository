@@ -10,11 +10,13 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
+import co.edu.uniquindio.littlestyle.shared.event.CuentaEliminadaEvent;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.EmailYaRegistradoException;
 import co.edu.uniquindio.littlestyle.shared.exception.LoginBloqueadoException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.UUID;
 
 import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.LOG;
 import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.enmascararEmail;
@@ -37,9 +40,10 @@ public class AuthService {
      * Versión de los términos y la política de tratamiento de datos que se muestran en el registro.
      * Debe coincidir con {@code VERSION_TERMINOS} en el frontend (terminos-contenido.ts).
      */
-    public static final String VERSION_TERMINOS_VIGENTE = "1.0";
+    public static final String VERSION_TERMINOS_VIGENTE = "1.1";
 
     private final UsuarioRepository usuarioRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -127,8 +131,11 @@ public class AuthService {
 
     @Transactional
     public AuthResponse actualizarCuenta(Long id, ActualizarCuentaRequest request) {
-        Usuario usuario = usuarioRepository.findById(id)
+        Usuario usuario = usuarioRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        if (usuario.getEstado() != EstadoUsuario.ACTIVO) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "La cuenta no está activa");
+        }
 
         String email = request.email() == null || request.email().isBlank()
                 ? usuario.getEmail()
@@ -181,9 +188,23 @@ public class AuthService {
 
     @Transactional
     public void desactivarCuenta(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
+        Usuario usuario = usuarioRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
-        usuario.setEstado(EstadoUsuario.SUSPENDIDO);
+        if (usuario.getRol() == Rol.ADMINISTRADOR) {
+            throw new BusinessException(HttpStatus.FORBIDDEN,
+                    "La cuenta administradora no se puede eliminar desde la aplicación");
+        }
+        eventPublisher.publishEvent(new CuentaEliminadaEvent(id));
+        usuario.setNombre("Cuenta");
+        usuario.setApellido("eliminada");
+        usuario.setEmail("eliminada+" + UUID.randomUUID() + "@invalid.local");
+        usuario.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        usuario.setTelefono(null);
+        usuario.setNombreTienda(null);
+        usuario.setFechaRegistro(LocalDateTime.of(1970, 1, 1, 0, 0));
+        usuario.setVersionTerminos(null);
+        usuario.setFechaAceptacionTerminos(null);
+        usuario.setEstado(EstadoUsuario.ELIMINADO);
         usuarioRepository.save(usuario);
     }
 

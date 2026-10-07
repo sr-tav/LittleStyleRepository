@@ -147,6 +147,22 @@ describe('PerfilDetalle (UI-5)', () => {
     httpMock.expectNone('/api/cliente/perfiles');
   });
 
+  it('rechaza la fecha de hoy para no crear un bebé con cero días de edad', () => {
+    const creado = crear();
+    completarFormulario(creado);
+    const hoy = new Date();
+    creado.input(
+      'fechaNacimiento',
+      `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
+    );
+    creado.clickButton('Crear perfil');
+    creado.fixture.detectChanges();
+
+    expect(creado.el.textContent).toContain('La fecha de nacimiento debe ser anterior a hoy.');
+    httpMock.expectNone('/api/cliente/perfiles');
+    httpMock.expectNone('/api/cliente/perfiles/con-medicion-inicial');
+  });
+
   it('limpia y desactiva las alergias al marcar Sin alergias', () => {
     const creado = crear();
     creado.toggleAlergia('Lana');

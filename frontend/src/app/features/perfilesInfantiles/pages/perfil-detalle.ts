@@ -24,6 +24,7 @@ import {
   PerfilInfantil,
   PerfilRequest,
 } from '../models/perfil-infantil.models';
+import { formatearEdadPerfil } from '../models/edad-perfil';
 import {
   ETIQUETAS_ALERGIAS,
   ETIQUETAS_COLORES,
@@ -37,6 +38,8 @@ import { PerfilesService } from '../services/perfiles.service';
 
 const FECHA_LOCAL = new Date();
 const HOY = `${FECHA_LOCAL.getFullYear()}-${String(FECHA_LOCAL.getMonth() + 1).padStart(2, '0')}-${String(FECHA_LOCAL.getDate()).padStart(2, '0')}`;
+const AYER_LOCAL = new Date(FECHA_LOCAL.getFullYear(), FECHA_LOCAL.getMonth(), FECHA_LOCAL.getDate() - 1);
+const MAX_FECHA_NACIMIENTO = `${AYER_LOCAL.getFullYear()}-${String(AYER_LOCAL.getMonth() + 1).padStart(2, '0')}-${String(AYER_LOCAL.getDate()).padStart(2, '0')}`;
 
 function edadEnAnios(fechaNacimiento: string, fechaReferencia: string): number {
   const nacimiento = new Date(`${fechaNacimiento}T00:00:00`);
@@ -64,6 +67,7 @@ export class PerfilDetalle implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly hoy = HOY;
+  protected readonly maxFechaNacimiento = MAX_FECHA_NACIMIENTO;
   protected readonly alergiasDisponibles = OPCIONES_ALERGIAS;
   protected readonly coloresDisponibles = OPCIONES_COLORES;
   protected readonly estampadosDisponibles = OPCIONES_ESTAMPADOS;
@@ -192,11 +196,7 @@ export class PerfilDetalle implements OnInit {
   }
 
   protected edad(perfil: PerfilInfantil): string {
-    if (perfil.edadAnios === 0) {
-      return `${perfil.mesesRestantes} ${perfil.mesesRestantes === 1 ? 'mes' : 'meses'}`;
-    }
-    const anios = `${perfil.edadAnios} ${perfil.edadAnios === 1 ? 'año' : 'años'}`;
-    return perfil.mesesRestantes > 0 ? `${anios} · ${perfil.mesesRestantes} meses` : anios;
+    return formatearEdadPerfil(perfil);
   }
 
   protected fechaMinimaMedicion(): string {
@@ -458,6 +458,7 @@ export class PerfilDetalle implements OnInit {
         ? 'La fecha de medición no puede ser futura.'
         : 'La fecha de nacimiento no puede ser futura.';
     }
+    if (errors['fechaNacimientoHoy']) return 'La fecha de nacimiento debe ser anterior a hoy.';
     if (errors['mayorEdad']) return 'El perfil debe corresponder a una persona menor de 18 años.';
     if (errors['fechaAntesNacimiento'])
       return 'La medición no puede ser anterior a la fecha de nacimiento.';
@@ -557,6 +558,7 @@ export class PerfilDetalle implements OnInit {
       const fecha = String(control.value ?? '');
       if (!fecha) return null;
       if (fecha > HOY) return { fechaFutura: true };
+      if (fecha === HOY) return { fechaNacimientoHoy: true };
       return edadEnAnios(fecha, HOY) >= 18 ? { mayorEdad: true } : null;
     };
   }

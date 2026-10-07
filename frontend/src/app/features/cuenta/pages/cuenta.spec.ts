@@ -133,22 +133,24 @@ describe('Cuenta (US-06)', () => {
   it('requiere confirmar la desactivación antes de llamar al servidor', () => {
     const { fixture, element } = cargar();
     Array.from(element.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent?.includes('Desactivar mi cuenta'))!
+      .find((button) => button.textContent?.includes('Eliminar mi cuenta'))!
       .click();
     fixture.detectChanges();
 
-    expect(element.textContent).toContain('No podrás volver a iniciar sesión');
+    expect(element.textContent).toContain(
+      'Se borrarán permanentemente tus datos personales y los datos de los perfiles infantiles que hayas creado.',
+    );
     httpMock.expectNone({ method: 'DELETE', url: '/api/auth/me' });
   });
 
   it('desactiva la cuenta al confirmar y cierra la sesión local', () => {
     const { fixture, element } = cargar();
     Array.from(element.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent?.includes('Desactivar mi cuenta'))!
+      .find((button) => button.textContent?.includes('Eliminar mi cuenta'))!
       .click();
     fixture.detectChanges();
     Array.from(element.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent?.includes('Sí, desactivar cuenta'))!
+      .find((button) => button.textContent?.includes('Sí, eliminar mi cuenta'))!
       .click();
     httpMock.expectOne({ method: 'DELETE', url: '/api/auth/me' }).flush(null);
 

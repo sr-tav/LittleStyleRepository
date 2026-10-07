@@ -18,7 +18,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -229,6 +234,187 @@ class PerfilInfantilIntegrationTest {
                 SELECT COUNT(*) FROM perfiles_infantiles p JOIN usuarios u ON u.id = p.cliente_id
                 WHERE u.email = 'perfil-atomico-falla@correo.com'
                 """, Integer.class)).isZero();
+    }
+
+    @Test
+    void rechazaFechaNacimientoDeHoyPorqueLaEdadSeriaCeroDias() throws Exception {
+        String token = registrarCliente("perfil-recien-nacido@correo.com");
+        String hoy = LocalDate.now().toString();
+
+        mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJsonConFecha("Recién nacido", hoy)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.fechaNacimiento")
+                        .value("La fecha de nacimiento debe ser anterior a hoy"));
+
+        mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJsonConFecha("Bebé de un día", LocalDate.now().minusDays(1).toString())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.edadAnios").value(0))
+                .andExpect(jsonPath("$.mesesRestantes").value(0));
+    }
+
+    @Test
+    void rechazaPerfilesDuplicadosAunqueCambienMayusculasAcentosOEspacios() throws Exception {
+        String token = registrarCliente("perfil-duplicado@correo.com");
+        String perfil = crearPerfil(token, "María José");
+        int perfilId = JsonPath.read(perfil, "$.id");
+
+        mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJson("maria    jose")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errores.nombre").exists());
+
+        mockMvc.perform(put("/api/cliente/perfiles/{id}", perfilId)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJson(" MARIA jose ")))
+                .andExpect(status().isOk());
+
+        int otroPerfilId = JsonPath.read(crearPerfil(token, "Sofía"), "$.id");
+        mockMvc.perform(put("/api/cliente/perfiles/{id}", otroPerfilId)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJson("maria jose")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errores.nombre").exists());
+    }
+
+    @Test
+    void permiteGemelosConLaMismaFechaSiTienenNombresDistintos() throws Exception {
+        String token = registrarCliente("perfil-gemelos-" + UUID.randomUUID() + "@correo.com");
+        String fecha = "2020-05-10";
+
+        mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJsonConFecha("Gemelo A", fecha)))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJsonConFecha("Gemelo B", fecha)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void serializaAltasConcurrentesParaEvitarCrearElMismoPerfilDosVeces() throws Exception {
+        String token = registrarCliente("perfil-duplicado-concurrente@correo.com");
+        CountDownLatch inicio = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var primera = executor.submit(() -> crearConcurrentemente(token, inicio));
+            var segunda = executor.submit(() -> crearConcurrentemente(token, inicio));
+            inicio.countDown();
+
+            org.assertj.core.api.Assertions.assertThat(primera.get(10, TimeUnit.SECONDS))
+                    .isIn(201, 409);
+            org.assertj.core.api.Assertions.assertThat(segunda.get(10, TimeUnit.SECONDS))
+                    .isIn(201, 409);
+            org.assertj.core.api.Assertions.assertThat(List.of(
+                    primera.get(10, TimeUnit.SECONDS), segunda.get(10, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(201, 409);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void serializaCreacionDePerfilYEliminacionDeCuentaSinDejarDatosHuérfanos() throws Exception {
+        String email = "perfil-baja-concurrente-" + UUID.randomUUID() + "@correo.com";
+        String token = registrarCliente(email);
+        String perfil = crearPerfil(token, "Perfil existente");
+        int perfilId = JsonPath.read(perfil, "$.id");
+        agregarMedicion(token, perfilId, LocalDate.now().minusDays(1).toString(), "110", "20");
+        Long usuarioId = jdbcTemplate.queryForObject(
+                "SELECT id FROM usuarios WHERE email = ?", Long.class, email);
+        CountDownLatch inicio = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var creacion = executor.submit(() -> crearConcurrentemente(token, inicio));
+            var eliminacion = executor.submit(() -> eliminarConcurrentemente(token, inicio));
+            inicio.countDown();
+
+            org.assertj.core.api.Assertions.assertThat(creacion.get(10, TimeUnit.SECONDS))
+                    .isIn(201, 401);
+            org.assertj.core.api.Assertions.assertThat(eliminacion.get(10, TimeUnit.SECONDS))
+                    .isEqualTo(204);
+            org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM perfiles_infantiles WHERE cliente_id = ?", Integer.class, usuarioId))
+                    .isZero();
+            org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM mediciones_crecimiento WHERE perfil_id = ?", Integer.class, perfilId))
+                    .isZero();
+            org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                    "SELECT estado FROM usuarios WHERE id = ?", String.class, usuarioId))
+                    .isEqualTo("ELIMINADO");
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void eliminaPerfilesYAnonimizaLaCuentaAlDesactivar() throws Exception {
+        String email = "perfil-desactivacion@correo.com";
+        String token = registrarCliente(email);
+        String perfilJson = mockMvc.perform(post("/api/cliente/perfiles")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Lucía","fechaNacimiento":"2020-05-10",
+                                 "contextura":"MEDIA","holgura":"REGULAR","alergias":[],
+                                 "sinAlergias":true,"coloresPreferidos":["AZUL"],
+                                 "estampadosPreferidos":["LISO"],"otroColor":"Turquesa"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        int perfilId = JsonPath.read(perfilJson, "$.id");
+        agregarMedicion(token, perfilId, LocalDate.now().minusDays(1).toString(), "110", "20");
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM perfil_colores_preferidos WHERE perfil_id = ?", Integer.class, perfilId))
+                .isPositive();
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM perfil_estampados_preferidos WHERE perfil_id = ?", Integer.class, perfilId))
+                .isPositive();
+        Long usuarioId = jdbcTemplate.queryForObject(
+                "SELECT id FROM usuarios WHERE email = ?", Long.class, email);
+
+        mockMvc.perform(delete("/api/auth/me").header("Authorization", bearer(token)))
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM perfiles_infantiles WHERE cliente_id = ?", Integer.class, usuarioId))
+                .isZero();
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM mediciones_crecimiento WHERE perfil_id = ?", Integer.class, perfilId))
+                .isZero();
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM perfil_colores_preferidos WHERE perfil_id = ?", Integer.class, perfilId))
+                .isZero();
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM perfil_estampados_preferidos WHERE perfil_id = ?", Integer.class, perfilId))
+                .isZero();
+        Map<String, Object> usuario = jdbcTemplate.queryForMap(
+                "SELECT nombre, apellido, email, telefono, estado FROM usuarios WHERE id = ?", usuarioId);
+        org.assertj.core.api.Assertions.assertThat(usuario.get("NOMBRE")).isEqualTo("Cuenta");
+        org.assertj.core.api.Assertions.assertThat(usuario.get("APELLIDO")).isEqualTo("eliminada");
+        org.assertj.core.api.Assertions.assertThat(usuario.get("EMAIL").toString())
+                .matches("eliminada\\+[0-9a-f-]{36}@invalid\\.local");
+        org.assertj.core.api.Assertions.assertThat(usuario.get("TELEFONO")).isNull();
+        org.assertj.core.api.Assertions.assertThat(usuario.get("ESTADO").toString()).isEqualTo("ELIMINADO");
+
+        mockMvc.perform(get("/api/cliente/perfiles").header("Authorization", bearer(token)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/auth/me").header("Authorization", bearer(token)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Laura","apellido":"Gómez","email":"%s","telefono":"3001234567",
+                                 "password":"Clave1234","confirmarPassword":"Clave1234","rol":"CLIENTE",
+                                 "aceptaTerminos":true}
+                                """.formatted(email)))
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -451,6 +637,22 @@ class PerfilInfantilIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.token");
+    }
+
+    private int crearConcurrentemente(String token, CountDownLatch inicio) throws Exception {
+        inicio.await();
+        return mockMvc.perform(post("/api/cliente/perfiles")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(perfilJson("Mía")))
+                .andReturn().getResponse().getStatus();
+    }
+
+    private int eliminarConcurrentemente(String token, CountDownLatch inicio) throws Exception {
+        inicio.await();
+        return mockMvc.perform(delete("/api/auth/me")
+                        .header("Authorization", bearer(token)))
+                .andReturn().getResponse().getStatus();
     }
 
     private String crearPerfil(String token, String nombre) throws Exception {

@@ -9,6 +9,7 @@ import {
   Estampado,
   PerfilInfantil,
 } from '../models/perfil-infantil.models';
+import { formatearEdadPerfil } from '../models/edad-perfil';
 import {
   ETIQUETAS_ALERGIAS,
   ETIQUETAS_COLORES,
@@ -60,11 +61,7 @@ export class PerfilesLista implements OnInit {
   }
 
   protected edad(perfil: PerfilInfantil): string {
-    if (perfil.edadAnios === 0) {
-      return `${perfil.mesesRestantes} ${perfil.mesesRestantes === 1 ? 'mes' : 'meses'}`;
-    }
-    const anios = `${perfil.edadAnios} ${perfil.edadAnios === 1 ? 'año' : 'años'}`;
-    return perfil.mesesRestantes > 0 ? `${anios}, ${perfil.mesesRestantes} meses` : anios;
+    return formatearEdadPerfil(perfil);
   }
 
   /**

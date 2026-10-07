@@ -57,6 +57,14 @@ class UsuarioDetailsServiceTest {
     }
 
     @Test
+    void usuarioEliminadoQuedaDeshabilitado() {
+        when(usuarioRepository.findByEmail("ana@correo.com"))
+                .thenReturn(Optional.of(usuario(EstadoUsuario.ELIMINADO)));
+
+        assertThat(service.loadUserByUsername("ana@correo.com").isEnabled()).isFalse();
+    }
+
+    @Test
     void usuarioInexistenteLanzaExcepcion() {
         when(usuarioRepository.findByEmail("nadie@correo.com")).thenReturn(Optional.empty());
 

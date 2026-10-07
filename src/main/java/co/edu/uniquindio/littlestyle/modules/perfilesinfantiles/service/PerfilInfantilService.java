@@ -1,7 +1,9 @@
 package co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service;
 
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
+import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.CrearPerfilConMedicionRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.MedicionRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.MedicionResponse;
@@ -38,6 +40,7 @@ public class PerfilInfantilService {
 
     private final PerfilInfantilRepository perfilRepository;
     private final MedicionCrecimientoRepository medicionRepository;
+    private final UsuarioRepository usuarioRepository;
     private final ValidadorMedidas validadorMedidas;
     private final CalculadoraCompletitud calculadoraCompletitud;
 
@@ -58,11 +61,13 @@ public class PerfilInfantilService {
 
     @Transactional
     public PerfilResponse crear(PerfilRequest request) {
+        bloquearClienteActual();
         return respuesta(crearPerfil(request));
     }
 
     @Transactional
     public PerfilResponse crearConMedicionInicial(CrearPerfilConMedicionRequest request) {
+        bloquearClienteActual();
         PerfilInfantil perfil = crearPerfil(request.perfil());
         MedicionRequest medicion = request.medicionInicial();
         validadorMedidas.validar(perfil.getFechaNacimiento(), medicion.fechaMedicion(),
@@ -87,6 +92,7 @@ public class PerfilInfantilService {
                     "Un cliente puede tener máximo " + maximoPerfiles + " perfiles infantiles", "perfiles");
         }
         validarFechaNacimiento(request.fechaNacimiento());
+        validarPerfilNoDuplicado(request.nombre(), request.fechaNacimiento(), clienteId, null);
         validarAlergias(request);
         Preferencias preferencias = validarPreferencias(request);
         PerfilInfantil perfil = aplicar(request, new PerfilInfantil());
@@ -97,8 +103,10 @@ public class PerfilInfantilService {
 
     @Transactional
     public PerfilResponse actualizar(Long id, PerfilRequest request) {
-        PerfilInfantil perfil = obtenerPropio(id, clienteActual().id());
+        Long clienteId = bloquearClienteActual();
+        PerfilInfantil perfil = obtenerPropio(id, clienteId);
         validarFechaNacimiento(request.fechaNacimiento());
+        validarPerfilNoDuplicado(request.nombre(), request.fechaNacimiento(), clienteId, id);
         validarAlergias(request);
         Preferencias preferencias = validarPreferencias(request);
         perfil.getMediciones().forEach(medicion -> validadorMedidas.validar(
@@ -111,12 +119,18 @@ public class PerfilInfantilService {
 
     @Transactional
     public void eliminar(Long id) {
+        bloquearClienteActual();
         perfilRepository.delete(obtenerPropio(id, clienteActual().id()));
     }
 
     @Transactional
+    public void eliminarTodosDeCliente(Long clienteId) {
+        perfilRepository.deleteAll(perfilRepository.findAllByClienteIdOrderByFechaActualizacionDesc(clienteId));
+    }
+
+    @Transactional
     public MedicionResponse crearMedicion(Long perfilId, MedicionRequest request) {
-        PerfilInfantil perfil = obtenerPropio(perfilId, clienteActual().id());
+        PerfilInfantil perfil = obtenerPropioForUpdate(perfilId, clienteActual().id());
         validadorMedidas.validar(perfil.getFechaNacimiento(), request.fechaMedicion(),
                 request.estaturaCm(), request.pesoKg());
         MedicionCrecimiento ultimaMedicion = ultimaMedicion(perfil);
@@ -146,7 +160,7 @@ public class PerfilInfantilService {
     @Transactional
     public MedicionResponse actualizarMedicion(Long perfilId, Long medicionId, MedicionRequest request) {
         Long clienteId = clienteActual().id();
-        PerfilInfantil perfil = obtenerPropio(perfilId, clienteId);
+        PerfilInfantil perfil = obtenerPropioForUpdate(perfilId, clienteId);
         MedicionCrecimiento medicion = medicionRepository
                 .findByIdAndPerfilIdAndPerfilClienteId(medicionId, perfilId, clienteId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
@@ -188,6 +202,10 @@ public class PerfilInfantilService {
         if (fechaNacimiento.isAfter(LocalDate.now())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "La fecha de nacimiento no puede ser futura", "fechaNacimiento");
+        }
+        if (fechaNacimiento.isEqual(LocalDate.now())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "La fecha de nacimiento debe ser anterior a hoy", "fechaNacimiento");
         }
         if (Period.between(fechaNacimiento, LocalDate.now()).getYears() >= 18) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
@@ -299,6 +317,43 @@ public class PerfilInfantilService {
         return perfilRepository.findByIdAndClienteId(id, clienteId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                         "Perfil infantil no encontrado"));
+    }
+
+    private PerfilInfantil obtenerPropioForUpdate(Long id, Long clienteId) {
+        return perfilRepository.findByIdAndClienteIdForUpdate(id, clienteId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
+                        "Perfil infantil no encontrado"));
+    }
+
+    private void validarPerfilNoDuplicado(String nombre, LocalDate fechaNacimiento,
+                                          Long clienteId, Long perfilExcluidoId) {
+        String nombreNormalizado = normalizarNombre(nombre);
+        boolean duplicado = perfilRepository.findAllByClienteIdOrderByFechaActualizacionDesc(clienteId)
+                .stream()
+                .anyMatch(perfil -> !perfil.getId().equals(perfilExcluidoId)
+                        && perfil.getFechaNacimiento().equals(fechaNacimiento)
+                        && normalizarNombre(perfil.getNombre()).equals(nombreNormalizado));
+        if (duplicado) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "Ya existe un perfil con ese nombre y fecha de nacimiento", "nombre");
+        }
+    }
+
+    private String normalizarNombre(String nombre) {
+        return Normalizer.normalize(nombre.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private Long bloquearClienteActual() {
+        Long clienteId = clienteActual().id();
+        Usuario cliente = usuarioRepository.findByIdForUpdate(clienteId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
+        if (cliente.getEstado() != EstadoUsuario.ACTIVO) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "La cuenta no está activa");
+        }
+        return clienteId;
     }
 
     private PerfilResponse respuesta(PerfilInfantil perfil) {
