@@ -87,7 +87,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ErrorResponse> handleDisabled(DisabledException ex, HttpServletRequest req) {
-        return build(HttpStatus.FORBIDDEN, "La cuenta se encuentra suspendida. Contacte al administrador", req, null);
+        return build(HttpStatus.FORBIDDEN, "La cuenta está suspendida o eliminada y no puede iniciar sesión",
+                req, null);
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -99,6 +100,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+        log.error("Violación de integridad de datos en {}", req.getRequestURI(), ex);
         return build(HttpStatus.CONFLICT, "El registro entra en conflicto con datos existentes", req, null);
     }
 

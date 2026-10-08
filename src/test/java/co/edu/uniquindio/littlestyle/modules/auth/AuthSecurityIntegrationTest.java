@@ -83,7 +83,7 @@ class AuthSecurityIntegrationTest {
 
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.mensaje").value("La cuenta se encuentra suspendida. Contacte al administrador"));
+                .andExpect(jsonPath("$.mensaje").value("La cuenta no está activa"));
     }
 
     @Test

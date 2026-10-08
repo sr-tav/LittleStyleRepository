@@ -2,7 +2,7 @@
 
 ## Objetivo y alcance
 
-La US-06 implementa, dentro del Proceso 1 de LittleStyle, la gestión de la cuenta propia del usuario y, para el cliente, sus perfiles infantiles asociados. El alcance observable comprende consultar, actualizar y desactivar la cuenta autenticada; gestionar perfiles infantiles; registrar mediciones y consultar su historial; capturar alergias y preferencias; y seleccionar localmente un perfil activo en la interfaz.
+La US-06 implementa, dentro del Proceso 1 de LittleStyle, la gestión de la cuenta propia del usuario y, para el cliente, sus perfiles infantiles asociados. El alcance observable comprende consultar, actualizar y eliminar los datos de la cuenta autenticada; gestionar perfiles infantiles; registrar mediciones y consultar su historial; capturar alergias y preferencias; y seleccionar localmente un perfil activo en la interfaz.
 
 El propósito del Proceso 1, según la Definición del Proyecto, es mantener información estructurada de varios menores —incluidos datos físicos, historial de crecimiento, preferencias y restricciones textiles— y dejarla disponible para funcionalidades posteriores. La recomendación personalizada de prendas no forma parte de la implementación funcional de esta historia: UI-5 muestra el control “Recomendaciones” deshabilitado como elemento próximo.
 
@@ -23,12 +23,16 @@ Los roles `VENDEDOR` y `ADMINISTRADOR` no tienen autorización para las rutas `/
 - Consultar los datos de la propia cuenta (`GET /api/auth/me`).
 - Actualizar datos personales: nombre, apellido, correo, teléfono y, para vendedores, nombre de tienda.
 - Cambiar contraseña de forma opcional, verificando contraseña actual, requisitos de seguridad y confirmación. Una actualización correcta devuelve JWT nuevo con los claims vigentes.
-- Desactivar la cuenta propia con confirmación. Es una baja lógica: cambia el estado a `SUSPENDIDO`, conserva los datos asociados y revoca de inmediato los tokens existentes.
+- Solicitar la eliminación de la cuenta propia con confirmación. La cuenta queda en estado `ELIMINADO`, distinto de `SUSPENDIDO` (reservado para suspensiones de moderación); el administrador no puede eliminar su propia cuenta desde la aplicación.
+- En la misma transacción, publicar el evento de dominio `CuentaEliminadaEvent` para que el módulo de perfiles elimine perfiles infantiles, mediciones y colecciones de preferencias. Los datos identificables de la cuenta se anonimizan, se invalida la contraseña y se reemplaza el correo por uno técnico único, liberando el correo original para un nuevo registro. Los tokens emitidos antes de la eliminación dejan de autenticar de inmediato.
+- Las altas y actualizaciones de perfiles bloquean la fila de la cuenta. Por ello, una creación concurrente con la baja se completa antes de esta y también se elimina, o se rechaza después de la baja; no debe dejar datos huérfanos.
+- La interfaz solicita confirmación explícita, pero no vuelve a pedir la contraseña actual. Los plazos y las categorías que eventualmente deban conservarse por obligación legal o contractual están pendientes de validación jurídica.
 - No se permite cambiar rol, estado ni evidencia de aceptación de términos desde esta operación. No hay borrado físico de cuenta.
 
 ### Perfiles y mediciones
 
 - Crear, listar, consultar por identificador, actualizar y eliminar perfiles infantiles.
+- Mostrar la edad de menores de un mes en días para evitar que una edad distinta de cero se interprete como “0 meses”.
 - Crear el perfil y su medición inicial mediante una única operación de servicio `@Transactional`; un error al validar o guardar la medición revierte también el perfil.
 - Limitar el número de perfiles por cliente mediante `app.perfiles.max`; el valor predeterminado en código es 10. El servicio rechaza una nueva creación si el cliente ya alcanzó ese límite.
 - Registrar mediciones con fecha, estatura y peso.
@@ -78,7 +82,8 @@ En frontend, `PerfilActivoService` mantiene el perfil seleccionado en un signal 
 ### Perfil
 
 - Nombre obligatorio, no vacío tras quitar espacios y máximo 60 caracteres.
-- Fecha de nacimiento obligatoria, no futura y correspondiente a una persona menor de 18 años.
+- Fecha de nacimiento obligatoria, anterior a hoy y correspondiente a una persona menor de 18 años.
+- No se permite crear ni actualizar un perfil cuando otro perfil de la misma cuenta ya tiene el mismo nombre normalizado (se quitan espacios de los extremos, se comprimen espacios consecutivos, se ignoran mayúsculas y diacríticos) y la misma fecha de nacimiento. La regla se verifica en el backend; las operaciones de escritura se serializan por cuenta para impedir duplicados por concurrencia. El servidor responde HTTP 409 y asocia el error al campo `nombre`.
 - Contextura y holgura obligatorias y limitadas a sus enumeraciones.
 - Se debe declarar al menos una alergia o marcar `sinAlergias`.
 - Hasta diez alergias; `OTRA` requiere texto de hasta 60 caracteres. El texto no aplica sin `OTRA`.
@@ -137,7 +142,7 @@ Las operaciones de cuenta requieren un usuario autenticado y solo actúan sobre 
 |---|---|---|
 | `GET` | `/api/auth/me` | Consulta los datos de la cuenta autenticada. |
 | `PUT` | `/api/auth/me` | Actualiza los datos propios y devuelve una sesión/token actualizado. El cambio de contraseña es opcional. |
-| `DELETE` | `/api/auth/me` | Desactiva la cuenta propia, conserva sus datos y responde `204`. |
+| `DELETE` | `/api/auth/me` | Elimina perfiles infantiles, mediciones y preferencias asociadas, anonimiza la cuenta propia, marca su estado `ELIMINADO` y responde `204`. La operación y la limpieza se ejecutan dentro de la misma transacción. La acción no solicita contraseña actual; se requiere confirmación en la interfaz. No permite eliminar una cuenta administradora. |
 
 Las rutas de perfiles y mediciones requieren rol `CLIENTE` y autenticación conforme a `SecurityConfig`. `{id}` identifica un perfil propiedad del usuario autenticado.
 
@@ -157,7 +162,7 @@ Las rutas de perfiles y mediciones requieren rol `CLIENTE` y autenticación conf
 
 | Interfaz | Comportamiento que existe |
 |---|---|
-| Mi cuenta | Acceso desde la barra de navegación; permite consultar/editar datos propios, cambiar la contraseña verificando la actual y solicitar la desactivación lógica con confirmación. |
+| Mi cuenta | Acceso desde la barra de navegación; permite consultar/editar datos propios, cambiar la contraseña verificando la actual y solicitar la supresión de datos y eliminación de cuenta con confirmación. |
 | UI-3, inicio de cliente | Saludo y acceso a Mis hijos; muestra el perfil activo con edad, última estatura y talla provisional, o invitación si no existen perfiles. “Cambiar perfil” abre una selección de perfiles. Catálogo, pedidos y carrito son accesos deshabilitados sin ruta funcional. |
 | UI-4, lista de perfiles | Presenta perfiles con avatar SVG, edad/talla, completitud, medidas, contextura, alergias y preferencias disponibles. Tiene acciones para ver, editar y un único CTA para agregar. En modo selección presenta opciones y retorna al inicio tras elegir. |
 | UI-5, detalle/formulario | Muestra información básica, medidas actuales, preferencias, restricciones e historial descendente. Permite agregar mediciones al editar el perfil o desde “Nueva medición” en el historial; desde el historial también permite corregir una medición. Crear o corregir una medición usa una operación separada de la actualización de los datos del perfil. El control “Recomendaciones” está deshabilitado. El alta envía el perfil y la primera medición en una sola solicitud atómica; ante un error conserva el formulario para corregir o reintentar sin dejar un perfil parcial. Las altas y correcciones también actualizan la fecha del perfil. |
@@ -173,6 +178,14 @@ La columna de prueba identifica una prueba existente que respalda parte del meca
 | RNF-16, prevención de errores en medidas | Validaciones de formulario Angular y `ValidadorMedidas` para fechas, rangos generales y coherencia por edad; el servidor repite la validación. | `ValidadorMedidasTest.aceptaMedidasCoherentesConLaEdad`, `rechazaMedicionAnteriorAlNacimientoEnElCampoCorrespondiente`, `rechazaEstaturaFueraDelRangoDelTramoEtario`; `PerfilInfantilIntegrationTest.validaPerfilYMedicionYNoExponePerfilAjeno`; `perfil-detalle.spec.ts` (“valida los datos obligatorios y alergias antes de enviar”). | No se ha medido la tasa de errores de captura (<5%) ni cada límite de cada tramo tiene una prueba unitaria dedicada. |
 | RNF-19, facilidad de actualización | Consulta y edición en UI-5, registro de nuevas medidas, corrección individual sin límite de tiempo y vista del historial ordenado; el backend valida las mediciones y mantiene la más reciente. | `PerfilInfantilIntegrationTest.crudMedicionesYEliminacionEnCascada`, `corrigeMedicionPropiaActualizaFechaDelPerfilYRechazaMedicionAjena`; `perfil-detalle.spec.ts` (edición de perfil, alta desde ambas pantallas y corrección desde historial). | No se mide que más del 60% de perfiles se actualice en menos de seis meses. No se implementa eliminación individual de mediciones. |
 
+### RNF propuesto: supresión de datos personales del titular
+
+El siguiente requisito se propone con el siguiente identificador libre, **RNF-33**. No se editó ni renumeró el Plan de Calidad: sus identificadores RNF-30, RNF-31 y RNF-32 requieren revisión antes de incorporar formalmente este nuevo requisito.
+
+| ID | Categoría ISO/IEC 25010 | Descripción | Métrica/Criterio de aceptación | Prioridad | Justificación |
+|---|---|---|---|---|---|
+| RNF-33 (propuesto) | Seguridad — confidencialidad | Cuando el titular confirma la eliminación de su cuenta, el sistema debe suprimir sus perfiles infantiles, mediciones y preferencias asociadas; anonimizar los datos identificables de la cuenta; liberar el correo original; y revocar los tokens previos. Se atenderá el derecho de supresión conforme a la Ley 1581 de 2012, artículos 8 y 15, sin perjuicio de información cuya conservación deba validarse jurídicamente. | En las pruebas de aceptación, solicitudes de eliminación completadas con éxito que cumplen simultáneamente todas las verificaciones de supresión de perfiles/mediciones/preferencias, anonimización, disponibilidad del correo original para registro y rechazo HTTP 401 del token previo / total de solicitudes de eliminación probadas = 100 %. | Alta | Reduce la exposición de datos personales y de menores cuando el titular ejerce sus derechos, y permite verificar el resultado completo mediante pruebas repetibles. Los plazos y excepciones de conservación están pendientes de validación jurídica. |
+
 ## Supuestos y limitaciones
 
 - El rol y el identificador propietario se obtienen de la sesión autenticada; la aplicación frontend envía el token mediante la infraestructura común de autenticación.
@@ -184,3 +197,6 @@ La columna de prueba identifica una prueba existente que respalda parte del meca
 - La codificación de la clave y la protección de tráfico en despliegue son responsabilidades de configuración externa; este documento no incluye ni evalúa valores de credenciales.
 - Los cambios de tipo/longitud de columnas deben aplicarse mediante el perfil JPA de migración `perfiles-migracion` junto con `prod`, deteniendo previamente todas las instancias y respaldando la base. Tras una ejecución y migración de datos en una única instancia, se reinicia únicamente con `prod` (modo `validate`); no se agregan scripts DDL manuales.
 - RNF-06, RNF-12, RNF-16 y RNF-19 contienen métricas cuantitativas de sistema/uso. Las pruebas de código citadas verifican mecanismos y casos, no esas métricas agregadas.
+- RNF-33 es una propuesta de US-06 y no se incorporó al Plan de Calidad porque RNF-30 a RNF-32 están incompletos y requieren validación antes de decidir si se conserva esta numeración.
+- La política de tratamiento mostrada en `terminos-modal.ts`, secciones 9 y 10, debe explicar la solicitud de supresión, los datos asociados que se eliminan, la anonimización y la conservación estrictamente exigida por ley o contrato. Los plazos y categorías de conservación están pendientes de validación jurídica. Si cambia el texto, `VERSION_TERMINOS` en frontend debe coincidir con `AuthService.VERSION_TERMINOS_VIGENTE` en backend; ambos quedan en `1.1`.
+- La columna H2 `usuarios.estado` de bases locales anteriores puede tener una restricción enum que no admita `ELIMINADO`. `EstadoUsuarioSchemaMigrator` amplía esa columna al arrancar la aplicación y conserva los datos existentes; la integración debe verificar la eliminación con perfiles, mediciones y preferencias, además de la ausencia de filas asociadas después de completar la operación.

@@ -154,17 +154,17 @@
 
     <section class="account-panel account-deactivation">
       <header class="account-panel-heading">
-        <div class="account-panel-title"><h2>Desactivar cuenta</h2></div>
+        <div class="account-panel-title"><h2>Eliminar cuenta</h2></div>
       </header>
-      <p>La cuenta quedará suspendida. Tus datos y perfiles asociados se conservarán.</p>
+      <p>Al confirmar, se borrarán permanentemente tus datos personales y los datos de los perfiles infantiles que hayas creado.</p>
       @if (!confirmarDesactivacion()) {
         <button type="button" class="account-secondary-action" (click)="confirmarDesactivacion.set(true)">
-          Desactivar mi cuenta
+          Eliminar mi cuenta
         </button>
       } @else {
-        <p role="alert">¿Confirmas la desactivación? No podrás volver a iniciar sesión con esta cuenta.</p>
+        <p role="alert">¿Deseas continuar? Se borrarán permanentemente tus datos personales y los datos de los perfiles infantiles que hayas creado.</p>
         <button type="button" class="account-action account-action-danger" [disabled]="desactivando()" (click)="desactivar()">
-          {{ desactivando() ? 'Desactivando...' : 'Sí, desactivar cuenta' }}
+          {{ desactivando() ? 'Eliminando cuenta...' : 'Sí, eliminar mi cuenta' }}
         </button>
         <button type="button" class="account-secondary-action" (click)="confirmarDesactivacion.set(false)">Cancelar</button>
       }

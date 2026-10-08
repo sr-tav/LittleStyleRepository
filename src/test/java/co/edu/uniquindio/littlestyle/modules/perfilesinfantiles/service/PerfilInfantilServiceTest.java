@@ -2,6 +2,9 @@ package co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service;
 
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
+import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
+import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilRequest;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.AlergiaTextil;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
@@ -38,6 +41,8 @@ class PerfilInfantilServiceTest {
     @Mock
     private PerfilInfantilRepository perfilRepository;
     @Mock
+    private UsuarioRepository usuarioRepository;
+    @Mock
     private MedicionCrecimientoRepository medicionRepository;
     @Mock
     private ValidadorMedidas validadorMedidas;
@@ -73,6 +78,8 @@ class PerfilInfantilServiceTest {
     @Test
     void eliminaSoloTrasEncontrarPerfilDelClienteAutenticado() {
         PerfilInfantil perfil = PerfilInfantil.builder().id(7L).build();
+        when(usuarioRepository.findByIdForUpdate(51L)).thenReturn(
+                Optional.of(Usuario.builder().id(51L).estado(EstadoUsuario.ACTIVO).build()));
         when(perfilRepository.findByIdAndClienteId(7L, 51L)).thenReturn(Optional.of(perfil));
 
         service.eliminar(7L);
@@ -83,6 +90,8 @@ class PerfilInfantilServiceTest {
     @Test
     void rechazaElPerfilNumeroOnceConErrorAsociadoAlCampo() {
         ReflectionTestUtils.setField(service, "maximoPerfiles", 10);
+        when(usuarioRepository.findByIdForUpdate(51L)).thenReturn(
+                Optional.of(Usuario.builder().id(51L).estado(EstadoUsuario.ACTIVO).build()));
         when(perfilRepository.countByClienteId(51L)).thenReturn(10L);
         PerfilRequest request = new PerfilRequest("Niño", LocalDate.now().minusYears(5),
                 Contextura.MEDIA, Holgura.REGULAR, Set.of(AlergiaTextil.LANA),
@@ -100,6 +109,8 @@ class PerfilInfantilServiceTest {
     @Test
     void exigeDescripcionCuandoSeSeleccionaOtraAlergia() {
         ReflectionTestUtils.setField(service, "maximoPerfiles", 10);
+        when(usuarioRepository.findByIdForUpdate(51L)).thenReturn(
+                Optional.of(Usuario.builder().id(51L).estado(EstadoUsuario.ACTIVO).build()));
         PerfilRequest request = new PerfilRequest("Niño", LocalDate.now().minusYears(5),
                 Contextura.MEDIA, Holgura.REGULAR, Set.of(AlergiaTextil.OTRA),
                 " ", false, Set.of(), Set.of(), null, null);
@@ -112,6 +123,8 @@ class PerfilInfantilServiceTest {
     @Test
     void rechazaTextoLibreQueExcedeLosDiezColoresIncluyendoElOtro() {
         ReflectionTestUtils.setField(service, "maximoPerfiles", 10);
+        when(usuarioRepository.findByIdForUpdate(51L)).thenReturn(
+                Optional.of(Usuario.builder().id(51L).estado(EstadoUsuario.ACTIVO).build()));
         PerfilRequest request = new PerfilRequest("Niño", LocalDate.now().minusYears(5),
                 Contextura.MEDIA, Holgura.REGULAR, Set.of(AlergiaTextil.LANA),
                 null, false, Set.of(ColorPreferido.ROSA, ColorPreferido.LILA,

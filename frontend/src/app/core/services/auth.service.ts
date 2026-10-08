@@ -11,7 +11,7 @@ import {
   LoginRequest,
   RegistroRequest,
   Rol,
-  Usuario
+  Usuario,
 } from '../models/auth.models';
 
 const TOKEN_KEY = 'ls_token';

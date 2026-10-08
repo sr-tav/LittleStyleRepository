@@ -102,7 +102,7 @@ class JwtAuthenticationFilterTest {
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         assertThat(request.getAttribute(JwtAuthenticationFilter.JWT_ERROR_ATTRIBUTE))
-                .isEqualTo(JwtAuthenticationFilter.CUENTA_SUSPENDIDA);
+                .isEqualTo(JwtAuthenticationFilter.CUENTA_NO_ACTIVA);
         verify(chain).doFilter(request, response);
     }
 
