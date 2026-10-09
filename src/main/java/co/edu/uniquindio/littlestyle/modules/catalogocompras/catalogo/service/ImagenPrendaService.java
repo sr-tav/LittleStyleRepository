@@ -49,7 +49,8 @@ public class ImagenPrendaService {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "Puedes subir máximo " + limites.maxPorCarga() + " imágenes a la vez", "archivos");
         }
-        Prenda prenda = prendaRepository.findByIdAndVendedorId(prendaId, PrendaService.vendedorActual())
+        // Bloqueo pesimista: dos cargas concurrentes no pueden superar el máximo por prenda
+        Prenda prenda = prendaRepository.bloquearPropia(prendaId, PrendaService.vendedorActual())
                 .orElseThrow(PrendaService::noEncontrada);
         int actuales = prenda.getImagenes().size();
         if (actuales + archivos.size() > limites.maxPorPrenda()) {
@@ -82,7 +83,7 @@ public class ImagenPrendaService {
 
     @Transactional
     public void eliminar(Long prendaId, Long imagenId) {
-        Prenda prenda = prendaRepository.findByIdAndVendedorId(prendaId, PrendaService.vendedorActual())
+        Prenda prenda = prendaRepository.bloquearPropia(prendaId, PrendaService.vendedorActual())
                 .orElseThrow(PrendaService::noEncontrada);
         ImagenPrenda imagen = buscarImagen(prenda, imagenId);
         prenda.getImagenes().remove(imagen);
@@ -97,7 +98,7 @@ public class ImagenPrendaService {
     /** La imagen principal es la primera; se mueve al inicio y se renumera el orden. */
     @Transactional
     public List<PrendaResponse.Imagen> marcarPrincipal(Long prendaId, Long imagenId) {
-        Prenda prenda = prendaRepository.findByIdAndVendedorId(prendaId, PrendaService.vendedorActual())
+        Prenda prenda = prendaRepository.bloquearPropia(prendaId, PrendaService.vendedorActual())
                 .orElseThrow(PrendaService::noEncontrada);
         ImagenPrenda principal = buscarImagen(prenda, imagenId);
         List<ImagenPrenda> ordenadas = new ArrayList<>(prenda.getImagenes());

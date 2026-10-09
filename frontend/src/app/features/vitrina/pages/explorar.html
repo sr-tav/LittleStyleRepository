@@ -1,0 +1,171 @@
+<app-navbar />
+<main class="reco-page">
+  <header class="reco-heading">
+    <div>
+      <p class="reco-eyebrow">Catálogo</p>
+      <h1>Explora prendas</h1>
+      <p class="reco-subtitle">Filtra por lo que necesita tu hijo</p>
+    </div>
+  </header>
+
+  <div class="vitrina-layout">
+    <aside class="vitrina-filtros" aria-label="Filtros del catálogo">
+      <label class="catalog-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+        </svg>
+        <span class="visually-hidden">Buscar prenda</span>
+        <input
+          type="search"
+          placeholder="Buscar prenda..."
+          [value]="q()"
+          (input)="q.set($any($event.target).value)"
+        />
+      </label>
+
+      <label class="field">
+        <span>Categoría</span>
+        <select [value]="categoria()" (change)="categoria.set($any($event.target).value); alCambiarFiltro()">
+          <option value="">Todas</option>
+          @for (opcion of categorias; track opcion.valor) {
+            <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Para quién</span>
+        <select [value]="genero()" (change)="genero.set($any($event.target).value); alCambiarFiltro()">
+          <option value="">Todos</option>
+          @for (opcion of generos; track opcion.valor) {
+            <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Material</span>
+        <select [value]="material()" (change)="material.set($any($event.target).value); alCambiarFiltro()">
+          <option value="">Todos</option>
+          @for (opcion of materiales; track opcion.valor) {
+            <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Talla</span>
+        <select [value]="talla()" (change)="talla.set($any($event.target).value); alCambiarFiltro()">
+          <option value="">Todas</option>
+          @for (t of tallas; track t) {
+            <option [value]="t">{{ t }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Precio mín.</span>
+          <input
+            type="number" min="0" inputmode="numeric" placeholder="0"
+            [value]="precioMin()"
+            (change)="precioMin.set($any($event.target).value); alCambiarFiltro()"
+          />
+        </label>
+        <label class="field">
+          <span>Precio máx.</span>
+          <input
+            type="number" min="0" inputmode="numeric" placeholder="Sin tope"
+            [value]="precioMax()"
+            (change)="precioMax.set($any($event.target).value); alCambiarFiltro()"
+          />
+        </label>
+      </div>
+
+      <label class="checkbox profile-checkbox">
+        <input
+          type="checkbox"
+          [checked]="disponible()"
+          (change)="disponible.set($any($event.target).checked); alCambiarFiltro()"
+        />
+        Solo disponibles
+      </label>
+
+      <label class="checkbox profile-checkbox">
+        <input
+          type="checkbox"
+          [checked]="soloMiTalla()"
+          (change)="alternarMiTalla()"
+        />
+        Solo mi talla sugerida
+      </label>
+
+      <label class="field">
+        <span>Ordenar por</span>
+        <select [value]="orden()" (change)="orden.set($any($event.target).value); alCambiarFiltro()">
+          @for (opcion of ordenes; track opcion.valor) {
+            <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" class="btn-ghost btn-inline" (click)="limpiar()">Limpiar filtros</button>
+    </aside>
+
+    <section aria-label="Resultados">
+      @if (cargando()) {
+        <div class="reco-state" role="status"><p>Cargando prendas…</p></div>
+      } @else if (error()) {
+        <div class="alert alert-error" role="alert">
+          {{ error() }}
+          <button type="button" class="link-button" (click)="alCambiarFiltro()">Reintentar</button>
+        </div>
+      } @else if (visibles().length === 0) {
+        <div class="reco-state" role="status">
+          <p>Ninguna prenda coincide con esos filtros. Prueba quitando alguno.</p>
+        </div>
+      } @else {
+        <p class="visually-hidden" role="status">{{ totalElementos() }} prendas encontradas</p>
+        <ul class="reco-grid" aria-label="Prendas del catálogo">
+          @for (item of visibles(); track item.id) {
+            <li>
+              <article class="reco-card">
+                <div class="reco-card-media">
+                  <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
+                </div>
+                <div class="reco-card-body">
+                  <h2 class="reco-card-title">{{ item.nombre }}</h2>
+                  <p class="reco-price">{{ precio(item) }}</p>
+                  @if (!item.disponible) {
+                    <span class="alert-stock">Agotado</span>
+                  }
+                  <div class="reco-card-cta">
+                    <a
+                      class="btn-primary btn-inline btn-small"
+                      [routerLink]="['/cliente/catalogo', item.id]"
+                      [attr.aria-label]="'Ver detalle de ' + item.nombre"
+                      >Ver detalle</a
+                    >
+                  </div>
+                </div>
+              </article>
+            </li>
+          }
+        </ul>
+        @if (totalPaginas() > 1) {
+          <nav class="vitrina-paginado" aria-label="Paginación">
+            <button
+              type="button" class="btn-ghost btn-inline"
+              [disabled]="pagina() === 0" (click)="anterior()"
+            >← Anterior</button>
+            <span role="status">Página {{ pagina() + 1 }} de {{ totalPaginas() }} ({{ totalElementos() }} prendas)</span>
+            <button
+              type="button" class="btn-ghost btn-inline"
+              [disabled]="pagina() >= totalPaginas() - 1" (click)="siguiente()"
+            >Siguiente →</button>
+          </nav>
+        }
+      }
+    </section>
+  </div>
+</main>

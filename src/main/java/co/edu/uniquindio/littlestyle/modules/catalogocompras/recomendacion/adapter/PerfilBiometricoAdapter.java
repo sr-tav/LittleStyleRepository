@@ -31,7 +31,7 @@ public class PerfilBiometricoAdapter implements PerfilBiometricoPort {
                 .max(Comparator.comparing(MedicionCrecimiento::getFechaMedicion)).orElseThrow(
                         () -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "El perfil no tiene mediciones"));
         if (m.getFechaMedicion().plusMonths(props.vigenciaMedidasMeses()).isBefore(LocalDate.now())) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Medición desactualizada, registrá una nueva");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Medición desactualizada, registra una nueva");
         }
         DatosBiometricos bio = new DatosBiometricos(
                 m.getEstaturaCm(), m.getPesoKg(), m.getFechaMedicion(), p.getHolgura(), p.getContextura());

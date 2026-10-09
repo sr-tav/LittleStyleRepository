@@ -82,7 +82,7 @@ class ImagenPrendaServiceTest {
 
     @Test
     void subeVariasImagenesDetectandoElTipoPorSuContenido() {
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
         when(almacenamiento.subir(anyString(), any(), anyString())).thenAnswer(inv -> "https://cdn/" + inv.getArgument(0));
 
         List<PrendaResponse.Imagen> imagenes = service.subir(10L,
@@ -102,7 +102,7 @@ class ImagenPrendaServiceTest {
 
     @Test
     void siUnArchivoNoEsImagenNoSeSubeNinguno() {
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
 
         assertThatThrownBy(() -> service.subir(10L,
                 List.of(archivo("ok.png", PNG), archivo("virus.png", "MZ-no-imagen".getBytes()))))
@@ -113,7 +113,7 @@ class ImagenPrendaServiceTest {
 
     @Test
     void rechazaArchivosQueSuperanElTamanoMaximo() {
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
         byte[] grande = new byte[2048];
         System.arraycopy(PNG, 0, grande, 0, PNG.length);
 
@@ -130,7 +130,7 @@ class ImagenPrendaServiceTest {
 
         prenda.getImagenes().add(ImagenPrenda.builder().id(1L).orden(0).url("u").clave("k").build());
         prenda.getImagenes().add(ImagenPrenda.builder().id(2L).orden(1).url("u").clave("k").build());
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
         assertThatThrownBy(() -> service.subir(10L, List.of(archivo("a.png", PNG), archivo("b.png", PNG))))
                 .hasMessage("Una prenda admite máximo 3 imágenes (ya tiene 2)");
         verifyNoInteractions(almacenamiento);
@@ -138,7 +138,7 @@ class ImagenPrendaServiceTest {
 
     @Test
     void siLaTransaccionNoSeConfirmaBorraLoQueYaSeSubio() {
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
         when(almacenamiento.subir(anyString(), any(), anyString()))
                 .thenReturn("https://cdn/1")
                 .thenThrow(new AlmacenamientoException("S3 caído", new RuntimeException()));
@@ -156,7 +156,7 @@ class ImagenPrendaServiceTest {
     void alEliminarBorraElObjetoSoloDespuesDeConfirmar() {
         prenda.getImagenes().add(ImagenPrenda.builder().id(5L).orden(0).url("u").clave("prendas/10/a.png")
                 .fechaCarga(LocalDateTime.now()).build());
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
 
         service.eliminar(10L, 5L);
 
@@ -171,7 +171,7 @@ class ImagenPrendaServiceTest {
         prenda.getImagenes().add(ImagenPrenda.builder().id(1L).orden(0).url("a").clave("a").build());
         prenda.getImagenes().add(ImagenPrenda.builder().id(2L).orden(1).url("b").clave("b").build());
         prenda.getImagenes().add(ImagenPrenda.builder().id(3L).orden(2).url("c").clave("c").build());
-        when(prendaRepository.findByIdAndVendedorId(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
 
         List<PrendaResponse.Imagen> imagenes = service.marcarPrincipal(10L, 3L);
 

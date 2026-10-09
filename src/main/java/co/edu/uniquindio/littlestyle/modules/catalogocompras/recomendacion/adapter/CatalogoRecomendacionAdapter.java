@@ -30,7 +30,6 @@ import java.util.Optional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.recomendacion.catalogo", havingValue = "jpa", matchIfMissing = true)
 public class CatalogoRecomendacionAdapter implements CatalogoRecomendacionPort {
 
     private final PrendaRepository prendaRepository;
@@ -68,7 +67,11 @@ public class CatalogoRecomendacionAdapter implements CatalogoRecomendacionPort {
         for (TallaPrenda t : p.getTallas()) {
             stockPorTalla.put(t.getTalla(), t.getStock());
         }
-        String marca = p.getMarca() != null ? p.getMarca() : p.getVendedor().getNombreTienda();
+        String marca = p.getMarca();
+        if (marca == null && p.getVendedor() != null && p.getVendedor().getNombreTienda() != null) {
+            marca = p.getVendedor().getNombreTienda();
+        }
+        if (marca == null) marca = "Sin marca";
         return new PrendaRecomendable(
                 p.getId(), p.getNombre(), p.getCategoria().name(), marca, p.getPrecio(),
                 p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null),

@@ -5,7 +5,10 @@ import { of } from 'rxjs';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PerfilInfantil } from '../../../perfilesInfantiles/models/perfil-infantil.models';
 import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.service';
+import { VitrinaService } from '../../../vitrina/services/vitrina.service';
 import { ClienteInicio } from './cliente-inicio';
+
+const VITRINA_VACIA = { contenido: [], pagina: 0, tamano: 8, totalElementos: 0, totalPaginas: 0 };
 
 describe('ClienteInicio', () => {
   let perfiles: PerfilInfantil[];
@@ -26,6 +29,7 @@ describe('ClienteInicio', () => {
           },
         },
         { provide: PerfilesService, useValue: { listar: () => of(perfiles) } },
+        { provide: VitrinaService, useValue: { explorar: () => of(VITRINA_VACIA) } },
       ],
     }).compileComponents();
   });
@@ -79,15 +83,18 @@ describe('ClienteInicio', () => {
     expect(link?.getAttribute('href')).toBe('/cliente/hijos?modo=seleccionar');
   });
 
-  it('mantiene los demás accesos sin enlace, deshabilitados y con tooltip', () => {
+  it('enlaza el catálogo y mantiene los demás accesos deshabilitados', () => {
     const fixture = TestBed.createComponent(ClienteInicio);
     fixture.detectChanges();
 
     const root: HTMLElement = fixture.nativeElement;
+    const catalogo = root.querySelector<HTMLAnchorElement>('a.home-tile[routerLink="/cliente/catalogo"]');
+    expect(catalogo?.textContent).toContain('Catálogo');
+    expect(catalogo?.getAttribute('href')).toBe('/cliente/catalogo');
     const disabledTiles = Array.from(
       root.querySelectorAll<HTMLElement>('.home-tile-disabled'),
     );
-    expect(disabledTiles).toHaveLength(3);
+    expect(disabledTiles).toHaveLength(2);
     for (const tile of disabledTiles) {
       expect(tile.tagName).not.toBe('A');
       expect(tile.getAttribute('aria-disabled')).toBe('true');
@@ -112,5 +119,14 @@ describe('ClienteInicio', () => {
       expect(icon.getAttribute('stroke-linejoin')).toBe('round');
       expect(icon.getAttribute('aria-hidden')).toBe('true');
     }
+  });
+
+  it('muestra el carrusel y el pie', () => {
+    const fixture = TestBed.createComponent(ClienteInicio);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('.hero')).not.toBeNull();
+    expect(root.querySelector('app-footer')).not.toBeNull();
   });
 });

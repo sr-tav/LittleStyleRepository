@@ -7,10 +7,12 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.dto.*
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.CatalogoRecomendacionPort;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy.*;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.AlergiaTextil;
-import java.math.BigDecimal; import java.math.RoundingMode;
 import java.util.*;
+
+import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,11 +42,9 @@ public class MotorRecomendacionService {
                 if (talla.isEmpty()) continue;
                 var eval = filtro.evaluar(al, p);
                 if (eval.excluye()) continue;
-                int puntaje = 100 - distancia(bio, talla.get())
-                        - (eval.nivel() == NivelRiesgo.ADVERTENCIA ? 30 : 0)
-                        + (p.tieneStock(talla.get().talla()) ? 5 : 0);
-                salida.add(new RecomendacionItem(p.id(), p.nombre(), talla.get().talla(),
-                        Math.max(0, puntaje), eval.nivel(), eval.motivos(), p.tieneStock(talla.get().talla())));
+                int puntaje = PuntajeRecomendacion.puntaje(bio, talla.get(), eval, p.tieneStock(talla.get().talla()));
+                salida.add(new RecomendacionItem(p.id(), p.nombre(), p.precio(), talla.get().talla(),
+                        puntaje, eval.nivel(), eval.motivos(), p.tieneStock(talla.get().talla()), p.imagenUrl()));
             } catch (Exception ex) {
                 log.warn("Prenda omitida por fallo aislado", ex); // una prenda nunca tumba el motor
             }
@@ -53,12 +53,18 @@ public class MotorRecomendacionService {
                 .sorted(Comparator.comparingInt(RecomendacionItem::puntaje).reversed())
                 .limit(props.maxResultados()).toList();
     }
-
-    private int distancia(DatosBiometricos bio, RangoTalla r) {
-        BigDecimal ce = r.estaturaMinCm().add(r.estaturaMaxCm()).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
-        BigDecimal cp = r.pesoMinKg().add(r.pesoMaxKg()).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
-        double de = ce.subtract(bio.estaturaCm()).doubleValue();
-        double dp = cp.subtract(bio.pesoKg()).doubleValue();
-        return (int) Math.sqrt(de * de + dp * dp);
+    public RecomendacionItem recomendarParaPrenda(DatosBiometricos bio, Set<AlergiaTextil> alergias, Long prendaId) {
+        Set<AlergiaTextil> al = alergias == null ? Set.of() : alergias;
+        PrendaRecomendable prenda = catalogo.buscarPrendaPublicada(prendaId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
+        RangoTalla talla = estrategia.sugerir(bio, prenda.tablaTallas())
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible"));
+        var eval = filtro.evaluar(al, prenda);
+        if (eval.excluye()) throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Prenda excluida por alergia: " + String.join(", ", eval.motivos()));
+        int puntaje = PuntajeRecomendacion.puntaje(bio, talla, eval, prenda.tieneStock(talla.talla()));
+        return new RecomendacionItem(prenda.id(), prenda.nombre(), prenda.precio(),
+                talla.talla(), puntaje, eval.nivel(), eval.motivos(), prenda.tieneStock(talla.talla()), prenda.imagenUrl());
     }
+
 }

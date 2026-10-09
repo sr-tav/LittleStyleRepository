@@ -1,7 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.controller;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.dto.*;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.*;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.*;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.MotorRecomendacionService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy.*;
@@ -26,9 +25,6 @@ class RecomendacionControllerTest {
 
     @Mock PerfilBiometricoPort perfiles;
     @Mock MotorRecomendacionService motor;
-    @Mock CatalogoRecomendacionPort catalogo;
-    @Mock EstrategiaTalla estrategia;
-    @Mock FiltroAlergia filtro;
     @InjectMocks RecomendacionController controller;
     private MockMvc mockMvc;
 
@@ -42,19 +38,11 @@ class RecomendacionControllerTest {
                         LocalDate.now(), Holgura.REGULAR, Contextura.MEDIA),
                 Set.of(AlergiaTextil.NIQUEL));
     }
-    private PrendaRecomendable prenda() {
-        return new PrendaRecomendable(1L, "Remera", "C", "M", BigDecimal.TEN, null,
-                new TablaTallas(List.of(new RangoTalla("4",
-                        new BigDecimal("100"), new BigDecimal("110"),
-                        new BigDecimal("15"), new BigDecimal("20")))),
-                List.of(new ComponenteMaterial(MaterialTextil.ALGODON, 100)),
-                false, false, false, false, null, null, Map.of("4", 5));
-    }
 
     @Test void listarDevuelve200ConHeaderTiempo() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.recomendar(any(), any())).thenReturn(List.of(
-                new RecomendacionItem(1L, "Remera", "4", 95, NivelRiesgo.APTA, List.of(), true)));
+                new RecomendacionItem(1L, "Remera", new BigDecimal("45900"), "4", 95, NivelRiesgo.APTA, List.of(), true, "https://co.pinterest.com/pin/7951736838995182/")));
 
         mockMvc.perform(get("/api/cliente/recomendaciones").param("perfilId", "1"))
                 .andExpect(status().isOk())
@@ -74,9 +62,8 @@ class RecomendacionControllerTest {
 
     @Test void porPrendaDevuelve200() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
-        when(catalogo.buscarPrendaPublicada(1L)).thenReturn(Optional.of(prenda()));
-        when(estrategia.sugerir(any(), any())).thenReturn(Optional.of(prenda().tablaTallas().rangos().get(0)));
-        when(filtro.evaluar(any(), any())).thenReturn(EvaluacionAlergia.apta());
+        when(motor.recomendarParaPrenda(any(), any(), eq(1L))).thenReturn(
+                new RecomendacionItem(1L, "Remera", new BigDecimal("45900"), "4", 95, NivelRiesgo.APTA, List.of(), true, "https://co.pinterest.com/pin/7951736838995182/"));
 
         mockMvc.perform(get("/api/cliente/recomendaciones/prenda/1").param("perfilId", "1"))
                 .andExpect(status().isOk())
@@ -85,10 +72,8 @@ class RecomendacionControllerTest {
 
     @Test void porPrendaExcluidaDevuelve422() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
-        when(catalogo.buscarPrendaPublicada(1L)).thenReturn(Optional.of(prenda()));
-        when(estrategia.sugerir(any(), any())).thenReturn(Optional.of(prenda().tablaTallas().rangos().get(0)));
-        when(filtro.evaluar(any(), any())).thenReturn(new EvaluacionAlergia(
-                NivelRiesgo.EXCLUIDA, List.of("Contiene níquel")));
+        when(motor.recomendarParaPrenda(any(), any(), eq(1L))).thenThrow(new BusinessException(
+                HttpStatus.UNPROCESSABLE_ENTITY, "Prenda excluida por alergia: Contiene níquel"));
 
         mockMvc.perform(get("/api/cliente/recomendaciones/prenda/1").param("perfilId", "1"))
                 .andExpect(status().isUnprocessableEntity());
@@ -96,7 +81,8 @@ class RecomendacionControllerTest {
 
     @Test void porPrendaInexistenteDevuelve404() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
-        when(catalogo.buscarPrendaPublicada(99L)).thenReturn(Optional.empty());
+        when(motor.recomendarParaPrenda(any(), any(), eq(99L))).thenThrow(new BusinessException(
+                HttpStatus.NOT_FOUND, "Prenda no encontrada"));
 
         mockMvc.perform(get("/api/cliente/recomendaciones/prenda/99").param("perfilId", "1"))
                 .andExpect(status().isNotFound());

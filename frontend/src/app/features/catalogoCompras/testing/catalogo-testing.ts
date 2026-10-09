@@ -5,6 +5,7 @@ export function crearPrenda(cambios: Partial<Prenda> = {}): Prenda {
     id: 7,
     nombre: 'Pantalón Jogger Azul',
     categoria: 'PANTALONES',
+    genero: 'UNISEX',
     descripcion: null,
     marca: null,
     precio: 32900,

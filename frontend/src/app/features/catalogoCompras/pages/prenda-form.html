@@ -42,10 +42,18 @@
               }
             </select>
           </div>
-          <div class="field" [class.has-error]="invalido(form.controls.marca)">
-            <label for="marca">Marca <span class="field-optional">(opcional)</span></label>
-            <input id="marca" type="text" formControlName="marca" placeholder="Por defecto, el nombre de tu tienda" maxlength="80" />
+          <div class="field">
+            <label for="genero">¿Para quién es?</label>
+            <select id="genero" formControlName="genero">
+              @for (g of generos; track g.valor) {
+                <option [value]="g.valor">{{ g.etiqueta }}</option>
+              }
+            </select>
           </div>
+        </div>
+        <div class="field" [class.has-error]="invalido(form.controls.marca)">
+          <label for="marca">Marca <span class="field-optional">(opcional)</span></label>
+          <input id="marca" type="text" formControlName="marca" placeholder="Por defecto, el nombre de tu tienda" maxlength="80" />
         </div>
 
         <div class="field" [class.has-error]="invalido(form.controls.descripcion)">

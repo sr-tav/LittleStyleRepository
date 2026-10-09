@@ -1,0 +1,126 @@
+<app-navbar />
+<main class="reco-page">
+  <a class="back-link" routerLink="/cliente/catalogo" aria-label="Volver al catálogo">← Volver al catálogo</a>
+
+  @if (cargando()) {
+    <div class="reco-state" role="status"><p>Cargando prenda…</p></div>
+  } @else if (error()) {
+    <p class="alert alert-error" role="alert">{{ error() }}</p>
+  } @else if (prenda(); as p) {
+    <section class="vitrina-detalle-grid" [attr.aria-label]="'Detalle de ' + p.nombre">
+      <div class="galeria">
+        @if (p.imagenes.length > 0) {
+          <div class="galeria-thumbs" role="group" aria-label="Miniaturas">
+            @for (url of p.imagenes; track url; let i = $index) {
+              <button
+                type="button"
+                class="galeria-thumb"
+                [class.is-activa]="fotoActual() === i"
+                [attr.aria-current]="fotoActual() === i"
+                [attr.aria-label]="'Ver foto ' + (i + 1) + ' de ' + p.imagenes.length"
+                (click)="fotoActual.set(i)"
+              >
+                <img [src]="url" [alt]="''" loading="lazy" />
+              </button>
+            }
+          </div>
+          <figure class="galeria-viewer" #visor>
+            <img
+              [src]="p.imagenes[fotoActual()]"
+              [alt]="'Foto ' + (fotoActual() + 1) + ' de ' + p.nombre"
+            />
+            @if (esNuevo()) {
+              <span class="galeria-badge">Nuevo</span>
+            }
+            @if (p.imagenes.length > 1) {
+              <button
+                type="button" class="galeria-flecha galeria-flecha-atras"
+                aria-label="Foto anterior" (click)="anteriorFoto()"
+              >‹</button>
+              <button
+                type="button" class="galeria-flecha galeria-flecha-siguiente"
+                aria-label="Foto siguiente" (click)="siguienteFoto()"
+              >›</button>
+              <span class="galeria-contador" role="status">{{ fotoActual() + 1 }} / {{ p.imagenes.length }}</span>
+            }
+            <button
+              type="button" class="galeria-ampliar"
+              aria-label="Ver en pantalla completa" (click)="ampliar(visor)"
+            >⤢</button>
+          </figure>
+        } @else {
+          <figure class="galeria-viewer galeria-viewer-vacio">
+            <app-prenda-miniatura [url]="null" [nombre]="p.nombre" />
+          </figure>
+        }
+      </div>
+
+      <div class="reco-detail-info">
+        <p class="reco-eyebrow">{{ categoriaDe(p) }} · {{ generoDe(p) }}</p>
+        <h2>{{ p.nombre }}</h2>
+        @if (p.marca) {
+          <p class="product-meta">{{ p.marca }}</p>
+        }
+        <p class="reco-price reco-price-large">{{ precioDe(p) }}</p>
+        @if (sugerida(); as s) {
+          <app-talla-sugerida [item]="s" />
+        }
+        @if (!p.disponible) {
+          <span class="alert-stock">Agotado temporalmente</span>
+        }
+      </div>
+    </section>
+
+    <div class="vitrina-columnas">
+      <section class="vitrina-seccion" aria-label="Ficha técnica textil">
+        <h3>Ficha técnica textil</h3>
+        <dl class="detail-card">
+          <div><dt>Composición</dt><dd>{{ composicionDe(p) }}</dd></div>
+          <div><dt>Colores</dt><dd>{{ p.colores.map(colorDe).join(', ') || '—' }}</dd></div>
+          <div><dt>Estampado</dt><dd>{{ estampadoDe(p.estampado) }}</dd></div>
+          @if (p.descripcion) {
+            <div><dt>Descripción</dt><dd>{{ p.descripcion }}</dd></div>
+          }
+        </dl>
+      </section>
+
+      <section class="vitrina-seccion" aria-label="Tabla de medidas">
+        <h3>Tabla de medidas</h3>
+        <div class="catalog-table-wrap">
+          <table class="catalog-table tabla-medidas">
+            <caption class="visually-hidden">Rangos de estatura y peso por talla</caption>
+            <thead>
+              <tr>
+                <th scope="col">Talla</th>
+                <th scope="col">Estatura (cm)</th>
+                <th scope="col">Peso (kg)</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of p.tallas; track t.talla) {
+                <tr [class.is-sugerida]="sugerida()?.tallaSugerida === t.talla">
+                  <td>
+                    <strong>{{ t.talla }}</strong>
+                    @if (sugerida()?.tallaSugerida === t.talla) {
+                      <span class="talla-badge">Tu talla</span>
+                    }
+                  </td>
+                  <td class="muted-cell">{{ t.estaturaMinCm }} – {{ t.estaturaMaxCm }}</td>
+                  <td class="muted-cell">{{ t.pesoMinKg }} – {{ t.pesoMaxKg }}</td>
+                  <td>
+                    @if (t.disponible) {
+                      <span class="state-chip">Disponible</span>
+                    } @else {
+                      <span class="state-chip is-off">Agotada</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  }
+</main>
