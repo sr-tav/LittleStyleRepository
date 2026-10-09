@@ -29,6 +29,14 @@ export const routes: Routes = [
       import('./features/perfilesInfantiles/perfiles.routes').then((m) => m.PERFILES_ROUTES),
   },
   {
+    path: 'cliente/prendas/:id',
+    title: 'Detalle prenda | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadComponent: () =>
+      import('./features/catalogoCompras/pages/prenda-detalle-cliente').then((m) => m.PrendaDetalleCliente),
+  },
+  {
     path: 'cliente/recomendaciones',
     title: 'Talla sugerida | LittleStyle',
     canActivate: [roleGuard],

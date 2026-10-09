@@ -30,6 +30,10 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     List<Prenda> findAllByEstado(EstadoPrenda estado);
 
+    @EntityGraph(attributePaths = {"tallas", "composicion", "colores", "imagenes", "venedor"})
+    @Query("select p from Prenda p where p.estado = :estado")
+    List<Prenda> findAllByEstadoConGrafico(@Param("estado") EstadoPrenda estado);
+
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     Optional<Prenda> findByIdAndEstado(Long id, EstadoPrenda estado);
 }

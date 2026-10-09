@@ -189,6 +189,13 @@
   background: var(--ls-surface);
 }
 
+.active-profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
 .provisional-label {
   color: var(--ls-muted);
   font-size: 0.82rem;

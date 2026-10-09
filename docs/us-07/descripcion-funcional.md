@@ -7,8 +7,9 @@ por alergias textiles para dar la talla óptima.
 ## 2. Alcance
 Incluye estrategias EXACTA/PROXIMIDAD/HOLGURA, filtro de alergias,
 `MotorRecomendacionService` con puntaje y orden, endpoints GET,
-`CatalogoEjemploAdapter` y UI-6 con badge + advertencias.
-No incluye catálogo real US-08, ni carrito, ni ML.
+catálogo real de US-08 (`CatalogoRecomendacionAdapter`) y UI-6 con
+tarjeta de producto (foto, precio, badge + advertencias).
+No incluye carrito, ni ML.
 
 ## 3. Reglas
 - EXACTA: estatura y peso dentro del mismo `RangoTalla`.
@@ -34,5 +35,5 @@ desencriptado en memoria.
   404 prenda, 422 excluida o sin talla.
 
 ## 6. Limitaciones
-Sin US-08 los datos son de ejemplo. Sin actuator las métricas son
-solo el header hasta el paso final.
+Las métricas de RNF-01/11/29 se miden en US-13; hasta el paso final
+el header `X-Recomendacion-Ms` es la evidencia de tiempo de respuesta.

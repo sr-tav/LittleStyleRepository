@@ -19,8 +19,10 @@ y filtre telas con alérgenos, para seleccionar la talla óptima y evitar irrita
   `GET /api/cliente/recomendaciones/prenda/{prendaId}?perfilId=`.
   Valida dueño por `findByIdAndClienteId`, exige medición vigente
   (`vigencia-medidas-meses=6`), header `X-Recomendacion-Ms` para RNF-01.
-- **Datos sin US-08:** `CatalogoEjemploAdapter` con `@Profile(dev,local,test,default)`
-  y `@Primary`. En `prod` lo reemplaza `CatalogoRecomendacionAdapter` del compañero.
+- **Datos con US-08:** el motor consume el catálogo real mediante
+  `CatalogoRecomendacionAdapter` (prendas `ACTIVA` con tabla de tallas,
+  composición, stock e imagen). Los datos fijos de ejemplo se eliminaron
+  al integrar US-08.
 - **UI-6:** componente `app-talla-sugerida` con badge + etiqueta de advertencia,
   botón `Ver talla sugerida` en lista de perfiles. `tallaProvisional()` queda
   `@deprecated`.

@@ -1,0 +1,38 @@
+<app-navbar />
+<main class="reco-page">
+  <header class="reco-heading">
+    <div>
+      <p class="reco-eyebrow">Ficha del producto</p>
+      <h1>Talla sugerida</h1>
+    </div>
+    <a class="btn-ghost btn-inline" routerLink="/cliente/recomendaciones" [queryParams]="{ perfilId: perfilId() }">Ver todas</a>
+  </header>
+
+  @if (cargando()) {
+    <div class="reco-state" role="status"><p>Cargando…</p></div>
+  } @else if (error()) {
+    <p class="alert alert-error" role="alert">{{ error() }}</p>
+  } @else if (item(); as r) {
+    <section class="reco-detail" [attr.aria-label]="'Detalle de ' + r.nombre">
+      <figure class="reco-detail-media">
+        <app-prenda-miniatura [url]="r.imagenUrl" [nombre]="r.nombre" />
+      </figure>
+      <div class="reco-detail-info">
+        <p class="reco-eyebrow">Recomendación para tu perfil</p>
+        <h2>{{ r.nombre }}</h2>
+        @if (precio() !== null) {
+          <p class="reco-price reco-price-large">{{ precio() }}</p>
+        }
+        <app-talla-sugerida [item]="r" />
+        <p class="reco-score">
+          <span>Compatibilidad: <strong>{{ r.puntaje }}%</strong></span>
+          <span class="reco-score-track" aria-hidden="true"><span [style.width.%]="r.puntaje"></span></span>
+        </p>
+        <div class="reco-detail-actions">
+          <a class="btn-ghost btn-inline" routerLink="/cliente/recomendaciones" [queryParams]="{ perfilId: perfilId() }">Volver a recomendaciones</a>
+          <a class="btn-ghost btn-inline" routerLink="/cliente/hijos" [queryParams]="{ modo: 'seleccionar' }">Cambiar perfil</a>
+        </div>
+      </div>
+    </section>
+  }
+</main>

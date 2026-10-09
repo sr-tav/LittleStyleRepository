@@ -15,7 +15,6 @@ import {
   ETIQUETAS_COLORES,
   ETIQUETAS_ESTAMPADOS,
 } from '../models/perfil-opciones';
-import { tallaProvisional } from '../models/talla-provisional';
 import { PerfilActivoService } from '../services/perfil-activo.service';
 import { PerfilesService } from '../services/perfiles.service';
 
@@ -62,15 +61,6 @@ export class PerfilesLista implements OnInit {
 
   protected edad(perfil: PerfilInfantil): string {
     return formatearEdadPerfil(perfil);
-  }
-
-  /**
-   * @deprecated Provisional de US-06
-   * @param perfil
-   * @protected
-   */
-  protected talla(perfil: PerfilInfantil): number {
-    return tallaProvisional(perfil.edadAnios);
   }
 
   protected esActivo(perfil: PerfilInfantil): boolean {

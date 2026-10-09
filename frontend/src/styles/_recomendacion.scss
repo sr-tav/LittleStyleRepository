@@ -1,0 +1,297 @@
+/* Recomendación de tallas del cliente (US-07). Solo vars de la paleta existente. */
+
+.reco-page {
+  width: min(1150px, 100%);
+  margin: 0 auto;
+  padding: 2.25rem 2rem 3rem;
+}
+
+.reco-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
+.reco-eyebrow {
+  margin-bottom: 0.35rem;
+  color: var(--ls-primary-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reco-subtitle {
+  margin-top: 0.3rem;
+  color: var(--ls-muted);
+  font-size: 0.92rem;
+}
+
+/* ---------- Grilla de productos: tarjetas de igual altura ---------- */
+.reco-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reco-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ls-border);
+  border-radius: 18px;
+  background: var(--ls-surface);
+  box-shadow: var(--ls-shadow);
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+  }
+}
+
+/* Ancla visual: todas las fotos con la misma proporción 4/5 */
+.reco-card-media {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--ls-bg);
+
+  app-prenda-miniatura,
+  .prenda-thumb {
+    width: 100%;
+    height: 100%;
+    flex: none;
+    border-radius: 0;
+  }
+
+  .prenda-thumb {
+    object-fit: cover;
+  }
+}
+
+.reco-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.reco-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  min-height: 2.6em;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.reco-price {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ls-primary-dark);
+}
+
+.reco-price-large {
+  font-size: 1.4rem;
+}
+
+.reco-card-cta {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+/* ---------- Badges de talla y alertas: jerarquía 1-2-3 ---------- */
+.talla-sugerida {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.talla-badge {
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: var(--ls-primary-dark);
+  color: var(--ls-surface);
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.alert-warn,
+.alert-danger,
+.alert-stock {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.alert-warn {
+  border: 1px solid rgba(168, 106, 0, 0.25);
+  background: var(--ls-warning-soft);
+  color: var(--ls-warning);
+}
+
+.alert-danger {
+  border: 1px solid rgba(214, 69, 69, 0.25);
+  background: var(--ls-error-soft);
+  color: var(--ls-error);
+}
+
+.alert-stock {
+  background: #eef0ea;
+  color: var(--ls-muted);
+}
+
+/* ---------- Medidor de compatibilidad ---------- */
+.reco-score {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--ls-muted);
+
+  strong {
+    color: var(--ls-ink);
+  }
+}
+
+.reco-score-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--ls-border);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--ls-secondary), var(--ls-primary));
+  }
+}
+
+/* ---------- Ficha de producto: 2 columnas ---------- */
+.reco-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 2rem;
+  align-items: start;
+  padding: 1.5rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 22px;
+  background: var(--ls-surface);
+  box-shadow: var(--ls-shadow);
+}
+
+.reco-detail-media {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--ls-bg);
+
+  app-prenda-miniatura,
+  .prenda-thumb {
+    width: 100%;
+    height: 100%;
+    flex: none;
+    border-radius: 0;
+  }
+
+  .prenda-thumb {
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+  }
+}
+
+.reco-detail-info {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+  min-width: 0;
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+}
+
+.reco-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* ---------- Estados: carga / vacío / error ---------- */
+.reco-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 2.5rem 1rem;
+  border: 1px dashed var(--ls-border);
+  border-radius: 24px;
+  background: var(--ls-surface);
+  color: var(--ls-muted);
+  text-align: center;
+
+  p {
+    max-width: 440px;
+    line-height: 1.55;
+  }
+}
+
+@media (max-width: 760px) {
+  .reco-page {
+    padding: 1.75rem 1rem 3rem;
+  }
+
+  .reco-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reco-detail {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    padding: 1rem;
+  }
+
+  .reco-detail-media .prenda-thumb {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 480px) {
+  .reco-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .reco-card-body {
+    padding: 0.75rem 0.8rem 0.9rem;
+  }
+
+  .reco-card-title {
+    font-size: 0.88rem;
+  }
+}

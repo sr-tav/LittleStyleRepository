@@ -107,7 +107,7 @@
             </span>
           </div>
           <h2>{{ perfil.nombre }}</h2>
-          <p class="profile-age">{{ edad(perfil) }} · Talla {{ talla(perfil) }}</p>
+          <p class="profile-age">{{ edad(perfil) }}</p>
           <a [routerLink]="['/cliente/recomendaciones']" [queryParams]="{ perfilId: perfil.id }">Ver talla sugerida</a>
           @if (perfil.porcentajeCompletitud < 90 && perfil.camposPendientes.length > 0) {
             <p class="profile-incomplete-guidance">

@@ -3,6 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.stra
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.dto.DatosBiometricos;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.RangoTalla;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.TablaTallas;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Holgura;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,7 @@ public class EstrategiaConHolgura implements  EstrategiaTalla {
         if (base.isEmpty()) return Optional.empty();
         if (bio.holgura() == null) return base;
         int i = tabla.rangos().indexOf(base.get());
-        if (fueExacta && bio.holgura().name().equals("HOLGADA") && i < tabla.rangos().size() -1) {
+        if (fueExacta && bio.holgura() == Holgura.HOLGADA&& i < tabla.rangos().size() -1) {
             return Optional.of(tabla.rangos().get(i +1));
         }
         return base;

@@ -5,7 +5,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../../auth/auth.validators';
 import { PerfilInfantil } from '../../../perfilesInfantiles/models/perfil-infantil.models';
-import { tallaProvisional } from '../../../perfilesInfantiles/models/talla-provisional';
 import { PerfilActivoService } from '../../../perfilesInfantiles/services/perfil-activo.service';
 import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.service';
 
@@ -43,12 +42,20 @@ import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.s
               }}
             </p>
           </div>
-          <a
-            class="btn-primary btn-inline"
-            routerLink="/cliente/hijos"
-            [queryParams]="{ modo: 'seleccionar' }"
-            >Cambiar perfil</a
-          >
+          <div class="active-profile-actions">
+            <a
+              class="btn-primary btn-inline"
+              routerLink="/cliente/hijos"
+              [queryParams]="{ modo: 'seleccionar' }"
+              >Cambiar perfil</a
+            >
+            <a
+              class="btn-ghost btn-inline"
+              [routerLink]="['/cliente/recomendaciones']"
+              [queryParams]="{ perfilId: perfilActivo()?.id }"
+              >Ver tallas sugeridas</a
+            >
+          </div>
         </section>
       } @else {
         <section class="active-profile active-profile-empty">
@@ -130,15 +137,6 @@ export class ClienteInicio implements OnInit {
         this.cargando.set(false);
       },
     });
-  }
-
-  /**
-   * @deprecated Provisional de US-06
-   * @param perfil
-   * @protected
-   */
-  protected talla(perfil: PerfilInfantil): number {
-    return tallaProvisional(perfil.edadAnios);
   }
 
   protected edad(perfil: PerfilInfantil): string {

@@ -125,7 +125,8 @@ describe('PerfilesLista (UI-4)', () => {
     expect(el.textContent).toContain('Sofía');
     expect(el.textContent).toContain('110 cm');
     expect(el.textContent).toContain('20 kg');
-    expect(el.textContent).toContain('Talla 4');
+    expect(el.textContent).not.toContain('Talla 4');
+    expect(el.textContent).toContain('Ver talla sugerida');
     const actions = el.querySelectorAll<HTMLAnchorElement>('.profile-card-actions a');
     expect(actions).toHaveLength(2);
     expect(actions[0].textContent).toContain('Ver perfil');
