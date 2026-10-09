@@ -16,9 +16,10 @@ import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { OPCIONES_COLORES, OPCIONES_ESTAMPADOS } from '../../perfilesInfantiles/models/perfil-opciones';
 import { ColorPreferido, Estampado } from '../../perfilesInfantiles/models/perfil-infantil.models';
-import { LIMITES_PRENDA, OPCIONES_CATEGORIAS, OPCIONES_MATERIALES } from '../models/prenda-opciones';
+import { LIMITES_PRENDA, OPCIONES_CATEGORIAS, OPCIONES_GENERO, OPCIONES_MATERIALES } from '../models/prenda-opciones';
 import {
   CategoriaPrenda,
+  GeneroPrenda,
   ImagenPrenda,
   MaterialTextil,
   Prenda,
@@ -83,6 +84,7 @@ export class PrendaForm implements OnInit, OnDestroy {
   private readonly location = inject(Location);
 
   protected readonly categorias = OPCIONES_CATEGORIAS;
+  protected readonly generos = OPCIONES_GENERO;
   protected readonly materiales = OPCIONES_MATERIALES;
   protected readonly colores = OPCIONES_COLORES;
   protected readonly estampados = OPCIONES_ESTAMPADOS;
@@ -109,6 +111,7 @@ export class PrendaForm implements OnInit, OnDestroy {
       Validators.maxLength(120),
     ]),
     categoria: this.fb.nonNullable.control<CategoriaPrenda>('VESTIDOS', Validators.required),
+    genero: this.fb.nonNullable.control<GeneroPrenda>('UNISEX', Validators.required),
     descripcion: this.fb.nonNullable.control('', Validators.maxLength(2000)),
     marca: this.fb.nonNullable.control('', Validators.maxLength(80)),
     precio: this.fb.control<number | null>(null, [
@@ -173,6 +176,7 @@ export class PrendaForm implements OnInit, OnDestroy {
     this.form.patchValue({
       nombre: prenda.nombre,
       categoria: prenda.categoria,
+      genero: prenda.genero ?? 'UNISEX',
       descripcion: prenda.descripcion ?? '',
       marca: prenda.marca ?? '',
       precio: prenda.precio,
@@ -276,6 +280,12 @@ export class PrendaForm implements OnInit, OnDestroy {
     const archivos = Array.from(entrada.files ?? []);
     entrada.value = '';
     this.errorImagenes.set(null);
+    if (archivos.length > this.limites.maxImagenesPorCarga) {
+      this.errorImagenes.set(
+        `Selecciona máximo ${this.limites.maxImagenesPorCarga} fotos a la vez (elegiste ${archivos.length}).`,
+      );
+      return;
+    }
     const nuevas: FotoPendiente[] = [];
     for (const archivo of archivos) {
       if (!this.limites.tiposImagen.includes(archivo.type)) {
@@ -397,11 +407,22 @@ export class PrendaForm implements OnInit, OnDestroy {
           this.aplicarPrenda(prenda);
           this.location.replaceState(`/vendedor/productos/${prenda.id}`);
         }
-        this.errorImagenes.set(
-          `La prenda se guardó, pero las fotos no se pudieron subir: ${procesarErrorApi(err)}`,
-        );
+        this.errorImagenes.set(this.mensajeErrorSubida(err));
       },
     });
+  }
+
+  /** Mensaje de subida según el fallo: tamaño, servicio caído u otro error. */
+  private mensajeErrorSubida(err: unknown): string {
+    const base = 'La prenda se guardó, pero las fotos no se pudieron subir';
+    const estado = (err as { status?: number } | null)?.status;
+    if (estado === 413) {
+      return `${base}: las fotos superan el tamaño permitido. Reduce el tamaño e inténtalo de nuevo.`;
+    }
+    if (estado === 502) {
+      return `${base}: el servicio de imágenes no responde. Reintenta en unos minutos.`;
+    }
+    return `${base}: ${procesarErrorApi(err)}`;
   }
 
   private finalizar(eraNueva: boolean): void {
@@ -417,6 +438,7 @@ export class PrendaForm implements OnInit, OnDestroy {
     return {
       nombre: v.nombre.trim(),
       categoria: v.categoria,
+      genero: v.genero,
       descripcion: texto(v.descripcion),
       marca: texto(v.marca),
       precio: Number(v.precio),

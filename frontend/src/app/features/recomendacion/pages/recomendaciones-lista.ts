@@ -35,7 +35,7 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
     } @else if (items().length === 0) {
       <div class="reco-state" role="status">
         @if (esSoloSinStock()) {
-          <p>Hay prendas en tu talla pero sin stock. Probá con otra talla.</p>
+          <p>Hay prendas en tu talla pero sin stock. Prueba con otra talla.</p>
         } @else {
           <p>No hay prendas compatibles: o el catálogo está vacío o todas fueron excluidas por alergia.</p>
         }
@@ -95,7 +95,7 @@ export class RecomendacionesLista implements OnInit {
           this.activo.sincronizar(ps);
           const primero = ps[0]?.id ?? null;
           this.perfilId.set(primero);
-          if (primero === null) { this.cargando.set(false); this.error.set('Creá un perfil primero.'); }
+          if (primero === null) { this.cargando.set(false); this.error.set('Crea un perfil primero.'); }
           else this.cargar(primero);
         },
         error: (e) => { this.error.set(procesarErrorApi(e)); this.cargando.set(false); },

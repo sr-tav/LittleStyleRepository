@@ -5,6 +5,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.Prenda
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ComponenteComposicion;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
@@ -103,6 +104,7 @@ public class PrendaService {
         prenda.setPrecio(r.precio());
         prenda.setStockMinimo(r.stockMinimo());
         prenda.setEstampado(r.estampado());
+        prenda.setGenero(r.genero() != null ? r.genero() : GeneroPrenda.UNISEX);
         prenda.setTintesSinteticos(Boolean.TRUE.equals(r.tintesSinteticos()));
         prenda.setBrochesMetalicos(Boolean.TRUE.equals(r.brochesMetalicos()));
         prenda.setContieneNiquel(Boolean.TRUE.equals(r.contieneNiquel()));

@@ -1,0 +1,202 @@
+<app-navbar />
+<main class="home">
+  <header class="home-welcome">
+    <p class="home-eyebrow">LittleStyle</p>
+    <h1>Hola, {{ auth.usuario()?.nombre }}</h1>
+    <p class="home-sub">Bienvenido de vuelta a LittleStyle</p>
+  </header>
+
+  <section class="hero" aria-label="Prendas destacadas" aria-roledescription="carrusel">
+    @if (destacadas().length > 0) {
+      <div class="hero-slide">
+        <img
+          [src]="destacadas()[slide()].imagenUrl"
+          [alt]="destacadas()[slide()].nombre"
+        />
+        <div class="hero-veil" aria-hidden="true"></div>
+        @if (destacadas().length > 1) {
+          <button
+            type="button" class="galeria-flecha galeria-flecha-atras"
+            aria-label="Imagen anterior" (click)="anteriorSlide()"
+          >‹</button>
+          <button
+            type="button" class="galeria-flecha galeria-flecha-siguiente"
+            aria-label="Imagen siguiente" (click)="siguienteSlide()"
+          >›</button>
+        }
+      </div>
+    }
+    <div class="hero-copy">
+      <p class="home-eyebrow">Ropa infantil</p>
+      <p class="hero-titulo">La talla perfecta para cada etapa</p>
+      <p>Recomendaciones según las medidas y alergias de tus hijos.</p>
+      <div class="hero-acciones">
+        <a class="btn-primary btn-inline" routerLink="/cliente/catalogo">Explorar catálogo</a>
+        <a
+          class="btn-ghost btn-inline"
+          [routerLink]="['/cliente/recomendaciones']"
+          [queryParams]="{ perfilId: perfilActivo()?.id }"
+          >Ver tallas sugeridas</a
+        >
+      </div>
+    </div>
+    @if (destacadas().length > 1) {
+      <div class="hero-puntos" role="tablist" aria-label="Elegir imagen">
+        @for (d of destacadas(); track d.id; let i = $index) {
+          <button
+            type="button" role="tab"
+            class="hero-punto" [class.is-activo]="slide() === i"
+            [attr.aria-selected]="slide() === i"
+            [attr.aria-label]="'Imagen ' + (i + 1)"
+            (click)="slide.set(i)"
+          ></button>
+        }
+      </div>
+    }
+  </section>
+
+  @if (cargando()) {
+    <section class="active-profile active-profile-skeleton" role="status">
+      <span class="home-skeleton-line"></span>
+      <span class="home-skeleton-line"></span>
+      <span class="home-skeleton-line"></span>
+    </section>
+  } @else if (error()) {
+    <p class="alert alert-error" role="alert">{{ error() }}</p>
+  } @else if (perfilActivo(); as perfil) {
+    <section class="active-profile">
+      <div class="active-profile-copy">
+        <p class="home-eyebrow">Perfil activo</p>
+        <h2>{{ perfil.nombre }}</h2>
+        <p>
+          {{ edad(perfil) }} ·
+          {{
+            perfil.ultimaMedicion
+              ? perfil.ultimaMedicion.estaturaCm + ' cm'
+              : 'Estatura sin registrar'
+          }}
+        </p>
+      </div>
+      <div class="active-profile-actions">
+        <a
+          class="btn-primary btn-inline"
+          routerLink="/cliente/hijos"
+          [queryParams]="{ modo: 'seleccionar' }"
+          >Cambiar perfil</a
+        >
+        <a
+          class="btn-ghost btn-inline"
+          [routerLink]="['/cliente/recomendaciones']"
+          [queryParams]="{ perfilId: perfilActivo()?.id }"
+          >Ver tallas sugeridas</a
+        >
+      </div>
+    </section>
+  } @else {
+    <section class="active-profile active-profile-empty">
+      <div>
+        <p class="home-eyebrow">Perfil activo</p>
+        <h2>Empieza creando su perfil</h2>
+        <p>Registra el perfil de tu hijo para organizar sus medidas y preferencias.</p>
+      </div>
+      <a class="btn-primary btn-inline" routerLink="/cliente/hijos/nuevo"
+        >Crear primer perfil</a
+      >
+    </section>
+  }
+
+  <section class="home-seccion" aria-label="Novedades">
+    <div class="home-seccion-head">
+      <h2>Novedades</h2>
+      <a class="link-button" routerLink="/cliente/catalogo">Ver catálogo →</a>
+    </div>
+    @if (novedades().length > 0) {
+      <ul class="reco-grid" aria-label="Productos recientes">
+        @for (item of novedades(); track item.id) {
+          <li>
+            <article class="reco-card">
+              <div class="reco-card-media">
+                <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
+              </div>
+              <div class="reco-card-body">
+                <h3 class="reco-card-title">{{ item.nombre }}</h3>
+                <p class="reco-price">{{ precio(item) }}</p>
+                <div class="reco-card-cta">
+                  <a
+                    class="btn-primary btn-inline btn-small"
+                    [routerLink]="['/cliente/catalogo', item.id]"
+                    [attr.aria-label]="'Ver detalle de ' + item.nombre"
+                    >Ver detalle</a
+                  >
+                </div>
+              </div>
+            </article>
+          </li>
+        }
+      </ul>
+      @if (paginaNovedades() < totalPaginasNovedades() - 1) {
+        <div class="home-cargar-mas">
+          <button
+            type="button" class="btn-ghost btn-inline"
+            [disabled]="cargandoMas()" (click)="cargarMas()"
+          >
+            @if (cargandoMas()) {
+              <span class="spinner spinner-dark"></span>
+            }
+            Cargar más
+          </button>
+        </div>
+      }
+    } @else {
+      <div class="reco-state" role="status">
+        <p>Todavía no hay productos publicados. Vuelve pronto.</p>
+      </div>
+    }
+  </section>
+
+  <nav class="home-grid" aria-label="Accesos rápidos">
+    <a class="home-tile" routerLink="/cliente/hijos">
+      <span class="home-tile-icon home-tile-icon-children">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </span>
+      <span class="home-tile-label">Mis hijos</span>
+    </a>
+    <a class="home-tile" routerLink="/cliente/catalogo">
+      <span class="home-tile-icon home-tile-icon-catalog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 7h12l1 14H5L6 7Z" />
+          <path d="M9 7a3 3 0 0 1 6 0" />
+        </svg>
+      </span>
+      <span class="home-tile-label">Catálogo</span>
+    </a>
+    <article class="home-tile home-tile-disabled" aria-disabled="true" title="Próximamente">
+      <span class="home-tile-icon home-tile-icon-orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m3 7 9-4 9 4-9 4-9-4Z" />
+          <path d="M3 7v10l9 4 9-4V7M12 11v10" />
+        </svg>
+      </span>
+      <span class="home-tile-label">Mis pedidos</span>
+    </article>
+    <article class="home-tile home-tile-disabled" aria-disabled="true" title="Próximamente">
+      <span class="home-tile-icon home-tile-icon-cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 8H6" />
+          <circle cx="10" cy="21" r="1" />
+          <circle cx="19" cy="21" r="1" />
+        </svg>
+      </span>
+      <span class="home-tile-label">Carrito</span>
+    </article>
+  </nav>
+</main>
+<app-footer />

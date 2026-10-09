@@ -7,6 +7,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.Compon
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ComponenteComposicion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
@@ -42,7 +43,7 @@ public final class CatalogoFixtures {
 
     public static PrendaRequest prendaRequest(List<ComponenteRequest> composicion, List<TallaRequest> tallas) {
         return new PrendaRequest("  Vestido Floral Rosa ", CategoriaPrenda.VESTIDOS, "Vestido de algodón", null,
-                new BigDecimal("45900"), 5, Set.of(ColorPreferido.ROSA), Estampado.FLORES,
+                new BigDecimal("45900"), 5, Set.of(ColorPreferido.ROSA), Estampado.FLORES, GeneroPrenda.NINA,
                 false, false, false, false, composicion, tallas);
     }
 

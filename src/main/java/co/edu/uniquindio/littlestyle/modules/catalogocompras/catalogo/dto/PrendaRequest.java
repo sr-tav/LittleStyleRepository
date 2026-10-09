@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import jakarta.validation.Valid;
@@ -51,6 +52,9 @@ public record PrendaRequest(
         Set<ColorPreferido> colores,
 
         Estampado estampado,
+
+        /** Opcional; sin valor se trata como unisex. */
+        GeneroPrenda genero,
 
         Boolean tintesSinteticos,
         Boolean brochesMetalicos,

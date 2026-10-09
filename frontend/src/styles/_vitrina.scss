@@ -1,0 +1,370 @@
+/* Exploración del catálogo del cliente (US-09). Solo vars de la paleta existente. */
+
+.vitrina-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.vitrina-filtros {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.25rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 18px;
+  background: var(--ls-surface);
+  box-shadow: var(--ls-shadow);
+
+  .field {
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+
+    > span {
+      color: var(--ls-muted);
+    }
+
+    select,
+    input {
+      width: 100%;
+      min-height: 42px;
+      padding: 0.5rem 0.7rem;
+      border: 1.5px solid var(--ls-border);
+      border-radius: 10px;
+      background: var(--ls-bg);
+      color: var(--ls-ink);
+      font: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: var(--ls-primary);
+        box-shadow: 0 0 0 4px var(--ls-primary-soft);
+      }
+    }
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .catalog-search {
+    margin-bottom: 0;
+  }
+}
+
+.vitrina-paginado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  color: var(--ls-muted);
+  font-size: 0.88rem;
+}
+
+.vitrina-seccion {
+  margin-top: 1.5rem;
+
+  h3 {
+    margin-bottom: 0.8rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  .detail-card {
+    display: grid;
+    gap: 0;
+  }
+
+  .detail-card > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--ls-border);
+  }
+
+  .detail-card > div:last-child {
+    border-bottom: 0;
+  }
+
+  dt {
+    color: var(--ls-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    text-align: right;
+  }
+}
+
+@media (max-width: 760px) {
+  .vitrina-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .vitrina-filtros {
+    position: static;
+  }
+}
+
+/* ---------- Detalle del producto: galería + info ---------- */
+.vitrina-detalle-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 2rem;
+  align-items: start;
+  padding: 1.5rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 22px;
+  background: var(--ls-surface);
+  box-shadow: var(--ls-shadow);
+}
+
+.galeria {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.galeria-thumbs {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 560px;
+  overflow-y: auto;
+  padding: 0.15rem;
+}
+
+.galeria-thumb {
+  width: 72px;
+  height: 88px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--ls-bg);
+  cursor: pointer;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:hover {
+    border-color: var(--ls-primary);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-primary-dark);
+    outline-offset: 2px;
+  }
+
+  &.is-activa {
+    border-color: var(--ls-primary-dark);
+  }
+}
+
+.galeria-viewer {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--ls-bg);
+
+  img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+  }
+
+  &:fullscreen {
+    border-radius: 0;
+    background: #000;
+
+    img {
+      aspect-ratio: auto;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .galeria-flecha,
+    .galeria-ampliar {
+      display: none;
+    }
+  }
+}
+
+.galeria-viewer-vacio {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+}
+
+.galeria-badge {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  background: #2563a8;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.galeria-flecha {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ls-ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+  box-shadow: var(--ls-shadow);
+
+  &:hover {
+    background: #fff;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+.galeria-flecha-atras {
+  left: 0.8rem;
+}
+
+.galeria-flecha-siguiente {
+  right: 0.8rem;
+}
+
+.galeria-contador {
+  position: absolute;
+  bottom: 0.9rem;
+  left: 50%;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(35, 49, 39, 0.65);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+
+.galeria-ampliar {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ls-ink);
+  font-size: 1.15rem;
+  cursor: pointer;
+  box-shadow: var(--ls-shadow);
+
+  &:hover {
+    background: #fff;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------- Ficha + medidas en dos columnas ---------- */
+.vitrina-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.vitrina-columnas .vitrina-seccion {
+  margin-top: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 22px;
+  background: var(--ls-surface);
+  box-shadow: var(--ls-shadow);
+}
+
+.tabla-medidas {
+  min-width: 0;
+
+  tbody tr.is-sugerida {
+    background: var(--ls-primary-soft);
+  }
+
+  tbody tr.is-sugerida td:first-child {
+    border-left: 4px solid var(--ls-primary-dark);
+  }
+
+  td .talla-badge {
+    margin-left: 0.5rem;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .vitrina-detalle-grid {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .vitrina-columnas {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .galeria {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .galeria-thumb {
+    width: 52px;
+    height: 64px;
+    border-radius: 10px;
+  }
+
+  .galeria-flecha {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tabla-medidas th,
+  .tabla-medidas td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.85rem;
+  }
+}

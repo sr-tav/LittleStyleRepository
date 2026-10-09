@@ -34,7 +34,7 @@ export class PrendaDetalleCliente implements OnInit {
     const pid = this.activo.perfil()?.id ?? null;
     this.perfilId.set(pid);
     if (!pid) {
-      this.error.set('Seleccioná un perfil primero.');
+      this.error.set('Selecciona un perfil primero.');
       this.cargando.set(false);
       return;
     }

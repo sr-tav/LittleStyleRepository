@@ -16,6 +16,18 @@
     </a>
   </header>
 
+  @if (mensaje(); as aviso) {
+    <div
+      class="alert"
+      [class.alert-success]="aviso.tipo === 'exito'"
+      [class.alert-warning]="aviso.tipo === 'alerta'"
+      [class.alert-error]="aviso.tipo === 'error'"
+      role="status"
+    >
+      {{ aviso.texto }}
+    </div>
+  }
+
   @if (error()) {
     <div class="alert alert-error" role="alert">
       {{ error() }}
@@ -34,6 +46,7 @@
     } @else {
       <div class="catalog-table-wrap">
         <table class="catalog-table inventory-table">
+          <caption class="visually-hidden">Inventario con existencias actuales, mínimo y estado por producto</caption>
           <thead>
             <tr>
               <th scope="col">Producto</th>
@@ -78,12 +91,16 @@
                             <label class="stock-editor-field">
                               <span>Talla {{ t.talla }}</span>
                               <input type="number" min="0" inputmode="numeric" [value]="t.stock ?? ''"
+                                [attr.aria-invalid]="errorEdicion() ? 'true' : null"
+                                aria-describedby="error-edicion"
                                 (input)="cambiarStock(i, $any($event.target).value)" />
                             </label>
                           }
                           <label class="stock-editor-field stock-editor-min">
                             <span>Stock mínimo</span>
                             <input type="number" min="0" inputmode="numeric" [value]="e.stockMinimo ?? ''"
+                              [attr.aria-invalid]="errorEdicion() ? 'true' : null"
+                              aria-describedby="error-edicion"
                               (input)="cambiarMinimo($any($event.target).value)" />
                           </label>
                         </div>
@@ -97,7 +114,7 @@
                           </div>
                         </div>
                         @if (errorEdicion()) {
-                          <p class="field-error" role="alert">{{ errorEdicion() }}</p>
+                          <p class="field-error" id="error-edicion" role="alert">{{ errorEdicion() }}</p>
                         }
                       </div>
                     </td>

@@ -1,4 +1,4 @@
-import { CategoriaPrenda, Componente, MaterialTextil, NivelStock } from './prenda.models';
+import { CategoriaPrenda, Componente, GeneroPrenda, MaterialTextil, NivelStock } from './prenda.models';
 
 export const ETIQUETAS_CATEGORIAS: Record<CategoriaPrenda, string> = {
   VESTIDOS: 'Vestidos',
@@ -42,6 +42,17 @@ export const ETIQUETAS_NIVEL: Record<NivelStock, string> = {
   STOCK_BAJO: 'Stock bajo',
   AGOTADO: 'Agotado',
 };
+
+export const ETIQUETAS_GENERO: Record<GeneroPrenda, string> = {
+  NINO: 'Niños',
+  NINA: 'Niñas',
+  UNISEX: 'Unisex',
+};
+
+export const OPCIONES_GENERO = Object.entries(ETIQUETAS_GENERO).map(([valor, etiqueta]) => ({
+  valor: valor as GeneroPrenda,
+  etiqueta,
+}));
 
 /** Mismos límites que el backend (PrendaRequest y AlmacenamientoProperties). */
 export const LIMITES_PRENDA = {

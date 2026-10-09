@@ -27,6 +27,7 @@ export type MaterialTextil =
 
 export type EstadoPrenda = 'ACTIVA' | 'INACTIVA';
 export type NivelStock = 'DISPONIBLE' | 'STOCK_BAJO' | 'AGOTADO';
+export type GeneroPrenda = 'NINO' | 'NINA' | 'UNISEX';
 
 export interface Componente {
   material: MaterialTextil;
@@ -53,6 +54,7 @@ export interface Prenda {
   id: number;
   nombre: string;
   categoria: CategoriaPrenda;
+  genero: GeneroPrenda | null;
   descripcion: string | null;
   marca: string | null;
   precio: number;
@@ -86,6 +88,7 @@ export interface TallaRequest {
 export interface PrendaRequest {
   nombre: string;
   categoria: CategoriaPrenda;
+  genero: GeneroPrenda | null;
   descripcion: string | null;
   marca: string | null;
   precio: number;

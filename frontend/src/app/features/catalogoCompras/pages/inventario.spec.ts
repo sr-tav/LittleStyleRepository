@@ -86,6 +86,25 @@ describe('Inventario (UI-21)', () => {
     expect(el.querySelector('.btn-alerts-count')).toBeNull();
   });
 
+  it('avisa cuando el guardado genera una alerta de stock', () => {
+    const { fixture, el } = crear();
+    el.querySelector<HTMLButtonElement>('.btn-soft')!.click();
+    fixture.detectChanges();
+
+    const entradas = el.querySelectorAll<HTMLInputElement>('.stock-editor input');
+    escribir(entradas[0], '0');
+    escribir(entradas[1], '0');
+    fixture.detectChanges();
+
+    el.querySelector<HTMLButtonElement>('.stock-editor .btn-primary')!.click();
+    const req = http.expectOne('/api/vendedor/inventario/7');
+    req.flush(crearItemInventario({ stockTotal: 0, stockMinimo: 5, nivel: 'AGOTADO' }));
+    http.expectOne('/api/vendedor/inventario/alertas').flush([crearAlerta()]);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="status"]')?.textContent).toContain('Agotado');
+  });
+
   it('no envía valores inválidos', () => {
     const { fixture, el } = crear();
     el.querySelector<HTMLButtonElement>('.btn-soft')!.click();

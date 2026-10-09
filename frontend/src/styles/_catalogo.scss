@@ -21,6 +21,12 @@
   border: 1px solid rgba(43, 125, 64, 0.25);
 }
 
+.alert-warning {
+  background: var(--ls-warning-soft);
+  color: var(--ls-warning);
+  border: 1px solid rgba(168, 106, 0, 0.25);
+}
+
 .spinner-dark {
   display: inline-block;
   border-color: var(--ls-border);

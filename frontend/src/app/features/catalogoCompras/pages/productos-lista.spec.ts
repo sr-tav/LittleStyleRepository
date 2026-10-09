@@ -39,21 +39,25 @@ describe('ProductosLista (UI-19)', () => {
     expect(fila.querySelector('img')?.getAttribute('src')).toBe('/media/prendas/7/a.png');
   });
 
-  it('filtra por nombre o categoría sin distinguir tildes', () => {
+  it('busca en el servidor por nombre o categoría sin distinguir tildes', () => {
     const { fixture, el } = crear();
-    http
-      .expectOne('/api/vendedor/prendas')
-      .flush([crearPrenda(), crearPrenda({ id: 8, nombre: 'Vestido Floral', categoria: 'VESTIDOS' })]);
+    http.expectOne('/api/vendedor/prendas').flush([crearPrenda()]);
     fixture.detectChanges();
 
     const buscador = el.querySelector<HTMLInputElement>('input[type="search"]')!;
     buscador.value = 'pantalon';
     buscador.dispatchEvent(new Event('input'));
+    http
+      .expectOne((peticion) => peticion.url === '/api/vendedor/prendas' && peticion.params.get('q') === 'pantalon')
+      .flush([crearPrenda()]);
     fixture.detectChanges();
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
 
     buscador.value = 'vestidos';
     buscador.dispatchEvent(new Event('input'));
+    http
+      .expectOne((peticion) => peticion.url === '/api/vendedor/prendas' && peticion.params.get('q') === 'vestidos')
+      .flush([crearPrenda({ id: 8, nombre: 'Vestido Floral', categoria: 'VESTIDOS' })]);
     fixture.detectChanges();
     expect(el.querySelector('tbody tr')?.textContent).toContain('Vestido Floral');
   });

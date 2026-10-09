@@ -52,8 +52,9 @@ import { InventarioService } from '../services/inventario.service';
               <dl class="alert-card-stats">
                 <div><dt>Actual</dt><dd class="stat-actual">{{ alerta.stockActual }}</dd></div>
                 <div><dt>Mínimo</dt><dd>{{ alerta.stockMinimo }}</dd></div>
-                <div><dt>Diferencia</dt><dd class="stat-diff">{{ alerta.diferencia }}</dd></div>
+                <div><dt>Diferencia</dt><dd class="stat-diff">{{ alerta.diferencia }} ({{ textoDiferencia(alerta) }})</dd></div>
               </dl>
+              <p class="product-meta">Emitida el {{ fechaEmision(alerta) }}</p>
               <p class="alert-card-message">
                 {{ alerta.nivel === 'AGOTADO' ? 'Sin stock para venta' : 'Requiere reabastecimiento' }}
               </p>
@@ -74,6 +75,18 @@ export class AlertasStock implements OnInit {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly categoria = (a: AlertaInventario) => ETIQUETAS_CATEGORIAS[a.categoria];
+
+  protected fechaEmision(a: AlertaInventario): string {
+    const fecha = new Date(a.fechaEmision);
+    return Number.isNaN(fecha.getTime())
+      ? a.fechaEmision
+      : fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  protected textoDiferencia(a: AlertaInventario): string {
+    if (a.diferencia === 0) return 'en el mínimo permitido';
+    return `te faltan ${-a.diferencia} para el mínimo`;
+  }
 
   ngOnInit(): void {
     this.cargar();

@@ -5,7 +5,7 @@ import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { NivelStockBadge } from '../components/nivel-stock-badge';
 import { PrendaMiniatura } from '../components/prenda-miniatura';
-import { ETIQUETAS_CATEGORIAS } from '../models/prenda-opciones';
+import { ETIQUETAS_CATEGORIAS, ETIQUETAS_NIVEL } from '../models/prenda-opciones';
 import { InventarioItem } from '../models/prenda.models';
 import { InventarioService } from '../services/inventario.service';
 
@@ -32,6 +32,8 @@ export class Inventario implements OnInit {
   protected readonly edicion = signal<Edicion | null>(null);
   protected readonly guardando = signal(false);
   protected readonly errorEdicion = signal<string | null>(null);
+  /** Aviso de lo que pasó con las alertas tras guardar (generada, resuelta o sin cambios). */
+  protected readonly mensaje = signal<{ tipo: 'exito' | 'alerta' | 'error'; texto: string } | null>(null);
 
   protected readonly categoria = (item: InventarioItem) => ETIQUETAS_CATEGORIAS[item.categoria];
 
@@ -62,7 +64,10 @@ export class Inventario implements OnInit {
   private contarAlertas(): void {
     this.inventarioService.alertas().subscribe({
       next: (alertas) => this.alertasActivas.set(alertas.length),
-      error: () => this.alertasActivas.set(0),
+      error: () => {
+        this.alertasActivas.set(0);
+        this.mensaje.set({ tipo: 'error', texto: 'No se pudo actualizar el contador de alertas.' });
+      },
     });
   }
 
@@ -102,8 +107,10 @@ export class Inventario implements OnInit {
       this.errorEdicion.set('Usa números enteros: stock entre 0 y 100000 y mínimo entre 0 y 10000.');
       return;
     }
+    const anterior = this.items().find((i) => i.prendaId === e.prendaId);
     this.guardando.set(true);
     this.errorEdicion.set(null);
+    this.mensaje.set(null);
     this.inventarioService
       .actualizarStock(e.prendaId, {
         tallas: e.tallas.map((t) => ({ talla: t.talla, stock: t.stock as number })),
@@ -114,6 +121,7 @@ export class Inventario implements OnInit {
           this.items.update((items) => items.map((i) => (i.prendaId === actualizado.prendaId ? actualizado : i)));
           this.guardando.set(false);
           this.edicion.set(null);
+          this.mensaje.set(this.avisoAlertas(anterior?.nivel ?? null, actualizado));
           this.contarAlertas();
         },
         error: (err) => {
@@ -121,6 +129,23 @@ export class Inventario implements OnInit {
           this.errorEdicion.set(procesarErrorApi(err));
         },
       });
+  }
+
+  /** Mensaje según lo que pasó con el nivel de stock tras guardar. */
+  private avisoAlertas(
+    nivelAnterior: InventarioItem['nivel'] | null,
+    actualizado: InventarioItem,
+  ): { tipo: 'exito' | 'alerta' | 'error'; texto: string } {
+    if (actualizado.nivel !== 'DISPONIBLE' && actualizado.nivel !== nivelAnterior) {
+      return {
+        tipo: 'alerta',
+        texto: `${actualizado.nombre} entró en ${ETIQUETAS_NIVEL[actualizado.nivel]}: actual ${actualizado.stockTotal}, mínimo ${actualizado.stockMinimo}.`,
+      };
+    }
+    if (actualizado.nivel === 'DISPONIBLE' && nivelAnterior !== null && nivelAnterior !== 'DISPONIBLE') {
+      return { tipo: 'exito', texto: `${actualizado.nombre} volvió a estar disponible.` };
+    }
+    return { tipo: 'exito', texto: `Stock de ${actualizado.nombre} actualizado.` };
   }
 }
 

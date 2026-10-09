@@ -45,6 +45,21 @@ export const routes: Routes = [
       import('./features/recomendacion/pages/recomendaciones-lista').then((m) => m.RecomendacionesLista),
   },
   {
+    path: 'cliente/catalogo',
+    title: 'Catálogo | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadComponent: () =>
+      import('./features/vitrina/pages/explorar').then((m) => m.Explorar),
+  },
+  {
+    path: 'cliente/catalogo/:id',
+    title: 'Detalle del producto | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadComponent: () => import('./features/vitrina/pages/detalle').then((m) => m.DetalleProducto),
+  },
+  {
     path: 'cliente',
     title: 'Inicio | LittleStyle',
     canActivate: [roleGuard],

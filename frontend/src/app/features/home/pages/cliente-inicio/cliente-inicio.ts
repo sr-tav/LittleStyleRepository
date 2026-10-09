@@ -1,130 +1,46 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../../core/services/auth.service';
+import { Footer } from '../../../../shared/components/footer/footer';
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../../auth/auth.validators';
+import { PrendaMiniatura } from '../../../catalogoCompras/components/prenda-miniatura';
+import { formatearPrecio } from '../../../catalogoCompras/models/prenda-opciones';
 import { PerfilInfantil } from '../../../perfilesInfantiles/models/perfil-infantil.models';
 import { PerfilActivoService } from '../../../perfilesInfantiles/services/perfil-activo.service';
 import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.service';
+import { Pagina, VitrinaItem } from '../../../vitrina/models/vitrina.models';
+import { VitrinaService } from '../../../vitrina/services/vitrina.service';
 
+const TAMANO_NOVEDADES = 8;
+
+/** Inicio del cliente con estilo e-commerce: carrusel, novedades y accesos. */
 @Component({
   selector: 'app-cliente-inicio',
-  imports: [Navbar, RouterLink],
-  template: `
-    <app-navbar />
-    <main class="home">
-      <header class="home-welcome">
-        <p class="home-eyebrow">LittleStyle</p>
-        <h1>Hola, {{ auth.usuario()?.nombre }}</h1>
-        <p class="home-sub">Bienvenido de vuelta a LittleStyle</p>
-      </header>
-
-      @if (cargando()) {
-        <section class="active-profile active-profile-skeleton" role="status">
-          <span class="home-skeleton-line"></span>
-          <span class="home-skeleton-line"></span>
-          <span class="home-skeleton-line"></span>
-        </section>
-      } @else if (error()) {
-        <p class="alert alert-error" role="alert">{{ error() }}</p>
-      } @else if (perfilActivo(); as perfil) {
-        <section class="active-profile">
-          <div class="active-profile-copy">
-            <p class="home-eyebrow">Perfil activo</p>
-            <h2>{{ perfil.nombre }}</h2>
-            <p>
-              {{ edad(perfil) }} ·
-              {{
-                perfil.ultimaMedicion
-                  ? perfil.ultimaMedicion.estaturaCm + ' cm'
-                  : 'Estatura sin registrar'
-              }}
-            </p>
-          </div>
-          <div class="active-profile-actions">
-            <a
-              class="btn-primary btn-inline"
-              routerLink="/cliente/hijos"
-              [queryParams]="{ modo: 'seleccionar' }"
-              >Cambiar perfil</a
-            >
-            <a
-              class="btn-ghost btn-inline"
-              [routerLink]="['/cliente/recomendaciones']"
-              [queryParams]="{ perfilId: perfilActivo()?.id }"
-              >Ver tallas sugeridas</a
-            >
-          </div>
-        </section>
-      } @else {
-        <section class="active-profile active-profile-empty">
-          <div>
-            <p class="home-eyebrow">Perfil activo</p>
-            <h2>Empieza creando su perfil</h2>
-            <p>Registra el perfil de tu hijo para organizar sus medidas y preferencias.</p>
-          </div>
-          <a class="btn-primary btn-inline" routerLink="/cliente/hijos/nuevo"
-            >Crear primer perfil</a
-          >
-        </section>
-      }
-
-      <nav class="home-grid" aria-label="Accesos rápidos">
-        <a class="home-tile" routerLink="/cliente/hijos">
-          <span class="home-tile-icon home-tile-icon-children">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </span>
-          <span class="home-tile-label">Mis hijos</span>
-        </a>
-        <article class="home-tile home-tile-disabled" aria-disabled="true" title="Próximamente">
-          <span class="home-tile-icon home-tile-icon-catalog">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M6 7h12l1 14H5L6 7Z" />
-              <path d="M9 7a3 3 0 0 1 6 0" />
-            </svg>
-          </span>
-          <span class="home-tile-label">Catálogo</span>
-        </article>
-        <article class="home-tile home-tile-disabled" aria-disabled="true" title="Próximamente">
-          <span class="home-tile-icon home-tile-icon-orders">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m3 7 9-4 9 4-9 4-9-4Z" />
-              <path d="M3 7v10l9 4 9-4V7M12 11v10" />
-            </svg>
-          </span>
-          <span class="home-tile-label">Mis pedidos</span>
-        </article>
-        <article class="home-tile home-tile-disabled" aria-disabled="true" title="Próximamente">
-          <span class="home-tile-icon home-tile-icon-cart">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 8H6" />
-              <circle cx="10" cy="21" r="1" />
-              <circle cx="19" cy="21" r="1" />
-            </svg>
-          </span>
-          <span class="home-tile-label">Carrito</span>
-        </article>
-      </nav>
-    </main>
-  `,
+  imports: [Navbar, RouterLink, PrendaMiniatura, Footer],
+  templateUrl: './cliente-inicio.html',
 })
-export class ClienteInicio implements OnInit {
+export class ClienteInicio implements OnInit, OnDestroy {
   protected readonly auth = inject(AuthService);
   private readonly perfilesService = inject(PerfilesService);
   private readonly perfilActivoService = inject(PerfilActivoService);
+  private readonly vitrina = inject(VitrinaService);
 
   protected readonly perfilActivo = this.perfilActivoService.perfil;
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+
+  protected readonly destacadas = signal<VitrinaItem[]>([]);
+  protected readonly slide = signal(0);
+  protected readonly novedades = signal<VitrinaItem[]>([]);
+  protected readonly paginaNovedades = signal(0);
+  protected readonly totalPaginasNovedades = signal(0);
+  protected readonly cargandoMas = signal(false);
+
+  protected readonly precio = (item: VitrinaItem) => formatearPrecio(item.precio);
+
+  private intervalo: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     this.perfilesService.listar().subscribe({
@@ -136,6 +52,59 @@ export class ClienteInicio implements OnInit {
         this.error.set(procesarErrorApi(err));
         this.cargando.set(false);
       },
+    });
+    this.cargarHero();
+    this.cargarNovedades();
+    this.intervalo = setInterval(() => this.siguienteSlide(), 6000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.intervalo !== null) clearInterval(this.intervalo);
+  }
+
+  protected anteriorSlide(): void {
+    const total = this.destacadas().length;
+    if (total > 1) this.slide.update((i) => (i - 1 + total) % total);
+  }
+
+  protected siguienteSlide(): void {
+    const total = this.destacadas().length;
+    if (total > 1) this.slide.update((i) => (i + 1) % total);
+  }
+
+  protected cargarMas(): void {
+    if (this.cargandoMas() || this.paginaNovedades() >= this.totalPaginasNovedades() - 1) return;
+    this.cargandoMas.set(true);
+    const siguiente = this.paginaNovedades() + 1;
+    this.vitrina.explorar({ pagina: siguiente, tamano: TAMANO_NOVEDADES, orden: 'novedades' }).subscribe({
+      next: (res: Pagina<VitrinaItem>) => {
+        this.novedades.update((actuales) => [...actuales, ...res.contenido]);
+        this.paginaNovedades.set(res.pagina);
+        this.totalPaginasNovedades.set(res.totalPaginas);
+        this.cargandoMas.set(false);
+      },
+      error: () => this.cargandoMas.set(false),
+    });
+  }
+
+  private cargarHero(): void {
+    this.vitrina.explorar({ pagina: 0, tamano: 10, orden: 'novedades' }).subscribe({
+      next: (res: Pagina<VitrinaItem>) => {
+        const conFoto = res.contenido.filter((item) => item.imagenUrl);
+        this.destacadas.set(conFoto.slice(0, 5));
+      },
+      error: () => this.destacadas.set([]),
+    });
+  }
+
+  private cargarNovedades(): void {
+    this.vitrina.explorar({ pagina: 0, tamano: TAMANO_NOVEDADES, orden: 'novedades' }).subscribe({
+      next: (res: Pagina<VitrinaItem>) => {
+        this.novedades.set(res.contenido);
+        this.paginaNovedades.set(res.pagina);
+        this.totalPaginasNovedades.set(res.totalPaginas);
+      },
+      error: () => this.novedades.set([]),
     });
   }
 

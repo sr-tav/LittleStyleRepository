@@ -28,9 +28,10 @@
         type="search"
         placeholder="Buscar producto..."
         [value]="busqueda()"
-        (input)="busqueda.set($any($event.target).value)"
+        (input)="alBuscar($any($event.target).value)"
       />
     </label>
+    <p class="visually-hidden" role="status">{{ filtradas().length }} productos encontrados</p>
 
     @if (cargando()) {
       <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando productos...</div>
@@ -44,6 +45,7 @@
     } @else {
       <div class="catalog-table-wrap">
         <table class="catalog-table">
+          <caption class="visually-hidden">Productos del catálogo con precio, existencias y estado</caption>
           <thead>
             <tr>
               <th scope="col">Producto</th>

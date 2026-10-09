@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
@@ -20,6 +21,7 @@ public record PrendaResponse(
         Long id,
         String nombre,
         CategoriaPrenda categoria,
+        GeneroPrenda genero,
         String descripcion,
         String marca,
         BigDecimal precio,
@@ -60,7 +62,7 @@ public record PrendaResponse(
     public static PrendaResponse from(Prenda p) {
         int stockTotal = p.stockTotal();
         return new PrendaResponse(
-                p.getId(), p.getNombre(), p.getCategoria(), p.getDescripcion(), p.getMarca(), p.getPrecio(),
+                p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getDescripcion(), p.getMarca(), p.getPrecio(),
                 p.getEstado(), p.getStockMinimo(), stockTotal, NivelStock.calcular(stockTotal, p.getStockMinimo()),
                 new TreeSet<>(p.getColores()), p.getEstampado(),
                 p.isTintesSinteticos(), p.isBrochesMetalicos(), p.isContieneNiquel(), p.isTratamientoFormaldehido(),

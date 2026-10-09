@@ -42,7 +42,10 @@ import java.util.Set;
 @Entity
 @Table(name = "prendas", indexes = {
         @Index(name = "idx_prendas_vendedor", columnList = "vendedor_id"),
-        @Index(name = "idx_prendas_estado", columnList = "estado")
+        @Index(name = "idx_prendas_estado", columnList = "estado"),
+        @Index(name = "idx_prendas_categoria", columnList = "categoria"),
+        @Index(name = "idx_prendas_precio", columnList = "precio"),
+        @Index(name = "idx_prendas_actualizacion", columnList = "fecha_actualizacion")
 })
 @Getter
 @Setter
@@ -65,6 +68,10 @@ public class Prenda {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CategoriaPrenda categoria;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private GeneroPrenda genero;
 
     @Column(length = 2000)
     private String descripcion;
