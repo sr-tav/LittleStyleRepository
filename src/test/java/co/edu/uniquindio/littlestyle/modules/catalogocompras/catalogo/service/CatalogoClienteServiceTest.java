@@ -47,6 +47,7 @@ class CatalogoClienteServiceTest {
         assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
         PrendaVitrinaResponse item = pagina.contenido().getFirst();
         assertThat(item.disponible()).isTrue();
+        assertThat(item.tallasDisponibles()).containsExactly("4");
         assertThat(item.precio()).isNotNull();
         ArgumentCaptor<Pageable> paginable = ArgumentCaptor.forClass(Pageable.class);
         verify(prendaRepository).buscarVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), eq("jogger"),

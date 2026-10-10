@@ -1,0 +1,227 @@
+<app-navbar />
+<main class="carrito-page checkout-page">
+  <header class="carrito-heading">
+    <div>
+      <p class="reco-eyebrow">Finaliza tu compra</p>
+      <h1>Coordinación del checkout</h1>
+    </div>
+    <a class="btn-ghost btn-inline" routerLink="/cliente/carrito">Volver al carrito</a>
+  </header>
+
+  <ol class="checkout-stepper" aria-label="Pasos de compra">
+    <li [class.is-activo]="paso() === 'informacion'" [attr.aria-current]="paso() === 'informacion' ? 'step' : null">
+      <span>1</span> Información de envío
+    </li>
+    <li [class.is-activo]="paso() === 'resumen'" [attr.aria-current]="paso() === 'resumen' ? 'step' : null">
+      <span>2</span> Resumen
+    </li>
+    <li class="checkout-step-pendiente" aria-disabled="true"><span>3</span> Pago</li>
+  </ol>
+
+  @if (error(); as mensaje) {
+    <p class="alert alert-error" role="alert">{{ mensaje }}</p>
+  }
+
+  @if (cargando()) {
+    <section class="carrito-vacio" role="status"><p>Cargando información de envío…</p></section>
+  } @else if (paso() === 'informacion') {
+    <form class="checkout-form" [formGroup]="form" (ngSubmit)="continuarAResumen()" novalidate>
+      <section class="checkout-panel">
+        <div>
+          <h2>Información de envío</h2>
+          <p>Indica a quién y dónde debemos entregar el pedido.</p>
+        </div>
+
+        @if (perfilNombre(); as nombre) {
+          <p class="checkout-perfil-activo">Usaremos tu perfil infantil activo: <strong>{{ nombre }}</strong>.</p>
+        } @else {
+          <p class="alert alert-info">
+            Para validar la compatibilidad de las prendas, primero crea un perfil infantil.
+            <a routerLink="/cliente/hijos/nuevo">Crear perfil</a>
+          </p>
+        }
+
+        @if (direccionGuardada(); as guardada) {
+          @if (!editandoDireccion()) {
+            <section class="checkout-direccion checkout-direccion-guardada" aria-label="Dirección guardada en tu cuenta">
+              <h3>Dirección guardada en tu cuenta</h3>
+              <p>{{ guardada.destinatario }}</p>
+              <p>{{ guardada.direccion }}</p>
+              @if (guardada.complemento) { <p>{{ guardada.complemento }}</p> }
+              @if (guardada.codigoPostal) { <p>Código postal: {{ guardada.codigoPostal }}</p> }
+              <p>{{ guardada.municipio }}{{ guardada.departamento ? ', ' + guardada.departamento : '' }}</p>
+              <p>{{ guardada.telefono }}</p>
+              <button
+                type="button" class="btn-primary btn-inline"
+                [disabled]="procesando() || carrito.items().length === 0 || perfilId() === null"
+                (click)="usarDireccionGuardada()"
+              >{{ procesando() ? 'Validando…' : 'Usar esta dirección y continuar' }}</button>
+              <button type="button" class="btn-ghost btn-inline" (click)="editarDireccion()">
+                Editar dirección
+              </button>
+            </section>
+          } @else {
+            <p class="alert alert-info">
+              Completa o edita los datos para actualizar la dirección asociada a tu cuenta.
+            </p>
+          }
+        }
+
+        @if (editandoDireccion()) {
+          <div class="field">
+            <label for="destinatario">Nombre del destinatario</label>
+            <input id="destinatario" type="text" formControlName="destinatario" autocomplete="name" />
+            @if (form.controls.destinatario.touched && form.controls.destinatario.invalid) {
+              <small class="field-error">Ingresa el destinatario (máximo 120 caracteres).</small>
+            }
+          </div>
+          <div class="field">
+            <label for="direccion">Dirección de entrega</label>
+            <input id="direccion" type="text" formControlName="direccion" autocomplete="street-address" />
+            @if (form.controls.direccion.touched && form.controls.direccion.invalid) {
+              <small class="field-error">Ingresa una dirección (máximo 200 caracteres).</small>
+            }
+          </div>
+          <div class="field">
+            <label for="complemento">Apartamento, piso, interior u otras indicaciones (opcional)</label>
+            <input
+              id="complemento" type="text" formControlName="complemento"
+              autocomplete="address-line2" maxlength="120"
+              placeholder="Apto. 302, torre 1"
+            />
+            @if (form.controls.complemento.touched && form.controls.complemento.invalid) {
+              <small class="field-error">El complemento no puede superar 120 caracteres.</small>
+            }
+          </div>
+          <div class="checkout-form-grid">
+            <div class="field">
+              <label for="codigoPostal">Código postal</label>
+              <input
+                id="codigoPostal" type="text" inputmode="numeric" maxlength="6"
+                autocomplete="postal-code" formControlName="codigoPostal"
+              />
+              @if (form.controls.codigoPostal.touched && form.controls.codigoPostal.invalid) {
+                <small class="field-error">Ingresa un código postal colombiano de 6 dígitos.</small>
+              }
+            </div>
+            <div class="field">
+              <label for="departamento">Departamento</label>
+              <select
+                id="departamento" autocomplete="address-level1" formControlName="departamento"
+                (change)="cambioDepartamento($event)"
+              >
+                <option value="">Selecciona un departamento</option>
+                @for (departamento of departamentos; track departamento) {
+                  <option [value]="departamento">{{ departamento }}</option>
+                }
+              </select>
+              @if (form.controls.departamento.touched && form.controls.departamento.invalid) {
+                <small class="field-error">Selecciona el departamento.</small>
+              }
+            </div>
+            <div class="field">
+              <label for="municipio">Municipio</label>
+              <select
+                id="municipio" autocomplete="address-level2" formControlName="municipio"
+                [attr.disabled]="departamentoSeleccionado() ? null : ''"
+              >
+                <option value="">Selecciona un municipio</option>
+                @for (municipio of municipios(); track municipio) {
+                  <option [value]="municipio">{{ municipio }}</option>
+                }
+              </select>
+              @if (form.controls.municipio.touched && form.controls.municipio.invalid) {
+                <small class="field-error">Selecciona el municipio.</small>
+              }
+            </div>
+            <div class="field">
+              <label for="telefono">Celular de contacto</label>
+              <input
+                id="telefono" type="tel" inputmode="numeric" autocomplete="tel"
+                maxlength="10" placeholder="3XXXXXXXXX" formControlName="telefono"
+              />
+              @if (form.controls.telefono.touched && form.controls.telefono.invalid) {
+                <small class="field-error">Ingresa un celular colombiano válido: 10 dígitos e inicia por 3.</small>
+              }
+            </div>
+          </div>
+          <button
+            type="submit" class="btn-primary btn-inline"
+            [disabled]="procesando() || carrito.items().length === 0 || perfilId() === null"
+          >{{ procesando() ? 'Guardando…' : 'Guardar dirección y continuar' }}</button>
+          @if (direccionGuardada()) {
+            <button
+              type="button" class="btn-ghost btn-inline"
+              [disabled]="procesando()"
+              (click)="cancelarEdicionDireccion()"
+            >Cancelar edición</button>
+          }
+        }
+      </section>
+    </form>
+  } @else if (resumen(); as compra) {
+    <div class="carrito-layout checkout-layout">
+      <section class="checkout-panel checkout-resumen-items" aria-label="Resumen de la compra">
+        <div>
+          <h2>Resumen de la compra</h2>
+        </div>
+        <ul>
+          @for (item of compra.items; track $index) {
+            <li>
+              <div>
+                <strong>{{ item.nombre }}</strong>
+                <p>Talla {{ item.talla }} · Cantidad {{ item.cantidad }}</p>
+                <p>{{ precio(item.precioUnitario) }} c/u</p>
+              </div>
+              <strong>{{ precio(item.subtotal) }}</strong>
+            </li>
+          }
+        </ul>
+        <section class="checkout-direccion" aria-label="Dirección de entrega">
+          <h3>Dirección de entrega</h3>
+          <p>{{ form.controls.destinatario.value }}</p>
+          <p>{{ form.controls.direccion.value }}</p>
+          @if (form.controls.complemento.value) { <p>{{ form.controls.complemento.value }}</p> }
+          <p>Código postal: {{ form.controls.codigoPostal.value }}</p>
+          <p>{{ form.controls.municipio.value }}, {{ form.controls.departamento.value }}</p>
+          <p>{{ form.controls.telefono.value }}</p>
+        </section>
+        @if (!pedido()) {
+          <button type="button" class="btn-ghost btn-inline" (click)="volverAInformacion()">
+            Editar información de envío
+          </button>
+        }
+      </section>
+
+      <aside class="carrito-resumen" aria-label="Totales de compra">
+        <h2>Totales</h2>
+        <div><span>Subtotal</span><strong>{{ precio(compra.subtotal) }}</strong></div>
+        <div><span>Envío</span><strong>{{ precio(compra.costoEnvio) }}</strong></div>
+        <div class="carrito-total"><span>Total</span><strong>{{ precio(compra.total) }}</strong></div>
+        <p>El total incluye únicamente productos y envío.</p>
+        @if (pedido(); as confirmado) {
+          <button
+            type="button" class="btn-primary" disabled
+            [attr.aria-label]="'Pago del pedido ' + confirmado.pedidoId"
+          >
+            Pagar
+          </button>
+        } @else {
+          @if (!stockDisponible()) {
+            <p class="alert alert-info" role="status">
+              Hay productos que ya no tienen disponibilidad suficiente.
+              <a routerLink="/cliente/carrito">Vuelve al carrito para ajustar las cantidades.</a>
+            </p>
+          }
+          <button
+            type="button" class="btn-primary"
+            [disabled]="procesando() || !stockDisponible()"
+            (click)="confirmarPedido()"
+          >
+            {{ procesando() ? 'Creando pedido…' : 'Confirmar pedido' }}
+          </button>
+        }
+      </aside>
+    </div>
+  }
+</main>

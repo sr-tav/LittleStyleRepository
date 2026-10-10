@@ -5,6 +5,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
+import { AccesoRapidoPrenda } from '../../catalogoCompras/components/acceso-rapido-prenda';
 import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatura';
 import {
   OPCIONES_CATEGORIAS,
@@ -29,7 +30,7 @@ const ORDENES = [
 /** US-09: exploración del catálogo con filtros laterales y paginado. */
 @Component({
   selector: 'app-explorar',
-  imports: [Navbar, RouterLink, PrendaMiniatura],
+  imports: [Navbar, RouterLink, PrendaMiniatura, AccesoRapidoPrenda],
   templateUrl: './explorar.html',
 })
 export class Explorar {

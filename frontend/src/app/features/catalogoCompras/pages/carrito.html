@@ -1,0 +1,105 @@
+<app-navbar />
+<main class="carrito-page">
+  <header class="carrito-heading">
+    <div>
+      <p class="reco-eyebrow">Tu compra</p>
+      <h1>Carrito de compras</h1>
+      <p class="carrito-subtitulo">
+        {{ carrito.cantidad() }} {{ carrito.cantidad() === 1 ? 'producto' : 'productos' }}
+      </p>
+    </div>
+    <a class="btn-ghost btn-inline" routerLink="/cliente/catalogo">Seguir comprando</a>
+  </header>
+
+  @if (error(); as mensaje) {
+    <p class="alert alert-error" role="alert">{{ mensaje }}</p>
+  } @else if (carrito.error(); as mensaje) {
+    <p class="alert alert-error" role="alert">{{ mensaje }}</p>
+    <button type="button" class="btn-ghost" (click)="recargar()">Reintentar</button>
+  }
+
+  @if (carrito.cargando() && carrito.items().length === 0) {
+    <section class="carrito-vacio" role="status"><p>Cargando carrito…</p></section>
+  } @else if (carrito.items().length === 0) {
+    <section class="carrito-vacio">
+      <h2>Tu carrito está vacío</h2>
+      <p>Explora el catálogo y agrega las prendas que te gustan.</p>
+      <a class="btn-primary btn-inline" routerLink="/cliente/catalogo">Explorar catálogo</a>
+    </section>
+  } @else {
+    <div class="carrito-layout">
+      <section class="carrito-items" aria-label="Productos en el carrito">
+        @for (item of carrito.items(); track item.id) {
+          <article class="carrito-item">
+            @if (item.imagenUrl) {
+              <img class="carrito-item-imagen" [src]="item.imagenUrl" [alt]="item.nombre" />
+            } @else {
+              <div class="carrito-item-imagen carrito-item-sin-imagen" aria-hidden="true">LS</div>
+            }
+            <div class="carrito-item-info">
+              <h2>{{ item.nombre }}</h2>
+              <p>Talla {{ item.talla }}</p>
+              <p>{{ precio(item.precioUnitario) }}</p>
+              @if (!item.disponible) {
+                <p class="alert alert-error" role="status">
+                  En este momento no hay unidades suficientes para la cantidad seleccionada. Ajusta la cantidad o elimina la prenda.
+                </p>
+              }
+            </div>
+            <div class="carrito-item-acciones">
+              <div class="carrito-cantidad" aria-label="Cambiar cantidad">
+                <button
+                  type="button" class="btn-ghost"
+                  [attr.aria-label]="'Disminuir cantidad de ' + item.nombre"
+                  [disabled]="cambioPendiente() !== null"
+                  (click)="disminuirCantidad(item)"
+                >−</button>
+                <span aria-live="polite">{{ item.cantidad }}</span>
+                <button
+                  type="button" class="btn-ghost"
+                  [attr.aria-label]="'Aumentar cantidad de ' + item.nombre"
+                  [disabled]="!item.disponible || cambioPendiente() !== null"
+                  (click)="cambiarCantidad(item, item.cantidad + 1)"
+                >+</button>
+              </div>
+              <strong>{{ precio(item.subtotal) }}</strong>
+              <button
+                type="button" class="link-button"
+                [disabled]="cambioPendiente() !== null"
+                (click)="quitar(item)"
+              >Eliminar</button>
+            </div>
+          </article>
+        }
+      </section>
+
+      <aside class="carrito-resumen" aria-label="Resumen del carrito">
+        <h2>Resumen</h2>
+        <div><span>Subtotal</span><strong>{{ precio(carrito.subtotal()) }}</strong></div>
+        @if (carrito.costoEnvio() === null) {
+          <div><span>Envío</span><strong>Ingresa la dirección de envío</strong></div>
+          <div class="carrito-total"><span>Total</span><strong>Por calcular</strong></div>
+          <p>El costo de envío se calcula según el departamento y municipio en el checkout.</p>
+        } @else if (carrito.costoEnvio() !== null && carrito.total() !== null) {
+          <div><span>Envío</span><strong>{{ precio(carrito.costoEnvio() ?? 0) }}</strong></div>
+          <div class="carrito-total"><span>Total</span><strong>{{ precio(carrito.total() ?? 0) }}</strong></div>
+          <p>El total incluye únicamente productos y envío.</p>
+        }
+        <p class="carrito-no-reservados">
+          <span aria-hidden="true">!</span>
+          Los artículos no están reservados. ¡No los dejes escapar!
+        </p>
+        <button
+          type="button" class="btn-primary"
+          [disabled]="!checkoutDisponible()"
+          (click)="continuarCheckout()"
+        >Continuar compra</button>
+        <button
+          type="button" class="btn-ghost carrito-vaciar"
+          [disabled]="cambioPendiente() !== null"
+          (click)="vaciar()"
+        >Vaciar carrito</button>
+      </aside>
+    </div>
+  }
+</main>

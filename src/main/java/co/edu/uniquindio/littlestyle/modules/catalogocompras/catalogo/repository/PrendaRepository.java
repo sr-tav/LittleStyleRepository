@@ -70,4 +70,9 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
 
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     Optional<Prenda> findByIdAndEstado(Long id, EstadoPrenda estado);
+
+    @EntityGraph(attributePaths = "tallas")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Prenda p where p.id = :id and p.estado = :estado")
+    Optional<Prenda> bloquearPorIdYEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
 }
