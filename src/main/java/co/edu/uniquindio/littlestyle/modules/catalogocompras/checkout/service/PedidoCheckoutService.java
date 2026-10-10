@@ -5,6 +5,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.Carrito
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.ItemCarritoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.service.CarritoService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.CrearPedidoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionEnvioRequest;
@@ -53,7 +54,7 @@ public class PedidoCheckoutService {
         }
         if (carrito.items().stream().anyMatch(item -> !item.disponible())) {
             throw new BusinessException(HttpStatus.CONFLICT,
-                    "Una o más prendas ya no tienen unidades suficientes; actualiza el carrito antes de confirmar",
+                    "Lo sentimos, ya no quedan unidades disponibles para una o más prendas del carrito.",
                     "items");
         }
         carrito.items().stream().map(ItemCarritoResponse::prendaId).distinct().sorted()

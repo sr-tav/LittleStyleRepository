@@ -6,7 +6,7 @@ US-10 pertenece al Proceso 2 de LittleStyle: gestión del catálogo, compras, pe
 
 El pago, las interfaces UI-13/UI-14/UI-15, Wompi, las confirmaciones del proveedor y su webhook están fuera de US-10. No se implementan impuestos, descuentos ni cupones. El total de la compra se compone únicamente del subtotal de productos más el costo de envío.
 
-**Estado documentado:** KAN-187 a KAN-191 implementados. El carrito y el pedido pendiente no reservan ni descuentan stock; la disponibilidad usa las existencias físicas actuales. El resultado actualizado de las pruebas se registra en `casos-de-prueba.md`.
+**Estado documentado:** KAN-187 a KAN-191 implementados. Ni el carrito ni la creación del pedido descuentan o reservan stock. La lógica backend para confirmar el pago bloquea el pedido y las prendas, valida todas las líneas antes de descontar, cambia el estado a `PAGADO` si hay existencias y devuelve el detalle de prendas/tallas insuficientes si no las hay; en ese caso cancela el pedido sin descuento parcial. Esa lógica todavía no está conectada al endpoint/webhook de una pasarela ni a una interfaz, integración que corresponde a US-11. Los pedidos pendientes vencidos se cancelan sin modificar existencias. El resultado de las pruebas se registra en `casos-de-prueba.md`.
 
 ## Actor e historia de usuario
 
@@ -28,7 +28,7 @@ Las rutas de cliente requieren autenticación y el rol `CLIENTE`. Un recurso de 
 | ADR-15 | Facade coordina validación y cálculo del checkout. |
 | ADR-13 | Contratos de entrada y respuesta mediante DTOs. |
 | ADR-17 | Seguridad aplicada por las rutas `/api/cliente/**`. |
-| US-11 / ADR-14 | Pago y descuento definitivo de existencias después de pago aprobado; fuera de esta historia. |
+| US-11 / ADR-14 | Integración de pago y pasarela. El descuento de stock se ejecuta únicamente al aprobarse el pago; la integración HTTP y su interfaz pertenecen a US-11. |
 
 ## Reglas funcionales
 
@@ -43,7 +43,7 @@ Las rutas de cliente requieren autenticación y el rol `CLIENTE`. Un recurso de 
 - La evaluación de alergias reutiliza `FiltroAlergia` y sus reglas de exclusión compartidas con recomendaciones. Una evaluación marcada `EXCLUIDA` impide resumir la prenda; una advertencia no la excluye. Las reglas textiles se mantienen en `FiltroAlergiaEstandar`.
 - `subtotal` es la suma de precio unitario por cantidad. En checkout `total = subtotal + costoEnvio`, con tarifa determinada por departamento y municipio; no hay otros conceptos.
 - La respuesta lleva líneas de producto, talla, cantidad, precio unitario, subtotal de línea, subtotal general, envío y total.
-- Esta validación no reserva ni descuenta unidades. El carrito y el pedido pendiente no apartan stock; US-11 revalidará y descontará de forma atómica al aprobar el pago.
+- Esta validación no reserva ni descuenta unidades. El carrito y el pedido pendiente no apartan stock; el descuento atómico se realiza al aprobar el pago para impedir que dos clientes obtengan las mismas unidades.
 
 **SUPUESTO aislado/configurable:** se conserva el cargo de envío por pedido acordado para el checkout: Armenia `$7.000`; Buenavista, Calarcá, Circasia, Córdoba, Filandia, Génova, La Tebaida, Montenegro, Pijao, Quimbaya y Salento (Quindío) `$10.000`; los demás destinos `$15.000`. La lista de municipios de la tarifa intermedia es configurable y su valor predeterminado corresponde a esos once municipios. Esta es una tabla comercial simplificada de LittleStyle, no una tarifa calculada en tiempo real ni una reproducción exacta de las tarifas de Inter Rapidísimo o Servientrega. Se configura mediante `app.checkout.costo-envio-armenia`, `app.checkout.costo-envio-quindio`, `app.checkout.costo-envio-otras-ciudades` (variables `CHECKOUT_COSTO_ENVIO_ARMENIA`, `CHECKOUT_COSTO_ENVIO_QUINDIO`, `CHECKOUT_COSTO_ENVIO_OTRAS_CIUDADES`) y `app.checkout.municipios-quindio` / `CHECKOUT_MUNICIPIOS_QUINDIO`. Antes de conocer la dirección, el carrito muestra que envío y total están pendientes de calcular; con carrito vacío ambos son cero.
 
@@ -84,7 +84,7 @@ El carrito se abre como panel lateral desde el ícono de la barra superior y aut
 
 ### KAN-189 — Disponibilidad basada en stock físico
 
-No se generan reservas temporales al agregar, cambiar o eliminar líneas ni al crear un pedido `PENDIENTE_PAGO`. El stock disponible mostrado es el stock físico registrado para la talla; las cantidades de otros carritos/pedidos pendientes no se restan. Si el stock físico baja por debajo de una cantidad ya guardada, el carrito conserva la línea y presenta el aviso de disponibilidad insuficiente, bloquea el aumento de cantidad y permite disminuir o eliminar el artículo. Checkout vuelve a validar el stock antes de crear el pedido. El aviso “Los artículos no están reservados. ¡No los dejes escapar!” se presenta en el panel lateral y en la página del carrito.
+No se generan reservas al agregar, cambiar o eliminar líneas del carrito ni al crear un pedido pendiente. Al confirmar una aprobación de pago, el servicio backend bloquea el pedido y las prendas en orden estable, valida todas las cantidades y descuenta el stock en la misma transacción solo si todas las líneas están disponibles. Si dos pagos compiten por las últimas unidades, solo el primero que confirma con stock disponible lo obtiene; el siguiente obtiene un resultado `STOCK_INSUFICIENTE`, con nombre, talla, cantidad solicitada y stock disponible, y su pedido se cancela sin descontar ninguna otra línea. Las líneas de carrito de otros clientes no apartan stock y se marcan no disponibles cuando ya no alcanzan las existencias. El aviso “Los artículos no están reservados. ¡No los dejes escapar!” se presenta en el panel lateral y en la página del carrito. La conexión de este servicio con la confirmación verificada de la pasarela y la interfaz que informe al cliente corresponden a US-11. Si el proveedor ya cobró cuando se detecta falta de stock, US-11 debe ejecutar el reembolso antes de ofrecer retomar la compra; el pedido cancelado no se puede reabrir.
 
 **Decisión funcional:** no existe un plazo de reserva en US-10. Columnas de vencimiento heredadas de la implementación anterior pueden permanecer físicamente en bases de datos existentes, pero dejan de mapearse y no afectan la disponibilidad; su eliminación requiere una migración posterior no destructiva.
 
@@ -94,19 +94,17 @@ UI-11 en `/cliente/checkout` permite usar o editar la dirección guardada para l
 
 El catálogo de ubicaciones es estático y local, derivado de `RafaelRamosR/dane-codigos-municipios` (datos DANE publicados en 2023, licencia MIT); su atribución y licencia se conservan junto al código fuente en `frontend/src/app/features/catalogoCompras/data/LICENSE-municipios-colombia.txt`. La interfaz no depende de un servicio externo para cargar departamentos o municipios.
 
-UI-12 muestra líneas del resumen (producto, talla, cantidad, precio unitario/subtotal), dirección, subtotal, tarifa de envío correspondiente al departamento y municipio y total. El costo de envío se calcula una vez por pedido, independientemente del número de prendas. El stepper es “Información de envío → Resumen → Pago”. Antes de confirmar se puede regresar a editar dirección. “Confirmar pedido” persiste el snapshot de dirección, perfil, líneas y totales y devuelve el identificador, estado y datos requeridos por la futura coordinación de US-11. Después de confirmarlo, en el bloque de totales solo se muestra el botón de pago deshabilitado como placeholder; se omiten allí los textos adicionales sobre estado y disponibilidad futura del pago. US-10 no inicia pago ni integra Wompi.
+UI-12 muestra líneas del resumen (producto, talla, cantidad, precio unitario/subtotal), dirección, subtotal, tarifa de envío correspondiente al departamento y municipio y total. El costo de envío se calcula una vez por pedido, independientemente del número de prendas. El stepper es “Información de envío → Resumen → Pago”. Antes de confirmar se puede regresar a editar dirección. “Confirmar pedido” persiste el snapshot de dirección, perfil, líneas y totales y devuelve el identificador, estado y datos que consumirá US-11. Durante la solicitud el botón se deshabilita para evitar confirmaciones repetidas. Al crearse el pedido, la pantalla muestra una confirmación accesible con su número y el estado pendiente de pago. La acción “Pagar” permanece deshabilitada hasta integrar el flujo de pago de US-11; US-10 no inicia pagos ni integra Wompi.
 
-**SUPUESTOS aislados:** se conserva el cargo de envío simplificado por zona que se describe en KAN-187; la comparación puntual con transportadoras y sus límites están registrados en la sección “Revisión de tarifas con transportadoras”. Se mantiene una sola dirección editable por cuenta, sin libreta de varias direcciones ni campo específico para barrio. El código postal es obligatorio y debe tener seis dígitos numéricos, conforme al formato colombiano. El pedido conserva snapshots cifrados de dirección y detalle de producto para que cambios posteriores del catálogo, del perfil o de la dirección guardada no alteren el pedido confirmado. Al confirmar, las líneas salen del carrito, pero no se reserva stock. US-11 debe revalidar y descontar stock de forma atómica al aprobar el pago; si no alcanza, debe cancelar el pedido y gestionar el reembolso. No se recoge ni procesa información de pago en US-10.
+Si al confirmar el servidor detecta que el stock cambió, el checkout actualiza el carrito e identifica por nombre y talla cada prenda agotada. El cliente puede seguir comprando o confirmar explícitamente el pedido sin esas prendas; en ese caso se quitan del carrito, se recalculan los totales y solo se crea el pedido si aún quedan artículos disponibles.
 
-### Política de pago y estados pendientes (supuesto explícito)
+**SUPUESTOS aislados:** se conserva el cargo de envío simplificado por zona que se describe en KAN-187; la comparación puntual con transportadoras y sus límites están registrados en la sección “Revisión de tarifas con transportadoras”. Se mantiene una sola dirección editable por cuenta, sin libreta de varias direcciones ni campo específico para barrio. El código postal es obligatorio y debe tener seis dígitos numéricos, conforme al formato colombiano. El pedido conserva snapshots cifrados de dirección y detalle de producto para que cambios posteriores del catálogo, del perfil o de la dirección guardada no alteren el pedido confirmado. Al crear el pedido, las líneas salen del carrito, pero no se reservan ni descuentan unidades. El descuento ocurre al aprobar el pago; si el pedido se cancela o vence antes del pago, no hay stock que reponer. No se recoge ni procesa información de pago en US-10.
 
-Se documenta como política funcional de esta historia y como deuda de reconciliación para US-11/US-12:
+### Ciclo de vida del pedido
 
-- El estado `PENDIENTE_PAGO` ya está implementado en el pedido y en la API de checkout: se usa como resultado del `POST /api/cliente/checkout/pedidos` y se entrega al inicio del flujo de pago de US-11.
-- No hay reservas al agregar al carrito ni al confirmar el pedido. US-11 debe revalidar y descontar el stock de forma atómica al aprobar la transacción; sin stock suficiente, no debe aprobar la compra y debe gestionar cancelación/reembolso.
-- La cancelación de un pedido que jamás se paga queda fuera de US-10, pero debe existir un plazo de pago configurable y un proceso de expiración/cancelación en la siguiente historia o en su definición de negocio. Si no existe job o cron, la regla debe documentarse como deuda explícita de US-11 o US-12.
-- Dos o más clientes pueden tener en sus carritos la misma disponibilidad física aparente. No se garantiza inventario para pedidos pendientes; la carrera de pagos debe resolverse de forma atómica en US-11.
-- El estado `PENDIENTE_PAGO` no aparece en la Definición del proyecto actual; se incluye aquí como supuesto y debe ser reconciliado en la definición de estados del pedido por US-12.
+El pedido se crea como `PENDIENTE_PAGO`. El modelo limita las transiciones a `PENDIENTE_PAGO → PAGADO → EN_PREPARACION → ENVIADO → ENTREGADO`; se permite pasar a `CANCELADO` desde `PENDIENTE_PAGO`, `PAGADO` o `EN_PREPARACION`. `ENTREGADO` y `CANCELADO` son estados terminales. Las transiciones inválidas responden HTTP 409. El checkout responde inicialmente `PENDIENTE_PAGO`; la integración de pago y las acciones para avanzar pedidos se implementan en las historias correspondientes.
+
+El carrito y los pedidos `PENDIENTE_PAGO` no reservan inventario. La lógica backend de pago descuenta el stock atómicamente solo después de validar que todas las líneas están disponibles. Si el pedido sigue `PENDIENTE_PAGO` durante 30 minutos, un proceso programado lo cambia a `CANCELADO`; no se restituyen unidades porque no se habían descontado. El plazo se configura con `app.checkout.tiempo-expiracion-pedido` (`CHECKOUT_TIEMPO_EXPIRACION_PEDIDO`). La integración de esa lógica con el endpoint de pago, la pasarela y la notificación al cliente pertenece a US-11.
 - Los datos personales de entrega (destinatario, dirección, complemento, código postal, departamento, municipio y teléfono) se cifran en la base de datos en la dirección guardada y en el snapshot del pedido, mediante el convertidor AES-GCM versionado existente y la clave de `app.crypto.perfil-key`. Las filas históricas creadas antes de este cambio en claro se leen por compatibilidad, pero requieren migración operativa para cifrarse en almacenamiento; no se afirma que se haya migrado información histórica productiva.
 - La dirección predeterminada de la cuenta se persiste en `direcciones_cliente` y solo se consulta/actualiza con la identidad autenticada del cliente. Al desactivar la cuenta se elimina esa dirección guardada; los snapshots de pedidos históricos tienen ciclo de conservación independiente y requieren política de retención.
 
@@ -124,7 +122,7 @@ El endpoint HTTP del resumen invoca el Facade y valida la solicitud con Bean Val
 | `PedidoCreadoResponse` | `pedidoId`, `estado` (`PENDIENTE_PAGO`), perfil, dirección, líneas confirmadas, subtotales y total. |
 | `GET /api/cliente/checkout/direccion` | Devuelve la dirección guardada del cliente autenticado o `guardada=false`; no acepta IDs de otros clientes. |
 | `PUT /api/cliente/checkout/direccion` | Crea o actualiza la única dirección asociada a la cuenta autenticada, incluyendo complemento opcional. |
-| `POST /api/cliente/checkout/pedidos` | Crea el pedido pendiente sin reservar ni descontar stock; responde 201 con los datos que podrá consumir US-11. No inicia el pago. |
+| `POST /api/cliente/checkout/pedidos` | Crea el pedido `PENDIENTE_PAGO` sin reservar ni descontar stock y responde 201 con los datos que consumirá US-11. No inicia el pago. |
 
 ## Estado y límites del flujo
 
@@ -132,10 +130,10 @@ El endpoint HTTP del resumen invoca el Facade y valida la solicitud con Bean Val
 |---|---|
 | KAN-187, resumen | Valida el perfil, compatibilidad de alergias, existencia de producto/talla y stock físico actual; calcula valores. No persiste pedido, reserva ni descuenta stock. |
 | KAN-188, carrito | Carrito persistido por cliente; servicios y página cubiertos por pruebas unitarias, Vitest e integración de propiedad. |
-| KAN-189, disponibilidad | No reserva unidades; compara cada línea con stock físico actual y refleja la falta de existencias en el carrito. US-11 manejará el descuento atómico al aprobar el pago. |
-| KAN-190, dirección/resumen/pedido | UI-11/12 y endpoint de resumen; “Confirmar pedido” crea el pedido pendiente sin afectar stock. El botón de pago permanece deshabilitado. |
+| KAN-189, disponibilidad | El carrito y el pedido pendiente no reservan unidades; se comparan las líneas con stock físico actual. El stock se descuenta atómicamente al aprobar el pago; esa operación está implementada en el servicio backend, pero todavía no está expuesta por un endpoint de cliente. |
+| KAN-190, dirección/resumen/pedido | UI-11/12 y endpoint de resumen; “Confirmar pedido” crea el pedido pendiente sin afectar stock. El botón de pago permanece deshabilitado hasta integrar US-11. |
 | KAN-191, pruebas | Pruebas unitarias del Facade y disponibilidad, integración de seguridad/propiedad/stock y Vitest de servicios y páginas; ver resultado actualizado en `casos-de-prueba.md`. |
-| US-11 | Consume los datos del pedido pendiente para iniciar el pago; procesa pago y descuento definitivo tras aprobación. No forma parte de US-10. |
+| US-11 | Consume los datos del pedido pendiente para iniciar y confirmar el pago. Debe conectar la pasarela con la validación/descuento de stock ya preparada en backend y mostrar el aviso de falta de existencias, con opciones para continuar sin las prendas agotadas o volver al catálogo. No forma parte del alcance de US-10. |
 
 ## Archivos y estado de pruebas
 

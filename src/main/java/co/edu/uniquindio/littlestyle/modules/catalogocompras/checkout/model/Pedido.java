@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model;
 
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.repository.converter.TextoLegadoCifradoConverter;
+import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -17,11 +18,13 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -50,6 +53,7 @@ public class Pedido {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
+    @Setter(AccessLevel.NONE)
     private EstadoPedido estado;
 
     @Convert(converter = TextoLegadoCifradoConverter.class)
@@ -100,5 +104,13 @@ public class Pedido {
     public void agregar(LineaPedido item) {
         items.add(item);
         item.setPedido(this);
+    }
+
+    public void transicionarA(EstadoPedido siguiente) {
+        if (estado == null || siguiente == null || !estado.permiteTransicionA(siguiente)) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el pedido de " + estado + " a " + siguiente);
+        }
+        estado = siguiente;
     }
 }

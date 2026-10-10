@@ -1,11 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   FormBuilder,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { concatMap, forkJoin, from, last, switchMap, tap } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
@@ -39,6 +40,9 @@ export class CheckoutPage implements OnInit {
   protected readonly paso = signal<'informacion' | 'resumen'>('informacion');
   protected readonly resumen = signal<ResumenCheckout | null>(null);
   protected readonly pedido = signal<PedidoCreado | null>(null);
+  protected readonly conflictoStock = signal(false);
+  protected readonly prendasAgotadas = signal<{ id: number; nombre: string; talla: string }[]>([]);
+  protected readonly carritoVacioPorStock = signal(false);
   protected readonly cargando = signal(true);
   protected readonly procesando = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -219,6 +223,63 @@ export class CheckoutPage implements OnInit {
     this.resumen.set(null);
   }
 
+  protected continuarSinPrendasAgotadas(): void {
+    if (this.procesando()) return;
+    const agotadas = this.carrito.items().filter((item) => !item.disponible);
+    const perfilInfantilId = this.perfilId();
+    if (agotadas.length === 0 || perfilInfantilId === null) return;
+
+    this.procesando.set(true);
+    this.error.set(null);
+    this.prendasAgotadas.set(agotadas.map(({ id, nombre, talla }) => ({ id, nombre, talla })));
+    from(agotadas).pipe(
+      concatMap((item) => this.carrito.quitar(item.id)),
+      last(),
+      switchMap((carrito) => {
+        if (carrito.items.length === 0) {
+          return from([]);
+        }
+        return this.checkoutService.calcularResumen({
+          perfilInfantilId,
+          direccion: this.direccionFormulario(),
+        }).pipe(
+          tap((resumen) => this.resumen.set(resumen)),
+          switchMap(() => this.checkoutService.crearPedido({
+            perfilInfantilId,
+            direccion: this.direccionFormulario(),
+          })),
+        );
+      }),
+    ).subscribe({
+      next: (pedido) => {
+        this.pedido.set(pedido);
+        this.conflictoStock.set(false);
+        this.prendasAgotadas.set([]);
+        this.carritoVacioPorStock.set(false);
+        this.procesando.set(false);
+        this.carrito.cargar().subscribe({
+          error: (error: unknown) => this.error.set(procesarErrorApi(error)),
+        });
+      },
+      complete: () => {
+        if (this.carrito.items().length === 0 && !this.pedido()) {
+          this.resumen.set(null);
+          this.carritoVacioPorStock.set(true);
+          this.conflictoStock.set(false);
+          this.procesando.set(false);
+        }
+      },
+      error: (error: unknown) => {
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+          this.actualizarCarritoTrasConflicto(error);
+          return;
+        }
+        this.error.set(procesarErrorApi(error));
+        this.procesando.set(false);
+      },
+    });
+  }
+
   protected confirmarPedido(): void {
     if (this.procesando() || this.pedido() || this.resumen() === null) return;
     const perfilInfantilId = this.perfilId();
@@ -240,7 +301,28 @@ export class CheckoutPage implements OnInit {
         });
       },
       error: (error: unknown) => {
-        this.error.set(procesarErrorApi(error));
+        if (!(error instanceof HttpErrorResponse) || error.status !== 409) {
+          this.error.set(procesarErrorApi(error));
+          this.procesando.set(false);
+          return;
+        }
+        this.actualizarCarritoTrasConflicto(error);
+      },
+    });
+  }
+
+  private actualizarCarritoTrasConflicto(error: HttpErrorResponse): void {
+    this.carrito.cargar().subscribe({
+      next: (carrito) => {
+        const agotadas = carrito.items.filter((item) => !item.disponible);
+        this.conflictoStock.set(agotadas.length > 0);
+        this.prendasAgotadas.set(agotadas.map(({ id, nombre, talla }) => ({ id, nombre, talla })));
+        this.carritoVacioPorStock.set(false);
+        this.error.set(agotadas.length > 0 ? null : procesarErrorApi(error));
+        this.procesando.set(false);
+      },
+      error: (errorCarga: unknown) => {
+        this.error.set(procesarErrorApi(errorCarga));
         this.procesando.set(false);
       },
     });

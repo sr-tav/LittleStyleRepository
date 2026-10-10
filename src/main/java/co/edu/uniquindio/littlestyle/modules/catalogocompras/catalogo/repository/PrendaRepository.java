@@ -75,4 +75,9 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Prenda p where p.id = :id and p.estado = :estado")
     Optional<Prenda> bloquearPorIdYEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
+
+    @EntityGraph(attributePaths = {"tallas", "vendedor"})
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Prenda p where p.id = :id")
+    Optional<Prenda> bloquearPorId(@Param("id") Long id);
 }

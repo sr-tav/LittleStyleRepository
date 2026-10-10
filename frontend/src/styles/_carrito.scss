@@ -615,6 +615,51 @@
   }
 }
 
+.checkout-pedido-confirmado {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border: 1px solid var(--ls-primary-dark);
+  border-radius: 12px;
+  background: var(--ls-primary-soft);
+
+  h3 {
+    font-size: 1.05rem;
+  }
+
+  p {
+    color: var(--ls-text);
+    font-size: 0.9rem;
+  }
+}
+
+.checkout-stock-conflicto,
+.checkout-stock-vacio {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.checkout-stock-conflicto {
+  padding: 1rem;
+  border: 1px solid var(--ls-error);
+  border-radius: 12px;
+  background: var(--ls-surface);
+
+  h3 {
+    color: var(--ls-error);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+}
+
+.checkout-stock-vacio ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
 .checkout-direccion-guardada {
   gap: 0.55rem;
 

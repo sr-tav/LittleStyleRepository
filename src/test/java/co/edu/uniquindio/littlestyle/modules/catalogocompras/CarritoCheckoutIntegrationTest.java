@@ -10,7 +10,13 @@ import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DireccionClienteRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoExpiracionService;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoPagoService;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.ResultadoConfirmacionPago;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,6 +58,12 @@ class CarritoCheckoutIntegrationTest {
     private PrendaRepository prendaRepository;
     @Autowired
     private DireccionClienteRepository direccionClienteRepository;
+    @Autowired
+    private PedidoRepository pedidoRepository;
+    @Autowired
+    private PedidoExpiracionService pedidoExpiracionService;
+    @Autowired
+    private PedidoPagoService pedidoPagoService;
     @Autowired
     private EntityManager entityManager;
 
@@ -250,7 +262,7 @@ class CarritoCheckoutIntegrationTest {
     }
 
     @Test
-    void creaPedidoPendienteSinDescontarNiReservarStock() throws Exception {
+    void creaPedidoPendienteSinDescontarStockYExpiraSinRestituirlo() throws Exception {
         String vendedor = registrar("pedido-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
         String clienteUno = registrar("pedido-cliente-a-" + System.nanoTime() + "@correo.com", "CLIENTE");
         String clienteDos = registrar("pedido-cliente-b-" + System.nanoTime() + "@correo.com", "CLIENTE");
@@ -263,7 +275,7 @@ class CarritoCheckoutIntegrationTest {
                         .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2}"))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/cliente/checkout/pedidos")
+        String pedidoJson = mockMvc.perform(post("/api/cliente/checkout/pedidos")
                         .header("Authorization", clienteUno)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -280,7 +292,8 @@ class CarritoCheckoutIntegrationTest {
                 .andExpect(jsonPath("$.direccion.complemento").value("Apto 302"))
                 .andExpect(jsonPath("$.direccion.codigoPostal").value("630001"))
                 .andExpect(jsonPath("$.direccion.departamento").value("Quindío"))
-                .andExpect(jsonPath("$.direccion.municipio").value("Armenia"));
+                .andExpect(jsonPath("$.direccion.municipio").value("Armenia"))
+                .andReturn().getResponse().getContentAsString();
 
         mockMvc.perform(get("/api/cliente/carrito").header("Authorization", clienteUno))
                 .andExpect(status().isOk())
@@ -292,6 +305,90 @@ class CarritoCheckoutIntegrationTest {
                         .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].disponible").value(true));
+
+        Number pedidoIdNumero = JsonPath.read(pedidoJson, "$.pedidoId");
+        long pedidoId = pedidoIdNumero.longValue();
+        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow();
+        pedido.setFechaCreacion(pedido.getFechaCreacion().minusMinutes(31));
+        pedidoRepository.saveAndFlush(pedido);
+
+        assertThat(pedidoExpiracionService.cancelarPedidosVencidos()).isEqualTo(1);
+        assertThat(pedidoRepository.findById(pedidoId).orElseThrow().getEstado())
+                .isEqualTo(EstadoPedido.CANCELADO);
+        assertThat(stockTalla(prendaId)).isEqualTo(8);
+        assertThat(pedidoExpiracionService.cancelarPedidosVencidos()).isZero();
+        assertThat(stockTalla(prendaId)).isEqualTo(8);
+    }
+
+    @Test
+    void primerPagoTomaElStockYElSegundoPedidoSeCancelaPorFaltaDeExistencias() throws Exception {
+        String vendedor = registrar("checkout-stock-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String clienteUno = registrar("checkout-stock-cliente-a-" + System.nanoTime() + "@correo.com", "CLIENTE");
+        String clienteDos = registrar("checkout-stock-cliente-b-" + System.nanoTime() + "@correo.com", "CLIENTE");
+        int prendaId = crearPrenda(vendedor);
+        int prendaDisponibleId = crearPrenda(vendedor);
+        int perfilUno = JsonPath.read(agregarPerfil(clienteUno), "$.id");
+        int perfilDos = JsonPath.read(agregarPerfil(clienteDos), "$.id");
+
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", clienteUno)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", clienteDos)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", clienteDos)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaDisponibleId + ",\"talla\":\"4\",\"cantidad\":2}"))
+                .andExpect(status().isOk());
+
+        String checkoutUno = """
+                {"perfilInfantilId":%d,
+                 "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "complemento":"Apto 302","codigoPostal":"630001",
+                 "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
+                """.formatted(perfilUno);
+        String checkoutDos = checkoutUno.replace(
+                "\"perfilInfantilId\":" + perfilUno, "\"perfilInfantilId\":" + perfilDos);
+
+        String pedidoUnoJson = mockMvc.perform(post("/api/cliente/checkout/pedidos")
+                        .header("Authorization", clienteUno)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(checkoutUno))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String pedidoDosJson = mockMvc.perform(post("/api/cliente/checkout/pedidos")
+                        .header("Authorization", clienteDos)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(checkoutDos))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(stockTalla(prendaId)).isEqualTo(8);
+
+        long pedidoUnoId = ((Number) JsonPath.read(pedidoUnoJson, "$.pedidoId")).longValue();
+        long pedidoDosId = ((Number) JsonPath.read(pedidoDosJson, "$.pedidoId")).longValue();
+        ResultadoConfirmacionPago resultadoPrimero = pedidoPagoService.confirmarPago(pedidoUnoId);
+        assertThat(resultadoPrimero.estado()).isEqualTo(ResultadoConfirmacionPago.Estado.CONFIRMADO);
+        assertThat(resultadoPrimero.prendasAgotadas()).isEmpty();
+        assertThat(stockTalla(prendaId)).isZero();
+        ResultadoConfirmacionPago resultadoSegundo = pedidoPagoService.confirmarPago(pedidoDosId);
+        assertThat(resultadoSegundo.estado()).isEqualTo(ResultadoConfirmacionPago.Estado.STOCK_INSUFICIENTE);
+        assertThat(resultadoSegundo.prendasAgotadas()).singleElement().satisfies(prenda -> {
+            assertThat(prenda.nombre()).isEqualTo("Pantalón Jogger Azul");
+            assertThat(prenda.talla()).isEqualTo("4");
+            assertThat(prenda.cantidadSolicitada()).isEqualTo(8);
+            assertThat(prenda.stockDisponible()).isZero();
+        });
+        assertThat(pedidoRepository.findById(pedidoUnoId).orElseThrow().getEstado())
+                .isEqualTo(EstadoPedido.PAGADO);
+        assertThat(pedidoRepository.findById(pedidoDosId).orElseThrow().getEstado())
+                .isEqualTo(EstadoPedido.CANCELADO);
+        assertThat(stockTalla(prendaId)).isZero();
+        assertThat(stockTalla(prendaDisponibleId)).isEqualTo(8);
     }
 
     private String registrar(String email, String rol) throws Exception {

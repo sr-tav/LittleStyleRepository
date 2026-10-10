@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { Observable, of, Subject, throwError } from 'rxjs';
 
-import { DireccionEnvio } from '../models/checkout.models';
+import { Carrito, ItemCarrito } from '../models/carrito.models';
+import { DireccionEnvio, PedidoCreado } from '../models/checkout.models';
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
@@ -41,6 +43,15 @@ describe('CheckoutPage', () => {
     subtotal: 65800,
     disponible: true,
   };
+  let carritoItems: ItemCarrito[] = [];
+  const carritoMock = {
+    items: vi.fn(() => carritoItems),
+    cargar: vi.fn((): Observable<Carrito> => of(carritoRespuesta())),
+    quitar: vi.fn((itemId: number): Observable<Carrito> => {
+      carritoItems = carritoItems.filter((linea) => linea.id !== itemId);
+      return of(carritoRespuesta());
+    }),
+  };
   const checkout = {
     calcularResumen: vi.fn(() => of({
       perfilInfantilId: 3,
@@ -61,7 +72,7 @@ describe('CheckoutPage', () => {
       direccion: null as DireccionEnvio | null,
     })),
     guardarDireccion: vi.fn((direccion: DireccionEnvio) => of({ guardada: true, direccion })),
-    crearPedido: vi.fn(() => of({
+    crearPedido: vi.fn((): Observable<PedidoCreado> => of({
       pedidoId: 55,
       estado: 'PENDIENTE_PAGO' as const,
       perfilInfantilId: 3,
@@ -82,6 +93,10 @@ describe('CheckoutPage', () => {
   };
 
   beforeEach(async () => {
+    carritoItems = [item];
+    carritoMock.items.mockImplementation(() => carritoItems);
+    carritoMock.cargar.mockImplementation(() => of(carritoRespuesta()));
+    carritoMock.quitar.mockClear();
     checkout.calcularResumen.mockClear();
     checkout.obtenerDireccion.mockReset().mockReturnValue(of({
       guardada: false,
@@ -94,7 +109,7 @@ describe('CheckoutPage', () => {
       imports: [CheckoutPage],
       providers: [
         provideRouter([]),
-        { provide: CarritoService, useValue: { items: () => [item], cargar: () => of({ items: [] }) } },
+        { provide: CarritoService, useValue: carritoMock },
         { provide: CheckoutService, useValue: checkout },
         { provide: PerfilesService, useValue: { listar: () => of([perfil]) } },
       ],
@@ -103,6 +118,26 @@ describe('CheckoutPage', () => {
   });
 
   it('usa el perfil activo sin pedir seleccionarlo y presenta UI-12 con el pago deshabilitado', () => {
+    const pedidoCreado = {
+      pedidoId: 55,
+      estado: 'PENDIENTE_PAGO' as const,
+      perfilInfantilId: 3,
+      direccion: {
+        destinatario: 'Ana Ruiz',
+        direccion: 'Calle 1 # 2-3',
+        complemento: null,
+        codigoPostal: '630001',
+        departamento: 'Quindío',
+        municipio: 'Armenia',
+        telefono: '3001234567',
+      },
+      items: [],
+      subtotal: 65800,
+      costoEnvio: 7000,
+      total: 72800,
+    } satisfies PedidoCreado;
+    const respuestaPedido = new Subject<PedidoCreado>();
+    checkout.crearPedido.mockReturnValue(respuestaPedido);
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
@@ -172,8 +207,13 @@ describe('CheckoutPage', () => {
     expect(root.querySelector<HTMLButtonElement>('.carrito-resumen button:not([disabled])')?.textContent)
       .toContain('Confirmar pedido');
 
-    root.querySelector<HTMLButtonElement>('.carrito-resumen button:not([disabled])')?.click();
+    const botonConfirmar = root.querySelector<HTMLButtonElement>('.carrito-resumen button:not([disabled])');
+    botonConfirmar?.click();
+    botonConfirmar?.click();
+    expect(checkout.crearPedido).toHaveBeenCalledTimes(1);
     fixture.detectChanges();
+    expect(botonConfirmar?.disabled).toBe(true);
+    expect(botonConfirmar?.textContent).toContain('Creando pedido…');
     expect(checkout.crearPedido).toHaveBeenCalledWith({
       perfilInfantilId: 3,
       direccion: {
@@ -186,12 +226,18 @@ describe('CheckoutPage', () => {
         telefono: '3001234567',
       },
     });
+    respuestaPedido.next(pedidoCreado);
+    respuestaPedido.complete();
+    fixture.detectChanges();
     expect(root.textContent).not.toContain('creado y pendiente de pago');
+    expect(root.textContent).toContain('¡Pedido creado!');
+    expect(root.textContent).toContain('Número de pedido: #55');
+    expect(root.textContent).toContain('Estado: Pendiente de pago');
+    expect(root.textContent).not.toContain('El pago estará disponible próximamente.');
     const botonPago = root.querySelector<HTMLButtonElement>('.carrito-resumen button[disabled]');
     expect(botonPago?.textContent)
       .toContain('Pagar');
     expect(root.querySelector('.carrito-resumen .checkout-pago-nota')).toBeNull();
-    expect(root.querySelector('#pago-pendiente')).toBeNull();
     expect(root.querySelectorAll('.carrito-resumen button')).toHaveLength(1);
   });
 
@@ -224,6 +270,78 @@ describe('CheckoutPage', () => {
     expect(root.querySelector<HTMLInputElement>('#complemento')?.value).toBe('Apto. 302');
   });
 
+  it('identifica la prenda agotada y permite confirmar las demás o seguir comprando', () => {
+    const pantalonAgotado: ItemCarrito = { ...item, nombre: 'Pantalón de lino', disponible: false };
+    const pantalonDisponibleAlInicio: ItemCarrito = { ...pantalonAgotado, disponible: true };
+    const camisetaDisponible: ItemCarrito = {
+      ...item,
+      id: 11,
+      prendaId: 21,
+      nombre: 'Camiseta de algodón',
+      disponible: true,
+    };
+    carritoItems = [pantalonDisponibleAlInicio, camisetaDisponible];
+    carritoMock.items.mockImplementation(() => carritoItems);
+    carritoMock.cargar.mockImplementationOnce(() => {
+      carritoItems = [pantalonAgotado, camisetaDisponible];
+      return of(carritoRespuesta());
+    });
+    checkout.obtenerDireccion.mockReturnValue(of({
+      guardada: true,
+      direccion: {
+        destinatario: 'Ana Ruiz',
+        direccion: 'Calle 1 # 2-3',
+        complemento: null,
+        codigoPostal: '630001',
+        departamento: 'Quindío',
+        municipio: 'Armenia',
+        telefono: '3001234567',
+      },
+    }));
+    checkout.crearPedido
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409 })))
+      .mockReturnValueOnce(of({
+        pedidoId: 56,
+        estado: 'PENDIENTE_PAGO',
+        perfilInfantilId: 3,
+        direccion: {
+          destinatario: 'Ana Ruiz',
+          direccion: 'Calle 1 # 2-3',
+          complemento: null,
+          codigoPostal: '630001',
+          departamento: 'Quindío',
+          municipio: 'Armenia',
+          telefono: '3001234567',
+        },
+        items: [],
+        subtotal: 65800,
+        costoEnvio: 7000,
+        total: 72800,
+      }));
+
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    root.querySelector<HTMLButtonElement>('.checkout-direccion-guardada button')?.click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('.carrito-resumen button:not([disabled])')?.click();
+    fixture.detectChanges();
+
+    expect(root.textContent).toContain('Pantalón de lino');
+    expect(root.textContent).toContain('¿Quieres confirmar el pedido sin estas prendas o prefieres seguir comprando?');
+    expect(root.querySelector<HTMLAnchorElement>('.checkout-stock-conflicto a')?.textContent)
+      .toContain('Seguir comprando');
+
+    root.querySelector<HTMLButtonElement>('.checkout-stock-conflicto button')?.click();
+    fixture.detectChanges();
+    expect(carritoMock.quitar).toHaveBeenCalledWith(pantalonAgotado.id);
+    expect(carritoItems.map((linea) => linea.nombre)).toEqual(['Camiseta de algodón']);
+    expect(checkout.crearPedido).toHaveBeenCalledTimes(2);
+    expect(root.textContent).toContain('¡Pedido creado!');
+    expect(root.textContent).toContain('#56');
+    expect(root.textContent).not.toContain('Pantalón de lino');
+  });
+
   it('filtra municipios por departamento y limpia la selección anterior al cambiarlo', () => {
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
@@ -248,4 +366,14 @@ describe('CheckoutPage', () => {
     expect(Array.from(municipio.options).map((option) => option.value)).toContain('Medellín');
     expect(Array.from(municipio.options).map((option) => option.value)).not.toContain('Calarcá');
   });
+
+  function carritoRespuesta(): Carrito {
+    return {
+      items: [...carritoMock.items()],
+      cantidad: carritoItems.reduce((total, linea) => total + linea.cantidad, 0),
+      subtotal: carritoItems.reduce((total, linea) => total + linea.subtotal, 0),
+      costoEnvio: null,
+      total: null,
+    };
+  }
 });

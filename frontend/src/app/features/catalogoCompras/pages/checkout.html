@@ -24,6 +24,17 @@
 
   @if (cargando()) {
     <section class="carrito-vacio" role="status"><p>Cargando información de envío…</p></section>
+  } @else if (carritoVacioPorStock()) {
+    <section class="checkout-panel checkout-stock-vacio" role="alert">
+      <h2>No hay productos disponibles para confirmar</h2>
+      <p>Estas prendas ya no tienen unidades disponibles:</p>
+      <ul>
+        @for (prenda of prendasAgotadas(); track prenda.id + prenda.talla) {
+          <li><strong>{{ prenda.nombre }}</strong> · talla {{ prenda.talla }}</li>
+        }
+      </ul>
+      <a class="btn-primary btn-inline" routerLink="/cliente/catalogo">Seguir comprando</a>
+    </section>
   } @else if (paso() === 'informacion') {
     <form class="checkout-form" [formGroup]="form" (ngSubmit)="continuarAResumen()" novalidate>
       <section class="checkout-panel">
@@ -200,13 +211,38 @@
         <div class="carrito-total"><span>Total</span><strong>{{ precio(compra.total) }}</strong></div>
         <p>El total incluye únicamente productos y envío.</p>
         @if (pedido(); as confirmado) {
+          <section class="checkout-pedido-confirmado" role="status" aria-live="polite">
+            <h3>¡Pedido creado!</h3>
+            <p>Número de pedido: <strong>#{{ confirmado.pedidoId }}</strong></p>
+            <p>Estado: <strong>Pendiente de pago</strong></p>
+          </section>
           <button
             type="button" class="btn-primary" disabled
-            [attr.aria-label]="'Pago del pedido ' + confirmado.pedidoId"
+            [attr.aria-label]="'Pagar pedido ' + confirmado.pedidoId"
           >
             Pagar
           </button>
         } @else {
+          @if (conflictoStock()) {
+            <section class="checkout-stock-conflicto" role="alert">
+              <h3>Algunas prendas se agotaron</h3>
+              <p>Lo sentimos, estas prendas ya no tienen unidades disponibles:</p>
+              <ul>
+                @for (prenda of prendasAgotadas(); track prenda.id + prenda.talla) {
+                  <li><strong>{{ prenda.nombre }}</strong> · talla {{ prenda.talla }}</li>
+                }
+              </ul>
+              <p>¿Quieres confirmar el pedido sin estas prendas o prefieres seguir comprando?</p>
+              <button
+                type="button" class="btn-primary"
+                [disabled]="procesando()"
+                (click)="continuarSinPrendasAgotadas()"
+              >
+                {{ procesando() ? 'Actualizando pedido…' : 'Confirmar sin estas prendas' }}
+              </button>
+              <a class="btn-ghost btn-inline" routerLink="/cliente/catalogo">Seguir comprando</a>
+            </section>
+          } @else {
           @if (!stockDisponible()) {
             <p class="alert alert-info" role="status">
               Hay productos que ya no tienen disponibilidad suficiente.
@@ -220,6 +256,7 @@
           >
             {{ procesando() ? 'Creando pedido…' : 'Confirmar pedido' }}
           </button>
+          }
         }
       </aside>
     </div>

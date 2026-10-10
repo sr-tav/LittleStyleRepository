@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 
 @Validated
@@ -23,12 +24,16 @@ public record CheckoutProperties(
         @DefaultValue({
                 "CALARCA", "CIRCASIA", "CORDOBA", "FILANDIA", "GENOVA", "LA TEBAIDA",
                 "MONTENEGRO", "PIJAO", "QUIMBAYA", "SALENTO", "BUENAVISTA"
-        })
-        List<String> municipiosQuindio
+        }) List<String> municipiosQuindio,
+        @DefaultValue("PT30M") Duration tiempoExpiracionPedido
 ) {
     public CheckoutProperties {
         municipiosQuindio = municipiosQuindio == null
                 ? List.of()
                 : municipiosQuindio.stream().map(String::trim).map(String::toUpperCase).toList();
+        if (tiempoExpiracionPedido == null || tiempoExpiracionPedido.isZero()
+                || tiempoExpiracionPedido.isNegative()) {
+            throw new IllegalArgumentException("El tiempo de expiración de pedidos debe ser positivo");
+        }
     }
 }
