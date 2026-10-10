@@ -7,6 +7,7 @@ export interface VitrinaItem {
   precio: number;
   imagenUrl: string | null;
   disponible: boolean;
+  tallasDisponibles: string[];
 }
 
 export interface VitrinaTalla {

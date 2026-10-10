@@ -8,11 +8,12 @@ import { TallaSugerida} from '../components/talla-sugerida';
 import { RecomendacionItem } from '../models/recomendacion.models';
 import { RecomendacionService } from '../services/recomendacion.service';
 import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatura';
+import { AccesoRapidoPrenda } from '../../catalogoCompras/components/acceso-rapido-prenda';
 import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
 
 @Component({
   selector: 'app-recomendaciones-lista',
-  imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura],
+  imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura, AccesoRapidoPrenda],
   template: `
   <app-navbar />
   <main class="reco-page">
@@ -47,6 +48,12 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
             <article class="reco-card">
               <div class="reco-card-media">
                 <app-prenda-miniatura [url]="r.imagenUrl" [nombre]="r.nombre" />
+                <app-acceso-rapido-prenda
+                  [prendaId]="r.prendaId"
+                  [nombre]="r.nombre"
+                  [disponible]="r.tieneStock"
+                  [tallasDisponibles]="r.tieneStock ? [r.tallaSugerida] : []"
+                />
               </div>
               <div class="reco-card-body">
                 <h2 class="reco-card-title">{{ r.nombre }}</h2>
@@ -59,7 +66,7 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
                   <span class="reco-score-track" aria-hidden="true"><span [style.width.%]="r.puntaje"></span></span>
                 </p>
                 <div class="reco-card-cta">
-                  <a class="btn-primary btn-inline btn-small" [routerLink]="['/cliente/prendas', r.prendaId]" [queryParams]="{ perfilId: perfilId() }" [attr.aria-label]="'Ver detalle de ' + r.nombre">Ver detalle</a>
+                  <a class="btn-primary btn-inline btn-small" [routerLink]="['/cliente/prendas', r.prendaId]" [queryParams]="{ perfilId: perfilId() }" [attr.aria-label]="'Ver ' + r.nombre">Ver</a>
                 </div>
               </div>
             </article>

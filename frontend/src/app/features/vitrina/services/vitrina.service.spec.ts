@@ -31,6 +31,7 @@ describe('VitrinaService (US-09)', () => {
           precio: 32900,
           imagenUrl: '/media/a.png',
           disponible: true,
+          tallasDisponibles: ['4', '6'],
         },
       ],
       pagina: 0,
