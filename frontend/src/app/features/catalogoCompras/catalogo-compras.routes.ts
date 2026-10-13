@@ -8,6 +8,14 @@ export const CARRITO_ROUTES: Routes = [
   },
 ];
 
+export const PAGO_RESULTADO_ROUTES: Routes = [
+  {
+    path: '',
+    title: 'Resultado del pago | LittleStyle',
+    loadComponent: () => import('./pages/pago-resultado').then((m) => m.PagoResultadoPage),
+  },
+];
+
 export const CHECKOUT_ROUTES: Routes = [
   {
     path: '',

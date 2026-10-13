@@ -36,6 +36,13 @@ export const routes: Routes = [
       import('./features/catalogoCompras/catalogo-compras.routes').then((m) => m.CHECKOUT_ROUTES),
   },
   {
+    path: 'cliente/pago/resultado',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadChildren: () =>
+      import('./features/catalogoCompras/catalogo-compras.routes').then((m) => m.PAGO_RESULTADO_ROUTES),
+  },
+  {
     path: 'cliente/carrito',
     canActivate: [roleGuard],
     data: { roles: ['CLIENTE'] },

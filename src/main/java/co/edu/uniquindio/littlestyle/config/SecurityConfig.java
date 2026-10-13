@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.config.security.JwtService;
 import co.edu.uniquindio.littlestyle.config.security.RestAccessDeniedHandler;
 import co.edu.uniquindio.littlestyle.config.security.RestAuthenticationEntryPoint;
 import co.edu.uniquindio.littlestyle.modules.auth.service.EstadoCuentaService;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.controller.WompiWebhookController;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -65,6 +66,8 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll();
                     auth.requestMatchers("/error").permitAll();
+                    // Webhook de Wompi (US-11): sin JWT, se autentica verificando la firma SHA-256 del evento
+                    auth.requestMatchers(HttpMethod.POST, WompiWebhookController.RUTA).permitAll();
                     // Imágenes del almacenamiento local (desarrollo); en producción se sirven desde S3
                     auth.requestMatchers(HttpMethod.GET, AlmacenamientoConfig.RUTA_MEDIA).permitAll();
                     if (h2ConsoleEnabled) {

@@ -7,6 +7,7 @@ import { Carrito, ItemCarrito } from '../models/carrito.models';
 import { DireccionEnvio, PedidoCreado } from '../models/checkout.models';
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
+import { PagoService } from '../services/pago.service';
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
 import { CheckoutPage } from './checkout';
 
@@ -112,12 +113,13 @@ describe('CheckoutPage', () => {
         { provide: CarritoService, useValue: carritoMock },
         { provide: CheckoutService, useValue: checkout },
         { provide: PerfilesService, useValue: { listar: () => of([perfil]) } },
+        { provide: PagoService, useValue: { iniciar: vi.fn(), verificar: vi.fn() } },
       ],
     })
       .compileComponents();
   });
 
-  it('usa el perfil activo sin pedir seleccionarlo y presenta UI-12 con el pago deshabilitado', () => {
+  it('usa el perfil activo sin pedir seleccionarlo y presenta UI-12 con el pago habilitado', () => {
     const pedidoCreado = {
       pedidoId: 55,
       estado: 'PENDIENTE_PAGO' as const,
@@ -234,9 +236,11 @@ describe('CheckoutPage', () => {
     expect(root.textContent).toContain('Número de pedido: #55');
     expect(root.textContent).toContain('Estado: Pendiente de pago');
     expect(root.textContent).not.toContain('El pago estará disponible próximamente.');
-    const botonPago = root.querySelector<HTMLButtonElement>('.carrito-resumen button[disabled]');
+    // US-11: el botón "Pagar" se habilita e inicia el pago con Wompi
+    const botonPago = root.querySelector<HTMLButtonElement>('.carrito-resumen app-pago-wompi button');
     expect(botonPago?.textContent)
       .toContain('Pagar');
+    expect(botonPago?.disabled).toBe(false);
     expect(root.querySelector('.carrito-resumen .checkout-pago-nota')).toBeNull();
     expect(root.querySelectorAll('.carrito-resumen button')).toHaveLength(1);
   });

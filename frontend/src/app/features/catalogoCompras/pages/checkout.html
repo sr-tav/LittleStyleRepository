@@ -216,12 +216,7 @@
             <p>Número de pedido: <strong>#{{ confirmado.pedidoId }}</strong></p>
             <p>Estado: <strong>Pendiente de pago</strong></p>
           </section>
-          <button
-            type="button" class="btn-primary" disabled
-            [attr.aria-label]="'Pagar pedido ' + confirmado.pedidoId"
-          >
-            Pagar
-          </button>
+          <app-pago-wompi [pedidoId]="confirmado.pedidoId" />
         } @else {
           @if (conflictoStock()) {
             <section class="checkout-stock-conflicto" role="alert">
