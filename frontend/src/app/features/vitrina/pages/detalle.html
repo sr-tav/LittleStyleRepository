@@ -67,6 +67,33 @@
         }
         @if (!p.disponible) {
           <span class="alert-stock">Agotado temporalmente</span>
+        } @else {
+          <div class="detalle-agregar-carrito">
+            <label for="talla-carrito">Talla</label>
+            <select
+              id="talla-carrito"
+              [value]="tallaSeleccionada()"
+              (change)="seleccionarTalla($event)"
+            >
+              <option value="">Selecciona una talla</option>
+              @for (t of p.tallas; track t.talla) {
+                <option [value]="t.talla" [disabled]="!t.disponible">{{ t.talla }}</option>
+              }
+            </select>
+            <button
+              type="button" class="btn-primary btn-inline"
+              [disabled]="!tallaSeleccionada() || agregandoAlCarrito()"
+              (click)="agregarAlCarrito()"
+            >{{ agregandoAlCarrito() ? 'Agregando…' : 'Agregar al carrito' }}</button>
+            @if (mensajeCarrito(); as mensaje) {
+              <p class="alert alert-success" role="status">
+                {{ mensaje }} <a routerLink="/cliente/carrito">Ver carrito</a>
+              </p>
+            }
+            @if (errorCarrito(); as mensaje) {
+              <p class="alert alert-error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
         }
       </div>
     </section>

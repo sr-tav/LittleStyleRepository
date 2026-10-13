@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
 import { of } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
+import { CarritoService } from '../../../catalogoCompras/services/carrito.service';
 import { PerfilInfantil } from '../../../perfilesInfantiles/models/perfil-infantil.models';
 import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.service';
 import { VitrinaService } from '../../../vitrina/services/vitrina.service';
@@ -26,6 +28,17 @@ describe('ClienteInicio', () => {
             rol: () => 'CLIENTE',
             rutaInicio: () => '/cliente',
             logout: vi.fn(),
+          },
+        },
+        {
+          provide: CarritoService,
+          useValue: {
+            cantidad: () => 2,
+            items: signal([]),
+            subtotal: () => 0,
+            panelAbierto: signal(false),
+            alternarPanel: vi.fn(),
+            cerrarPanel: vi.fn(),
           },
         },
         { provide: PerfilesService, useValue: { listar: () => of(perfiles) } },
@@ -83,7 +96,7 @@ describe('ClienteInicio', () => {
     expect(link?.getAttribute('href')).toBe('/cliente/hijos?modo=seleccionar');
   });
 
-  it('enlaza el catálogo y mantiene los demás accesos deshabilitados', () => {
+  it('enlaza el catálogo y habilita el carrito con badge de cantidad', () => {
     const fixture = TestBed.createComponent(ClienteInicio);
     fixture.detectChanges();
 
@@ -91,10 +104,14 @@ describe('ClienteInicio', () => {
     const catalogo = root.querySelector<HTMLAnchorElement>('a.home-tile[routerLink="/cliente/catalogo"]');
     expect(catalogo?.textContent).toContain('Catálogo');
     expect(catalogo?.getAttribute('href')).toBe('/cliente/catalogo');
+    const carrito = root.querySelector<HTMLAnchorElement>('a.home-tile[routerLink="/cliente/carrito"]');
+    expect(carrito?.textContent).toContain('Carrito');
+    expect(carrito?.querySelector('.home-tile-badge')?.textContent?.trim()).toBe('2');
+    expect(carrito?.getAttribute('href')).toBe('/cliente/carrito');
     const disabledTiles = Array.from(
       root.querySelectorAll<HTMLElement>('.home-tile-disabled'),
     );
-    expect(disabledTiles).toHaveLength(2);
+    expect(disabledTiles).toHaveLength(1);
     for (const tile of disabledTiles) {
       expect(tile.tagName).not.toBe('A');
       expect(tile.getAttribute('aria-disabled')).toBe('true');

@@ -103,6 +103,118 @@
       }
     </section>
 
+    @if (usuario()?.rol === 'CLIENTE') {
+      <section class="account-panel account-address">
+        <header class="account-panel-heading">
+          <div class="account-panel-title">
+            <span class="account-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+            </span>
+            <h2>Dirección de envío</h2>
+          </div>
+          @if (!editandoDireccion() && !cargandoDireccion()) {
+            <button type="button" class="account-action" (click)="editarDireccion()">
+              {{ direccionGuardada() ? 'Editar' : 'Agregar dirección' }}
+            </button>
+          }
+        </header>
+
+        @if (cargandoDireccion()) {
+          <p class="account-panel-description" role="status">Cargando dirección...</p>
+        } @else if (editandoDireccion()) {
+          <form [formGroup]="direccionForm" (ngSubmit)="guardarDireccion()" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="direccionDestinatario">Nombre del destinatario</label>
+                <input id="direccionDestinatario" formControlName="destinatario" autocomplete="name" />
+                @if (invalidoDireccion(direccionForm.controls.destinatario)) {
+                  <small class="field-error">Ingresa el destinatario (máximo 120 caracteres).</small>
+                }
+              </div>
+              <div class="field">
+                <label for="direccionTelefono">Celular de contacto</label>
+                <input id="direccionTelefono" type="tel" inputmode="numeric" maxlength="10" placeholder="3XXXXXXXXX" formControlName="telefono" autocomplete="tel" />
+                @if (invalidoDireccion(direccionForm.controls.telefono)) {
+                  <small class="field-error">Ingresa un celular colombiano válido: 10 dígitos e inicia por 3.</small>
+                }
+              </div>
+            </div>
+            <div class="field">
+              <label for="direccionCalle">Dirección de entrega</label>
+              <input id="direccionCalle" formControlName="direccion" autocomplete="street-address" />
+              @if (invalidoDireccion(direccionForm.controls.direccion)) {
+                <small class="field-error">Ingresa una dirección (máximo 200 caracteres).</small>
+              }
+            </div>
+            <div class="field">
+              <label for="direccionComplemento">Apartamento, piso, interior u otras indicaciones (opcional)</label>
+              <input id="direccionComplemento" formControlName="complemento" maxlength="120" autocomplete="address-line2" placeholder="Apto. 302, torre 1" />
+              @if (invalidoDireccion(direccionForm.controls.complemento)) {
+                <small class="field-error">El complemento no puede superar 120 caracteres.</small>
+              }
+            </div>
+            <div class="field-row account-address-location">
+              <div class="field">
+                <label for="direccionCodigoPostal">Código postal</label>
+                <input id="direccionCodigoPostal" inputmode="numeric" maxlength="6" autocomplete="postal-code" formControlName="codigoPostal" />
+                @if (invalidoDireccion(direccionForm.controls.codigoPostal)) {
+                  <small class="field-error">Ingresa un código postal colombiano de 6 dígitos.</small>
+                }
+              </div>
+              <div class="field">
+                <label for="direccionDepartamento">Departamento</label>
+                <select id="direccionDepartamento" formControlName="departamento" autocomplete="address-level1" (change)="cambioDepartamento($event)">
+                  <option value="">Selecciona un departamento</option>
+                  @for (departamento of departamentos; track departamento) {
+                    <option [value]="departamento">{{ departamento }}</option>
+                  }
+                </select>
+                @if (invalidoDireccion(direccionForm.controls.departamento)) {
+                  <small class="field-error">Selecciona el departamento.</small>
+                }
+              </div>
+              <div class="field">
+                <label for="direccionMunicipio">Municipio</label>
+                <select id="direccionMunicipio" formControlName="municipio" [attr.disabled]="departamentoSeleccionado() ? null : ''" autocomplete="address-level2">
+                  <option value="">Selecciona un municipio</option>
+                  @for (municipio of municipios(); track municipio) {
+                    <option [value]="municipio">{{ municipio }}</option>
+                  }
+                </select>
+                @if (invalidoDireccion(direccionForm.controls.municipio)) {
+                  <small class="field-error">Selecciona el municipio.</small>
+                }
+              </div>
+            </div>
+            <div class="account-form-actions">
+              <button type="submit" class="account-action" [disabled]="guardandoDireccion()">
+                {{ guardandoDireccion() ? 'Guardando...' : 'Guardar dirección' }}
+              </button>
+              <button type="button" class="account-secondary-action" (click)="cancelarEdicionDireccion()">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        } @else if (direccionGuardada(); as direccion) {
+          <dl class="account-details">
+            <div><dt>Destinatario</dt><dd>{{ direccion.destinatario }}</dd></div>
+            <div><dt>Dirección</dt><dd>{{ direccion.direccion }}</dd></div>
+            @if (direccion.complemento) {
+              <div><dt>Complemento</dt><dd>{{ direccion.complemento }}</dd></div>
+            }
+            <div><dt>Código postal</dt><dd>{{ direccion.codigoPostal }}</dd></div>
+            <div><dt>Municipio y departamento</dt><dd>{{ direccion.municipio }}, {{ direccion.departamento }}</dd></div>
+            <div><dt>Celular de contacto</dt><dd>{{ direccion.telefono }}</dd></div>
+          </dl>
+        } @else {
+          <p class="account-panel-description">Aún no tienes una dirección de envío guardada.</p>
+        }
+      </section>
+    }
+
     <section class="account-panel account-security">
       <header class="account-panel-heading">
         <div class="account-panel-title">

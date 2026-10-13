@@ -117,6 +117,12 @@
             <article class="reco-card">
               <div class="reco-card-media">
                 <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
+                <app-acceso-rapido-prenda
+                  [prendaId]="item.id"
+                  [nombre]="item.nombre"
+                  [disponible]="item.disponible"
+                  [tallasDisponibles]="item.tallasDisponibles"
+                />
               </div>
               <div class="reco-card-body">
                 <h3 class="reco-card-title">{{ item.nombre }}</h3>
@@ -126,7 +132,7 @@
                     class="btn-primary btn-inline btn-small"
                     [routerLink]="['/cliente/catalogo', item.id]"
                     [attr.aria-label]="'Ver detalle de ' + item.nombre"
-                    >Ver detalle</a
+                    >Ver</a
                   >
                 </div>
               </div>
@@ -186,7 +192,7 @@
       </span>
       <span class="home-tile-label">Mis pedidos</span>
     </article>
-    <article class="home-tile home-tile-disabled" aria-disabled="true" title="Próximamente">
+    <a class="home-tile" routerLink="/cliente/carrito">
       <span class="home-tile-icon home-tile-icon-cart">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -196,7 +202,15 @@
         </svg>
       </span>
       <span class="home-tile-label">Carrito</span>
-    </article>
+      @if (carrito.cantidad() > 0) {
+        <span
+          class="home-tile-badge"
+          [attr.aria-label]="carrito.cantidad() + ' productos en el carrito'"
+        >
+          {{ carrito.cantidad() }}
+        </span>
+      }
+    </a>
   </nav>
 </main>
 <app-footer />

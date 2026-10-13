@@ -63,6 +63,7 @@
 
 /* Ancla visual: todas las fotos con la misma proporción 4/5 */
 .reco-card-media {
+  position: relative;
   aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--ls-bg);
@@ -77,6 +78,89 @@
 
   .prenda-thumb {
     object-fit: cover;
+  }
+}
+
+app-acceso-rapido-prenda {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.reco-card-media:hover app-acceso-rapido-prenda,
+.reco-card-media:focus-within app-acceso-rapido-prenda {
+  opacity: 1;
+}
+
+.producto-acceso-rapido {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 0.45rem 0.6rem 0.6rem;
+  background: color-mix(in srgb, var(--ls-surface) 94%, transparent);
+  text-align: center;
+}
+
+.producto-acceso-trigger {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ls-primary-dark);
+  font: inherit;
+  cursor: pointer;
+}
+
+.producto-acceso-trigger:disabled {
+  color: var(--ls-muted);
+  cursor: not-allowed;
+}
+
+.producto-acceso-tallas {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+
+  button {
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ls-text);
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible,
+    &.is-seleccionada {
+      background: var(--ls-primary-soft);
+      outline: 2px solid var(--ls-primary-dark);
+    }
+
+    &:disabled {
+      color: var(--ls-muted);
+      cursor: wait;
+    }
+  }
+}
+
+.producto-acceso-mensaje,
+.producto-acceso-error {
+  margin: 0;
+  padding: 0.35rem;
+  color: var(--ls-muted);
+  font-size: 0.82rem;
+}
+
+.producto-acceso-error {
+  color: var(--ls-error);
+}
+
+@media (hover: none) {
+  app-acceso-rapido-prenda {
+    opacity: 1;
   }
 }
 

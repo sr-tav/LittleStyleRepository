@@ -50,14 +50,17 @@ class CatalogoClienteControllerTest {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
                 .thenReturn(PaginaResponse.from(new PageImpl<>(List.of(
                         new PrendaVitrinaResponse(10L, "Pantalón Jogger Azul", CategoriaPrenda.PANTALONES,
-                                GeneroPrenda.NINA, "Tienda Sol", new BigDecimal("32900"), "/media/a.png", true)))));
+                                GeneroPrenda.NINA, "Tienda Sol", new BigDecimal("32900"), "/media/a.png", true,
+                                List.of("4", "6"))))));
 
         mockMvc.perform(get("/api/cliente/catalogo").param("categoria", "PANTALONES"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.contenido[0].nombre").value("Pantalón Jogger Azul"))
                 .andExpect(jsonPath("$.contenido[0].precio").value(32900))
                 .andExpect(jsonPath("$.contenido[0].stockMinimo").doesNotExist())
-                .andExpect(jsonPath("$.contenido[0].stockTotal").doesNotExist());
+                .andExpect(jsonPath("$.contenido[0].stockTotal").doesNotExist())
+                .andExpect(jsonPath("$.contenido[0].tallasDisponibles[0]").value("4"))
+                .andExpect(jsonPath("$.contenido[0].tallasDisponibles[1]").value("6"));
     }
 
     @Test

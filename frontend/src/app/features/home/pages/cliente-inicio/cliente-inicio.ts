@@ -5,8 +5,10 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { Footer } from '../../../../shared/components/footer/footer';
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../../auth/auth.validators';
+import { AccesoRapidoPrenda } from '../../../catalogoCompras/components/acceso-rapido-prenda';
 import { PrendaMiniatura } from '../../../catalogoCompras/components/prenda-miniatura';
 import { formatearPrecio } from '../../../catalogoCompras/models/prenda-opciones';
+import { CarritoService } from '../../../catalogoCompras/services/carrito.service';
 import { PerfilInfantil } from '../../../perfilesInfantiles/models/perfil-infantil.models';
 import { PerfilActivoService } from '../../../perfilesInfantiles/services/perfil-activo.service';
 import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.service';
@@ -18,11 +20,12 @@ const TAMANO_NOVEDADES = 8;
 /** Inicio del cliente con estilo e-commerce: carrusel, novedades y accesos. */
 @Component({
   selector: 'app-cliente-inicio',
-  imports: [Navbar, RouterLink, PrendaMiniatura, Footer],
+  imports: [Navbar, RouterLink, PrendaMiniatura, AccesoRapidoPrenda, Footer],
   templateUrl: './cliente-inicio.html',
 })
 export class ClienteInicio implements OnInit, OnDestroy {
   protected readonly auth = inject(AuthService);
+  protected readonly carrito = inject(CarritoService);
   private readonly perfilesService = inject(PerfilesService);
   private readonly perfilActivoService = inject(PerfilActivoService);
   private readonly vitrina = inject(VitrinaService);

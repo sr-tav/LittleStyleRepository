@@ -17,6 +17,7 @@ function item(cambios: Partial<VitrinaItem> = {}): VitrinaItem {
     precio: 32900,
     imagenUrl: '/media/a.png',
     disponible: true,
+    tallasDisponibles: ['4', '6'],
     ...cambios,
   };
 }

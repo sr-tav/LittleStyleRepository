@@ -29,6 +29,20 @@ export const routes: Routes = [
       import('./features/perfilesInfantiles/perfiles.routes').then((m) => m.PERFILES_ROUTES),
   },
   {
+    path: 'cliente/checkout',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadChildren: () =>
+      import('./features/catalogoCompras/catalogo-compras.routes').then((m) => m.CHECKOUT_ROUTES),
+  },
+  {
+    path: 'cliente/carrito',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadChildren: () =>
+      import('./features/catalogoCompras/catalogo-compras.routes').then((m) => m.CARRITO_ROUTES),
+  },
+  {
     path: 'cliente/prendas/:id',
     title: 'Detalle prenda | LittleStyle',
     canActivate: [roleGuard],

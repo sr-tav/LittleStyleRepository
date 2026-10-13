@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatura';
+import { CarritoService } from '../../catalogoCompras/services/carrito.service';
 import {
   ETIQUETAS_CATEGORIAS,
   ETIQUETAS_GENERO,
@@ -30,12 +31,17 @@ export class DetalleProducto implements OnInit {
   private readonly vitrina = inject(VitrinaService);
   private readonly recomendaciones = inject(RecomendacionService);
   private readonly activo = inject(PerfilActivoService);
+  private readonly carrito = inject(CarritoService);
 
   protected readonly prenda = signal<VitrinaDetalle | null>(null);
   protected readonly sugerida = signal<RecomendacionItem | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly fotoActual = signal(0);
+  protected readonly tallaSeleccionada = signal('');
+  protected readonly agregandoAlCarrito = signal(false);
+  protected readonly mensajeCarrito = signal<string | null>(null);
+  protected readonly errorCarrito = signal<string | null>(null);
 
   /** Marca "Nuevo" si la prenda se actualizó en los últimos 30 días. */
   protected readonly esNuevo = computed(() => {
@@ -61,6 +67,27 @@ export class DetalleProducto implements OnInit {
     } else if (visor.requestFullscreen) {
       void visor.requestFullscreen().catch(() => undefined);
     }
+  }
+
+  protected agregarAlCarrito(): void {
+    const prenda = this.prenda();
+    const talla = this.tallaSeleccionada();
+    if (!prenda || !talla || this.agregandoAlCarrito()) return;
+
+    this.agregandoAlCarrito.set(true);
+    this.mensajeCarrito.set(null);
+    this.errorCarrito.set(null);
+    this.carrito.agregar({ prendaId: prenda.id, talla, cantidad: 1 }).subscribe({
+      next: () => {
+        this.mensajeCarrito.set('Prenda agregada al carrito.');
+        this.carrito.abrirPanel();
+      },
+      error: (error: unknown) => {
+        this.errorCarrito.set(procesarErrorApi(error));
+        this.agregandoAlCarrito.set(false);
+      },
+      complete: () => this.agregandoAlCarrito.set(false),
+    });
   }
 
   protected readonly precioDe = (p: VitrinaDetalle) => formatearPrecio(p.precio);
@@ -97,6 +124,12 @@ export class DetalleProducto implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  protected seleccionarTalla(event: Event): void {
+    if (event.target instanceof HTMLSelectElement) {
+      this.tallaSeleccionada.set(event.target.value);
+    }
   }
 
   private cargarSugerida(prendaId: number, perfilId: number): void {

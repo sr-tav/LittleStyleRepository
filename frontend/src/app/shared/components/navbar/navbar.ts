@@ -2,13 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
-import { OPCIONES_CATEGORIAS } from '../../../features/catalogoCompras/models/prenda-opciones';
+import { CarritoService } from '../../../features/catalogoCompras/services/carrito.service';
+import { ItemCarrito } from '../../../features/catalogoCompras/models/carrito.models';
+import { procesarErrorApi } from '../../../features/auth/auth.validators';
+import {
+  formatearPrecio,
+  OPCIONES_CATEGORIAS,
+} from '../../../features/catalogoCompras/models/prenda-opciones';
 
-/**
- * Barra superior del e-commerce: menú hamburguesa a la izquierda, logo
- * centrado, carrito y cuenta a la derecha. El carrito queda deshabilitado
- * hasta US-10.
- */
 @Component({
   selector: 'app-navbar',
   imports: [RouterLink],
@@ -34,15 +35,20 @@ import { OPCIONES_CATEGORIAS } from '../../../features/catalogoCompras/models/pr
       <div class="navbar-right">
         @if (auth.rol() === 'CLIENTE') {
           <button
-            type="button" class="icon-button" disabled
-            title="Próximamente" aria-label="Carrito de compras (próximamente)"
+            type="button" class="icon-button navbar-carrito-trigger"
+            [attr.aria-label]="carrito.panelAbierto() ? 'Cerrar carrito de compras' : 'Abrir carrito de compras'"
+            [attr.aria-expanded]="carrito.panelAbierto()"
+            (click)="carrito.alternarPanel()"
           >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 8H6" />
-            <circle cx="10" cy="21" r="1" />
-            <circle cx="19" cy="21" r="1" />
-          </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 8H6" />
+              <circle cx="10" cy="21" r="1" />
+              <circle cx="19" cy="21" r="1" />
+            </svg>
+            @if (carrito.cantidad() > 0) {
+              <span class="navbar-carrito-badge" aria-hidden="true">{{ carrito.cantidad() }}</span>
+            }
           </button>
         }
         @if (auth.usuario(); as usuario) {
@@ -124,14 +130,114 @@ import { OPCIONES_CATEGORIAS } from '../../../features/catalogoCompras/models/pr
         }
       </nav>
     }
+
+    @if (auth.rol() === 'CLIENTE' && carrito.panelAbierto()) {
+      <button
+        type="button" class="carrito-panel-backdrop"
+        aria-label="Cerrar vista rápida del carrito"
+        (click)="carrito.cerrarPanel()"
+      ></button>
+      <aside
+        class="carrito-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Carrito de compras"
+        (keydown.escape)="carrito.cerrarPanel()"
+      >
+        <header class="carrito-panel-header">
+          <h2>Carrito</h2>
+          <button
+            type="button" class="icon-button"
+            aria-label="Cerrar carrito"
+            (click)="carrito.cerrarPanel()"
+          >×</button>
+        </header>
+        @if (carrito.items().length === 0) {
+          <div class="carrito-panel-vacio">
+            <p>Tu carrito está vacío.</p>
+            <a class="btn-ghost btn-inline" routerLink="/cliente/catalogo" (click)="carrito.cerrarPanel()">
+              Explorar catálogo
+            </a>
+          </div>
+        } @else {
+          <ul class="carrito-panel-items">
+            @for (item of carrito.items(); track item.id) {
+              <li>
+                @if (item.imagenUrl) {
+                  <img [src]="item.imagenUrl" [alt]="item.nombre" />
+                } @else {
+                  <span class="carrito-panel-imagen-vacia" aria-hidden="true">LS</span>
+                }
+                <div>
+                  <h3>{{ item.nombre }}</h3>
+                  <p>Talla {{ item.talla }}</p>
+                  <div class="carrito-panel-item-controles">
+                    <div class="carrito-cantidad">
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Disminuir cantidad de ' + item.nombre"
+                        [disabled]="cambioPendiente() === item.id || item.cantidad <= 1"
+                        (click)="cambiarCantidad(item, item.cantidad - 1)"
+                      >−</button>
+                      <span aria-live="polite">{{ item.cantidad }}</span>
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Aumentar cantidad de ' + item.nombre"
+                        [disabled]="cambioPendiente() === item.id || !item.disponible"
+                        (click)="cambiarCantidad(item, item.cantidad + 1)"
+                      >+</button>
+                    </div>
+                    <strong>{{ precio(item.subtotal) }}</strong>
+                    <button
+                      type="button"
+                      class="carrito-panel-eliminar"
+                      [attr.aria-label]="'Eliminar ' + item.nombre + ' del carrito'"
+                      [disabled]="cambioPendiente() === item.id"
+                      (click)="quitar(item)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3" />
+                      </svg>
+                    </button>
+                  </div>
+                  @if (!item.disponible) {
+                    <p class="carrito-panel-no-disponible">Disponibilidad insuficiente</p>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+          @if (errorCambio(); as mensaje) {
+            <p class="alert alert-error carrito-panel-error" role="alert">{{ mensaje }}</p>
+          }
+          <footer class="carrito-panel-footer">
+            <div><span>Subtotal</span><strong>{{ precio(carrito.subtotal()) }}</strong></div>
+            <p class="carrito-no-reservados">
+              <span aria-hidden="true">!</span>
+              Los artículos no están reservados. ¡No los dejes escapar!
+            </p>
+            <a
+              class="btn-primary carrito-panel-ver"
+              routerLink="/cliente/carrito"
+              (click)="carrito.cerrarPanel()"
+            >Ver carrito</a>
+          </footer>
+        }
+      </aside>
+    }
   `,
 })
 export class Navbar {
   protected readonly auth = inject(AuthService);
+  protected readonly carrito = inject(CarritoService);
   protected readonly menuAbierto = signal(false);
   protected readonly cuentaAbierta = signal(false);
   protected readonly categorias = OPCIONES_CATEGORIAS;
   protected readonly grupoAbierto = signal<string | null>(null);
+  protected readonly precio = formatearPrecio;
+  protected readonly cambioPendiente = signal<number | null>(null);
+  protected readonly errorCambio = signal<string | null>(null);
 
   protected alternarGrupo(grupo: string): void {
     this.grupoAbierto.update((actual) => (actual === grupo ? null : grupo));
@@ -140,5 +246,33 @@ export class Navbar {
   protected cerrarMenu(): void {
     this.menuAbierto.set(false);
     this.grupoAbierto.set(null);
+  }
+
+  protected cambiarCantidad(item: ItemCarrito, cantidad: number): void {
+    if (cantidad < 1 || this.cambioPendiente() !== null) return;
+    this.cambioPendiente.set(item.id);
+    this.errorCambio.set(null);
+    this.carrito.cambiarCantidad(item.id, cantidad).subscribe({
+      error: (error: unknown) => {
+        this.errorCambio.set(procesarErrorApi(error));
+        this.cambioPendiente.set(null);
+      },
+      complete: () => this.cambioPendiente.set(null),
+    });
+  }
+
+  protected quitar(item: ItemCarrito): void {
+    if (this.cambioPendiente() !== null || !window.confirm(
+      '¿Deseas eliminar esta prenda del carrito?',
+    )) return;
+    this.cambioPendiente.set(item.id);
+    this.errorCambio.set(null);
+    this.carrito.quitar(item.id).subscribe({
+      error: (error: unknown) => {
+        this.errorCambio.set(procesarErrorApi(error));
+        this.cambioPendiente.set(null);
+      },
+      complete: () => this.cambioPendiente.set(null),
+    });
   }
 }
