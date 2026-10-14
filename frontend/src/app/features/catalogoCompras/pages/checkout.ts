@@ -17,10 +17,11 @@ import { DireccionEnvio, PedidoCreado, ResumenCheckout } from '../models/checkou
 import { DEPARTAMENTOS_COLOMBIA, municipiosDe } from '../data/municipios-colombia';
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
+import { PagoWompi } from '../components/pago-wompi';
 
 @Component({
   selector: 'app-checkout',
-  imports: [Navbar, RouterLink, ReactiveFormsModule],
+  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi],
   templateUrl: './checkout.html',
 })
 export class CheckoutPage implements OnInit {

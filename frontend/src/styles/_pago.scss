@@ -1,0 +1,96 @@
+/* ---------- Pago con Wompi (US-11: UI-13, UI-14, UI-15) ---------- */
+.pago-wompi {
+  display: grid;
+  gap: 0.6rem;
+
+  .alert {
+    margin-bottom: 0;
+  }
+}
+
+.pago-wompi-nota {
+  color: var(--ls-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.pago-resultado-page {
+  max-width: 720px;
+}
+
+.pago-resultado {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius);
+  background: var(--ls-surface);
+  box-shadow: var(--ls-shadow);
+
+  h2 {
+    font-size: 1.4rem;
+  }
+
+  p {
+    color: var(--ls-ink);
+    line-height: 1.5;
+  }
+}
+
+.pago-spinner {
+  width: 2rem;
+  height: 2rem;
+  border-color: var(--ls-border);
+  border-top-color: var(--ls-primary-dark);
+}
+
+.pago-aprobado {
+  border-color: var(--ls-primary-dark);
+  background: var(--ls-primary-soft);
+
+  h2 {
+    color: var(--ls-primary-dark);
+  }
+}
+
+.pago-pendiente {
+  border-color: var(--ls-secondary);
+}
+
+.pago-rechazado h2 {
+  color: var(--ls-error);
+}
+
+.pago-detalle {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  dt {
+    color: var(--ls-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+  }
+}
+
+.pago-agotadas {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.6;
+}
+
+.pago-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

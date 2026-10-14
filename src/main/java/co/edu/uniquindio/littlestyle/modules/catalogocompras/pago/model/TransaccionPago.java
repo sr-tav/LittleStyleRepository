@@ -1,0 +1,93 @@
+package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model;
+
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "transacciones_pago", indexes = {
+        @Index(name = "idx_transaccion_pago_pedido", columnList = "pedido_id"),
+        @Index(name = "idx_transaccion_pago_wompi", columnList = "wompi_transaccion_id")
+})
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TransaccionPago {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "pedido_id", nullable = false)
+    private Pedido pedido;
+
+    @Column(nullable = false, unique = true, length = 60)
+    private String referencia;
+
+    @Column(name = "wompi_transaccion_id", length = 80)
+    private String wompiTransaccionId;
+
+    @Column(name = "monto_centavos", nullable = false)
+    private long montoCentavos;
+
+    @Column(nullable = false, length = 3)
+    private String moneda;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private EstadoTransaccionPago estado;
+
+    @Column(name = "metodo_pago", length = 40)
+    private String metodoPago;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "motivo_reembolso", length = 30)
+    @Setter(AccessLevel.NONE)
+    private MotivoReembolso motivoReembolso;
+
+    @ElementCollection
+    @CollectionTable(name = "transacciones_pago_agotadas",
+            joinColumns = @JoinColumn(name = "transaccion_id"))
+    @Builder.Default
+    @Setter(AccessLevel.NONE)
+    private List<PrendaAgotadaPago> prendasAgotadas = new ArrayList<>();
+
+    @Column(name = "fecha_creacion", nullable = false)
+    private LocalDateTime fechaCreacion;
+
+    @Column(name = "fecha_actualizacion", nullable = false)
+    private LocalDateTime fechaActualizacion;
+
+    /** El cobro fue aprobado por Wompi, pero el pedido no se pudo pagar; requiere devolver el dinero. */
+    public void marcarReembolsoPendiente(MotivoReembolso motivo, List<PrendaAgotadaPago> agotadas) {
+        estado = EstadoTransaccionPago.REEMBOLSO_PENDIENTE;
+        motivoReembolso = motivo;
+        prendasAgotadas.clear();
+        prendasAgotadas.addAll(agotadas);
+    }
+}
