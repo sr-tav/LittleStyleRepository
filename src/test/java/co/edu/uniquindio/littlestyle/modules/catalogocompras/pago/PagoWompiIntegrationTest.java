@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "app.wompi.llave-publica=pub_test_integracion",
         "app.wompi.secreto-integridad=test_integrity_secreto",
-        "app.wompi.secreto-eventos=test_events_secreto"
+        "app.wompi.secreto-eventos=test_events_secreto",
+        // La prueba corre dentro de una transacción que otro hilo no vería; el modo asíncrono del
+        // webhook se prueba en ReceptorEventosWompiTest.
+        "app.pagos.eventos-asincronos=false"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -111,6 +115,46 @@ class PagoWompiIntegrationTest {
         assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
                 .isEqualTo(EstadoPedido.PENDIENTE_PAGO);
         assertThat(stockTalla(compra.prendaId())).isEqualTo(8);
+    }
+
+    @Test
+    void webhookRechazaUnAvisoAutenticoReutilizadoFueraDeSuVigencia() throws Exception {
+        Compra compra = crearPedido(1);
+        String referencia = iniciarPago(compra);
+        long haceOnceMinutos = Instant.now().minusSeconds(11 * 60).getEpochSecond();
+
+        mockMvc.perform(post("/api/pagos/wompi/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(evento("wompi-4", "APPROVED", referencia, 3990000L, SECRETO_EVENTOS,
+                                haceOnceMinutos)))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
+                .isEqualTo(EstadoPedido.PENDIENTE_PAGO);
+        assertThat(stockTalla(compra.prendaId())).isEqualTo(8);
+    }
+
+    @Test
+    void webhookAceptaLaFechaDelAvisoEnFormatoIso() throws Exception {
+        Compra compra = crearPedido(1);
+        String referencia = iniciarPago(compra);
+        String ahora = Instant.now().toString();
+        String checksum = sha256("wompi-5APPROVED3990000" + ahora + SECRETO_EVENTOS);
+
+        mockMvc.perform(post("/api/pagos/wompi/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"event":"transaction.updated",
+                                 "data":{"transaction":{"id":"wompi-5","status":"APPROVED","reference":"%s",
+                                   "amount_in_cents":3990000,"currency":"COP","payment_method_type":"CARD"}},
+                                 "signature":{"properties":["transaction.id","transaction.status",
+                                   "transaction.amount_in_cents"],"checksum":"%s"},
+                                 "timestamp":"%s"}
+                                """.formatted(referencia, checksum, ahora)))
+                .andExpect(status().isOk());
+
+        assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
+                .isEqualTo(EstadoPedido.PAGADO);
     }
 
     @Test
@@ -206,7 +250,11 @@ class PagoWompiIntegrationTest {
 
     private static String evento(String id, String estado, String referencia, long monto, String secreto)
             throws Exception {
-        long timestamp = 1760367600L;
+        return evento(id, estado, referencia, monto, secreto, Instant.now().getEpochSecond());
+    }
+
+    private static String evento(String id, String estado, String referencia, long monto, String secreto,
+                                 long timestamp) throws Exception {
         String checksum = sha256(id + estado + monto + timestamp + secreto);
         return """
                 {"event":"transaction.updated",

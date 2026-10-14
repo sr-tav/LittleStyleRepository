@@ -1,7 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.controller;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.EventoWompiRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service.PagoService;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service.ReceptorEventosWompi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Webhook público de eventos de Wompi. No usa JWT: la autenticidad se garantiza con la
- * verificación del checksum SHA-256 del evento. Un 200 confirma la recepción; cualquier otro
- * código hace que Wompi reintente el envío.
+ * verificación del checksum SHA-256 y de la vigencia del evento. Un 200 confirma la recepción
+ * (el evento se aplica en segundo plano); cualquier otro código hace que Wompi reintente el envío.
  */
 @RestController
 @RequestMapping(WompiWebhookController.RUTA)
@@ -21,11 +21,11 @@ public class WompiWebhookController {
 
     public static final String RUTA = "/api/pagos/wompi/eventos";
 
-    private final PagoService pagoService;
+    private final ReceptorEventosWompi receptorEventos;
 
     @PostMapping
     public ResponseEntity<Void> recibirEvento(@RequestBody EventoWompiRequest evento) {
-        pagoService.procesarEvento(evento);
+        receptorEventos.recibir(evento);
         return ResponseEntity.ok().build();
     }
 }

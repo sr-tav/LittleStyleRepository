@@ -18,5 +18,7 @@ public interface TransaccionPagoRepository extends JpaRepository<TransaccionPago
 
     Optional<TransaccionPago> findByReferencia(String referencia);
 
+    long countByPedidoId(Long pedidoId);
+
     boolean existsByPedidoIdAndEstado(Long pedidoId, EstadoTransaccionPago estado);
 }

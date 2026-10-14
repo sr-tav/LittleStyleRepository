@@ -45,7 +45,7 @@ describe('PagoWompi', () => {
   }
 
   it('inicia el pago, abre Wompi y navega al resultado con el id de la transacción', () => {
-    widget.abrir.mockReturnValue(of('wompi-1'));
+    widget.abrir.mockReturnValue(of({ tipo: 'transaccion', id: 'wompi-1' }));
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const { root } = crear();
 
@@ -69,6 +69,43 @@ describe('PagoWompi', () => {
     const boton = root.querySelector<HTMLButtonElement>('button');
     expect(boton?.disabled).toBe(false);
     expect(boton?.textContent).toContain('Reintentar pago');
+  });
+
+  it('avisa que no se completó el pago y ofrece reintentar si el cliente cierra la ventana', () => {
+    widget.abrir.mockReturnValue(of({ tipo: 'cerrado' }));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const { fixture, root } = crear();
+
+    root.querySelector<HTMLButtonElement>('button')?.click();
+    fixture.detectChanges();
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(root.querySelector('[role="status"]')?.textContent).toContain('No se completó el pago');
+    const boton = root.querySelector<HTMLButtonElement>('button');
+    expect(boton?.disabled).toBe(false);
+    expect(boton?.textContent).toContain('Reintentar pago');
+
+    widget.abrir.mockReturnValue(of({ tipo: 'transaccion', id: 'wompi-2' }));
+    boton?.click();
+    fixture.detectChanges();
+
+    expect(pagoService.iniciar).toHaveBeenCalledTimes(2);
+    expect(root.querySelector('[role="status"]')).toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/cliente/pago/resultado'], { queryParams: { id: 'wompi-2' } });
+  });
+
+  it('muestra el aviso de intentar más tarde si el pago no responde a tiempo', () => {
+    pagoService.iniciar.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 504,
+      error: { mensaje: 'El pago está tardando en responder. Intenta más tarde; tu pedido se conserva.' },
+    })));
+    const { fixture, root } = crear();
+
+    root.querySelector<HTMLButtonElement>('button')?.click();
+    fixture.detectChanges();
+
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Intenta más tarde');
+    expect(root.querySelector<HTMLButtonElement>('button')?.disabled).toBe(false);
   });
 
   it('muestra el error del backend si no se puede iniciar el pago', () => {

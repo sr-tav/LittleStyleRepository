@@ -1,7 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
 import { InicioPago } from '../models/pago.models';
-import { WOMPI_WIDGET_URL, WompiWidgetService } from './wompi-widget.service';
+import {
+  CLASE_MODAL_WOMPI,
+  ResultadoWidgetWompi,
+  TIEMPO_MAXIMO_CARGA_MS,
+  WOMPI_WIDGET_URL,
+  WompiWidgetService,
+} from './wompi-widget.service';
 
 type VentanaPrueba = Window & { WidgetCheckout?: unknown };
 
@@ -20,7 +26,9 @@ describe('WompiWidgetService', () => {
   };
 
   afterEach(() => {
+    vi.useRealTimers();
     delete (window as VentanaPrueba).WidgetCheckout;
+    document.querySelectorAll(`.${CLASE_MODAL_WOMPI}`).forEach((modal) => modal.remove());
     document.querySelectorAll(`script[src="${WOMPI_WIDGET_URL}"]`).forEach((script) => script.remove());
   });
 
@@ -37,12 +45,12 @@ describe('WompiWidgetService', () => {
     const service = TestBed.inject(WompiWidgetService);
     const alAbrir = vi.fn();
 
-    const ids: string[] = [];
+    const resultados: ResultadoWidgetWompi[] = [];
     await new Promise<void>((resolve) => {
-      service.abrir(inicio, alAbrir).subscribe({ next: (id) => ids.push(id), complete: resolve });
+      service.abrir(inicio, alAbrir).subscribe({ next: (r) => resultados.push(r), complete: resolve });
     });
 
-    expect(ids).toEqual(['wompi-1']);
+    expect(resultados).toEqual([{ tipo: 'transaccion', id: 'wompi-1' }]);
     expect(alAbrir).toHaveBeenCalled();
     expect(configuraciones[0]).toEqual({
       currency: 'COP',
@@ -58,6 +66,57 @@ describe('WompiWidgetService', () => {
         phoneNumberPrefix: '+57',
       },
     });
+  });
+
+  it('informa que el pago no se completó cuando el cliente cierra la ventana de Wompi', async () => {
+    let modal: HTMLDivElement | null = null;
+    (window as VentanaPrueba).WidgetCheckout = class {
+      open(): void {
+        // Como Wompi: crea su modal y, al cerrarlo sin pagar, lo oculta sin invocar el callback
+        modal = document.createElement('div');
+        modal.className = CLASE_MODAL_WOMPI;
+        document.body.appendChild(modal);
+      }
+    };
+    const service = TestBed.inject(WompiWidgetService);
+
+    const resultado = new Promise<ResultadoWidgetWompi[]>((resolve) => {
+      const recibidos: ResultadoWidgetWompi[] = [];
+      service.abrir(inicio).subscribe({ next: (r) => recibidos.push(r), complete: () => resolve(recibidos) });
+    });
+    await vi.waitFor(() => expect(modal).not.toBeNull());
+    modal!.setAttribute('hidden', '');
+
+    expect(await resultado).toEqual([{ tipo: 'cerrado' }]);
+  });
+
+  it('trata como cerrado un callback de Wompi sin transacción', async () => {
+    (window as VentanaPrueba).WidgetCheckout = class {
+      open(callback: (resultado: object) => void): void {
+        callback({});
+      }
+    };
+    const service = TestBed.inject(WompiWidgetService);
+
+    const resultados: ResultadoWidgetWompi[] = [];
+    await new Promise<void>((resolve) => {
+      service.abrir(inicio).subscribe({ next: (r) => resultados.push(r), complete: resolve });
+    });
+
+    expect(resultados).toEqual([{ tipo: 'cerrado' }]);
+  });
+
+  it('avisa que se intente más tarde si el script de Wompi no carga a tiempo', async () => {
+    vi.useFakeTimers();
+    const service = TestBed.inject(WompiWidgetService);
+    const error = new Promise<unknown>((resolve) => {
+      service.abrir(inicio).subscribe({ error: resolve });
+    });
+
+    vi.advanceTimersByTime(TIEMPO_MAXIMO_CARGA_MS);
+
+    expect(((await error) as Error).message).toContain('Intenta más tarde');
+    expect(document.querySelectorAll(`script[src="${WOMPI_WIDGET_URL}"]`)).toHaveLength(0);
   });
 
   it('carga el script de Wompi una sola vez y reporta si falla', async () => {

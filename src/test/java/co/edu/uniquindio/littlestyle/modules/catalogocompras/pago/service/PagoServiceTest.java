@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service;
 
 import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
+import co.edu.uniquindio.littlestyle.config.PagoProperties;
 import co.edu.uniquindio.littlestyle.config.WompiProperties;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
@@ -31,6 +32,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -49,6 +52,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -162,6 +166,41 @@ class PagoServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
         verify(transaccionPagoRepository, never()).save(any());
+    }
+
+    @Test
+    void limitaLosIntentosDePagoPorPedido() {
+        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pedido));
+        when(transaccionPagoRepository.countByPedidoId(PEDIDO_ID)).thenReturn(4L, 5L);
+
+        pagoService.iniciar(PEDIDO_ID);
+        assertThatThrownBy(() -> pagoService.iniciar(PEDIDO_ID))
+                .isInstanceOfSatisfying(BusinessException.class, e -> {
+                    assertThat(e.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+                    assertThat(e.getMessage()).contains("máximo de 5 intentos");
+                });
+        verify(transaccionPagoRepository).save(any());
+    }
+
+    @Test
+    void siWompiNoRespondeATiempoNoTocaElPagoNiElPedido() {
+        when(wompiClient.consultarTransaccion("wompi-tx-1")).thenThrow(new BusinessException(
+                HttpStatus.GATEWAY_TIMEOUT, "Wompi está tardando en responder. Intenta más tarde."));
+
+        assertThatThrownBy(() -> pagoService.verificar("wompi-tx-1"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT));
+        verifyNoInteractions(transaccionPagoRepository, pedidoRepository, pedidoPagoService);
+    }
+
+    @Test
+    void validarEventoNoTocaLaBaseDeDatos() {
+        EventoWompiRequest evento = evento("APPROVED", 7280000L);
+        when(firmaWompiService.eventoValido(evento)).thenReturn(true);
+
+        pagoService.validarEvento(evento);
+
+        verifyNoInteractions(transaccionPagoRepository, pedidoRepository, pedidoPagoService);
     }
 
     @Test
@@ -364,7 +403,8 @@ class PagoServiceTest {
         CheckoutProperties checkout = new CheckoutProperties(new BigDecimal("7000"), new BigDecimal("10000"),
                 new BigDecimal("15000"), List.of(), Duration.ofMinutes(30));
         return new PagoService(pedidoRepository, transaccionPagoRepository, pedidoPagoService,
-                firmaWompiService, wompiClient, propiedades, checkout, CLOCK);
+                firmaWompiService, wompiClient, propiedades, checkout, PagoProperties.porDefecto(),
+                new TransactionTemplate(mock(PlatformTransactionManager.class)), CLOCK);
     }
 
     private static WompiProperties propiedadesWompi(String llavePublica, String secretoIntegridad) {

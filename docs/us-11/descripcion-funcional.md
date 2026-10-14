@@ -17,15 +17,26 @@ Fuera de alcance: reembolsos automáticos (la transacción queda marcada `REEMBO
 | Elemento | Relación con US-11 |
 |---|---|
 | Tarea 1 | Integrar API de Wompi en el backend para generar la transacción de pago: `PagoService.iniciar`, `FirmaWompiService.firmaIntegridad`, `WompiClient`. |
-| Tarea 2 | Endpoint webhook de notificaciones asíncronas: `WompiWebhookController` (`POST /api/pagos/wompi/eventos`). |
-| Tarea 3 | Verificación de firma SHA-256 en el webhook: `FirmaWompiService.eventoValido`. |
+| Tarea 2 | Endpoint webhook de notificaciones asíncronas: `WompiWebhookController` (`POST /api/pagos/wompi/eventos`) y `ReceptorEventosWompi`. |
+| Tarea 3 | Verificación de firma SHA-256 y vigencia del evento en el webhook: `FirmaWompiService.eventoValido`. |
 | Tarea 4 | Widget de pagos en el checkout Angular: `PagoWompi`, `WompiWidgetService`, `PagoResultadoPage`. |
-| Tarea 5 | Pruebas unitarias JUnit/Mockito: `FirmaWompiServiceTest`, `PagoServiceTest`, más integración `PagoWompiIntegrationTest` y Vitest. |
+| Tarea 5 | Pruebas unitarias JUnit/Mockito: `FirmaWompiServiceTest`, `PagoServiceTest`, `ReceptorEventosWompiTest`, `WompiClientTest`, más integración `PagoWompiIntegrationTest` y Vitest. |
 | UI-13 / UI-14 | Método de pago y pago: modal del Widget de Wompi abierto desde UI-12. |
 | UI-15 | Confirmación de pago: `/cliente/pago/resultado`. |
 | US-10 | Consume el pedido `PENDIENTE_PAGO` y conecta `PedidoPagoService.confirmarPago`; resuelve CP-US10-26 (aviso de prendas agotadas y reembolso). |
 | Plan de calidad 3.8.6 | Integridad transaccional: validación obligatoria de la firma de los webhooks de Wompi. |
-| RNF-10 | Endpoints de pago restringidos al rol `CLIENTE` y aislados por propietario (404 para pedidos/pagos ajenos). |
+
+### Requisitos no funcionales (Plan de Gestión de la Calidad, sección 4)
+
+| RNF | Requisito | Cómo lo atiende US-11 |
+|---|---|---|
+| RNF-07 | Autenticidad de notificaciones de pago (Webhooks) | Todo evento se autentica con el checksum SHA-256 de Wompi (el mecanismo que Wompi ofrece en lugar de un HMAC) antes de tocar el pedido. Además se rechaza si su `timestamp` tiene más de 10 minutos, para que un aviso capturado no se pueda reutilizar. El monto y la moneda deben coincidir con los registrados. |
+| RNF-21 | Interoperabilidad con la pasarela de pagos externa (excepciones < 2 %) | Integración por API (consulta de transacciones) y webhook. Acepta la fecha del evento en segundos, milisegundos o ISO-8601, es idempotente ante reenvíos, reintenta internamente al aplicar un evento y responde 503 con la cola llena para que Wompi reintente. |
+| RNF-28 | Tolerancia a fallos de la pasarela (preservación transaccional ≥ 99 %) | Tiempos máximos de conexión (3 s) y lectura (8 s) hacia Wompi, y de 15 s en el navegador. Si se agotan se responde “Intenta más tarde” sin modificar la transacción ni el pedido. Límite de 5 intentos de pago por pedido. |
+| RNF-05 | Capacidad de respuesta ante concurrencia | El webhook responde tras validar la firma y aplica el evento en un grupo acotado de hilos. La verificación directa consulta a Wompi fuera de la transacción de base de datos, así una respuesta lenta no retiene conexiones ni bloqueos de otros pagos. |
+| RNF-03 | Sincronización del inventario tras el pago | La aprobación invoca `PedidoPagoService.confirmarPago` (US-10), que descuenta el stock de forma atómica en la misma transacción. |
+| RNF-10 | Control de accesos por roles | Endpoints de pago restringidos al rol `CLIENTE` y aislados por propietario (404 para pedidos/pagos ajenos). El webhook es público pero está protegido por RNF-07. |
+| RNF-18 | Operabilidad del flujo de compra | Widget abierto desde el checkout, aviso “No se completó el pago” con botón “Reintentar pago” al cerrar la ventana, y UI-15 con el resultado. |
 
 ## Flujo
 
@@ -33,14 +44,31 @@ Fuera de alcance: reembolsos automáticos (la transacción queda marcada `REEMBO
 2. Angular llama `POST /api/cliente/pagos/pedidos/{pedidoId}`. El backend bloquea el pedido, valida propietario, estado `PENDIENTE_PAGO`, plazo de 30 minutos y que no exista otro intento `PENDIENTE`; crea `TransaccionPago` en `CREADA` con referencia `LS-{pedidoId}-{10 hex aleatorios}` y monto `total × 100` en centavos.
 3. La respuesta trae `llavePublica`, `referencia`, `montoCentavos`, `moneda` y `firmaIntegridad = SHA256(referencia + montoCentavos + moneda + secretoIntegridad)`. El secreto nunca sale del servidor, por lo que el navegador no puede alterar el monto.
 4. `WompiWidgetService` carga `https://checkout.wompi.co/widget.js` (una sola vez) y abre el widget. El cliente paga con tarjeta, PSE, Nequi u otro medio habilitado.
-5. Wompi notifica al webhook. Además, al cerrar el widget con una transacción, Angular navega a `/cliente/pago/resultado?id={transaccionId}` (si se configura `WOMPI_REDIRECT_URL` con un dominio público, Wompi también redirige ahí), y la página llama `POST /api/cliente/pagos/verificar`, que consulta la transacción en la API de Wompi. Lo que llegue primero aplica el estado; lo segundo es idempotente.
+5. Wompi notifica al webhook, que valida firma y vigencia, responde 200 de inmediato y aplica el evento en segundo plano. Si el cliente cierra la ventana sin pagar, el botón muestra “No se completó el pago” y cambia a “Reintentar pago”. Además, al cerrar el widget con una transacción, Angular navega a `/cliente/pago/resultado?id={transaccionId}` (si se configura `WOMPI_REDIRECT_URL` con un dominio público, Wompi también redirige ahí), y la página llama `POST /api/cliente/pagos/verificar`, que consulta la transacción en la API de Wompi. Lo que llegue primero aplica el estado; lo segundo es idempotente.
 6. Si el estado es `APPROVED`, se invoca `PedidoPagoService.confirmarPago` (US-10): descuenta stock y pasa el pedido a `PAGADO`.
 
 ## Reglas funcionales
 
 ### Verificación de firma del webhook (SHA-256)
 
-Wompi envía `signature.properties` (por ejemplo `transaction.id`, `transaction.status`, `transaction.amount_in_cents`), `signature.checksum` y `timestamp`. El backend concatena los valores de esas rutas dentro de `data`, luego el `timestamp` y el secreto de eventos, calcula SHA-256 y compara en tiempo constante (`MessageDigest.isEqual`, sin distinguir mayúsculas). Si falta cualquier dato, el secreto no está configurado o el checksum no coincide, responde **401** y no toca pedidos ni stock. Un 200 confirma la recepción; ante errores internos se devuelve 5xx para que Wompi reintente.
+Wompi envía `signature.properties` (por ejemplo `transaction.id`, `transaction.status`, `transaction.amount_in_cents`), `signature.checksum` y `timestamp`. El backend concatena los valores de esas rutas dentro de `data`, luego el `timestamp` y el secreto de eventos, calcula SHA-256 y compara en tiempo constante (`MessageDigest.isEqual`, sin distinguir mayúsculas). Si falta cualquier dato, el secreto no está configurado o el checksum no coincide, responde **401** y no toca pedidos ni stock. Un 200 confirma la recepción; si la cola de eventos está llena se devuelve 503 para que Wompi reintente.
+
+### Vigencia y formato de la fecha del evento (RNF-07, RNF-21)
+
+- Un evento con firma válida solo se acepta si su `timestamp` está entre 10 minutos antes y 1 minuto después de la hora del servidor (`app.pagos.vigencia-evento`, `app.pagos.tolerancia-reloj`). Así, un aviso auténtico capturado no puede reenviarse después para cambiar el estado de un pago.
+- El `timestamp` se acepta en segundos Unix (lo que envía Wompi hoy), milisegundos Unix o fecha ISO-8601 con o sin zona (sin zona se asume UTC). La firma se calcula con el valor tal como llegó y la vigencia con la fecha interpretada. Un formato irreconocible se rechaza con 401.
+
+### Robustez ante fallos y carga (RNF-05, RNF-28)
+
+- **Tiempos máximos con Wompi:** la consulta `GET /v1/transactions/{id}` tiene 3 s para conectar y 8 s para responder. Si se agotan, `POST /api/cliente/pagos/verificar` responde **504** “Wompi está tardando en responder. Intenta más tarde; tu pedido se conserva sin cambios.”; si Wompi no está disponible, **503**. La transacción local y el pedido no se modifican.
+- **Tiempo máximo en el navegador:** las peticiones de pago y la carga de `widget.js` se cancelan a los 15 s con el mensaje “Intenta más tarde” y el botón se libera.
+- **Avisos simultáneos sin fila:** `ReceptorEventosWompi` valida firma y vigencia sin tocar la base de datos, responde 200 y aplica el evento en un grupo de 4 hilos con cola de 100. Cada evento solo bloquea su propia transacción y su pedido. Si la aplicación falla se reintenta hasta 3 veces; si aun así falla, el estado se obtiene con la consulta directa de UI-15.
+- **Sin retener conexiones:** la verificación directa consulta a Wompi antes de abrir la transacción de base de datos, que solo dura lo que tarda aplicar el estado.
+- **Límite de intentos:** un pedido admite como máximo 5 intentos de pago (`app.pagos.max-intentos-por-pedido`). El siguiente responde **429** “Alcanzaste el máximo de 5 intentos de pago para este pedido. Vuelve a crear el pedido desde tu carrito.”
+
+### Cierre de la ventana de pago (RNF-18)
+
+Wompi no invoca el callback del Widget cuando el cliente cierra el modal sin pagar; al cerrarlo, agrega el atributo `hidden` a su elemento `.waybox-modal`. `WompiWidgetService` lo detecta con un `MutationObserver` (y también trata como cierre un callback sin transacción) y emite `{ tipo: 'cerrado' }`. `PagoWompi` muestra entonces “No se completó el pago. Cerraste la ventana de pago antes de terminar; tu pedido sigue pendiente y puedes reintentarlo.” y el botón cambia a **“Reintentar pago”**.
 
 ### Validaciones adicionales antifraude
 
@@ -74,10 +102,10 @@ UI-15 lista nombre, talla, cantidad solicitada y existencia actual de cada prend
 
 | Contrato | Descripción |
 |---|---|
-| `POST /api/cliente/pagos/pedidos/{pedidoId}` | Rol `CLIENTE`. 201 con `InicioPagoResponse` (`pedidoId`, `referencia`, `montoCentavos`, `moneda`, `llavePublica`, `firmaIntegridad`, `urlRedireccion`, datos de contacto para prellenar). 404 pedido ajeno, 409 no pendiente/vencido/pago en proceso, 503 pasarela sin configurar. |
-| `POST /api/cliente/pagos/verificar` | Rol `CLIENTE`. Body `{ "transaccionId": "..." }`. Consulta Wompi, aplica el estado y responde `ResultadoPagoResponse`. 502 si Wompi no responde. |
+| `POST /api/cliente/pagos/pedidos/{pedidoId}` | Rol `CLIENTE`. 201 con `InicioPagoResponse` (`pedidoId`, `referencia`, `montoCentavos`, `moneda`, `llavePublica`, `firmaIntegridad`, `urlRedireccion`, datos de contacto para prellenar). 404 pedido ajeno, 409 no pendiente/vencido/pago en proceso, 429 límite de intentos alcanzado, 503 pasarela sin configurar. |
+| `POST /api/cliente/pagos/verificar` | Rol `CLIENTE`. Body `{ "transaccionId": "..." }`. Consulta Wompi, aplica el estado y responde `ResultadoPagoResponse`. 504 si Wompi no responde a tiempo, 503 si no está disponible, 502 si responde algo inválido. |
 | `GET /api/cliente/pagos/{referencia}` | Rol `CLIENTE`. Estado local del pago sin consultar Wompi. |
-| `POST /api/pagos/wompi/eventos` | Público (sin JWT), protegido por checksum SHA-256. 200 recibido; 401 firma inválida. |
+| `POST /api/pagos/wompi/eventos` | Público (sin JWT), protegido por checksum SHA-256 y vigencia de 10 minutos. 200 recibido (se aplica en segundo plano); 401 firma inválida o evento vencido; 503 cola llena. |
 | `ResultadoPagoResponse` | `pedidoId`, `referencia`, `estadoPago`, `estadoPedido`, `motivoReembolso`, `metodoPago`, `total`, `prendasAgotadas`, `lineasDisponibles`. |
 
 ## Persistencia
@@ -88,11 +116,14 @@ UI-15 lista nombre, talla, cantidad solicitada y existencia actual de cada prend
 
 ## Configuración
 
-Propiedades `app.wompi.*` en `application.properties`, leídas de variables de entorno (`WOMPI_PUBLIC_KEY`, `WOMPI_INTEGRITY_SECRET`, `WOMPI_EVENTS_SECRET`, `WOMPI_API_URL`, `WOMPI_REDIRECT_URL`). `WompiProperties.toString()` oculta los secretos. Para producción se cambia `WOMPI_API_URL` a `https://production.wompi.co/v1` y las llaves `pub_prod_`/`prod_integrity_`/`prod_events_`.
+Propiedades `app.wompi.*` en `application.properties`, leídas de variables de entorno (`WOMPI_PUBLIC_KEY`, `WOMPI_INTEGRITY_SECRET`, `WOMPI_EVENTS_SECRET`, `WOMPI_API_URL`, `WOMPI_REDIRECT_URL`). `WompiProperties.toString()` oculta los secretos.
+
+Los límites operativos están en `app.pagos.*` (`PagoProperties`): `vigencia-evento` (PT10M), `tolerancia-reloj` (PT1M), `timeout-conexion` (PT3S), `timeout-lectura` (PT8S), `max-intentos-por-pedido` (5), `eventos-asincronos` (true), `hilos-eventos` (4) y `cola-eventos` (100). La vigencia, los dos tiempos máximos y el máximo de intentos se pueden ajustar con `PAGOS_VIGENCIA_EVENTO`, `PAGOS_TIMEOUT_CONEXION`, `PAGOS_TIMEOUT_LECTURA` y `PAGOS_MAX_INTENTOS`. Para producción se cambia `WOMPI_API_URL` a `https://production.wompi.co/v1` y las llaves `pub_prod_`/`prod_integrity_`/`prod_events_`.
 
 ## Cambios mínimos sobre código existente
 
 - `SecurityConfig`: una regla `permitAll` para `POST /api/pagos/wompi/eventos`.
+- `WompiConfig`: registra también `PagoProperties`.
 - `checkout.html`/`checkout.ts` (US-10): el botón deshabilitado “Pagar” se reemplazó por `<app-pago-wompi>`; no se modificó otra lógica del checkout.
 - `checkout.spec.ts` (US-10): se ajustó la aserción que esperaba el botón deshabilitado y se agregó el mock de `PagoService`.
 - `app.routes.ts`, `catalogo-compras.routes.ts`, `styles.scss`, `application.properties`: solo se agregaron entradas.
@@ -102,4 +133,7 @@ Propiedades `app.wompi.*` en `application.properties`, leídas de variables de e
 - El reembolso es manual (`REEMBOLSO_PENDIENTE`).
 - Si un pago `PENDIENTE` (p. ej. PSE) se aprueba después de los 30 minutos, el pedido ya fue cancelado por el proceso de expiración de US-10 y la transacción queda para reembolso.
 - La notificación por correo del pago aprobado corresponde a US-12.
+- Wompi reintenta el webhook cuando no recibe 200. Si un reintento llega después de la vigencia de 10 minutos se rechaza; el estado del pago se recupera igualmente con la consulta directa de UI-15 (`POST /api/cliente/pagos/verificar`).
+- Los eventos que esperan en la cola en memoria se pierden si el backend se reinicia antes de aplicarlos. Ya respondieron 200, así que Wompi no los reenvía; el estado se obtiene con la consulta directa.
+- La detección del cierre del Widget depende de la clase `waybox-modal` que usa Wompi. Si Wompi la cambia, el botón se libera igual al abrirse la pasarela, pero no se mostraría el aviso “No se completó el pago”.
 - Wompi responde **403** al abrir el checkout si `redirect-url` apunta a `localhost` o `127.0.0.1`. Por eso `WompiProperties.urlRedireccionPublica()` omite las URLs locales y en desarrollo el regreso a UI-15 lo hace el callback del Widget. En producción se define `WOMPI_REDIRECT_URL` con el dominio público.

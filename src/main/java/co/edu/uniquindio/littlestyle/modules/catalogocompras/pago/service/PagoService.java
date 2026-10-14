@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service;
 
 import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
+import co.edu.uniquindio.littlestyle.config.PagoProperties;
 import co.edu.uniquindio.littlestyle.config.WompiProperties;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaDisponibilidadPagoResponse;
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -59,6 +61,8 @@ public class PagoService {
     private final WompiClient wompiClient;
     private final WompiProperties wompiProperties;
     private final CheckoutProperties checkoutProperties;
+    private final PagoProperties pagoProperties;
+    private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
@@ -83,6 +87,11 @@ public class PagoService {
             throw new BusinessException(HttpStatus.CONFLICT,
                     "Ya hay un pago en proceso para este pedido. Espera su confirmación antes de intentarlo de nuevo.");
         }
+        if (transaccionPagoRepository.countByPedidoId(pedidoId) >= pagoProperties.maxIntentosPorPedido()) {
+            throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Alcanzaste el máximo de " + pagoProperties.maxIntentosPorPedido()
+                            + " intentos de pago para este pedido. Vuelve a crear el pedido desde tu carrito.");
+        }
 
         long montoCentavos = centavos(pedido.getTotal());
         String moneda = wompiProperties.moneda();
@@ -105,27 +114,46 @@ public class PagoService {
                 pedido.getTelefono());
     }
 
-    /** Consulta la transacción directamente en Wompi y aplica su estado si pertenece al cliente. */
-    @Transactional
+    /**
+     * Consulta la transacción directamente en Wompi y aplica su estado si pertenece al cliente.
+     * La consulta HTTP se hace fuera de la transacción de base de datos: si Wompi tarda, no se
+     * retienen conexiones ni bloqueos que hagan esperar a otros pagos (RNF-05, RNF-28).
+     */
     public ResultadoPagoResponse verificar(String wompiTransaccionId) {
         AuthenticatedUser usuario = usuarioActual();
         TransaccionWompi transaccionWompi = wompiClient.consultarTransaccion(wompiTransaccionId);
-        TransaccionPago transaccion = Optional.ofNullable(transaccionWompi.referencia())
-                .flatMap(transaccionPagoRepository::bloquearPorReferencia)
-                .filter(encontrada -> perteneceA(encontrada.getPedido(), usuario))
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pago no encontrado"));
-        aplicar(transaccion, transaccionWompi);
-        return respuesta(transaccion);
+        return transactionTemplate.execute(estado -> {
+            TransaccionPago transaccion = Optional.ofNullable(transaccionWompi.referencia())
+                    .flatMap(transaccionPagoRepository::bloquearPorReferencia)
+                    .filter(encontrada -> perteneceA(encontrada.getPedido(), usuario))
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pago no encontrado"));
+            aplicar(transaccion, transaccionWompi);
+            return respuesta(transaccion);
+        });
     }
 
-    /** Procesa un evento del webhook. Lanza 401 si la firma SHA-256 no coincide. */
+    /** Valida y aplica un evento del webhook en la misma llamada. Lanza 401 si no es válido. */
     @Transactional
     public void procesarEvento(EventoWompiRequest evento) {
+        validarEvento(evento);
+        aplicarEvento(evento);
+    }
+
+    /**
+     * Rechaza con 401 el evento cuya firma SHA-256 no coincide o cuya fecha está fuera de la
+     * vigencia configurada (RNF-07). No toca la base de datos, así que responde de inmediato.
+     */
+    public void validarEvento(EventoWompiRequest evento) {
         if (!firmaWompiService.eventoValido(evento)) {
-            log.warn("Evento de Wompi rechazado por firma inválida (evento={}, timestamp={})",
-                    evento == null ? null : evento.event(), evento == null ? null : evento.timestamp());
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Firma del evento inválida");
+            log.warn("Evento de Wompi rechazado por firma inválida o vencida (evento={}, timestamp={})",
+                    evento == null ? null : evento.event(), evento == null ? null : evento.timestampTexto());
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Firma del evento inválida o vencida");
         }
+    }
+
+    /** Aplica un evento ya validado con {@link #validarEvento}. Es idempotente ante reenvíos. */
+    @Transactional
+    public void aplicarEvento(EventoWompiRequest evento) {
         if (!EVENTO_TRANSACCION.equals(evento.event())) {
             log.info("Evento de Wompi ignorado: {}", evento.event());
             return;

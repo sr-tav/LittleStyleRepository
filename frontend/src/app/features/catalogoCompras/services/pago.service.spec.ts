@@ -5,8 +5,10 @@ import {
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
+import { HttpErrorResponse } from '@angular/common/http';
+
 import { environment } from '../../../../environments/environment';
-import { PagoService } from './pago.service';
+import { MENSAJE_SIN_RESPUESTA, PagoService, TIEMPO_MAXIMO_PAGO_MS } from './pago.service';
 
 describe('PagoService', () => {
   let http: HttpTestingController;
@@ -20,7 +22,10 @@ describe('PagoService', () => {
     service = TestBed.inject(PagoService);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    vi.useRealTimers();
+    http.verify();
+  });
 
   it('solicita al backend los datos firmados para pagar un pedido', () => {
     let referencia = '';
@@ -43,5 +48,19 @@ describe('PagoService', () => {
     req.flush({ estadoPago: 'APROBADA' });
 
     expect(estado).toBe('APROBADA');
+  });
+
+  it('corta la consulta si no responde a tiempo y avisa que se intente más tarde', () => {
+    vi.useFakeTimers();
+    let error: unknown;
+    service.verificar('wompi-1').subscribe({ error: (e: unknown) => (error = e) });
+    const req = http.expectOne(`${environment.apiUrl}/cliente/pagos/verificar`);
+
+    vi.advanceTimersByTime(TIEMPO_MAXIMO_PAGO_MS);
+
+    expect(req.cancelled).toBe(true);
+    expect(error).toBeInstanceOf(HttpErrorResponse);
+    expect((error as HttpErrorResponse).status).toBe(504);
+    expect((error as HttpErrorResponse).error).toEqual({ mensaje: MENSAJE_SIN_RESPUESTA });
   });
 });
