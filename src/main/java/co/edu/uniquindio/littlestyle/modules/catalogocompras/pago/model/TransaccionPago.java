@@ -1,8 +1,11 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
+import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.repository.converter.TextoLegadoCifradoConverter;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -29,7 +32,10 @@ import java.util.List;
 @Entity
 @Table(name = "transacciones_pago", indexes = {
         @Index(name = "idx_transaccion_pago_pedido", columnList = "pedido_id"),
-        @Index(name = "idx_transaccion_pago_wompi", columnList = "wompi_transaccion_id")
+        @Index(name = "idx_transaccion_pago_wompi", columnList = "wompi_transaccion_id"),
+        @Index(name = "idx_transaccion_pago_cliente", columnList = "cliente_id"),
+        @Index(name = "uk_transaccion_cliente_idempotencia",
+                columnList = "cliente_id, clave_idempotencia", unique = true)
 })
 @Getter
 @Setter
@@ -42,9 +48,20 @@ public class TransaccionPago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "pedido_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_id")
+    private Usuario cliente;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pedido_id")
     private Pedido pedido;
+
+    @Convert(converter = TextoLegadoCifradoConverter.class)
+    @Column(name = "snapshot_checkout", columnDefinition = "TEXT")
+    private String snapshotCheckout;
+
+    @Column(name = "clave_idempotencia", length = 64)
+    private String claveIdempotencia;
 
     @Column(nullable = false, unique = true, length = 60)
     private String referencia;

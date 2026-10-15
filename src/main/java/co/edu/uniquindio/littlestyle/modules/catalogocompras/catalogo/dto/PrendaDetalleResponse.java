@@ -17,8 +17,8 @@ import java.util.TreeSet;
 
 /**
  * Ficha del producto para el cliente (base de US-09, ficha técnica textil).
- * Incluye la tabla de tallas con disponibilidad por talla, sin revelar
- * existencias exactas ni el stock mínimo del vendedor.
+ * Incluye las existencias disponibles por talla para que el cliente pueda
+ * elegir una cantidad que el catálogo permita comprar.
  */
 public record PrendaDetalleResponse(
         Long id,
@@ -41,10 +41,11 @@ public record PrendaDetalleResponse(
     }
 
     public record TallaDisponible(String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
-                                  BigDecimal pesoMinKg, BigDecimal pesoMaxKg, boolean disponible) {
+                                  BigDecimal pesoMinKg, BigDecimal pesoMaxKg, int stockDisponible,
+                                  boolean disponible) {
         static TallaDisponible from(TallaPrenda t) {
             return new TallaDisponible(t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
-                    t.getPesoMinKg(), t.getPesoMaxKg(), t.getStock() > 0);
+                    t.getPesoMinKg(), t.getPesoMaxKg(), t.getStock(), t.getStock() > 0);
         }
     }
 

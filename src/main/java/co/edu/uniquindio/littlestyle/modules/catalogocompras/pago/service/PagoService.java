@@ -4,10 +4,15 @@ import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
 import co.edu.uniquindio.littlestyle.config.PagoProperties;
 import co.edu.uniquindio.littlestyle.config.WompiProperties;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
+import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.CrearPedidoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaDisponibilidadPagoResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaResumenCheckoutResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoPagoSnapshot;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoCheckoutService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoPagoService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.ResultadoConfirmacionPago;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.EventoWompiRequest;
@@ -22,6 +27,8 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.Transacc
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -57,6 +64,9 @@ public class PagoService {
     private final PedidoRepository pedidoRepository;
     private final TransaccionPagoRepository transaccionPagoRepository;
     private final PedidoPagoService pedidoPagoService;
+    private final PedidoCheckoutService pedidoCheckoutService;
+    private final ProcesadorCheckoutPagadoService procesadorCheckoutPagadoService;
+    private final ObjectMapper objectMapper;
     private final FirmaWompiService firmaWompiService;
     private final WompiClient wompiClient;
     private final WompiProperties wompiProperties;
@@ -65,6 +75,52 @@ public class PagoService {
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
+
+    @Transactional
+    public InicioPagoResponse iniciar(CrearPedidoRequest request, String claveIdempotencia) {
+        if (!wompiProperties.pagosConfigurados()) {
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "La pasarela de pagos no está disponible en este momento");
+        }
+        AuthenticatedUser usuario = usuarioActual();
+        String clave = normalizarClave(claveIdempotencia);
+        if (clave != null) {
+            Optional<TransaccionPago> existente = transaccionPagoRepository
+                    .findByClienteIdAndClaveIdempotencia(usuario.id(), clave);
+            if (existente.isPresent()) {
+                return respuestaInicio(existente.get(), usuario);
+            }
+        }
+
+        PedidoPagoSnapshot snapshot = pedidoCheckoutService.prepararPago(request);
+        Optional<TransaccionPago> activa = transaccionPagoRepository
+                .findFirstByClienteIdAndEstadoInOrderByFechaCreacionDesc(usuario.id(),
+                        List.of(EstadoTransaccionPago.CREADA, EstadoTransaccionPago.PENDIENTE));
+        if (activa.isPresent()) {
+            PedidoPagoSnapshot snapshotActivo = deserializar(activa.get().getSnapshotCheckout());
+            if (!snapshot.equals(snapshotActivo)) {
+                throw new BusinessException(HttpStatus.CONFLICT,
+                        "Ya hay un pago en proceso para otra compra. Espera su confirmación antes de iniciar otro.");
+            }
+            return respuestaInicio(activa.get(), usuario);
+        }
+        long montoCentavos = centavos(snapshot.total());
+        String referencia = generarReferenciaCheckout(usuario.id());
+        LocalDateTime ahora = LocalDateTime.now(clock);
+        TransaccionPago transaccion = TransaccionPago.builder()
+                .cliente(Usuario.builder().id(usuario.id()).build())
+                .snapshotCheckout(serializar(snapshot))
+                .claveIdempotencia(clave)
+                .referencia(referencia)
+                .montoCentavos(montoCentavos)
+                .moneda(wompiProperties.moneda())
+                .estado(EstadoTransaccionPago.CREADA)
+                .fechaCreacion(ahora)
+                .fechaActualizacion(ahora)
+                .build();
+        transaccionPagoRepository.save(transaccion);
+        return respuestaInicio(transaccion, usuario);
+    }
 
     @Transactional
     public InicioPagoResponse iniciar(Long pedidoId) {
@@ -98,6 +154,7 @@ public class PagoService {
         String referencia = generarReferencia(pedidoId);
         LocalDateTime ahora = LocalDateTime.now(clock);
         transaccionPagoRepository.save(TransaccionPago.builder()
+                .cliente(pedido.getCliente())
                 .pedido(pedido)
                 .referencia(referencia)
                 .montoCentavos(montoCentavos)
@@ -125,7 +182,7 @@ public class PagoService {
         return transactionTemplate.execute(estado -> {
             TransaccionPago transaccion = Optional.ofNullable(transaccionWompi.referencia())
                     .flatMap(transaccionPagoRepository::bloquearPorReferencia)
-                    .filter(encontrada -> perteneceA(encontrada.getPedido(), usuario))
+                    .filter(encontrada -> perteneceA(encontrada, usuario))
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pago no encontrado"));
             aplicar(transaccion, transaccionWompi);
             return respuesta(transaccion);
@@ -178,7 +235,7 @@ public class PagoService {
     public ResultadoPagoResponse consultarPorReferencia(String referencia) {
         AuthenticatedUser usuario = usuarioActual();
         return transaccionPagoRepository.findByReferencia(referencia)
-                .filter(transaccion -> perteneceA(transaccion.getPedido(), usuario))
+                .filter(transaccion -> perteneceA(transaccion, usuario))
                 .map(this::respuesta)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pago no encontrado"));
     }
@@ -209,6 +266,11 @@ public class PagoService {
     }
 
     private void confirmarPedido(TransaccionPago transaccion) {
+        if (transaccion.getPedido() == null) {
+            ResultadoConfirmacionPago resultado = procesadorCheckoutPagadoService.confirmar(transaccion);
+            procesarResultadoConfirmacion(transaccion, resultado);
+            return;
+        }
         Long pedidoId = transaccion.getPedido().getId();
         Pedido pedido = pedidoRepository.bloquearPorId(pedidoId)
                 .orElseThrow(() -> new IllegalStateException("No se encontró el pedido " + pedidoId));
@@ -220,6 +282,11 @@ public class PagoService {
         }
 
         ResultadoConfirmacionPago resultado = pedidoPagoService.confirmarPago(pedidoId);
+        procesarResultadoConfirmacion(transaccion, resultado);
+    }
+
+    private void procesarResultadoConfirmacion(TransaccionPago transaccion, ResultadoConfirmacionPago resultado) {
+        Long pedidoId = transaccion.getPedido().getId();
         switch (resultado.estado()) {
             case CONFIRMADO -> transaccion.setEstado(EstadoTransaccionPago.APROBADA);
             case STOCK_INSUFICIENTE -> {
@@ -241,6 +308,7 @@ public class PagoService {
 
     private ResultadoPagoResponse respuesta(TransaccionPago transaccion) {
         Pedido pedido = transaccion.getPedido();
+        PedidoPagoSnapshot snapshot = pedido == null ? deserializar(transaccion.getSnapshotCheckout()) : null;
         List<LineaDisponibilidadPagoResponse> agotadas = transaccion.getPrendasAgotadas().stream()
                 .map(prenda -> new LineaDisponibilidadPagoResponse(prenda.getPrendaId(), prenda.getNombre(),
                         prenda.getTalla(), prenda.getCantidadSolicitada(), prenda.getStockDisponible()))
@@ -250,20 +318,44 @@ public class PagoService {
             Set<String> clavesAgotadas = agotadas.stream()
                     .map(linea -> clave(linea.prendaId(), linea.talla()))
                     .collect(Collectors.toSet());
-            disponibles = pedido.getItems().stream()
-                    .filter(linea -> !clavesAgotadas.contains(clave(linea.getPrendaId(), linea.getTalla())))
-                    .map(linea -> new LineaRecompraResponse(linea.getPrendaId(), linea.getNombre(),
-                            linea.getTalla(), linea.getCantidad()))
-                    .toList();
+            if (pedido != null) {
+                disponibles = pedido.getItems().stream()
+                        .filter(linea -> !clavesAgotadas.contains(clave(linea.getPrendaId(), linea.getTalla())))
+                        .map(linea -> new LineaRecompraResponse(linea.getPrendaId(), linea.getNombre(),
+                                linea.getTalla(), linea.getCantidad()))
+                        .toList();
+            } else if (snapshot != null) {
+                disponibles = snapshot.items().stream()
+                        .filter(linea -> !clavesAgotadas.contains(clave(linea.prendaId(), linea.talla())))
+                        .map(linea -> new LineaRecompraResponse(linea.prendaId(), linea.nombre(),
+                                linea.talla(), linea.cantidad()))
+                        .toList();
+            }
         }
-        return new ResultadoPagoResponse(pedido.getId(), transaccion.getReferencia(), transaccion.getEstado(),
-                pedido.getEstado(), transaccion.getMotivoReembolso(), transaccion.getMetodoPago(),
-                pedido.getTotal(), agotadas, disponibles);
+        return new ResultadoPagoResponse(
+                pedido == null ? null : pedido.getId(),
+                transaccion.getReferencia(),
+                transaccion.getEstado(),
+                pedido == null ? null : pedido.getEstado(),
+                transaccion.getMotivoReembolso(),
+                transaccion.getMetodoPago(),
+                pedido == null ? BigDecimal.valueOf(transaccion.getMontoCentavos(), 2) : pedido.getTotal(),
+                agotadas,
+                disponibles);
     }
 
     private boolean pedidoVencido(Pedido pedido) {
         LocalDateTime limite = LocalDateTime.now(clock).minus(checkoutProperties.tiempoExpiracionPedido());
         return !pedido.getFechaCreacion().isAfter(limite);
+    }
+
+    private boolean perteneceA(TransaccionPago transaccion, AuthenticatedUser usuario) {
+        if (transaccion.getCliente() != null) {
+            return usuario.id().equals(transaccion.getCliente().getId());
+        }
+        Pedido pedido = transaccion.getPedido();
+        return pedido != null && pedido.getCliente() != null
+                && usuario.id().equals(pedido.getCliente().getId());
     }
 
     private boolean perteneceA(Pedido pedido, AuthenticatedUser usuario) {
@@ -279,6 +371,57 @@ public class PagoService {
         byte[] aleatorio = new byte[5];
         random.nextBytes(aleatorio);
         return "LS-" + pedidoId + "-" + HexFormat.of().withUpperCase().formatHex(aleatorio);
+    }
+
+    private String generarReferenciaCheckout(Long clienteId) {
+        byte[] aleatorio = new byte[5];
+        random.nextBytes(aleatorio);
+        return "LS-C" + clienteId + "-" + HexFormat.of().withUpperCase().formatHex(aleatorio);
+    }
+
+    private InicioPagoResponse respuestaInicio(TransaccionPago transaccion, AuthenticatedUser usuario) {
+        return new InicioPagoResponse(transaccion.getPedido() == null ? null : transaccion.getPedido().getId(),
+                transaccion.getReferencia(), transaccion.getMontoCentavos(), transaccion.getMoneda(),
+                wompiProperties.llavePublica(),
+                firmaWompiService.firmaIntegridad(transaccion.getReferencia(),
+                        transaccion.getMontoCentavos(), transaccion.getMoneda()),
+                wompiProperties.urlRedireccionPublica(), usuario.email(), usuario.nombre(),
+                transaccion.getPedido() == null ? telefonoSnapshot(transaccion) : transaccion.getPedido().getTelefono());
+    }
+
+    private String telefonoSnapshot(TransaccionPago transaccion) {
+        PedidoPagoSnapshot snapshot = deserializar(transaccion.getSnapshotCheckout());
+        return snapshot == null ? null : snapshot.direccion().telefono();
+    }
+
+    private String serializar(PedidoPagoSnapshot snapshot) {
+        try {
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (JacksonException error) {
+            throw new IllegalStateException("No fue posible guardar los datos del checkout", error);
+        }
+    }
+
+    private PedidoPagoSnapshot deserializar(String snapshot) {
+        if (snapshot == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(snapshot, PedidoPagoSnapshot.class);
+        } catch (JacksonException error) {
+            throw new IllegalStateException("No fue posible recuperar los datos del checkout", error);
+        }
+    }
+
+    private static String normalizarClave(String clave) {
+        if (clave == null || clave.isBlank()) {
+            return null;
+        }
+        if (clave.trim().length() > 64) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "La clave de idempotencia admite máximo 64 caracteres", "Idempotency-Key");
+        }
+        return clave.trim();
     }
 
     static long centavos(BigDecimal valor) {

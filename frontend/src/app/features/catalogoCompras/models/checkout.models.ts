@@ -39,14 +39,3 @@ export interface ResumenCheckout {
   costoEnvio: number;
   total: number;
 }
-
-export interface PedidoCreado {
-  pedidoId: number;
-  estado: 'PENDIENTE_PAGO';
-  perfilInfantilId: number;
-  direccion: DireccionEnvio;
-  items: LineaResumenCheckout[];
-  subtotal: number;
-  costoEnvio: number;
-  total: number;
-}

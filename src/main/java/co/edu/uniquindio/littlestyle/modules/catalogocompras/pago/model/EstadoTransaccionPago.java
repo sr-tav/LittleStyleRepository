@@ -15,7 +15,8 @@ public enum EstadoTransaccionPago {
 
     /** Estados que ningún evento posterior de Wompi puede modificar. */
     public boolean esFinal() {
-        return this == APROBADA || this == ANULADA || this == REEMBOLSO_PENDIENTE;
+        return this == APROBADA || this == RECHAZADA || this == ANULADA
+                || this == ERROR || this == REEMBOLSO_PENDIENTE;
     }
 
     public static EstadoTransaccionPago desdeWompi(String estadoWompi) {

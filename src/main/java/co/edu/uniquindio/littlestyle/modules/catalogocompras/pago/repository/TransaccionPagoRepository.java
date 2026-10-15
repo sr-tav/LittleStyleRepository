@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.Collection;
 
 public interface TransaccionPagoRepository extends JpaRepository<TransaccionPago, Long> {
 
@@ -17,6 +18,11 @@ public interface TransaccionPagoRepository extends JpaRepository<TransaccionPago
     Optional<TransaccionPago> bloquearPorReferencia(@Param("referencia") String referencia);
 
     Optional<TransaccionPago> findByReferencia(String referencia);
+
+    Optional<TransaccionPago> findByClienteIdAndClaveIdempotencia(Long clienteId, String claveIdempotencia);
+
+    Optional<TransaccionPago> findFirstByClienteIdAndEstadoInOrderByFechaCreacionDesc(
+            Long clienteId, Collection<EstadoTransaccionPago> estados);
 
     long countByPedidoId(Long pedidoId);
 

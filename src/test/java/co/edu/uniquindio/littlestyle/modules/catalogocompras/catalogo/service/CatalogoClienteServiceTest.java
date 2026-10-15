@@ -83,7 +83,7 @@ class CatalogoClienteServiceTest {
     }
 
     @Test
-    void detalleOcultaExistenciasExactasYMinimo() {
+    void detalleMuestraExistenciasPorTallaPeroOcultaElMinimo() {
         when(prendaRepository.findByIdAndEstado(10L, EstadoPrenda.ACTIVA))
                 .thenReturn(Optional.of(prenda(10L, 5, 3, 0)));
 
@@ -93,6 +93,8 @@ class CatalogoClienteServiceTest {
         assertThat(detalle.disponible()).isTrue();
         assertThat(detalle.tallas()).extracting(PrendaDetalleResponse.TallaDisponible::disponible)
                 .containsExactly(true, false);
+        assertThat(detalle.tallas()).extracting(PrendaDetalleResponse.TallaDisponible::stockDisponible)
+                .containsExactly(3, 0);
     }
 
     @Test

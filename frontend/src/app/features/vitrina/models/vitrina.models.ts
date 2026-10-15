@@ -16,6 +16,7 @@ export interface VitrinaTalla {
   estaturaMaxCm: number;
   pesoMinKg: number;
   pesoMaxKg: number;
+  stockDisponible: number;
   disponible: boolean;
 }
 

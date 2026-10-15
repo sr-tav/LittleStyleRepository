@@ -95,7 +95,7 @@ class CatalogoClienteIntegrationTest {
     }
 
     @Test
-    void detalleMuestraFichaSinExistenciasExactasYOcultaInactivas() throws Exception {
+    void detalleMuestraExistenciasPorTallaSinExponerElMinimoYOcultaInactivas() throws Exception {
         String vendedor = registrar("vendedor-det-" + System.nanoTime() + "@correo.com", "VENDEDOR");
         String cliente = registrar("cliente-det-" + System.nanoTime() + "@correo.com", "CLIENTE");
         int id = crearPrenda(vendedor);
@@ -105,7 +105,8 @@ class CatalogoClienteIntegrationTest {
                 .andExpect(jsonPath("$.nombre").value("Pantalón Jogger Azul"))
                 .andExpect(jsonPath("$.tallas.length()").value(2))
                 .andExpect(jsonPath("$.tallas[0].disponible").value(true))
-                .andExpect(jsonPath("$.tallas[0].stock").doesNotExist())
+                .andExpect(jsonPath("$.tallas[0].stockDisponible").value(8))
+                .andExpect(jsonPath("$.tallas[1].stockDisponible").value(4))
                 .andExpect(jsonPath("$.stockMinimo").doesNotExist());
 
         // Al ocultar la prenda desaparece de la vitrina

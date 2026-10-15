@@ -3,22 +3,24 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, MonoTypeOperatorFunction, TimeoutError, catchError, throwError, timeout } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { InicioPago, ResultadoPago } from '../models/pago.models';
+import { SolicitudPago, InicioPago, ResultadoPago } from '../models/pago.models';
 
 /**
  * Tiempo máximo de espera de una petición de pago. Es mayor que los límites del backend con Wompi
  * (3 s de conexión + 8 s de lectura), de modo que normalmente llega primero su mensaje.
  */
 export const TIEMPO_MAXIMO_PAGO_MS = 15000;
-export const MENSAJE_SIN_RESPUESTA = 'El pago está tardando en responder. Intenta más tarde; tu pedido se conserva.';
+export const MENSAJE_SIN_RESPUESTA = 'El pago está tardando en responder. Intenta más tarde; tu carrito se conserva.';
 
 @Injectable({ providedIn: 'root' })
 export class PagoService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/cliente/pagos`;
 
-  iniciar(pedidoId: number): Observable<InicioPago> {
-    return this.http.post<InicioPago>(`${this.baseUrl}/pedidos/${pedidoId}`, {}).pipe(conTiempoMaximo());
+  iniciar(solicitud: SolicitudPago, claveIdempotencia: string): Observable<InicioPago> {
+    return this.http.post<InicioPago>(`${this.baseUrl}/checkout`, solicitud, {
+      headers: { 'Idempotency-Key': claveIdempotencia },
+    }).pipe(conTiempoMaximo());
   }
 
   verificar(transaccionId: string): Observable<ResultadoPago> {

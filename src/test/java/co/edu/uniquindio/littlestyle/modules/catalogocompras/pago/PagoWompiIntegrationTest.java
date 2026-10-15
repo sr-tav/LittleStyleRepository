@@ -65,29 +65,36 @@ class PagoWompiIntegrationTest {
 
     @Test
     void flujoCompletoWebhookAprobadoMarcaPedidoPagadoYDescuentaStock() throws Exception {
-        Compra compra = crearPedido(2);
+        Compra compra = crearCompra(2);
+        assertThat(pedidoRepository.count()).isZero();
 
-        String inicio = mockMvc.perform(post("/api/cliente/pagos/pedidos/" + compra.pedidoId())
-                        .header("Authorization", compra.cliente()))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.montoCentavos").value(7280000))
-                .andExpect(jsonPath("$.moneda").value("COP"))
-                .andExpect(jsonPath("$.llavePublica").value("pub_test_integracion"))
-                .andReturn().getResponse().getContentAsString();
+        String inicio = iniciarPagoResponse(compra);
+        assertThat((Object) JsonPath.read(inicio, "$.pedidoId")).isNull();
+        assertThat(((Number) JsonPath.read(inicio, "$.montoCentavos")).longValue()).isEqualTo(7280000L);
+        assertThat((String) JsonPath.read(inicio, "$.moneda")).isEqualTo("COP");
+        assertThat((String) JsonPath.read(inicio, "$.llavePublica")).isEqualTo("pub_test_integracion");
         String referencia = JsonPath.read(inicio, "$.referencia");
         String firmaEsperada = sha256(referencia + "7280000COPtest_integrity_secreto");
         assertThat((String) JsonPath.read(inicio, "$.firmaIntegridad")).isEqualTo(firmaEsperada);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
 
         mockMvc.perform(post("/api/pagos/wompi/eventos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(evento("wompi-1", "APPROVED", referencia, 7280000L, SECRETO_EVENTOS)))
                 .andExpect(status().isOk());
 
-        assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
+        var transaccion = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
+        assertThat(transaccion.getPedido()).isNotNull();
+        assertThat(pedidoRepository.findById(transaccion.getPedido().getId()).orElseThrow().getEstado())
                 .isEqualTo(EstadoPedido.PAGADO);
         assertThat(stockTalla(compra.prendaId())).isEqualTo(6);
-        assertThat(transaccionPagoRepository.findByReferencia(referencia).orElseThrow().getEstado())
+        assertThat(transaccion.getEstado())
                 .isEqualTo(EstadoTransaccionPago.APROBADA);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
 
         // Un reenvío del mismo evento no vuelve a descontar stock
         mockMvc.perform(post("/api/pagos/wompi/eventos")
@@ -103,8 +110,8 @@ class PagoWompiIntegrationTest {
     }
 
     @Test
-    void webhookConFirmaFalsaResponde401YNoCambiaElPedido() throws Exception {
-        Compra compra = crearPedido(1);
+    void webhookConFirmaFalsaResponde401YNoCreaPedidoNiVacíaElCarrito() throws Exception {
+        Compra compra = crearCompra(1);
         String referencia = iniciarPago(compra);
 
         mockMvc.perform(post("/api/pagos/wompi/eventos")
@@ -112,14 +119,36 @@ class PagoWompiIntegrationTest {
                         .content(evento("wompi-2", "APPROVED", referencia, 3990000L, "secreto-del-atacante")))
                 .andExpect(status().isUnauthorized());
 
-        assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
-                .isEqualTo(EstadoPedido.PENDIENTE_PAGO);
+        assertThat(pedidoRepository.count()).isZero();
         assertThat(stockTalla(compra.prendaId())).isEqualTo(8);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    void pagoRechazadoNoCreaPedidoNiVacíaElCarrito() throws Exception {
+        Compra compra = crearCompra(1);
+        String referencia = iniciarPago(compra);
+
+        mockMvc.perform(post("/api/pagos/wompi/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(evento("wompi-declined", "DECLINED", referencia, 3990000L, SECRETO_EVENTOS)))
+                .andExpect(status().isOk());
+
+        var transaccion = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.RECHAZADA);
+        assertThat(transaccion.getPedido()).isNull();
+        assertThat(pedidoRepository.count()).isZero();
+        assertThat(stockTalla(compra.prendaId())).isEqualTo(8);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
     }
 
     @Test
     void webhookRechazaUnAvisoAutenticoReutilizadoFueraDeSuVigencia() throws Exception {
-        Compra compra = crearPedido(1);
+        Compra compra = crearCompra(1);
         String referencia = iniciarPago(compra);
         long haceOnceMinutos = Instant.now().minusSeconds(11 * 60).getEpochSecond();
 
@@ -129,14 +158,13 @@ class PagoWompiIntegrationTest {
                                 haceOnceMinutos)))
                 .andExpect(status().isUnauthorized());
 
-        assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
-                .isEqualTo(EstadoPedido.PENDIENTE_PAGO);
+        assertThat(pedidoRepository.count()).isZero();
         assertThat(stockTalla(compra.prendaId())).isEqualTo(8);
     }
 
     @Test
     void webhookAceptaLaFechaDelAvisoEnFormatoIso() throws Exception {
-        Compra compra = crearPedido(1);
+        Compra compra = crearCompra(1);
         String referencia = iniciarPago(compra);
         String ahora = Instant.now().toString();
         String checksum = sha256("wompi-5APPROVED3990000" + ahora + SECRETO_EVENTOS);
@@ -153,13 +181,58 @@ class PagoWompiIntegrationTest {
                                 """.formatted(referencia, checksum, ahora)))
                 .andExpect(status().isOk());
 
-        assertThat(pedidoRepository.findById(compra.pedidoId()).orElseThrow().getEstado())
+        var transaccion = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
+        assertThat(pedidoRepository.findById(transaccion.getPedido().getId()).orElseThrow().getEstado())
                 .isEqualTo(EstadoPedido.PAGADO);
     }
 
     @Test
+    void pagoAprobadoSinStockCreaPedidoCanceladoParaReembolsoYConservaElCarrito() throws Exception {
+        Compra compra = crearCompra(1);
+        String referencia = iniciarPago(compra);
+        var prenda = prendaRepository.findByIdAndEstado((long) compra.prendaId(), EstadoPrenda.ACTIVA)
+                .orElseThrow();
+        prenda.buscarTalla("4").orElseThrow().setStock(0);
+        prendaRepository.saveAndFlush(prenda);
+
+        mockMvc.perform(post("/api/pagos/wompi/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(evento("wompi-stock", "APPROVED", referencia, 3990000L, SECRETO_EVENTOS)))
+                .andExpect(status().isOk());
+
+        var transaccion = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.REEMBOLSO_PENDIENTE);
+        assertThat(transaccion.getPedido().getEstado()).isEqualTo(EstadoPedido.CANCELADO);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    void reintentarInicioConLaMismaClaveReutilizaLaTransaccionSinCrearPedido() throws Exception {
+        Compra compra = crearCompra(1);
+        String solicitud = """
+                {"perfilInfantilId":%d,
+                 "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "complemento":null,"codigoPostal":"630001",
+                 "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
+                """.formatted(compra.perfilId());
+
+        String primerInicio = iniciarPagoConClave(compra, solicitud, "mismo-intento");
+        String segundoInicio = iniciarPagoConClave(compra, solicitud, "mismo-intento");
+
+        assertThat((String) JsonPath.read(segundoInicio, "$.referencia"))
+                .isEqualTo(JsonPath.read(primerInicio, "$.referencia"));
+        assertThat(pedidoRepository.count()).isZero();
+        assertThat(transaccionPagoRepository.count()).isEqualTo(1);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
     void verificacionDirectaConWompiConfirmaElPagoSinWebhook() throws Exception {
-        Compra compra = crearPedido(1);
+        Compra compra = crearCompra(1);
         String referencia = iniciarPago(compra);
         when(wompiClient.consultarTransaccion("wompi-3")).thenReturn(
                 new TransaccionWompi("wompi-3", "APPROVED", referencia, 3990000L, "COP", "NEQUI"));
@@ -171,34 +244,56 @@ class PagoWompiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoPago").value("APROBADA"))
                 .andExpect(jsonPath("$.estadoPedido").value("PAGADO"))
+                .andExpect(jsonPath("$.pedidoId").isNumber())
                 .andExpect(jsonPath("$.metodoPago").value("NEQUI"));
         assertThat(stockTalla(compra.prendaId())).isEqualTo(7);
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
     }
 
     @Test
     void pagosRequierenRolClienteYSonPrivadosPorCliente() throws Exception {
-        Compra compra = crearPedido(1);
-        mockMvc.perform(post("/api/cliente/pagos/pedidos/" + compra.pedidoId()))
+        Compra compra = crearCompra(1);
+        String referencia = iniciarPago(compra);
+        mockMvc.perform(post("/api/cliente/pagos/checkout"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/cliente/pagos/pedidos/" + compra.pedidoId())
+        mockMvc.perform(post("/api/cliente/pagos/checkout")
                         .header("Authorization", compra.vendedor()))
                 .andExpect(status().isForbidden());
 
         String otroCliente = registrar("pago-otro-" + System.nanoTime() + "@correo.com", "CLIENTE");
-        mockMvc.perform(post("/api/cliente/pagos/pedidos/" + compra.pedidoId())
+        mockMvc.perform(get("/api/cliente/pagos/" + referencia)
                         .header("Authorization", otroCliente))
                 .andExpect(status().isNotFound());
     }
 
     private String iniciarPago(Compra compra) throws Exception {
-        String inicio = mockMvc.perform(post("/api/cliente/pagos/pedidos/" + compra.pedidoId())
-                        .header("Authorization", compra.cliente()))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+        String inicio = iniciarPagoResponse(compra);
         return JsonPath.read(inicio, "$.referencia");
     }
 
-    private Compra crearPedido(int cantidad) throws Exception {
+    private String iniciarPagoResponse(Compra compra) throws Exception {
+        String solicitud = """
+                {"perfilInfantilId":%d,
+                 "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "complemento":null,"codigoPostal":"630001",
+                 "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
+                """.formatted(compra.perfilId());
+        return iniciarPagoConClave(compra, solicitud, "integracion-" + System.nanoTime());
+    }
+
+    private String iniciarPagoConClave(Compra compra, String solicitud, String clave) throws Exception {
+        return mockMvc.perform(post("/api/cliente/pagos/checkout")
+                        .header("Authorization", compra.cliente())
+                        .header("Idempotency-Key", clave)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitud))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    private Compra crearCompra(int cantidad) throws Exception {
         String vendedor = registrar("pago-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
         String cliente = registrar("pago-cliente-" + System.nanoTime() + "@correo.com", "CLIENTE");
         String prendaJson = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", vendedor)
@@ -219,17 +314,7 @@ class PagoWompiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":" + cantidad + "}"))
                 .andExpect(status().isOk());
-        String pedidoJson = mockMvc.perform(post("/api/cliente/checkout/pedidos").header("Authorization", cliente)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"perfilInfantilId":%d,
-                                 "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
-                                 "complemento":null,"codigoPostal":"630001",
-                                 "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
-                                """.formatted(perfilId)))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        long pedidoId = ((Number) JsonPath.read(pedidoJson, "$.pedidoId")).longValue();
-        return new Compra(cliente, vendedor, pedidoId, prendaId);
+        return new Compra(cliente, vendedor, perfilId, prendaId);
     }
 
     private String registrar(String email, String rol) throws Exception {
@@ -273,6 +358,6 @@ class PagoWompiIntegrationTest {
                 MessageDigest.getInstance("SHA-256").digest(texto.getBytes(StandardCharsets.UTF_8)));
     }
 
-    private record Compra(String cliente, String vendedor, long pedidoId, int prendaId) {
+    private record Compra(String cliente, String vendedor, int perfilId, int prendaId) {
     }
 }

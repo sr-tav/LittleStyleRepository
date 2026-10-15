@@ -54,49 +54,6 @@ describe('CheckoutService', () => {
     expect(subtotal).toBe(65800);
   });
 
-  it('crea el pedido pendiente y devuelve los datos para el inicio de pago de US-11', () => {
-    const requestBody = {
-      perfilInfantilId: 3,
-      direccion: {
-        destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
-        complemento: 'Apto. 302',
-        codigoPostal: '630001',
-        departamento: 'Quindío',
-        municipio: 'Armenia',
-        telefono: '3001234567',
-      },
-    };
-    let pedidoId = 0;
-
-    service.crearPedido(requestBody).subscribe((response) => {
-      pedidoId = response.pedidoId;
-    });
-
-    const request = http.expectOne(`${environment.apiUrl}/cliente/checkout/pedidos`);
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual(requestBody);
-    request.flush({
-      pedidoId: 55,
-      estado: 'PENDIENTE_PAGO',
-      perfilInfantilId: 3,
-      direccion: requestBody.direccion,
-      items: [],
-      subtotal: 65800,
-      costoEnvio: 7000,
-      total: 72800,
-    });
-    expect(pedidoId).toBe(55);
-  });
-
-  it('envía la clave de idempotencia para no duplicar el pedido al reintentar', () => {
-    service.crearPedido({ perfilInfantilId: 3, direccion: {} as never }, 'clave-1').subscribe();
-
-    const request = http.expectOne(`${environment.apiUrl}/cliente/checkout/pedidos`);
-    expect(request.request.headers.get('Idempotency-Key')).toBe('clave-1');
-    request.flush({ pedidoId: 55 });
-  });
-
   it('consulta y guarda la dirección asociada a la cuenta del cliente', () => {
     const direccion = {
       destinatario: 'Ana Ruiz',

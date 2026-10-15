@@ -27,15 +27,29 @@ describe('PagoService', () => {
     http.verify();
   });
 
-  it('solicita al backend los datos firmados para pagar un pedido', () => {
+  it('solicita al backend los datos firmados del checkout sin crear un pedido', () => {
+    const solicitud = {
+      perfilInfantilId: 3,
+      direccion: {
+        destinatario: 'Ana Ruiz',
+        direccion: 'Calle 1 # 2-3',
+        complemento: null,
+        codigoPostal: '630001',
+        departamento: 'Quindío',
+        municipio: 'Armenia',
+        telefono: '3001234567',
+      },
+    };
     let referencia = '';
-    service.iniciar(55).subscribe((inicio) => (referencia = inicio.referencia));
+    service.iniciar(solicitud, 'clave-1').subscribe((inicio) => (referencia = inicio.referencia));
 
-    const req = http.expectOne(`${environment.apiUrl}/cliente/pagos/pedidos/55`);
+    const req = http.expectOne(`${environment.apiUrl}/cliente/pagos/checkout`);
     expect(req.request.method).toBe('POST');
-    req.flush({ pedidoId: 55, referencia: 'LS-55-ABC', montoCentavos: 7280000 });
+    expect(req.request.headers.get('Idempotency-Key')).toBe('clave-1');
+    expect(req.request.body).toEqual(solicitud);
+    req.flush({ pedidoId: null, referencia: 'LS-C42-ABC', montoCentavos: 7280000 });
 
-    expect(referencia).toBe('LS-55-ABC');
+    expect(referencia).toBe('LS-C42-ABC');
   });
 
   it('verifica una transacción de Wompi por su identificador', () => {

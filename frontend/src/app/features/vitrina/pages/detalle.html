@@ -69,36 +69,59 @@
             Si tienes alergias textiles, revisa la composición y consulta tu talla sugerida con tu perfil activo.
           </p>
         }
-        @if (!p.disponible) {
-          <span class="alert-stock">Agotado temporalmente</span>
-        } @else {
-          <div class="detalle-agregar-carrito">
-            <label for="talla-carrito">Talla</label>
-            <select
-              id="talla-carrito"
-              [value]="tallaSeleccionada()"
-              (change)="seleccionarTalla($event)"
-            >
-              <option value="">Selecciona una talla</option>
-              @for (t of p.tallas; track t.talla) {
-                <option [value]="t.talla" [disabled]="!t.disponible">{{ t.talla }}</option>
-              }
-            </select>
-            <button
-              type="button" class="btn-primary btn-inline"
-              [disabled]="!tallaSeleccionada() || agregandoAlCarrito()"
-              (click)="agregarAlCarrito()"
-            >{{ agregandoAlCarrito() ? 'Agregando…' : 'Agregar al carrito' }}</button>
-            @if (mensajeCarrito(); as mensaje) {
-              <p class="alert alert-success" role="status">
-                {{ mensaje }} <a routerLink="/cliente/carrito">Ver carrito</a>
-              </p>
+        <div class="detalle-agregar-carrito">
+          @if (!p.disponible) {
+            <p class="alert alert-error" role="status">En este momento no hay unidades disponibles.</p>
+          }
+          <label for="talla-carrito">Talla</label>
+          <select
+            id="talla-carrito"
+            [value]="tallaSeleccionada()"
+            [disabled]="!p.disponible || agregandoAlCarrito()"
+            (change)="seleccionarTalla($event)"
+          >
+            <option value="">Selecciona una talla</option>
+            @for (t of p.tallas; track t.talla) {
+              <option [value]="t.talla" [disabled]="!t.disponible">
+                {{ t.talla }} · {{ t.stockDisponible }} disponibles
+              </option>
             }
-            @if (errorCarrito(); as mensaje) {
-              <p class="alert alert-error" role="alert">{{ mensaje }}</p>
-            }
-          </div>
-        }
+          </select>
+          @if (tallaSeleccionada()) {
+            <p class="detalle-stock" role="status">
+              Disponibles en talla {{ tallaSeleccionada() }}: {{ stockTallaSeleccionada() }}
+            </p>
+            <div class="detalle-cantidad" role="group" aria-label="Seleccionar cantidad">
+              <span>Cantidad</span>
+              <button
+                type="button" class="btn-ghost"
+                aria-label="Disminuir cantidad"
+                [disabled]="cantidadSeleccionada() <= 1 || agregandoAlCarrito()"
+                (click)="cambiarCantidad(-1)"
+              >−</button>
+              <output aria-live="polite">{{ cantidadSeleccionada() }}</output>
+              <button
+                type="button" class="btn-ghost"
+                aria-label="Aumentar cantidad"
+                [disabled]="cantidadSeleccionada() >= stockTallaSeleccionada() || agregandoAlCarrito()"
+                (click)="cambiarCantidad(1)"
+              >+</button>
+            </div>
+          }
+          <button
+            type="button" class="btn-primary btn-inline"
+            [disabled]="!p.disponible || !tallaSeleccionada() || agregandoAlCarrito()"
+            (click)="agregarAlCarrito()"
+          >{{ agregandoAlCarrito() ? 'Agregando…' : 'Agregar al carrito' }}</button>
+          @if (mensajeCarrito(); as mensaje) {
+            <p class="alert alert-success" role="status">
+              {{ mensaje }} <a routerLink="/cliente/carrito">Ver carrito</a>
+            </p>
+          }
+          @if (errorCarrito(); as mensaje) {
+            <p class="alert alert-error" role="alert">{{ mensaje }}</p>
+          }
+        </div>
       </div>
     </section>
 
@@ -125,6 +148,7 @@
                 <th scope="col">Talla</th>
                 <th scope="col">Estatura (cm)</th>
                 <th scope="col">Peso (kg)</th>
+                <th scope="col">Disponibles</th>
                 <th scope="col">Estado</th>
               </tr>
             </thead>
@@ -139,6 +163,7 @@
                   </td>
                   <td class="muted-cell">{{ t.estaturaMinCm }} – {{ t.estaturaMaxCm }}</td>
                   <td class="muted-cell">{{ t.pesoMinKg }} – {{ t.pesoMaxKg }}</td>
+                  <td class="muted-cell">{{ t.stockDisponible }}</td>
                   <td>
                     @if (t.disponible) {
                       <span class="state-chip">Disponible</span>

@@ -39,9 +39,14 @@ export class DetalleProducto implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly fotoActual = signal(0);
   protected readonly tallaSeleccionada = signal('');
+  protected readonly cantidadSeleccionada = signal(1);
   protected readonly agregandoAlCarrito = signal(false);
   protected readonly mensajeCarrito = signal<string | null>(null);
   protected readonly errorCarrito = signal<string | null>(null);
+  protected readonly stockTallaSeleccionada = computed(() => {
+    const talla = this.tallaSeleccionada();
+    return this.prenda()?.tallas.find((item) => item.talla === talla)?.stockDisponible ?? 0;
+  });
 
   /** Marca "Nuevo" si la prenda se actualizó en los últimos 30 días. */
   protected readonly esNuevo = computed(() => {
@@ -72,12 +77,14 @@ export class DetalleProducto implements OnInit {
   protected agregarAlCarrito(): void {
     const prenda = this.prenda();
     const talla = this.tallaSeleccionada();
-    if (!prenda || !talla || this.agregandoAlCarrito()) return;
+    const cantidad = this.cantidadSeleccionada();
+    if (!prenda || !talla || cantidad < 1 || cantidad > this.stockTallaSeleccionada()
+      || this.agregandoAlCarrito()) return;
 
     this.agregandoAlCarrito.set(true);
     this.mensajeCarrito.set(null);
     this.errorCarrito.set(null);
-    this.carrito.agregar({ prendaId: prenda.id, talla, cantidad: 1 }).subscribe({
+    this.carrito.agregar({ prendaId: prenda.id, talla, cantidad }).subscribe({
       next: () => {
         this.mensajeCarrito.set('Prenda agregada al carrito.');
         this.carrito.abrirPanel();
@@ -129,7 +136,16 @@ export class DetalleProducto implements OnInit {
   protected seleccionarTalla(event: Event): void {
     if (event.target instanceof HTMLSelectElement) {
       this.tallaSeleccionada.set(event.target.value);
+      this.cantidadSeleccionada.set(1);
+      this.mensajeCarrito.set(null);
+      this.errorCarrito.set(null);
     }
+  }
+
+  protected cambiarCantidad(delta: number): void {
+    this.cantidadSeleccionada.update((cantidad) =>
+      Math.min(this.stockTallaSeleccionada(), Math.max(1, cantidad + delta)),
+    );
   }
 
   private cargarSugerida(prendaId: number, perfilId: number): void {

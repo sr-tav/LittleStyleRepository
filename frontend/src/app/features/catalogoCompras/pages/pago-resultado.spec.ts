@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
@@ -20,12 +20,9 @@ describe('PagoResultadoPage', () => {
     prendasAgotadas: [],
     lineasDisponibles: [],
   };
-  const pagoService = { verificar: vi.fn(), iniciar: vi.fn() };
+  const pagoService = { verificar: vi.fn() };
   const carrito = {
-    agregar: vi.fn(() => of({ items: [], cantidad: 0, subtotal: 0, costoEnvio: null, total: null })),
-    items: vi.fn(() => []),
-    cantidad: vi.fn(() => 0),
-    panelAbierto: vi.fn(() => false),
+    cargar: vi.fn(() => of({ items: [], cantidad: 0, subtotal: 0, costoEnvio: null, total: null })),
   };
   let transaccionId: string | null = 'wompi-1';
 
@@ -33,7 +30,7 @@ describe('PagoResultadoPage', () => {
     vi.useFakeTimers();
     transaccionId = 'wompi-1';
     pagoService.verificar.mockReset();
-    carrito.agregar.mockClear();
+    carrito.cargar.mockClear();
     await TestBed.configureTestingModule({
       imports: [PagoResultadoPage],
       providers: [
@@ -71,6 +68,7 @@ describe('PagoResultadoPage', () => {
     expect(root.textContent).toContain('¡Pago aprobado!');
     expect(root.textContent).toContain('#55');
     expect(root.textContent).toContain('LS-55-ABC');
+    expect(carrito.cargar).toHaveBeenCalledTimes(1);
   });
 
   it('vuelve a consultar mientras Wompi mantiene el pago pendiente', () => {
@@ -89,15 +87,22 @@ describe('PagoResultadoPage', () => {
     expect(pagoService.verificar).toHaveBeenCalledTimes(2);
   });
 
-  it('permite reintentar si el pago fue rechazado y el pedido sigue pendiente', () => {
-    pagoService.verificar.mockReturnValue(of({ ...base, estadoPago: 'RECHAZADA', estadoPedido: 'PENDIENTE_PAGO' }));
+  it('informa que el carrito se conserva cuando el pago es rechazado y aún no hay pedido', () => {
+    pagoService.verificar.mockReturnValue(of({
+      ...base,
+      pedidoId: null,
+      estadoPago: 'RECHAZADA',
+      estadoPedido: null,
+    }));
     const { root } = crear();
 
     expect(root.textContent).toContain('Tu pago no fue aprobado');
-    expect(root.querySelector('app-pago-wompi button')?.textContent).toContain('Reintentar pago');
+    expect(root.textContent).toContain('no se creó el pedido');
+    expect(root.textContent).toContain('Los productos siguen en tu carrito');
+    expect(root.querySelector<HTMLAnchorElement>('a[routerLink="/cliente/checkout"]')).not.toBeNull();
   });
 
-  it('avisa las prendas agotadas, el reembolso y permite continuar sin ellas', () => {
+  it('avisa las prendas agotadas, el reembolso y mantiene el carrito para revisión', () => {
     pagoService.verificar.mockReturnValue(of({
       ...base,
       estadoPago: 'REEMBOLSO_PENDIENTE',
@@ -106,19 +111,14 @@ describe('PagoResultadoPage', () => {
       prendasAgotadas: [{ prendaId: 20, nombre: 'Pantalón Jogger', talla: '4', cantidadSolicitada: 2, stockDisponible: 0 }],
       lineasDisponibles: [{ prendaId: 21, nombre: 'Camiseta', talla: '6', cantidad: 1 }],
     }));
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const { root } = crear();
 
     expect(root.textContent).toContain('Algunas prendas se agotaron mientras pagabas');
     expect(root.textContent).toContain('Pantalón Jogger');
     expect(root.textContent).toContain('tu pago será reembolsado');
 
-    const continuar = [...root.querySelectorAll<HTMLButtonElement>('button')]
-      .find((boton) => boton.textContent?.includes('Continuar sin las prendas agotadas'));
-    continuar?.click();
-
-    expect(carrito.agregar).toHaveBeenCalledWith({ prendaId: 21, talla: '6', cantidad: 1 });
-    expect(navigate).toHaveBeenCalledWith(['/cliente/checkout']);
+    expect(root.textContent).toContain('Los productos siguen en tu carrito');
+    expect(root.querySelector<HTMLAnchorElement>('a[routerLink="/cliente/carrito"]')).not.toBeNull();
   });
 
   it('informa cuando no llega el identificador de la transacción', () => {

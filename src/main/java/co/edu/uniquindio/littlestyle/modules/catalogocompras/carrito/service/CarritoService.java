@@ -12,6 +12,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaResumenCheckoutResponse;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -118,6 +119,38 @@ public class CarritoService {
         return respuesta(carrito.getItems());
     }
 
+    @Transactional
+    public void bloquearParaConfirmarPago(Long clienteId) {
+        carritoRepository.bloquearPorClienteId(clienteId);
+    }
+
+    @Transactional
+    public void retirarComprados(Long clienteId, List<LineaResumenCheckoutResponse> comprados) {
+        Carrito carrito = carritoRepository.bloquearPorClienteId(clienteId).orElse(null);
+        if (carrito == null) {
+            return;
+        }
+        Map<ClavePrendaTalla, Integer> cantidades = new HashMap<>();
+        comprados.forEach(linea -> cantidades.merge(
+                new ClavePrendaTalla(linea.prendaId(), normalizarTalla(linea.talla())),
+                linea.cantidad(), Math::addExact));
+        List<ItemCarrito> quitar = new ArrayList<>();
+        carrito.getItems().forEach(item -> {
+            ClavePrendaTalla clave = new ClavePrendaTalla(item.getPrendaId(), normalizarTalla(item.getTalla()));
+            int comprada = cantidades.getOrDefault(clave, 0);
+            if (comprada == 0) {
+                return;
+            }
+            if (item.getCantidad() <= comprada) {
+                quitar.add(item);
+            } else {
+                item.setCantidad(item.getCantidad() - comprada);
+            }
+        });
+        quitar.forEach(carrito::quitar);
+        carritoRepository.saveAndFlush(carrito);
+    }
+
     private Carrito obtenerOBloquearActual() {
         Long clienteId = clienteActualId();
         Carrito carrito = carritoRepository.bloquearPorClienteId(clienteId).orElseGet(() ->
@@ -190,5 +223,12 @@ public class CarritoService {
         return SecurityUtils.usuarioActual()
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"))
                 .id();
+    }
+
+    private static String normalizarTalla(String talla) {
+        return talla.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private record ClavePrendaTalla(Long prendaId, String talla) {
     }
 }

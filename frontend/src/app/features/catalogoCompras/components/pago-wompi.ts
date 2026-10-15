@@ -4,12 +4,12 @@ import { Router } from '@angular/router';
 import { switchMap } from 'rxjs';
 
 import { procesarErrorApi } from '../../auth/auth.validators';
+import { SolicitudPago } from '../models/pago.models';
 import { PagoService } from '../services/pago.service';
 import { WompiWidgetService } from '../services/wompi-widget.service';
 
 /**
- * Botón que inicia el pago de un pedido pendiente con el Widget de Wompi (UI-13/UI-14). Si el cliente
- * cierra la ventana de pago sin terminar, avisa que el pago no se completó y ofrece reintentarlo.
+ * Inicia el pago del checkout actual con el Widget de Wompi (UI-13/UI-14).
  */
 @Component({
   selector: 'app-pago-wompi',
@@ -18,7 +18,7 @@ import { WompiWidgetService } from '../services/wompi-widget.service';
       <button
         type="button" class="btn-primary"
         [disabled]="procesando()"
-        [attr.aria-label]="etiquetaBoton() + ' pedido ' + pedidoId()"
+        [attr.aria-label]="etiquetaBoton() + ' de la compra'"
         (click)="pagar()"
       >
         @if (procesando()) {
@@ -29,8 +29,8 @@ import { WompiWidgetService } from '../services/wompi-widget.service';
       </button>
       @if (pagoNoCompletado()) {
         <p class="alert alert-warning" role="status">
-          No se completó el pago. Cerraste la ventana de pago antes de terminar; tu pedido sigue
-          pendiente y puedes reintentarlo.
+          No se completó el pago. Cerraste la ventana antes de terminar; tu carrito se conserva
+          y puedes intentarlo de nuevo.
         </p>
       }
       <p class="pago-wompi-nota">
@@ -47,8 +47,9 @@ export class PagoWompi {
   private readonly widget = inject(WompiWidgetService);
   private readonly router = inject(Router);
 
-  readonly pedidoId = input.required<number>();
-  readonly etiqueta = input('Pagar');
+  readonly solicitud = input.required<SolicitudPago>();
+  readonly claveIdempotencia = input.required<string>();
+  readonly etiqueta = input('Pagar ahora');
 
   protected readonly procesando = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -60,7 +61,7 @@ export class PagoWompi {
     this.procesando.set(true);
     this.error.set(null);
     this.pagoNoCompletado.set(false);
-    this.pagoService.iniciar(this.pedidoId()).pipe(
+    this.pagoService.iniciar(this.solicitud(), this.claveIdempotencia()).pipe(
       // Si el cliente cierra el widget sin pagar, Wompi no invoca el callback; por eso el botón
       // se libera al abrirse la pasarela y no al terminar.
       switchMap((inicio) => this.widget.abrir(inicio, () => this.procesando.set(false))),
