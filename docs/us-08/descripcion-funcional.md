@@ -15,7 +15,7 @@ métricas de ventas del panel.
 ## 3. Modelo de datos
 | Tabla | Contenido |
 |---|---|
-| `prendas` | vendedor, nombre, categoría, descripción, marca, precio, estado (`ACTIVA`/`INACTIVA`), `stock_minimo`, estampado y flags textiles |
+| `prendas` | vendedor, nombre, categoría, descripción, `instrucciones_cuidado` (obligatorias por la Resolución Andina 2109), marca, precio, estado (`ACTIVA`/`INACTIVA`), `stock_minimo`, estampado y flags textiles |
 | `prenda_tallas` | talla (única por prenda), estatura mín/máx, peso mín/máx, `stock` |
 | `prenda_composicion` | material + porcentaje |
 | `prenda_colores` | colores de la prenda |

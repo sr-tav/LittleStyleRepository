@@ -77,6 +77,7 @@ class PrendaServiceTest {
         Prenda p = guardada.getValue();
         assertThat(p.getVendedor().getId()).isEqualTo(VENDEDOR_ID);
         assertThat(p.getNombre()).isEqualTo("Vestido Floral Rosa");
+        assertThat(p.getInstruccionesCuidado()).isEqualTo("Lavar a mano en agua fría");
         assertThat(p.getEstado()).isEqualTo(EstadoPrenda.ACTIVA);
         assertThat(p.getTallas()).extracting("talla").containsExactly("4", "6");
         assertThat(p.getTallas()).extracting("stock").containsExactly(7, 5);

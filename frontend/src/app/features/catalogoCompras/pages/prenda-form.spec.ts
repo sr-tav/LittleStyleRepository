@@ -45,7 +45,10 @@ describe('PrendaForm (UI-20)', () => {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function completar(c: any) {
-    c.form.patchValue({ nombre: 'Vestido Floral', categoria: 'VESTIDOS', precio: 45900, stockMinimo: 3 });
+    c.form.patchValue({
+      nombre: 'Vestido Floral', categoria: 'VESTIDOS', precio: 45900, stockMinimo: 3,
+      instruccionesCuidado: '  Lavar a mano en agua fría ',
+    });
     c.tallas.at(0).patchValue({
       talla: ' xs ', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15, stock: 6,
     });
@@ -84,6 +87,7 @@ describe('PrendaForm (UI-20)', () => {
 
     expect(el.textContent).toContain('Revisa los campos marcados');
     expect(el.textContent).toContain('La composición debe sumar 100%');
+    expect(el.textContent).toContain('Indica cómo lavar y cuidar la prenda');
     http.expectNone('/api/vendedor/prendas');
   });
 
@@ -102,6 +106,7 @@ describe('PrendaForm (UI-20)', () => {
       talla: 'XS', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15, stock: 6,
     });
     expect(crearReq.request.body.composicion).toEqual([{ material: 'ALGODON', porcentaje: 100 }]);
+    expect(crearReq.request.body.instruccionesCuidado).toBe('Lavar a mano en agua fría');
     crearReq.flush(crearPrenda({ id: 40 }));
 
     const fotos = http.expectOne('/api/vendedor/prendas/40/imagenes');

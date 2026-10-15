@@ -77,6 +77,10 @@ public class Prenda {
     @Column(length = 2000)
     private String descripcion;
 
+    /** Instrucciones de lavado y cuidado textil (Resolución Andina 2109 de 2019). */
+    @Column(name = "instrucciones_cuidado", length = 1000)
+    private String instruccionesCuidado;
+
     @Column(length = 80)
     private String marca;
 

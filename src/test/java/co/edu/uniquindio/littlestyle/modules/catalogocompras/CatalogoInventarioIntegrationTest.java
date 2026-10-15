@@ -34,7 +34,7 @@ class CatalogoInventarioIntegrationTest {
     private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0};
 
     private static final String PRENDA = """
-            {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","precio":32900,
+            {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
              "stockMinimo":5,"colores":["AZUL"],"estampado":"LISO","contieneNiquel":true,
              "composicion":[{"material":"ALGODON","porcentaje":80},{"material":"POLIESTER","porcentaje":20}],
              "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8},
@@ -176,7 +176,8 @@ class CatalogoInventarioIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errores.nombre").exists())
                 .andExpect(jsonPath("$.errores.precio").exists())
-                .andExpect(jsonPath("$.errores.tallas").exists());
+                .andExpect(jsonPath("$.errores.tallas").exists())
+                .andExpect(jsonPath("$.errores.instruccionesCuidado").exists());
 
         int id = crearPrenda(vendedor);
         mockMvc.perform(multipart("/api/vendedor/prendas/{id}/imagenes", id)
