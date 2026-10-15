@@ -42,7 +42,7 @@ public final class CatalogoFixtures {
     }
 
     public static PrendaRequest prendaRequest(List<ComponenteRequest> composicion, List<TallaRequest> tallas) {
-        return new PrendaRequest("  Vestido Floral Rosa ", CategoriaPrenda.VESTIDOS, "Vestido de algodón", null,
+        return new PrendaRequest("  Vestido Floral Rosa ", CategoriaPrenda.VESTIDOS, "Vestido de algodón", " Lavar a mano en agua fría ", null,
                 new BigDecimal("45900"), 5, Set.of(ColorPreferido.ROSA), Estampado.FLORES, GeneroPrenda.NINA,
                 false, false, false, false, composicion, tallas);
     }

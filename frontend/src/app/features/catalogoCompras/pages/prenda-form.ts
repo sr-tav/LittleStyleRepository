@@ -113,6 +113,12 @@ export class PrendaForm implements OnInit, OnDestroy {
     categoria: this.fb.nonNullable.control<CategoriaPrenda>('VESTIDOS', Validators.required),
     genero: this.fb.nonNullable.control<GeneroPrenda>('UNISEX', Validators.required),
     descripcion: this.fb.nonNullable.control('', Validators.maxLength(2000)),
+    // Etiquetado obligatorio (Resolución Andina 2109): lavado, secado, planchado...
+    instruccionesCuidado: this.fb.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(1000),
+      Validators.pattern(/\S/),
+    ]),
     marca: this.fb.nonNullable.control('', Validators.maxLength(80)),
     precio: this.fb.control<number | null>(null, [
       Validators.required,
@@ -178,6 +184,7 @@ export class PrendaForm implements OnInit, OnDestroy {
       categoria: prenda.categoria,
       genero: prenda.genero ?? 'UNISEX',
       descripcion: prenda.descripcion ?? '',
+      instruccionesCuidado: prenda.instruccionesCuidado ?? '',
       marca: prenda.marca ?? '',
       precio: prenda.precio,
       stockMinimo: prenda.stockMinimo,
@@ -440,6 +447,7 @@ export class PrendaForm implements OnInit, OnDestroy {
       categoria: v.categoria,
       genero: v.genero,
       descripcion: texto(v.descripcion),
+      instruccionesCuidado: v.instruccionesCuidado.trim(),
       marca: texto(v.marca),
       precio: Number(v.precio),
       stockMinimo: Number(v.stockMinimo),

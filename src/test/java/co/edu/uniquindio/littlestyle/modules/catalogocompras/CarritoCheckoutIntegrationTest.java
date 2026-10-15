@@ -42,7 +42,7 @@ import static org.hamcrest.Matchers.nullValue;
 class CarritoCheckoutIntegrationTest {
 
     private static final String PRENDA = """
-            {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","precio":32900,
+            {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
              "stockMinimo":5,"colores":["AZUL"],"estampado":"LISO",
              "composicion":[{"material":"ALGODON","porcentaje":80},{"material":"POLIESTER","porcentaje":20}],
              "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8}]}

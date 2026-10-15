@@ -25,6 +25,7 @@ export interface VitrinaDetalle {
   categoria: string;
   genero: string | null;
   descripcion: string | null;
+  instruccionesCuidado: string | null;
   marca: string | null;
   precio: number;
   imagenes: string[];

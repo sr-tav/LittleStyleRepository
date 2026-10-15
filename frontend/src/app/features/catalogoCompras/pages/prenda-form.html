@@ -62,6 +62,17 @@
             placeholder="Describe la prenda, materiales, características..."></textarea>
         </div>
 
+        <div class="field" [class.has-error]="invalido(form.controls.instruccionesCuidado)">
+          <label for="instruccionesCuidado">Instrucciones de cuidado</label>
+          <textarea id="instruccionesCuidado" formControlName="instruccionesCuidado" rows="3" maxlength="1000"
+            placeholder="Ej: Lavar a máquina en agua fría, no usar blanqueador, secar a la sombra, planchar a baja temperatura"></textarea>
+          @if (invalido(form.controls.instruccionesCuidado)) {
+            <span class="field-error">
+              {{ form.controls.instruccionesCuidado.errors?.['servidor'] ?? 'Indica cómo lavar y cuidar la prenda (exigido por la Resolución Andina 2109)' }}
+            </span>
+          }
+        </div>
+
         <div class="field" [class.has-error]="invalido(form.controls.precio)">
           <label for="precio">Precio (COP)</label>
           <input id="precio" type="number" inputmode="numeric" formControlName="precio" placeholder="Ej: 45900" min="100" />

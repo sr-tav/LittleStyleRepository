@@ -34,6 +34,11 @@ public record PrendaRequest(
         @Size(max = 2000, message = "La descripción admite máximo 2000 caracteres")
         String descripcion,
 
+        /** Etiquetado obligatorio según la Resolución Andina 2109: lavado, secado, planchado, etc. */
+        @NotBlank(message = "Indica las instrucciones de cuidado textil")
+        @Size(max = 1000, message = "Las instrucciones de cuidado admiten máximo 1000 caracteres")
+        String instruccionesCuidado,
+
         @Size(max = 80, message = "La marca admite máximo 80 caracteres")
         String marca,
 

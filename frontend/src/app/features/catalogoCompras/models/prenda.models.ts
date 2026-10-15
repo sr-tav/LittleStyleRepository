@@ -56,6 +56,7 @@ export interface Prenda {
   categoria: CategoriaPrenda;
   genero: GeneroPrenda | null;
   descripcion: string | null;
+  instruccionesCuidado: string | null;
   marca: string | null;
   precio: number;
   estado: EstadoPrenda;
@@ -90,6 +91,7 @@ export interface PrendaRequest {
   categoria: CategoriaPrenda;
   genero: GeneroPrenda | null;
   descripcion: string | null;
+  instruccionesCuidado: string | null;
   marca: string | null;
   precio: number;
   stockMinimo: number;

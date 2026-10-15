@@ -1,12 +1,13 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
 import { ResultadoPago } from '../models/pago.models';
 import { CarritoService } from '../services/carrito.service';
 import { PagoService } from '../services/pago.service';
-import { INTERVALO_CONSULTA_MS, PagoResultadoPage } from './pago-resultado';
+import { INTERVALO_CONSULTA_MS, MAX_CONSULTAS, PagoResultadoPage } from './pago-resultado';
 
 describe('PagoResultadoPage', () => {
   const base: ResultadoPago = {
@@ -87,6 +88,45 @@ describe('PagoResultadoPage', () => {
     expect(root.textContent).toContain('¡Pago aprobado!');
     vi.advanceTimersByTime(INTERVALO_CONSULTA_MS * 3);
     expect(pagoService.verificar).toHaveBeenCalledTimes(2);
+  });
+
+  it('sigue consultando si una verificación falla de forma momentánea (504)', () => {
+    const timeout = new HttpErrorResponse({ status: 504, error: { mensaje: 'Wompi no respondió a tiempo' } });
+    pagoService.verificar
+      .mockReturnValueOnce(throwError(() => timeout))
+      .mockReturnValueOnce(of(base));
+    const { fixture, root } = crear();
+    expect(root.querySelector('[role="alert"]')).toBeNull();
+
+    vi.advanceTimersByTime(INTERVALO_CONSULTA_MS);
+    fixture.detectChanges();
+
+    expect(pagoService.verificar).toHaveBeenCalledTimes(2);
+    expect(root.textContent).toContain('¡Pago aprobado!');
+  });
+
+  it('muestra el error si todas las consultas fallan de forma momentánea', () => {
+    const timeout = new HttpErrorResponse({ status: 504, error: { mensaje: 'Wompi no respondió a tiempo' } });
+    pagoService.verificar.mockReturnValue(throwError(() => timeout));
+    const { fixture, root } = crear();
+
+    vi.advanceTimersByTime(INTERVALO_CONSULTA_MS * MAX_CONSULTAS);
+    fixture.detectChanges();
+
+    expect(pagoService.verificar).toHaveBeenCalledTimes(MAX_CONSULTAS);
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Wompi no respondió a tiempo');
+  });
+
+  it('detiene las consultas ante un error que no es momentáneo', () => {
+    const noEncontrada = new HttpErrorResponse({ status: 404, error: { mensaje: 'Transacción no encontrada' } });
+    pagoService.verificar.mockReturnValue(throwError(() => noEncontrada));
+    const { fixture, root } = crear();
+
+    vi.advanceTimersByTime(INTERVALO_CONSULTA_MS * 3);
+    fixture.detectChanges();
+
+    expect(pagoService.verificar).toHaveBeenCalledTimes(1);
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Transacción no encontrada');
   });
 
   it('permite reintentar si el pago fue rechazado y el pedido sigue pendiente', () => {

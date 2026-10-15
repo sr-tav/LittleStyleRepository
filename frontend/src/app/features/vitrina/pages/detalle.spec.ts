@@ -13,6 +13,7 @@ function detalle(cambios: Partial<VitrinaDetalle> = {}): VitrinaDetalle {
     categoria: 'PANTALONES',
     genero: 'UNISEX',
     descripcion: null,
+    instruccionesCuidado: 'Lavar a mano en agua fría',
     marca: 'Tienda Sol',
     precio: 32900,
     imagenes: ['/media/a.png', '/media/b.png'],
