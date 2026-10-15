@@ -3,24 +3,31 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.controlle
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.CrearPedidoRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ItemResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoCreadoResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoDetalleResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoResumenResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionEnvioRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionGuardadaResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ItemResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.service.CarritoService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.CheckoutFacade;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.DireccionClienteService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoCheckoutService;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoConsultaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cliente/checkout")
@@ -30,6 +37,7 @@ public class CheckoutController {
 
     private final CheckoutFacade checkoutFacade;
     private final PedidoCheckoutService pedidoCheckoutService;
+    private final PedidoConsultaService pedidoConsultaService;
     private final CarritoService carritoService;
     private final DireccionClienteService direccionClienteService;
 
@@ -55,7 +63,18 @@ public class CheckoutController {
 
     @PostMapping("/pedidos")
     public ResponseEntity<PedidoCreadoResponse> crearPedido(
-            @Valid @RequestBody CrearPedidoRequest request) {
-        return ResponseEntity.status(201).body(pedidoCheckoutService.crear(request));
+            @Valid @RequestBody CrearPedidoRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String claveIdempotencia) {
+        return ResponseEntity.status(201).body(pedidoCheckoutService.crear(request, claveIdempotencia));
+    }
+
+    @GetMapping("/pedidos")
+    public ResponseEntity<List<PedidoResumenResponse>> misPedidos() {
+        return ResponseEntity.ok(pedidoConsultaService.misPedidos());
+    }
+
+    @GetMapping("/pedidos/{id}")
+    public ResponseEntity<PedidoDetalleResponse> detallePedido(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoConsultaService.detalle(id));
     }
 }

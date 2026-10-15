@@ -1,0 +1,55 @@
+<app-navbar />
+<main class="reco-page">
+  <a class="back-link" routerLink="/cliente/pedidos" aria-label="Volver a mis pedidos">← Mis pedidos</a>
+
+  @if (cargando()) {
+    <div class="reco-state" role="status"><p>Cargando pedido…</p></div>
+  } @else if (error()) {
+    <p class="alert alert-error" role="alert">{{ error() }}</p>
+  } @else if (pedido(); as p) {
+    <header class="reco-heading">
+      <div>
+        <p class="reco-eyebrow">Pedido #{{ p.id }}</p>
+        <h1>{{ estadoDe(p.estado) }}</h1>
+      </div>
+      <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">{{ estadoDe(p.estado) }}</span>
+    </header>
+
+    @if (p.estado === 'CANCELADO') {
+      <p class="alert alert-error" role="status">Este pedido fue cancelado.</p>
+    } @else {
+      <ol class="pedido-linea-tiempo" aria-label="Seguimiento del pedido">
+        @for (paso of pasos; track paso) {
+          <li [class.is-actual]="p.estado === paso" [class.is-hecho]="pasoAlcanzado(paso) && p.estado !== paso">
+            <span class="pedido-punto" aria-hidden="true"></span>
+            <span>{{ estadoDe(paso) }}</span>
+          </li>
+        }
+      </ol>
+    }
+
+    @if (p.numeroGuia) {
+      <p class="alert alert-info" role="status">Número de guía: <strong>{{ p.numeroGuia }}</strong></p>
+    }
+
+    <section class="vitrina-seccion" aria-label="Productos del pedido">
+      <h3>Productos</h3>
+      <ul class="pedido-items">
+        @for (item of p.items; track item.prendaId + '-' + item.talla) {
+          <li>
+            <div>
+              <strong>{{ item.nombre }}</strong>
+              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un.</span>
+            </div>
+            <span class="price-cell">{{ precio(item.subtotal) }}</span>
+          </li>
+        }
+      </ul>
+      <dl class="detail-card">
+        <div><dt>Subtotal</dt><dd>{{ precio(p.subtotal) }}</dd></div>
+        <div><dt>Envío ({{ p.ciudad }})</dt><dd>{{ precio(p.costoEnvio) }}</dd></div>
+        <div><dt>Total</dt><dd>{{ precio(p.total) }}</dd></div>
+      </dl>
+    </section>
+  }
+</main>

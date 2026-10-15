@@ -33,7 +33,6 @@ import {
   OPCIONES_COLORES,
   OPCIONES_ESTAMPADOS,
 } from '../models/perfil-opciones';
-import { tallaProvisional } from '../models/talla-provisional';
 import { PerfilesService } from '../services/perfiles.service';
 
 const FECHA_LOCAL = new Date();
@@ -270,10 +269,6 @@ export class PerfilDetalle implements OnInit {
 
   protected bloquearOtroEstampado(): boolean {
     return !this.form.controls.otroEstampado.value.trim() && this.mostrarLimiteEstampados();
-  }
-
-  protected talla(perfil: PerfilInfantil): number {
-    return tallaProvisional(perfil.edadAnios);
   }
 
   protected alternarAlergia(alergia: AlergiaTextil, event: Event): void {

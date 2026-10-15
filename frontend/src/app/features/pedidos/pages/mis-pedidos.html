@@ -1,0 +1,44 @@
+<app-navbar />
+<main class="reco-page">
+  <header class="reco-heading">
+    <div>
+      <p class="reco-eyebrow">Compras</p>
+      <h1>Mis pedidos</h1>
+      <p class="reco-subtitle">Sigue el estado de cada pedido</p>
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="reco-state" role="status"><p>Cargando pedidos…</p></div>
+  } @else if (error()) {
+    <div class="alert alert-error" role="alert">
+      {{ error() }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (items().length === 0) {
+    <div class="reco-state" role="status">
+      <p>Todavía no tienes pedidos.</p>
+      <a class="btn-primary btn-inline" routerLink="/cliente/catalogo">Explorar catálogo</a>
+    </div>
+  } @else {
+    <ul class="pedido-lista" aria-label="Historial de pedidos">
+      @for (p of items(); track p.id) {
+        <li>
+          <a
+            class="pedido-tarjeta"
+            [routerLink]="['/cliente/pedidos', p.id]"
+            [attr.aria-label]="'Ver detalle del pedido ' + p.id + ', ' + estado(p)"
+          >
+            <div>
+              <strong>Pedido #{{ p.id }}</strong>
+              <span class="product-meta">{{ p.cantidadItems }} prenda(s)</span>
+            </div>
+            <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">
+              {{ estado(p) }}
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</main>

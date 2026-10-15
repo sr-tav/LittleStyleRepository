@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
@@ -35,11 +36,7 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
       }
     } @else if (items().length === 0) {
       <div class="reco-state" role="status">
-        @if (esSoloSinStock()) {
-          <p>Hay prendas en tu talla pero sin stock. Prueba con otra talla.</p>
-        } @else {
-          <p>No hay prendas compatibles: o el catálogo está vacío o todas fueron excluidas por alergia.</p>
-        }
+        <p>No hay prendas compatibles: o el catálogo está vacío o todas fueron excluidas por alergia.</p>
       </div>
     } @else {
       <ul class="reco-grid" aria-label="Prendas recomendadas">
@@ -66,7 +63,7 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
                   <span class="reco-score-track" aria-hidden="true"><span [style.width.%]="r.puntaje"></span></span>
                 </p>
                 <div class="reco-card-cta">
-                  <a class="btn-primary btn-inline btn-small" [routerLink]="['/cliente/prendas', r.prendaId]" [queryParams]="{ perfilId: perfilId() }" [attr.aria-label]="'Ver ' + r.nombre">Ver</a>
+                  <a class="btn-primary btn-inline btn-small" [routerLink]="['/cliente/catalogo', r.prendaId]" [queryParams]="{ perfilId: perfilId() }" [attr.aria-label]="'Ver ' + r.nombre">Ver</a>
                 </div>
               </div>
             </article>
@@ -87,7 +84,6 @@ export class RecomendacionesLista implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly perfilId = signal<number | null>(null);
   protected readonly esMedicionDesactualizada = signal(false);
-  protected readonly esSoloSinStock = signal(false);
 
   protected precioDe(r: RecomendacionItem): string | null {
     return r.precio === null ? null : formatearPrecio(r.precio);
@@ -114,12 +110,14 @@ export class RecomendacionesLista implements OnInit {
   }
 
   private cargar(id: number): void {
+    this.cargando.set(true);
+    this.error.set(null);
+    this.esMedicionDesactualizada.set(false);
     this.recomendaciones.listar(id).subscribe({
       next: (res) => { this.items.set(res); this.cargando.set(false); },
       error: (err: unknown) => {
-        const msg = procesarErrorApi(err);
-        this.error.set(msg);
-        this.esMedicionDesactualizada.set(msg.toLowerCase().includes('desactualizada') || msg.toLowerCase().includes('medici'));
+        this.error.set(procesarErrorApi(err));
+        this.esMedicionDesactualizada.set(err instanceof HttpErrorResponse && err.status === 422);
         this.cargando.set(false);
       },
     });

@@ -391,6 +391,49 @@ class CarritoCheckoutIntegrationTest {
         assertThat(stockTalla(prendaDisponibleId)).isEqualTo(8);
     }
 
+    @Test
+    void reintentarCrearPedidoConLaMismaClaveNoDuplica() throws Exception {
+        String vendedor = registrar("idemp-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String correoCliente = "idemp-cliente-" + System.nanoTime() + "@correo.com";
+        String cliente = registrar(correoCliente, "CLIENTE");
+        int prendaId = crearPrenda(vendedor);
+        int perfilId = JsonPath.read(agregarPerfil(cliente), "$.id");
+        String cuerpo = """
+                {"perfilInfantilId":%d,
+                 "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "complemento":null,"codigoPostal":"630001",
+                 "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
+                """.formatted(perfilId);
+
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2}"))
+                .andExpect(status().isOk());
+
+        String primero = mockMvc.perform(post("/api/cliente/checkout/pedidos")
+                        .header("Authorization", cliente)
+                        .header("Idempotency-Key", "clave-reintento-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpo))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pedidoId").isNumber())
+                .andReturn().getResponse().getContentAsString();
+        String segundo = mockMvc.perform(post("/api/cliente/checkout/pedidos")
+                        .header("Authorization", cliente)
+                        .header("Idempotency-Key", "clave-reintento-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpo))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        Number idUno = JsonPath.read(primero, "$.pedidoId");
+        Number idDos = JsonPath.read(segundo, "$.pedidoId");
+        assertThat(idUno.longValue()).isEqualTo(idDos.longValue());
+        Long clienteId = usuarioRepository.findByEmail(correoCliente).orElseThrow().getId();
+        assertThat(pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(clienteId)).hasSize(1);
+    }
+
     private String registrar(String email, String rol) throws Exception {
         String tienda = "VENDEDOR".equals(rol) ? "\"Tienda Sol\"" : "null";
         String body = """

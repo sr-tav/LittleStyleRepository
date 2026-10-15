@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
@@ -63,6 +64,7 @@ export class Explorar {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly idsMiTalla = signal<Set<number> | null>(null);
+  protected readonly cargandoMiTalla = signal(false);
 
   protected readonly visibles = computed(() => {
     const ids = this.idsMiTalla();
@@ -132,12 +134,22 @@ export class Explorar {
       this.error.set('Para filtrar por tu talla, selecciona primero un perfil.');
       return;
     }
+    this.cargandoMiTalla.set(true);
     this.recomendaciones.listar(perfilId).subscribe({
       next: (res) => {
+        this.error.set(null);
         this.idsMiTalla.set(new Set(res.map((r) => r.prendaId)));
         this.soloMiTalla.set(true);
+        this.cargandoMiTalla.set(false);
       },
-      error: (err: unknown) => this.error.set(procesarErrorApi(err)),
+      error: (err: unknown) => {
+        this.cargandoMiTalla.set(false);
+        this.error.set(
+          err instanceof HttpErrorResponse && err.status === 422
+            ? 'Tu perfil no tiene medidas vigentes. Agrega una medición para usar este filtro.'
+            : procesarErrorApi(err),
+        );
+      },
     });
   }
 

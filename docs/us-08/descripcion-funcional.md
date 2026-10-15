@@ -109,7 +109,8 @@ es público (solo lectura, solo en almacenamiento local).
 | `spring.servlet.multipart.max-file-size` / `max-request-size` | 5MB / 52MB | igual |
 
 ## 10. Limitaciones
-- Las alertas se ven en UI-21/UI-22 y en el log; aún no hay correo (ADR-07).
+- Las alertas se ven en UI-21/UI-22, en el log y por correo al vendedor (ADR-07,
+  plantilla `correo/alerta-stock.html`; sin credenciales SMTP se omite sin error).
 - Producción usa `ddl-auto=validate`: las tablas nuevas se crean activando una vez el
   perfil `perfiles-migracion` (`ddl-auto=update`) o con un script equivalente.
 - El almacenamiento local no es para producción. S3 no se probó contra AWS real en esta

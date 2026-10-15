@@ -96,7 +96,7 @@ describe('ClienteInicio', () => {
     expect(link?.getAttribute('href')).toBe('/cliente/hijos?modo=seleccionar');
   });
 
-  it('enlaza el catálogo y habilita el carrito con badge de cantidad', () => {
+  it('enlaza el catálogo, el carrito y los pedidos sin accesos deshabilitados', () => {
     const fixture = TestBed.createComponent(ClienteInicio);
     fixture.detectChanges();
 
@@ -108,15 +108,10 @@ describe('ClienteInicio', () => {
     expect(carrito?.textContent).toContain('Carrito');
     expect(carrito?.querySelector('.home-tile-badge')?.textContent?.trim()).toBe('2');
     expect(carrito?.getAttribute('href')).toBe('/cliente/carrito');
-    const disabledTiles = Array.from(
-      root.querySelectorAll<HTMLElement>('.home-tile-disabled'),
-    );
-    expect(disabledTiles).toHaveLength(1);
-    for (const tile of disabledTiles) {
-      expect(tile.tagName).not.toBe('A');
-      expect(tile.getAttribute('aria-disabled')).toBe('true');
-      expect(tile.getAttribute('title')).toBe('Próximamente');
-    }
+    const pedidos = root.querySelector<HTMLAnchorElement>('a.home-tile[routerLink="/cliente/pedidos"]');
+    expect(pedidos?.textContent).toContain('Mis pedidos');
+    expect(pedidos?.getAttribute('href')).toBe('/cliente/pedidos');
+    expect(root.querySelectorAll('.home-tile-disabled')).toHaveLength(0);
     expect(root.textContent).not.toContain('Próximamente');
   });
 

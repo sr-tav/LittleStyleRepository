@@ -41,6 +41,8 @@ export class CheckoutPage implements OnInit {
   protected readonly paso = signal<'informacion' | 'resumen'>('informacion');
   protected readonly resumen = signal<ResumenCheckout | null>(null);
   protected readonly pedido = signal<PedidoCreado | null>(null);
+  /** Clave del ciclo de confirmación vigente; reintentar con ella no duplica el pedido. */
+  protected readonly claveIdempotencia = signal<string | null>(null);
   protected readonly conflictoStock = signal(false);
   protected readonly prendasAgotadas = signal<{ id: number; nombre: string; talla: string }[]>([]);
   protected readonly carritoVacioPorStock = signal(false);
@@ -244,11 +246,16 @@ export class CheckoutPage implements OnInit {
           perfilInfantilId,
           direccion: this.direccionFormulario(),
         }).pipe(
-          tap((resumen) => this.resumen.set(resumen)),
+          tap((resumen) => {
+            this.resumen.set(resumen);
+            // Cada resumen nuevo abre un ciclo de confirmación con clave propia;
+            // reintentar con la misma clave devuelve el pedido ya creado.
+            this.claveIdempotencia.set(crypto.randomUUID());
+          }),
           switchMap(() => this.checkoutService.crearPedido({
             perfilInfantilId,
             direccion: this.direccionFormulario(),
-          })),
+          }, this.claveIdempotencia())),
         );
       }),
     ).subscribe({
@@ -265,6 +272,7 @@ export class CheckoutPage implements OnInit {
       complete: () => {
         if (this.carrito.items().length === 0 && !this.pedido()) {
           this.resumen.set(null);
+          this.claveIdempotencia.set(null);
           this.carritoVacioPorStock.set(true);
           this.conflictoStock.set(false);
           this.procesando.set(false);
@@ -288,12 +296,15 @@ export class CheckoutPage implements OnInit {
       this.error.set('Selecciona un perfil infantil para confirmar el pedido.');
       return;
     }
+    if (this.claveIdempotencia() === null) {
+      this.claveIdempotencia.set(crypto.randomUUID());
+    }
     this.procesando.set(true);
     this.error.set(null);
     this.checkoutService.crearPedido({
       perfilInfantilId,
       direccion: this.direccionFormulario(),
-    }).subscribe({
+    }, this.claveIdempotencia()).subscribe({
       next: (pedido) => {
         this.pedido.set(pedido);
         this.procesando.set(false);

@@ -227,7 +227,7 @@ describe('CheckoutPage', () => {
         municipio: 'Armenia',
         telefono: '3001234567',
       },
-    });
+    }, expect.any(String));
     respuestaPedido.next(pedidoCreado);
     respuestaPedido.complete();
     fixture.detectChanges();
