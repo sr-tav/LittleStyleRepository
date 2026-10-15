@@ -41,7 +41,7 @@ export interface ResultadoPago {
   pedidoId: number;
   referencia: string;
   estadoPago: EstadoTransaccionPago;
-  estadoPedido: 'PENDIENTE_PAGO' | 'PAGADO' | 'EN_PREPARACION' | 'ENVIADO' | 'ENTREGADO' | 'CANCELADO';
+  estadoPedido: 'PENDIENTE_PAGO' | 'PAGADO' | 'EN_PREPARACION' | 'ENVIADO' | 'CANCELADO';
   motivoReembolso: MotivoReembolso | null;
   metodoPago: string | null;
   total: number;

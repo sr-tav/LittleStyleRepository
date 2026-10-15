@@ -64,6 +64,10 @@
         <p class="reco-price reco-price-large">{{ precioDe(p) }}</p>
         @if (sugerida(); as s) {
           <app-talla-sugerida [item]="s" />
+        } @else {
+          <p class="alert alert-info" role="status">
+            Si tienes alergias textiles, revisa la composición y consulta tu talla sugerida con tu perfil activo.
+          </p>
         }
         @if (!p.disponible) {
           <span class="alert-stock">Agotado temporalmente</span>

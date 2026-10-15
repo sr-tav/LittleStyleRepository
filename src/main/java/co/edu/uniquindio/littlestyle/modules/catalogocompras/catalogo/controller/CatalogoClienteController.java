@@ -38,8 +38,11 @@ public class CatalogoClienteController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "12") int tamano,
             @RequestParam(defaultValue = "novedades") String orden) {
-        return ResponseEntity.ok(catalogo.explorar(texto, categoria, genero, precioMin, precioMax,
-                disponible, material, talla, pagina, tamano, orden));
+        long ini = System.nanoTime();
+        PaginaResponse<PrendaVitrinaResponse> res = catalogo.explorar(texto, categoria, genero, precioMin,
+                precioMax, disponible, material, talla, pagina, tamano, orden);
+        long ms = (System.nanoTime() - ini) / 1_000_000;
+        return ResponseEntity.ok().header("X-Catalogo-Ms", String.valueOf(ms)).body(res);
     }
 
     @GetMapping("/{id}")

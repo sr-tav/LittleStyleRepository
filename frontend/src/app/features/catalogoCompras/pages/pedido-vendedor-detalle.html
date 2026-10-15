@@ -1,0 +1,59 @@
+<app-navbar />
+<main class="catalog-page">
+  <a class="back-link" routerLink="/vendedor/pedidos" aria-label="Volver a pedidos">← Pedidos</a>
+
+  @if (cargando()) {
+    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando pedido...</div>
+  } @else if (error()) {
+    <p class="alert alert-error" role="alert">{{ error() }}</p>
+  } @else if (pedido(); as p) {
+    <header class="catalog-heading">
+      <div>
+        <h1>Pedido #{{ p.id }}</h1>
+        <p class="catalog-subtitle">{{ estadoDe(p.estado) }}</p>
+      </div>
+      <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">{{ estadoDe(p.estado) }}</span>
+    </header>
+
+    @if (p.numeroGuia) {
+      <p class="alert alert-info" role="status">Número de guía: <strong>{{ p.numeroGuia }}</strong></p>
+    }
+
+    <section class="catalog-card" aria-label="Tus productos en este pedido">
+      <h2 class="catalog-section-title">Tus productos</h2>
+      <ul class="pedido-items">
+        @for (item of p.items; track item.prendaId + '-' + item.talla) {
+          <li>
+            <div>
+              <strong>{{ item.nombre }}</strong>
+              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un.</span>
+            </div>
+            <span class="price-cell">{{ precio(item.subtotal) }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="catalog-card" aria-label="Dirección de envío">
+      <h2 class="catalog-section-title">Enviar a</h2>
+      <p><strong>{{ p.destinatario }}</strong> · {{ p.telefono }}</p>
+      <p class="product-meta">
+        {{ p.direccion }}@if (p.complemento) {, {{ p.complemento }}}. {{ p.ciudad }}, {{ p.departamento }}@if (p.codigoPostal) {
+          ({{ p.codigoPostal }})
+        }
+      </p>
+    </section>
+
+    <section class="catalog-card" aria-label="Historial del pedido">
+      <h2 class="catalog-section-title">Historial</h2>
+      <ol class="pedido-linea-tiempo">
+        @for (m of p.historial; track m.fecha + '-' + m.nuevo) {
+          <li class="is-hecho">
+            <span class="pedido-punto" aria-hidden="true"></span>
+            <span>{{ m.anterior ? estadoDe(m.anterior) + ' → ' : '' }}{{ estadoDe(m.nuevo) }}</span>
+          </li>
+        }
+      </ol>
+    </section>
+  }
+</main>

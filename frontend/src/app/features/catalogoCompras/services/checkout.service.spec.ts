@@ -89,6 +89,14 @@ describe('CheckoutService', () => {
     expect(pedidoId).toBe(55);
   });
 
+  it('envía la clave de idempotencia para no duplicar el pedido al reintentar', () => {
+    service.crearPedido({ perfilInfantilId: 3, direccion: {} as never }, 'clave-1').subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/cliente/checkout/pedidos`);
+    expect(request.request.headers.get('Idempotency-Key')).toBe('clave-1');
+    request.flush({ pedidoId: 55 });
+  });
+
   it('consulta y guarda la dirección asociada a la cuenta del cliente', () => {
     const direccion = {
       destinatario: 'Ana Ruiz',

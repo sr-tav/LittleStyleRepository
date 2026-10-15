@@ -27,6 +27,7 @@ import lombok.Setter;
 import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +85,12 @@ public class Pedido {
     @Column(nullable = false, length = 512)
     private String telefono;
 
+    @Column(name = "numero_guia", length = 60)
+    private String numeroGuia;
+
+    @Column(name = "fecha_actualizacion", nullable = false)
+    private LocalDateTime fechaActualizacion;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
 
@@ -112,5 +119,20 @@ public class Pedido {
                     "No se puede cambiar el pedido de " + estado + " a " + siguiente);
         }
         estado = siguiente;
+        fechaActualizacion = LocalDateTime.now();
+    }
+
+    public void avanzarA(EstadoPedido siguiente, String guia) {
+        transicionarA(siguiente);
+        if (siguiente == EstadoPedido.ENVIADO) {
+            if (guia == null || guia.isBlank()) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "El número de guía es obligatorio para enviar el pedido", "numeroGuia");
+            }
+            numeroGuia = guia.trim();
+        } else if (guia != null && !guia.isBlank()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "El número de guía solo aplica al enviar el pedido", "numeroGuia");
+        }
     }
 }

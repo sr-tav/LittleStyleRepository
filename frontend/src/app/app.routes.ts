@@ -50,14 +50,6 @@ export const routes: Routes = [
       import('./features/catalogoCompras/catalogo-compras.routes').then((m) => m.CARRITO_ROUTES),
   },
   {
-    path: 'cliente/prendas/:id',
-    title: 'Detalle prenda | LittleStyle',
-    canActivate: [roleGuard],
-    data: { roles: ['CLIENTE'] },
-    loadComponent: () =>
-      import('./features/catalogoCompras/pages/prenda-detalle-cliente').then((m) => m.PrendaDetalleCliente),
-  },
-  {
     path: 'cliente/recomendaciones',
     title: 'Talla sugerida | LittleStyle',
     canActivate: [roleGuard],
@@ -81,6 +73,21 @@ export const routes: Routes = [
     loadComponent: () => import('./features/vitrina/pages/detalle').then((m) => m.DetalleProducto),
   },
   {
+    path: 'cliente/pedidos',
+    title: 'Mis pedidos | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadComponent: () => import('./features/pedidos/pages/mis-pedidos').then((m) => m.MisPedidos),
+  },
+  {
+    path: 'cliente/pedidos/:id',
+    title: 'Detalle del pedido | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE'] },
+    loadComponent: () =>
+      import('./features/pedidos/pages/pedido-detalle').then((m) => m.PedidoDetallePage),
+  },
+  {
     path: 'cliente',
     title: 'Inicio | LittleStyle',
     canActivate: [roleGuard],
@@ -101,6 +108,13 @@ export const routes: Routes = [
     data: { roles: ['VENDEDOR'] },
     loadChildren: () =>
       import('./features/catalogoCompras/catalogo.routes').then((m) => m.INVENTARIO_ROUTES),
+  },
+  {
+    path: 'vendedor/pedidos',
+    canActivate: [roleGuard],
+    data: { roles: ['VENDEDOR'] },
+    loadChildren: () =>
+      import('./features/catalogoCompras/catalogo.routes').then((m) => m.PEDIDOS_VENDEDOR_ROUTES),
   },
   {
     path: 'vendedor',

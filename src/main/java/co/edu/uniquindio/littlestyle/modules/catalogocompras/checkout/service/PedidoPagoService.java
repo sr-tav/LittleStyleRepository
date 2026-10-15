@@ -5,13 +5,18 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Pren
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaDisponibilidadPagoResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoEstadoCambiadoEvent;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.HistorialEstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.HistorialEstadoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.service.AlertasInventarioService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +34,12 @@ import java.util.Map;
 public class PedidoPagoService {
 
     private final PedidoRepository pedidoRepository;
+    private final HistorialEstadoRepository historialRepository;
     private final PrendaRepository prendaRepository;
     private final AlertasInventarioService alertasInventarioService;
     private final CheckoutProperties checkoutProperties;
     private final Clock clock;
+    private final ApplicationEventPublisher eventos;
 
     @Transactional
     public ResultadoConfirmacionPago confirmarPago(Long pedidoId) {
@@ -44,7 +51,7 @@ public class PedidoPagoService {
         }
 
         if (pedidoVencido(pedido)) {
-            pedido.transicionarA(EstadoPedido.CANCELADO);
+            transicionarConHistorial(pedido, EstadoPedido.CANCELADO);
             return new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.PEDIDO_VENCIDO, List.of());
         }
 
@@ -66,7 +73,7 @@ public class PedidoPagoService {
             }
         }
         if (!agotadas.isEmpty()) {
-            pedido.transicionarA(EstadoPedido.CANCELADO);
+            transicionarConHistorial(pedido, EstadoPedido.CANCELADO);
             return new ResultadoConfirmacionPago(
                     ResultadoConfirmacionPago.Estado.STOCK_INSUFICIENTE, agotadas);
         }
@@ -75,9 +82,24 @@ public class PedidoPagoService {
             TallaPrenda talla = tallas.get(clave);
             talla.setStock(talla.getStock() - cantidad);
         });
-        pedido.transicionarA(EstadoPedido.PAGADO);
+        transicionarConHistorial(pedido, EstadoPedido.PAGADO);
         prendas.values().forEach(alertasInventarioService::evaluar);
         return new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.CONFIRMADO, List.of());
+    }
+
+    private void transicionarConHistorial(Pedido pedido, EstadoPedido nuevo) {
+        EstadoPedido anterior = pedido.getEstado();
+        pedido.transicionarA(nuevo);
+        historialRepository.save(HistorialEstadoPedido.builder()
+                .pedido(pedido)
+                .anterior(anterior)
+                .nuevo(nuevo)
+                .fechaCambio(LocalDateTime.now(clock))
+                .build());
+        if (nuevo == EstadoPedido.PAGADO) {
+            eventos.publishEvent(new PedidoPagadoEvent(pedido.getId()));
+        }
+        eventos.publishEvent(new PedidoEstadoCambiadoEvent(pedido.getId(), nuevo));
     }
 
     private boolean pedidoVencido(Pedido pedido) {

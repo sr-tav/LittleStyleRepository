@@ -69,6 +69,7 @@ import {
                   <a routerLink="/cuenta" role="menuitem" (click)="cuentaAbierta.set(false)">Mi cuenta</a>
                   @if (auth.rol() === 'CLIENTE') {
                     <a routerLink="/cliente/hijos" role="menuitem" (click)="cuentaAbierta.set(false)">Mis hijos</a>
+                    <a routerLink="/cliente/pedidos" role="menuitem" (click)="cuentaAbierta.set(false)">Mis pedidos</a>
                   }
                   <button type="button" role="menuitem" (click)="auth.logout()">Cerrar sesión</button>
                 </div>
@@ -90,6 +91,7 @@ import {
           <a routerLink="/vendedor/productos" (click)="cerrarMenu()">Mis productos</a>
           <a routerLink="/vendedor/inventario" (click)="cerrarMenu()">Inventario</a>
           <a routerLink="/vendedor/inventario/alertas" (click)="cerrarMenu()">Alertas</a>
+          <a routerLink="/vendedor/pedidos" (click)="cerrarMenu()">Pedidos</a>
         } @else if (auth.rol() === 'ADMINISTRADOR') {
           <a routerLink="/admin" (click)="cerrarMenu()">Panel administrativo</a>
         } @else {

@@ -1,0 +1,42 @@
+<app-navbar />
+<main class="catalog-page">
+  <header class="catalog-heading">
+    <div>
+      <h1>Pedidos por despachar</h1>
+      <p class="catalog-subtitle">Pedidos que incluyen tus productos</p>
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando pedidos...</div>
+  } @else if (error()) {
+    <div class="alert alert-error" role="alert">
+      {{ error() }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (items().length === 0) {
+    <div class="catalog-state">
+      <p>Ningún pedido incluye tus productos todavía.</p>
+    </div>
+  } @else {
+    <ul class="pedido-lista" aria-label="Pedidos por despachar">
+      @for (p of items(); track p.id) {
+        <li>
+          <a
+            class="pedido-tarjeta"
+            [routerLink]="['/vendedor/pedidos', p.id]"
+            [attr.aria-label]="'Ver pedido ' + p.id + ', ' + estado(p)"
+          >
+            <div>
+              <strong>Pedido #{{ p.id }}</strong>
+              <span class="product-meta">{{ p.cantidadItemsPropios }} unidad(es) tuyas</span>
+            </div>
+            <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">
+              {{ estado(p) }}
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</main>

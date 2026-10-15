@@ -29,8 +29,11 @@ public class RecomendacionController {
 
     @GetMapping("/prenda/{prendaId}")
     public ResponseEntity<RecomendacionItem> porPrenda(@PathVariable Long prendaId, @RequestParam Long perfilId) {
+        long ini = System.nanoTime();
         PerfilBiometrico pb = perfiles.obtenerActivos(perfilId);
-        return ResponseEntity.ok(motor.recomendarParaPrenda(pb.bio(), pb.alergias(), prendaId));
+        RecomendacionItem item = motor.recomendarParaPrenda(pb.bio(), pb.alergias(), prendaId);
+        long ms = (System.nanoTime() - ini) / 1_000_000;
+        return ResponseEntity.ok().header("X-Recomendacion-Ms", String.valueOf(ms)).body(item);
     }
 
 }

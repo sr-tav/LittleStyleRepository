@@ -101,4 +101,31 @@ import static org.mockito.Mockito.*;
                     () -> motor().recomendarParaPrenda(bio(), Set.of(), 99L));
             assertEquals(org.springframework.http.HttpStatus.NOT_FOUND, ex.getStatus());
         }
+
+        @Test void porPrendaSinTablaLanza422EnVezDe500() {
+            var sinTabla = prenda(5L, List.of(), List.of(), false, Map.of());
+            when(catalogo.buscarPrendaPublicada(5L)).thenReturn(Optional.of(sinTabla));
+
+            var ex = assertThrows(co.edu.uniquindio.littlestyle.shared.exception.BusinessException.class,
+                    () -> motor().recomendarParaPrenda(bio(), Set.of(), 5L));
+            assertEquals(org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY, ex.getStatus());
+        }
+
+        @Test void porPrendaConCatalogoCaidoLanza503EnVezDe500() {
+            when(catalogo.buscarPrendaPublicada(1L)).thenThrow(new RuntimeException("caido"));
+
+            var ex = assertThrows(co.edu.uniquindio.littlestyle.shared.exception.BusinessException.class,
+                    () -> motor().recomendarParaPrenda(bio(), Set.of(), 1L));
+            assertEquals(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, ex.getStatus());
+        }
+
+        @Test void puntajeNuncaSupera100() {
+            var exacta = prenda(1L, List.of(r("4",104,106,17,19)),
+                    List.of(new ComponenteMaterial(MaterialTextil.ALGODON,100)), false, Map.of("4",5));
+            when(catalogo.buscarPrendaPublicada(1L)).thenReturn(Optional.of(exacta));
+
+            var res = motor().recomendarParaPrenda(bio(), Set.of(), 1L);
+
+            assertTrue(res.puntaje() >= 0 && res.puntaje() <= 100);
+        }
 }

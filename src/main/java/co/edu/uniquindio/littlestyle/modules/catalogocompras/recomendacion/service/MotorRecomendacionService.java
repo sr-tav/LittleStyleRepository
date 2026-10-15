@@ -55,8 +55,19 @@ public class MotorRecomendacionService {
     }
     public RecomendacionItem recomendarParaPrenda(DatosBiometricos bio, Set<AlergiaTextil> alergias, Long prendaId) {
         Set<AlergiaTextil> al = alergias == null ? Set.of() : alergias;
-        PrendaRecomendable prenda = catalogo.buscarPrendaPublicada(prendaId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
+        PrendaRecomendable prenda;
+        try {
+            prenda = catalogo.buscarPrendaPublicada(prendaId)
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.warn("Catálogo no disponible al consultar prenda {}", prendaId, ex); // RNF-29
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "Catálogo no disponible, intenta de nuevo");
+        }
+        if (prenda.tablaTallas() == null || prenda.tablaTallas().estaVacia()) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible");
+        }
         RangoTalla talla = estrategia.sugerir(bio, prenda.tablaTallas())
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible"));
         var eval = filtro.evaluar(al, prenda);

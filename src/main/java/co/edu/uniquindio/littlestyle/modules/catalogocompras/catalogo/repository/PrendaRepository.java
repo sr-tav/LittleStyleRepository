@@ -33,13 +33,22 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @Query("select p from Prenda p where p.id = :id and p.vendedor.id = :vendedorId")
     Optional<Prenda> bloquearPropia(@Param("id") Long id, @Param("vendedorId") Long vendedorId);
 
+    @Query("select p.id from Prenda p where p.vendedor.id = :vendedorId")
+    List<Long> findIdsByVendedorId(@Param("vendedorId") Long vendedorId);
+
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     List<Prenda> findAllByEstado(EstadoPrenda estado);
 
     /**
      * Vitrina del cliente solo prendas publicadas, con filtros
      * opcionales aplicados en la base de datos y paginación. .
+     * El EntityGraph de tallas evita N+1 en el mapeo del DTO (RNF-02):
+     * disponibilidad y tallas se calculan en la misma consulta. No se
+     * agregan composición ni imágenes al grafo porque Hibernate no permite
+     * traer varias colecciones List a la vez (MultipleBagFetchException);
+     * la imagen principal queda como carga perezosa acotada a la página.
      */
+    @EntityGraph(attributePaths = {"tallas"})
     @Query("""
             select p from Prenda p
             where p.estado = :estado

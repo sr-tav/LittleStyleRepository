@@ -29,7 +29,8 @@ export class CheckoutService {
     return this.http.post<ResumenCheckout>(`${this.baseUrl}/resumen`, request);
   }
 
-  crearPedido(request: CrearPedidoRequest): Observable<PedidoCreado> {
-    return this.http.post<PedidoCreado>(`${this.baseUrl}/pedidos`, request);
+  crearPedido(request: CrearPedidoRequest, claveIdempotencia?: string | null): Observable<PedidoCreado> {
+    const headers = claveIdempotencia ? { 'Idempotency-Key': claveIdempotencia } : undefined;
+    return this.http.post<PedidoCreado>(`${this.baseUrl}/pedidos`, request, { headers });
   }
 }

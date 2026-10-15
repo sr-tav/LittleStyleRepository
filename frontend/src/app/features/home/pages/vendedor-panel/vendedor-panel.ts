@@ -48,10 +48,10 @@ import { InventarioService } from '../../../catalogoCompras/services/inventario.
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7 12 3l9 4-9 4-9-4ZM3 7v10l9 4 9-4V7M12 11v10" /></svg></span>
           <h2>Inventario</h2><p>Stock y alertas</p>
         </a>
-        <article class="home-tile home-tile-disabled">
+        <a class="home-tile" routerLink="/vendedor/pedidos">
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5" /></svg></span>
-          <h2>Pedidos</h2><p>Próximamente</p>
-        </article>
+          <h2>Pedidos</h2><p>Prepara tus despachos</p>
+        </a>
         <article class="home-tile home-tile-disabled">
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V4M4 20h17M7 16l4-5 3 2 6-8M16 5h4v4" /></svg></span>
           <h2>Reportes</h2><p>Próximamente</p>

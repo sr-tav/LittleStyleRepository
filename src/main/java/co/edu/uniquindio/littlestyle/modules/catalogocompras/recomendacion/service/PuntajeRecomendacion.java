@@ -21,6 +21,6 @@ public final class PuntajeRecomendacion {
 
     public static int puntaje (DatosBiometricos bio, RangoTalla talla, EvaluacionAlergia evaluacion, boolean tieneStock) {
         int p = 100 - distancia(bio, talla) - (evaluacion.nivel() == NivelRiesgo.ADVERTENCIA ? 30 : 0) + (tieneStock ? 5 : 0);
-        return Math.max(0, p);
+        return Math.min(100, Math.max(0, p));
     }
 }

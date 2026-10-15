@@ -43,6 +43,7 @@ import java.util.Set;
 @Table(name = "prendas", indexes = {
         @Index(name = "idx_prendas_vendedor", columnList = "vendedor_id"),
         @Index(name = "idx_prendas_estado", columnList = "estado"),
+        @Index(name = "idx_prendas_genero", columnList = "genero"),
         @Index(name = "idx_prendas_categoria", columnList = "categoria"),
         @Index(name = "idx_prendas_precio", columnList = "precio"),
         @Index(name = "idx_prendas_actualizacion", columnList = "fecha_actualizacion")

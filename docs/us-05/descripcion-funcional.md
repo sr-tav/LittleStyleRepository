@@ -30,7 +30,7 @@ Fuera del alcance implementado: recuperación de contraseña (el enlace de UI-1 
 - La contraseña se almacena únicamente como hash **BCrypt** (`BCryptPasswordEncoder`); nunca se guarda en texto plano.
 - `confirmarPassword` debe coincidir con `password`; en caso contrario, HTTP 400 asociado a `confirmarPassword`.
 - Para `VENDEDOR`, `nombreTienda` es obligatorio. Para `CLIENTE` se ignora y se guarda `null`.
-- `aceptaTerminos` debe ser verdadero. Al registrar, el backend guarda la versión de los términos aceptada (`version_terminos`, actualmente `"1.0"`) y la fecha de aceptación (`fecha_aceptacion_terminos`) como evidencia de la autorización de tratamiento de datos (Ley 1581 de 2012, art. 9).
+- `aceptaTerminos` debe ser verdadero. Al registrar, el backend guarda la versión de los términos aceptada (`version_terminos`, actualmente `"1.1"`) y la fecha de aceptación (`fecha_aceptacion_terminos`) como evidencia de la autorización de tratamiento de datos (Ley 1581 de 2012, art. 9).
 - La cuenta se crea con estado `ACTIVO` y fecha de registro. La respuesta es HTTP 201 con un JWT, de modo que el usuario queda autenticado de inmediato.
 
 ### Inicio de sesión (`POST /api/auth/login`)
@@ -186,7 +186,7 @@ La raíz (`/`) redirige al inicio del rol o al login. Las rutas `/cliente` y `/c
 | Interfaz | Comportamiento que existe |
 |---|---|
 | UI-1, inicio de sesión | Formulario de correo y contraseña con validación en cliente, opción de mostrar contraseña, botón deshabilitado con indicador mientras se envía y mensaje del backend ante error. Muestra “Tu sesión expiró” cuando llega con `sesion=expirada`. Tras autenticar navega a `returnUrl` (solo rutas internas que empiezan por `/`) o al inicio del rol. “¿Olvidaste tu contraseña?” solo informa que la recuperación estará disponible próximamente. |
-| UI-2, registro | Selector Cliente/Vendedor; el campo “Nombre de la tienda” aparece y se vuelve obligatorio solo para vendedor. Validación en cliente por campo, barra de fortaleza de contraseña (cinco niveles, de “Muy débil” a “Excelente”), confirmación de contraseña y errores por campo devueltos por el backend. El enlace de términos abre un modal accesible (`TerminosModal`) con los términos y la política de tratamiento de datos (versión `1.0`); abrirlo no marca la casilla, “He leído y acepto” sí la marca y “Cerrar” no la acepta. Tras registrar navega al inicio del rol. |
+| UI-2, registro | Selector Cliente/Vendedor; el campo “Nombre de la tienda” aparece y se vuelve obligatorio solo para vendedor. Validación en cliente por campo, barra de fortaleza de contraseña (cinco niveles, de “Muy débil” a “Excelente”), confirmación de contraseña y errores por campo devueltos por el backend. El enlace de términos abre un modal accesible (`TerminosModal`) con los términos y la política de tratamiento de datos (versión `1.1`); abrirlo no marca la casilla, “He leído y acepto” sí la marca y “Cerrar” no la acepta. Tras registrar navega al inicio del rol. |
 | Inicio por rol | UI-3 (cliente, ampliada en US-06), UI-18 (panel del vendedor) y UI-25 (panel del administrador) con barra de navegación que muestra nombre, rol y “Cerrar sesión”. Los paneles de vendedor y administrador son marcadores con mosaicos sin funcionalidad, pendientes de sus historias. |
 | Acceso denegado / 404 | Páginas informativas para rol no permitido y rutas inexistentes. |
 

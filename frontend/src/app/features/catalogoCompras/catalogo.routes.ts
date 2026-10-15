@@ -32,3 +32,18 @@ export const INVENTARIO_ROUTES: Routes = [
     loadComponent: () => import('./pages/alertas').then((m) => m.AlertasStock),
   },
 ];
+
+/** Pedidos con productos del vendedor, montado en /vendedor/pedidos. */
+export const PEDIDOS_VENDEDOR_ROUTES: Routes = [
+  {
+    path: '',
+    title: 'Pedidos por despachar | LittleStyle',
+    loadComponent: () => import('./pages/pedidos-vendedor').then((m) => m.PedidosVendedor),
+  },
+  {
+    path: ':id',
+    title: 'Detalle del pedido | LittleStyle',
+    loadComponent: () =>
+      import('./pages/pedido-vendedor-detalle').then((m) => m.PedidoVendedorDetallePage),
+  },
+];

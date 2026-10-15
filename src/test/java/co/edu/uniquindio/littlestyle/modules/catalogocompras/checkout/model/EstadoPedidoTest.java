@@ -9,16 +9,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class EstadoPedidoTest {
 
     @Test
-    void permiteElFlujoNormalYTerminaEnEntregado() {
+    void permiteElFlujoNormalYTerminaEnEnviado() {
         Pedido pedido = Pedido.builder().estado(EstadoPedido.PENDIENTE_PAGO).build();
 
         pedido.transicionarA(EstadoPedido.PAGADO);
         pedido.transicionarA(EstadoPedido.EN_PREPARACION);
         pedido.transicionarA(EstadoPedido.ENVIADO);
-        pedido.transicionarA(EstadoPedido.ENTREGADO);
 
-        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.ENTREGADO);
-        assertThat(EstadoPedido.ENTREGADO.permiteTransicionA(EstadoPedido.CANCELADO)).isFalse();
+        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.ENVIADO);
+        assertThat(EstadoPedido.ENVIADO.permiteTransicionA(EstadoPedido.CANCELADO)).isFalse();
     }
 
     @Test
