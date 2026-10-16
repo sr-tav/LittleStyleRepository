@@ -19,6 +19,11 @@
 		reverse_proxy backend:8080
 	}
 
+	# Jenkins (deploy/jenkins), incluido el webhook de GitHub en /jenkins/github-webhook/
+	handle /jenkins* {
+		reverse_proxy jenkins:8080
+	}
+
 	# SPA de Angular: cualquier ruta desconocida cae en index.html
 	handle {
 		root * /srv

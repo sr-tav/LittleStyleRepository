@@ -1,0 +1,55 @@
+jenkins:
+  systemMessage: "LittleStyle CI/CD (US-13): pruebas, build y despliegue en cada push a main"
+  numExecutors: 1
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          # Solo se usa si el repositorio es privado (token fine-grained con Contents: Read-only)
+          - usernamePassword:
+              scope: GLOBAL
+              id: github
+              description: "Lectura del repositorio en GitHub"
+              username: "${GITHUB_USER:-x-access-token}"
+              password: "${GITHUB_TOKEN:-sin-token}"
+
+jobs:
+  - script: |
+      pipelineJob('littlestyle') {
+        description('Pruebas, build y despliegue de LittleStyle en cada push a main (US-13)')
+        logRotator { numToKeep(20) }
+        properties {
+          pipelineTriggers {
+            triggers { githubPush() }
+          }
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GITHUB_REPO_URL:-https://github.com/sr-tav/LittleStyleRepository.git}')
+                  credentials('github')
+                }
+                branch('*/${GITHUB_BRANCH:-main}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }

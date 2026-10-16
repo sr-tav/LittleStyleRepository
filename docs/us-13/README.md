@@ -5,8 +5,8 @@
 | # | Fase | Estado |
 |---|------|--------|
 | 1 | Contenedores Docker y `docker compose` local | Hecho |
-| 2 | Despliegue manual en AWS (EC2 + RDS MySQL + S3, DuckDNS + HTTPS) | Pendiente |
-| 3 | CI/CD con GitHub Actions | Pendiente |
+| 2 | Despliegue manual en AWS (EC2 + RDS MySQL + S3, DuckDNS + HTTPS): [despliegue-aws.md](despliegue-aws.md) | Hecho |
+| 3 | CI/CD con Jenkins: [cicd-jenkins.md](cicd-jenkins.md) | Probado en local, falta instalar en la EC2 |
 | 4 | Pruebas E2E del flujo completo (Playwright) + registro en TestRail | Pendiente |
 | 5 | Pruebas de rendimiento y carga de la API (Artillery) | Pendiente |
 | 6 | Corrección de errores y cierre | Pendiente |
