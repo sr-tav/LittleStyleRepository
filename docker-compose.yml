@@ -1,12 +1,17 @@
 # Despliegue base (US-13): backend + web. Producción en EC2 usa este archivo con RDS y S3.
 #   docker compose up -d --build
 # Local con MySQL en contenedor: ver docker-compose.local.yml
+# El nombre fijo hace que Jenkins (deploy/jenkins) administre estos mismos contenedores.
+name: littlestyle
+
 services:
   backend:
     build: .
     image: littlestyle-backend
     restart: unless-stopped
-    env_file: .env
+    env_file: ${LITTLESTYLE_ENV_FILE:-.env}
+    # Con Jenkins en la misma máquina; la JVM toma el 75 % de este límite
+    mem_limit: 1g
     expose:
       - "8080"
     volumes:

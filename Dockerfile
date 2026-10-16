@@ -1,18 +1,28 @@
-# Imagen del backend Spring Boot (US-13). Las pruebas se ejecutan en CI, no al construir la imagen.
+# Imagen del backend Spring Boot (US-13).
+#   docker build .                                   -> imagen de ejecución (sin pruebas)
+#   docker build --target reportes --output reportes .  -> ejecuta las pruebas y exporta los JUnit (CI)
 
-# --- Etapa 1: compilación con Maven Wrapper ---
-FROM eclipse-temurin:25-jdk AS build
+# --- Dependencias Maven (capa en caché mientras no cambie el pom) ---
+FROM eclipse-temurin:25-jdk AS deps
 WORKDIR /build
-
-# Primero solo pom y wrapper para que la capa de dependencias quede en caché
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw -B -q dependency:go-offline
 
+# --- Pruebas: los fallos no cortan el build para poder exportar los reportes; CI decide con ellos ---
+FROM deps AS test
+COPY src/ src/
+RUN ./mvnw -B test -Dmaven.test.failure.ignore=true
+
+FROM scratch AS reportes
+COPY --from=test /build/target/surefire-reports/ /backend/
+
+# --- Compilación ---
+FROM deps AS build
 COPY src/ src/
 RUN ./mvnw -B -q package -DskipTests && cp target/*.jar app.jar
 
-# --- Etapa 2: ejecución solo con JRE y usuario sin privilegios ---
+# --- Ejecución solo con JRE y usuario sin privilegios ---
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
