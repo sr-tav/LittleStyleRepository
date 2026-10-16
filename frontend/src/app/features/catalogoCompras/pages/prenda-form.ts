@@ -125,12 +125,6 @@ export class PrendaForm implements OnInit, OnDestroy {
       Validators.min(100),
       Validators.max(10_000_000),
     ]),
-    stockMinimo: this.fb.control<number | null>(5, [
-      Validators.required,
-      Validators.min(0),
-      Validators.max(10_000),
-      ENTERO,
-    ]),
     estampado: this.fb.nonNullable.control<Estampado | ''>(''),
     tintesSinteticos: this.fb.nonNullable.control(false),
     brochesMetalicos: this.fb.nonNullable.control(false),
@@ -187,7 +181,6 @@ export class PrendaForm implements OnInit, OnDestroy {
       instruccionesCuidado: prenda.instruccionesCuidado ?? '',
       marca: prenda.marca ?? '',
       precio: prenda.precio,
-      stockMinimo: prenda.stockMinimo,
       estampado: prenda.estampado ?? '',
       tintesSinteticos: prenda.tintesSinteticos,
       brochesMetalicos: prenda.brochesMetalicos,
@@ -233,6 +226,11 @@ export class PrendaForm implements OnInit, OnDestroy {
           Validators.required,
           Validators.min(0),
           Validators.max(100_000),
+          ENTERO,
+        ]),
+        stockMinimo: this.fb.control<number | null>(existente?.stockMinimo ?? null, [
+          Validators.min(0),
+          Validators.max(10_000),
           ENTERO,
         ]),
       },
@@ -450,7 +448,6 @@ export class PrendaForm implements OnInit, OnDestroy {
       instruccionesCuidado: v.instruccionesCuidado.trim(),
       marca: texto(v.marca),
       precio: Number(v.precio),
-      stockMinimo: Number(v.stockMinimo),
       colores: this.coloresSeleccionados(),
       estampado: v.estampado || null,
       tintesSinteticos: v.tintesSinteticos,
@@ -468,6 +465,7 @@ export class PrendaForm implements OnInit, OnDestroy {
         pesoMinKg: Number(t['pesoMinKg']),
         pesoMaxKg: Number(t['pesoMaxKg']),
         stock: t['existente'] ? null : Number(t['stock']),
+        stockMinimo: t['stockMinimo'] === null || t['stockMinimo'] === '' ? null : Number(t['stockMinimo']),
       })),
     };
   }

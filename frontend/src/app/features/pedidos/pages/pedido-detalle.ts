@@ -20,10 +20,21 @@ export class PedidoDetallePage implements OnInit {
   protected readonly pedido = signal<PedidoDetalle | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly cancelando = signal(false);
 
   protected readonly estadoDe = (estado: PedidoDetalle['estado']) => ETIQUETAS_ESTADO[estado];
   protected readonly precio = (valor: number) => formatearPrecio(valor);
   protected readonly pasos = ORDEN_ESTADOS;
+  protected readonly fechaDe = (iso: string | null) =>
+    iso === null
+      ? '—'
+      : new Date(iso).toLocaleString('es-CO', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
 
   protected pasoAlcanzado(paso: PedidoDetalle['estado']): boolean {
     const p = this.pedido();
@@ -32,7 +43,36 @@ export class PedidoDetallePage implements OnInit {
   }
 
   ngOnInit(): void {
+    this.cargar();
+  }
+
+  /** Recarga el detalle para ver el estado actual ("tiempo real" manual). */
+  protected recargar(): void {
+    this.cargar();
+  }
+
+  /** Retracto del cliente antes del pago. */
+  protected cancelar(): void {
+    const p = this.pedido();
+    if (!p || p.estado !== 'PENDIENTE_PAGO' || this.cancelando()) return;
+    if (!window.confirm('¿Deseas cancelar este pedido? Aún no se ha pagado.')) return;
+    this.cancelando.set(true);
+    this.pedidos.cancelar(p.id).subscribe({
+      next: () => {
+        this.cancelando.set(false);
+        this.cargar();
+      },
+      error: (err: unknown) => {
+        this.cancelando.set(false);
+        this.error.set(procesarErrorApi(err));
+      },
+    });
+  }
+
+  private cargar(): void {
     const id = Number(this.ruta.snapshot.paramMap.get('id'));
+    this.cargando.set(true);
+    this.error.set(null);
     this.pedidos.detalle(id).subscribe({
       next: (p) => {
         this.pedido.set(p);

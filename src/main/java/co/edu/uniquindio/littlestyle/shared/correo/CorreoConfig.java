@@ -24,6 +24,9 @@ public class CorreoConfig {
         Properties smtp = new Properties();
         smtp.put("mail.smtp.auth", "true");
         smtp.put("mail.smtp.starttls.enable", "true");
+        smtp.put("mail.smtp.connectiontimeout", String.valueOf(props.timeoutMs()));
+        smtp.put("mail.smtp.timeout", String.valueOf(props.timeoutMs()));
+        smtp.put("mail.smtp.writetimeout", String.valueOf(props.timeoutMs()));
         envio.setJavaMailProperties(smtp);
         return envio;
     }

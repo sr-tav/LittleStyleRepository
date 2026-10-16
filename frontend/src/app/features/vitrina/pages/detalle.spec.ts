@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { signal } from '@angular/core';
 
 import { CarritoService } from '../../catalogoCompras/services/carrito.service';
 import { VitrinaDetalle } from '../models/vitrina.models';
@@ -11,6 +12,12 @@ import { DetalleProducto } from './detalle';
 const carritoMock = {
   agregar: vi.fn(() => of({ items: [], cantidad: 0, subtotal: 0, costoEnvio: null, total: null })),
   abrirPanel: vi.fn(),
+  panelAbierto: signal(false),
+  items: signal([]),
+  cantidad: signal(0),
+  subtotal: signal(0),
+  alternarPanel: vi.fn(),
+  cerrarPanel: vi.fn(),
 };
 
 function detalle(cambios: Partial<VitrinaDetalle> = {}): VitrinaDetalle {
@@ -38,7 +45,10 @@ function detalle(cambios: Partial<VitrinaDetalle> = {}): VitrinaDetalle {
 }
 
 describe('DetalleProducto (US-09)', () => {
+  let perfilId: string | null = null;
+
   beforeEach(async () => {
+    perfilId = null;
     await TestBed.configureTestingModule({
       imports: [DetalleProducto],
       providers: [
@@ -48,12 +58,12 @@ describe('DetalleProducto (US-09)', () => {
         { provide: CarritoService, useValue: carritoMock },
         {
           provide: ActivatedRoute,
-          useValue: {
+          useFactory: () => ({
             snapshot: {
               paramMap: convertToParamMap({ id: '10' }),
-              queryParamMap: convertToParamMap({}),
+              queryParamMap: convertToParamMap(perfilId ? { perfilId } : {}),
             },
-          },
+          }),
         },
       ],
     }).compileComponents();
@@ -121,7 +131,7 @@ describe('DetalleProducto (US-09)', () => {
     expect(el.querySelector('output')?.textContent).toBe('2');
 
     el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!.click();
-    expect(carritoMock.agregar).toHaveBeenCalledWith({ prendaId: 10, talla: '4', cantidad: 2 });
+    expect(carritoMock.agregar).toHaveBeenCalledWith({ prendaId: 10, talla: '4', cantidad: 2, tallaSugerida: null });
     expect(carritoMock.abrirPanel).toHaveBeenCalledOnce();
   });
 
@@ -138,5 +148,18 @@ describe('DetalleProducto (US-09)', () => {
     expect(el.textContent).toContain('En este momento no hay unidades disponibles.');
     expect(el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')?.disabled).toBe(true);
     expect(el.querySelector<HTMLSelectElement>('#talla-carrito')?.disabled).toBe(true);
+  });
+
+  it('muestra el motivo de exclusión cuando el 422 es por alergia (US-07)', () => {
+    perfilId = '3';
+    const { fixture, el, http } = crear(detalle());
+    http.expectOne((p) => p.url === '/api/cliente/recomendaciones/prenda/10')
+      .flush({ mensaje: 'Prenda excluida por alergia: Contiene níquel' }, { status: 422, statusText: 'Unprocessable Entity' });
+    fixture.detectChanges();
+    http.verify();
+
+    expect(el.textContent).toContain('No compatible');
+    expect(el.textContent).toContain('Contiene níquel');
+    expect(el.textContent).not.toContain('Si tienes alergias textiles');
   });
 });

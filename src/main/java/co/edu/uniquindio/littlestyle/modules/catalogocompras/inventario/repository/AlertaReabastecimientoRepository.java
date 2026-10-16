@@ -11,6 +11,10 @@ public interface AlertaReabastecimientoRepository extends JpaRepository<AlertaRe
 
     Optional<AlertaReabastecimiento> findFirstByPrendaIdAndFechaResolucionIsNull(Long prendaId);
 
+    Optional<AlertaReabastecimiento> findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(Long prendaId, String talla);
+
+    List<AlertaReabastecimiento> findAllByPrendaIdAndTallaIsNullAndFechaResolucionIsNull(Long prendaId);
+
     @EntityGraph(attributePaths = "prenda")
     List<AlertaReabastecimiento> findAllByPrendaVendedorIdAndFechaResolucionIsNullOrderByFechaEmisionDesc(
             Long vendedorId);

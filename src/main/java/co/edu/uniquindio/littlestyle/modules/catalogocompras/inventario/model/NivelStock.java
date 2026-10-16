@@ -16,6 +16,13 @@ public enum NivelStock {
         return stockTotal <= stockMinimo ? STOCK_BAJO : DISPONIBLE;
     }
 
+    /** Peor nivel de un conjunto (para el badge del producto): AGOTADO manda. */
+    public static NivelStock peor(java.util.Collection<NivelStock> niveles) {
+        if (niveles.contains(AGOTADO)) return AGOTADO;
+        if (niveles.contains(STOCK_BAJO)) return STOCK_BAJO;
+        return DISPONIBLE;
+    }
+
     public boolean requiereReabastecimiento() {
         return this != DISPONIBLE;
     }

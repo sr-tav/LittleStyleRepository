@@ -37,6 +37,11 @@ public class PerfilBiometricoAdapter implements PerfilBiometricoPort {
                 m.getEstaturaCm(), m.getPesoKg(), m.getFechaMedicion(), p.getHolgura(), p.getContextura());
         Set<AlergiaTextil> raw = p.getAlergias() == null ? Set.of() : p.getAlergias();
         Set<AlergiaTextil> al = p.isSinAlergias() ? Set.of() : Set.copyOf(raw);
-        return new PerfilBiometrico(bio, al);
+        // El texto libre solo aplica si declaró OTRA: sin ese marcador se ignora
+        // para no advertir por un campo residual de otro perfil.
+        String otra = !p.isSinAlergias() && al.contains(AlergiaTextil.OTRA)
+                && p.getOtraAlergia() != null && !p.getOtraAlergia().isBlank()
+                ? p.getOtraAlergia().trim() : null;
+        return new PerfilBiometrico(bio, al, otra, p.getColoresPreferidos(), p.getEstampadosPreferidos());
     }
 }

@@ -46,6 +46,10 @@ public class LineaPedido {
     @Column(nullable = false)
     private int cantidad;
 
+    /** Talla que sugirió el motor al agregar al carrito; base de la métrica RNF-11. */
+    @Column(name = "talla_sugerida", length = 10)
+    private String tallaSugerida;
+
     @Column(name = "precio_unitario", nullable = false, precision = 12, scale = 2)
     private BigDecimal precioUnitario;
 

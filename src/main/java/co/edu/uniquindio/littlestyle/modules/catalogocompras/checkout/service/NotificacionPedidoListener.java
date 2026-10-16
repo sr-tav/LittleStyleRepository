@@ -1,10 +1,14 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service;
 
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoEnviadoEvent;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagoRechazadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoEstadoCambiadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
 import co.edu.uniquindio.littlestyle.shared.correo.CorreoService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Al confirmarse el envío, avisa al cliente por correo con el número de guía.
@@ -26,6 +34,8 @@ import java.util.List;
 public class NotificacionPedidoListener {
 
     private final PedidoRepository pedidoRepository;
+    private final PrendaRepository prendaRepository;
+    private final co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository transaccionRepository;
     private final CorreoService correo;
 
     /**
@@ -71,6 +81,52 @@ public class NotificacionPedidoListener {
                 pedido.getId(),
                 pedido.getTotal().toPlainString(),
                 itemsDe(pedido)));
+        avisarVendedores(evento.pedidoId());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alRechazarse(PedidoPagoRechazadoEvent evento) {
+        transaccionRepository.findById(evento.transaccionId()).ifPresent(transaccion -> {
+            var cliente = transaccion.getCliente();
+            correo.enviarPagoRechazado(
+                    cliente.getEmail(),
+                    cliente.getNombre(),
+                    transaccion.getReferencia(),
+                    String.valueOf(transaccion.getMontoCentavos()));
+        });
+    }
+
+    /**
+     * Definición del Proyecto §3.2.1: el vendedor debe recibir notificaciones
+     * de pedidos. Al confirmarse el pago se avisa a cada vendedor con solo
+     * sus líneas del pedido.
+     */
+    void avisarVendedores(Long pedidoId) {
+        var pedidoOpt = pedidoRepository.findById(pedidoId);
+        if (pedidoOpt.isEmpty()) return;
+        var pedido = pedidoOpt.get();
+        Map<Long, List<LineaPedido>> lineasPorVendedor = new LinkedHashMap<>();
+        Map<Long, co.edu.uniquindio.littlestyle.modules.auth.model.Usuario> vendedores = new HashMap<>();
+        for (LineaPedido linea : pedido.getItems()) {
+            Prenda prenda = prendaRepository.findById(linea.getPrendaId()).orElse(null);
+            if (prenda == null || prenda.getVendedor() == null) continue;
+            Long vendedorId = prenda.getVendedor().getId();
+            vendedores.putIfAbsent(vendedorId, prenda.getVendedor());
+            lineasPorVendedor.computeIfAbsent(vendedorId, k -> new ArrayList<>()).add(linea);
+        }
+        for (var entry : lineasPorVendedor.entrySet()) {
+            var vendedor = vendedores.get(entry.getKey());
+            List<CorreoService.ItemCorreo> items = entry.getValue().stream()
+                    .map(i -> new CorreoService.ItemCorreo(i.getNombre(), i.getTalla(), i.getCantidad()))
+                    .toList();
+            correo.enviarPedidoNuevoVendedor(
+                    vendedor.getEmail(),
+                    vendedor.getNombreTienda() != null ? vendedor.getNombreTienda() : vendedor.getNombre(),
+                    pedido.getId(),
+                    pedido.getCliente().getNombre(),
+                    items);
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
@@ -83,7 +139,7 @@ public class NotificacionPedidoListener {
                 pedido.getCliente().getEmail(),
                 pedido.getCliente().getNombre(),
                 pedido.getId(),
-                evento.nuevo().name(),
+                evento.nuevo().etiqueta(),
                 pedido.getTotal().toPlainString()));
     }
 

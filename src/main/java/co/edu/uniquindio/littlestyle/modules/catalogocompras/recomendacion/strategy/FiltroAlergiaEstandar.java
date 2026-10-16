@@ -1,7 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.ComponenteMaterial;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.PrendaRecomendable;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.AlergiaTextil;
 import org.springframework.stereotype.Component;

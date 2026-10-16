@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -19,8 +20,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,5 +63,31 @@ class PedidoVendedorControllerTest {
 
         mockMvc.perform(get("/api/vendedor/pedidos/99"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void avanzarAEnvioConGuiaDevuelve200() throws Exception {
+        var detalle = new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoVendedorDetalleResponse(
+                7L, EstadoPedido.ENVIADO, LocalDateTime.now(), "COL123", "Ana", "Calle 1", null, null,
+                "Armenia", "Quindío", "3001234567", List.of(), List.of());
+        when(pedidos.avanzarEstado(eq(7L), any())).thenReturn(detalle);
+
+        mockMvc.perform(put("/api/vendedor/pedidos/7/estado")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nuevo\":\"ENVIADO\",\"numeroGuia\":\"COL123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ENVIADO"))
+                .andExpect(jsonPath("$.numeroGuia").value("COL123"));
+    }
+
+    @Test
+    void avanzarACanceladoDevuelve409() throws Exception {
+        when(pedidos.avanzarEstado(eq(7L), any())).thenThrow(new BusinessException(
+                HttpStatus.CONFLICT, "El vendedor solo puede avanzar a EN_PREPARACION o ENVIADO"));
+
+        mockMvc.perform(put("/api/vendedor/pedidos/7/estado")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nuevo\":\"CANCELADO\"}"))
+                .andExpect(status().isConflict());
     }
 }

@@ -12,6 +12,8 @@ public record ItemResumenCheckoutRequest(
         String talla,
         @NotNull(message = "La cantidad es obligatoria")
         @Positive(message = "La cantidad debe ser mayor que cero")
-        Integer cantidad
+        Integer cantidad,
+        /** Talla sugerida por el motor al agregar al carrito; nula si no hubo sugerencia (RNF-11). */
+        String tallaSugerida
 ) {
 }

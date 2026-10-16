@@ -32,6 +32,10 @@ class NotificacionPedidoListenerTest {
     @Mock
     private PedidoRepository pedidoRepository;
     @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository prendaRepository;
+    @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository transaccionRepository;
+    @Mock
     private CorreoService correo;
 
     @InjectMocks
@@ -63,7 +67,7 @@ class NotificacionPedidoListenerTest {
 
         listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.EN_PREPARACION));
 
-        verify(correo).enviarCambioEstado(eq("a@b.com"), eq("Ana"), eq(7L), eq("EN_PREPARACION"), eq("107000"));
+        verify(correo).enviarCambioEstado(eq("a@b.com"), eq("Ana"), eq(7L), eq("En preparación"), eq("107000"));
     }
 
     @Test
@@ -87,6 +91,35 @@ class NotificacionPedidoListenerTest {
     }
 
     @Test
+    void pagoAvisaAlVendedorConSusLineas() {
+        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
+        var vendedor = Usuario.builder().id(9L).nombre("Luis").nombreTienda("Tienda Sol")
+                .email("v@tienda.com").build();
+        var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
+                .id(3L).vendedor(vendedor).build();
+        when(prendaRepository.findById(3L)).thenReturn(Optional.of(prenda));
+
+        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(7L));
+
+        verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), anyList());
+        verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(7L), eq("Ana"), anyList());
+    }
+
+    @Test
+    void rechazoAvisaAlClienteSinPedido() {
+        var cliente = Usuario.builder().id(1L).nombre("Ana").email("a@b.com").build();
+        var transaccion = co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.TransaccionPago.builder()
+                .id(9L).cliente(cliente).referencia("LS-55-X").montoCentavos(7280000L).moneda("COP")
+                .estado(co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.EstadoTransaccionPago.RECHAZADA)
+                .build();
+        when(transaccionRepository.findById(9L)).thenReturn(Optional.of(transaccion));
+
+        listener.alRechazarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagoRechazadoEvent(9L));
+
+        verify(correo).enviarPagoRechazado(eq("a@b.com"), eq("Ana"), eq("LS-55-X"), eq("7280000"));
+    }
+
+    @Test
     void alertaStockAvisaAlVendedor() {
         co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository usuarios =
                 org.mockito.Mockito.mock(co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository.class);
@@ -97,8 +130,8 @@ class NotificacionPedidoListenerTest {
         when(usuarios.findById(9L)).thenReturn(Optional.of(vendedor));
 
         notificador.alEmitirAlerta(new co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.event.AlertaReabastecimientoEmitida(
-                1L, 3L, 9L, "Pantalón", co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock.STOCK_BAJO, 2, 5));
+                1L, 3L, 9L, "Pantalón", "4", co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock.STOCK_BAJO, 2, 5));
 
-        verify(correo).enviarAlertaStock(eq("v@tienda.com"), eq("Tienda Sol"), eq("Pantalón"), eq("STOCK_BAJO"), eq(2), eq(5));
+        verify(correo).enviarAlertaStock(eq("v@tienda.com"), eq("Tienda Sol"), eq("Pantalón"), eq("4"), eq("STOCK_BAJO"), eq(2), eq(5));
     }
 }

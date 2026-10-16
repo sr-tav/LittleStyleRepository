@@ -13,7 +13,13 @@ public record CorreoProperties(
         @DefaultValue("587") int puerto,
         String usuario,
         String clave,
-        @DefaultValue("LittleStyle") String remitente) {
+        @DefaultValue("LittleStyle") String remitente,
+        /** Timeout de conexión/lectura SMTP en ms (RNF-23). */
+        @DefaultValue("10000") int timeoutMs,
+        /** Reintentos de envío ante fallo transitorio (ADR-14). */
+        @DefaultValue("3") int reintentos,
+        /** Espera entre reintentos en ms. */
+        @DefaultValue("2000") long esperaReintentoMs) {
 
     /** Sin usuario o clave no se envía nada: se registra y se continúa. */
     public boolean enviosHabilitados() {

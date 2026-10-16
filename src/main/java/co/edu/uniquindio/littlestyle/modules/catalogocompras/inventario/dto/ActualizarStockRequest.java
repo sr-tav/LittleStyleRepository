@@ -11,17 +11,13 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Fija las existencias de las tallas indicadas (valor absoluto, no incremento). Las tallas que no se
- * envían conservan su stock. Si {@code stockMinimo} es nulo, el mínimo de la prenda no cambia.
+ * Fija las existencias y mínimos de las tallas indicadas (valores absolutos, no incrementos). Las
+ * tallas que no se envían conservan su stock; el mínimo nulo de una talla no cambia su mínimo.
  */
 public record ActualizarStockRequest(
         @NotEmpty(message = "Indica el stock de al menos una talla")
         @Size(max = 15, message = "Se admiten máximo 15 tallas")
-        List<@Valid @NotNull StockTalla> tallas,
-
-        @Min(value = 0, message = "El stock mínimo no puede ser negativo")
-        @Max(value = 10000, message = "El stock mínimo debe ser máximo 10000")
-        Integer stockMinimo
+        List<@Valid @NotNull StockTalla> tallas
 ) {
 
     public record StockTalla(
@@ -31,7 +27,11 @@ public record ActualizarStockRequest(
             @NotNull(message = "El stock es obligatorio")
             @Min(value = 0, message = "El stock no puede ser negativo")
             @Max(value = 100000, message = "El stock debe ser máximo 100000")
-            Integer stock
+            Integer stock,
+
+            @Min(value = 0, message = "El stock mínimo no puede ser negativo")
+            @Max(value = 10000, message = "El stock mínimo debe ser máximo 10000")
+            Integer stockMinimo
     ) {
     }
 }

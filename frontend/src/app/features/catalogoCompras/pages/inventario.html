@@ -46,12 +46,12 @@
     } @else {
       <div class="catalog-table-wrap">
         <table class="catalog-table inventory-table">
-          <caption class="visually-hidden">Inventario con existencias actuales, mínimo y estado por producto</caption>
+          <caption class="visually-hidden">Inventario con existencias actuales, mínimos por talla y estado por producto</caption>
           <thead>
             <tr>
               <th scope="col">Producto</th>
               <th scope="col">Stock actual</th>
-              <th scope="col">Stock mínimo</th>
+              <th scope="col">Mínimos por talla</th>
               <th scope="col">Estado</th>
               <th scope="col">Acción</th>
             </tr>
@@ -73,7 +73,7 @@
                 <td>
                   <span class="stock-number" [class]="'stock-number stock-number-' + item.nivel">{{ item.stockTotal }}</span>
                 </td>
-                <td class="muted-cell">{{ item.stockMinimo }}</td>
+                <td class="muted-cell">{{ minimosDe(item) }}</td>
                 <td><app-nivel-stock-badge [nivel]="item.nivel" /></td>
                 <td>
                   @if (edicion()?.prendaId !== item.prendaId) {
@@ -89,20 +89,21 @@
                         <div class="stock-editor-sizes">
                           @for (t of e.tallas; track t.talla; let i = $index) {
                             <label class="stock-editor-field">
-                              <span>Talla {{ t.talla }}</span>
+                              <span>Talla {{ t.talla }} (stock)</span>
                               <input type="number" min="0" inputmode="numeric" [value]="t.stock ?? ''"
                                 [attr.aria-invalid]="errorEdicion() ? 'true' : null"
                                 aria-describedby="error-edicion"
                                 (input)="cambiarStock(i, $any($event.target).value)" />
                             </label>
+                            <label class="stock-editor-field">
+                              <span>Talla {{ t.talla }} (mínimo)</span>
+                              <input type="number" min="0" inputmode="numeric" [value]="t.stockMinimo ?? ''"
+                                placeholder="Sin alerta"
+                                [attr.aria-invalid]="errorEdicion() ? 'true' : null"
+                                aria-describedby="error-edicion"
+                                (input)="cambiarMinimo(i, $any($event.target).value)" />
+                            </label>
                           }
-                          <label class="stock-editor-field stock-editor-min">
-                            <span>Stock mínimo</span>
-                            <input type="number" min="0" inputmode="numeric" [value]="e.stockMinimo ?? ''"
-                              [attr.aria-invalid]="errorEdicion() ? 'true' : null"
-                              aria-describedby="error-edicion"
-                              (input)="cambiarMinimo($any($event.target).value)" />
-                          </label>
                         </div>
                         <div class="stock-editor-footer">
                           <span class="field-hint">Total: <strong>{{ totalEdicion() }}</strong> unidades</span>

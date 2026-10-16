@@ -67,7 +67,7 @@ import { InventarioService } from '../../../catalogoCompras/services/inventario.
           <ul>
             @for (alerta of alertas().slice(0, 3); track alerta.id) {
               <li>
-                <span>{{ alerta.nombre }}</span>
+                <span>{{ alerta.nombre }}{{ alerta.talla ? ' · talla ' + alerta.talla : '' }}</span>
                 <span class="panel-alert-stock">{{ alerta.stockActual }} / mín. {{ alerta.stockMinimo }}</span>
                 <app-nivel-stock-badge [nivel]="alerta.nivel" />
               </li>

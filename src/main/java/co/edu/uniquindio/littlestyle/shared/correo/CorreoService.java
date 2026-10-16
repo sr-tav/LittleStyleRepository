@@ -53,7 +53,7 @@ public class CorreoService {
             ayuda.setFrom(props.usuario(), props.remitente());
             ayuda.setSubject("Tu pedido #" + pedidoId + " va en camino - guía " + guia);
             ayuda.setText(html, true);
-            envio.send(mensaje);
+            enviarConReintentos(mensaje, "pedido " + pedidoId);
         } catch (Exception ex) {
             log.error("No fue posible enviar el correo del pedido {}", pedidoId, ex);
         }
@@ -117,7 +117,7 @@ public class CorreoService {
     }
 
     @Async
-    public void enviarAlertaStock(String para, String nombre, String prenda,
+    public void enviarAlertaStock(String para, String nombre, String prenda, String talla,
                                   String nivel, int stock, int minimo) {
         if (!props.enviosHabilitados()) {
             log.warn("Correo no configurado; se omite la alerta de stock de {}", prenda);
@@ -127,12 +127,49 @@ public class CorreoService {
             String html = leerPlantilla("correo/alerta-stock.html")
                     .replace("{{nombre}}", escaparHtml(nombre))
                     .replace("{{prenda}}", escaparHtml(prenda))
+                    .replace("{{talla}}", escaparHtml(talla))
                     .replace("{{nivel}}", escaparHtml(nivel))
                     .replace("{{stock}}", String.valueOf(stock))
                     .replace("{{minimo}}", String.valueOf(minimo));
-            enviarHtml(para, "Alerta de inventario: " + prenda, html);
+            enviarHtml(para, "Alerta de inventario: " + prenda + " talla " + talla, html);
         } catch (Exception ex) {
             log.error("No fue posible enviar la alerta de stock de {}", prenda, ex);
+        }
+    }
+
+    @Async
+    public void enviarPagoRechazado(String para, String nombre, String referencia, String totalCentavos) {
+        if (!props.enviosHabilitados()) {
+            log.warn("Correo no configurado; se omite el aviso de pago rechazado {}", referencia);
+            return;
+        }
+        try {
+            String html = leerPlantilla("correo/pago-rechazado.html")
+                    .replace("{{nombre}}", escaparHtml(nombre))
+                    .replace("{{referencia}}", escaparHtml(referencia))
+                    .replace("{{totalCentavos}}", escaparHtml(totalCentavos));
+            enviarHtml(para, "Su pago no pudo ser aprobado - referencia " + referencia, html);
+        } catch (Exception ex) {
+            log.error("No fue posible enviar el correo de pago rechazado {}", referencia, ex);
+        }
+    }
+
+    @Async
+    public void enviarPedidoNuevoVendedor(String para, String tienda, Long pedidoId,
+                                          String cliente, List<ItemCorreo> items) {
+        if (!props.enviosHabilitados()) {
+            log.warn("Correo no configurado; se omite el aviso al vendedor del pedido {}", pedidoId);
+            return;
+        }
+        try {
+            String html = leerPlantilla("correo/pedido-vendedor-nuevo.html")
+                    .replace("{{tienda}}", escaparHtml(tienda))
+                    .replace("{{pedidoId}}", String.valueOf(pedidoId))
+                    .replace("{{cliente}}", escaparHtml(cliente))
+                    .replace("{{filas}}", filasHtml(items));
+            enviarHtml(para, "Nuevo pedido #" + pedidoId + " con tus productos", html);
+        } catch (Exception ex) {
+            log.error("No fue posible enviar el aviso al vendedor del pedido {}", pedidoId, ex);
         }
     }
 
@@ -160,14 +197,40 @@ public class CorreoService {
                 .reduce("", String::concat);
     }
 
-    private void enviarHtml(String para, String asunto, String html)
-            throws jakarta.mail.MessagingException, java.io.UnsupportedEncodingException {
+    private void enviarHtml(String para, String asunto, String html) throws Exception {
         var mensaje = envio.createMimeMessage();
         var ayuda = new MimeMessageHelper(mensaje, false, "UTF-8");
         ayuda.setTo(para);
         ayuda.setFrom(props.usuario(), props.remitente());
         ayuda.setSubject(asunto);
         ayuda.setText(html, true);
-        envio.send(mensaje);
+        enviarConReintentos(mensaje, asunto);
+    }
+
+    /**
+     * Reintentos de envío (ADR-14): el correo es secundario y asíncrono, pero
+     * un fallo transitorio de red no debería perder el aviso al primer
+     * intento. Agotados los intentos, lanza y el llamador solo lo registra.
+     */
+    private void enviarConReintentos(jakarta.mail.internet.MimeMessage mensaje, String contexto)
+            throws Exception {
+        int maximos = Math.max(1, props.reintentos());
+        for (int intento = 1; ; intento++) {
+            try {
+                envio.send(mensaje);
+                return;
+            } catch (Exception ex) {
+                if (intento >= maximos) {
+                    throw ex;
+                }
+                log.warn("Reintento {}/{} del correo ({})", intento, maximos, contexto);
+                try {
+                    Thread.sleep(Math.max(0, props.esperaReintentoMs()));
+                } catch (InterruptedException interrumpido) {
+                    Thread.currentThread().interrupt();
+                    throw interrumpido;
+                }
+            }
+        }
     }
 }

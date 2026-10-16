@@ -151,6 +151,7 @@
                 <th scope="col">Talla</th>
                 <th scope="col">Estatura (cm)</th>
                 <th scope="col">Peso (kg)</th>
+                <th scope="col">Edad (meses)</th>
                 <th scope="col">Disponibles</th>
                 <th scope="col">Estado</th>
               </tr>
@@ -166,6 +167,7 @@
                   </td>
                   <td class="muted-cell">{{ t.estaturaMinCm }} – {{ t.estaturaMaxCm }}</td>
                   <td class="muted-cell">{{ t.pesoMinKg }} – {{ t.pesoMaxKg }}</td>
+                  <td class="muted-cell">{{ edadDe(t) }}</td>
                   <td class="muted-cell">{{ t.stockDisponible }}</td>
                   <td>
                     @if (t.disponible) {

@@ -18,4 +18,12 @@ export class PedidosVendedorService {
   detalle(id: number): Observable<PedidoVendedorDetalle> {
     return this.http.get<PedidoVendedorDetalle>(`${this.baseUrl}/${id}`);
   }
+
+  /** El vendedor avanza sus pedidos a preparación o enviado (con guía). */
+  avanzarEstado(id: number, nuevo: string, numeroGuia?: string | null): Observable<PedidoVendedorDetalle> {
+    return this.http.put<PedidoVendedorDetalle>(`${this.baseUrl}/${id}/estado`, {
+      nuevo,
+      numeroGuia: numeroGuia ?? null,
+    });
+  }
 }

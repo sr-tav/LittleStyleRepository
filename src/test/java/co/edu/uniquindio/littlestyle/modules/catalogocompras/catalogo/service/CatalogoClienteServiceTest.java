@@ -3,6 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaVitrinaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
@@ -23,7 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,8 +42,10 @@ class CatalogoClienteServiceTest {
     @Test
     void exploraSoloPublicadasConPaginacionYOrden() {
         var p = prenda(10L, 5, 3, 0);
-        when(prendaRepository.buscarVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(p)));
+        when(prendaRepository.buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(10L), PageRequest.of(0, 12), 1));
+        when(prendaRepository.buscarPorIds(List.of(10L))).thenReturn(List.of(p));
 
         var pagina = service.explorar("jogger", "PANTALONES", null, "10000", "50000", "true", null, "4", 0, 12,
                 "precioAsc");
@@ -50,23 +56,82 @@ class CatalogoClienteServiceTest {
         assertThat(item.tallasDisponibles()).containsExactly("4");
         assertThat(item.precio()).isNotNull();
         ArgumentCaptor<Pageable> paginable = ArgumentCaptor.forClass(Pageable.class);
-        verify(prendaRepository).buscarVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), eq("jogger"),
-                eq(Boolean.TRUE), any(), eq("4"), paginable.capture());
+        verify(prendaRepository).buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), eq("jogger"),
+                eq(Boolean.TRUE), any(), eq("4"), eq(null), paginable.capture());
         assertThat(paginable.getValue().getPageSize()).isEqualTo(12);
         assertThat(paginable.getValue().getSort().getOrderFor("precio")).isNotNull();
+        // Desempate por id: paginación estable.
+        assertThat(paginable.getValue().getSort().getOrderFor("id")).isNotNull();
     }
 
     @Test
     void limitaElTamanoDePaginaParaProtegerLaBaseDeDatos() {
-        when(prendaRepository.buscarVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(prendaRepository.buscarIdsVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.explorar(null, null, null, null, null, null, null, null, 0, 500, "novedades");
 
         ArgumentCaptor<Pageable> paginable = ArgumentCaptor.forClass(Pageable.class);
-        verify(prendaRepository).buscarVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                paginable.capture());
+        verify(prendaRepository).buscarIdsVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(), paginable.capture());
         assertThat(paginable.getValue().getPageSize()).isEqualTo(CatalogoClienteService.TAMANO_MAXIMO);
+    }
+
+    @Test
+    void idsDeRecomendadosFiltraEnBaseDeDatos() {
+        var p = prenda(10L, 5, 3, 0);
+        when(prendaRepository.buscarIdsVitrinaPorIds(eq(EstadoPrenda.ACTIVA), eq(List.of(10L, 20L)), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(10L), PageRequest.of(0, 12), 1));
+        when(prendaRepository.buscarPorIds(List.of(10L))).thenReturn(List.of(p));
+
+        var pagina = service.explorar(null, null, null, null, null, null, null, null, List.of(10L, 20L), 0, 12,
+                "novedades");
+
+        assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
+        verify(prendaRepository, never()).buscarIdsVitrina(any(), any(), any(), any(), any(), any(), any(), any(),
+                any(), any(), any());
+    }
+
+    @Test
+    void idsVaciosDevuelvenPaginaVaciaSinConsultar() {
+        var pagina = service.explorar(null, null, null, null, null, null, null, null, List.of(), 0, 12,
+                "novedades");
+
+        assertThat(pagina.contenido()).isEmpty();
+        verifyNoInteractions(prendaRepository);
+    }
+
+    @Test
+    void edadFiltraPorRangoDeclaradoYNegativaEs400() {
+        var p = prenda(10L, 5, 3, 0);
+        when(prendaRepository.buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(),
+                any(), any(), eq(48), any()))
+                .thenReturn(new PageImpl<>(List.of(10L), PageRequest.of(0, 12), 1));
+        when(prendaRepository.buscarPorIds(List.of(10L))).thenReturn(List.of(p));
+
+        var pagina = service.explorar(null, null, null, null, null, null, null, null, null, 48, 0, 12,
+                "novedades");
+
+        assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
+        assertThatThrownBy(() -> service.explorar(null, null, null, null, null, null, null, null, null, -1, 0,
+                12, "novedades"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void materialesMultiplesFiltranPorAlgunComponente() {
+        when(prendaRepository.buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(),
+                eq(List.of(MaterialTextil.ALGODON, MaterialTextil.POLIESTER)), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.explorar(null, null, null, null, null, null, "ALGODON,POLIESTER", null, null, null, 0, 12,
+                "novedades");
+
+        verify(prendaRepository).buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(),
+                eq(List.of(MaterialTextil.ALGODON, MaterialTextil.POLIESTER)), any(), any(), any());
     }
 
     @Test

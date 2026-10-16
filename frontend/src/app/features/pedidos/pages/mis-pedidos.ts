@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
+import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
 import { ETIQUETAS_ESTADO, PedidoResumen } from '../models/pedido.models';
 import { PedidosService } from '../services/pedidos.service';
 
@@ -20,6 +21,9 @@ export class MisPedidos implements OnInit {
   protected readonly error = signal<string | null>(null);
 
   protected readonly estado = (p: PedidoResumen) => ETIQUETAS_ESTADO[p.estado];
+  protected readonly precioTotal = (p: PedidoResumen) => formatearPrecio(p.total);
+  protected readonly fechaDe = (iso: string) =>
+    new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
 
   ngOnInit(): void {
     this.cargar();

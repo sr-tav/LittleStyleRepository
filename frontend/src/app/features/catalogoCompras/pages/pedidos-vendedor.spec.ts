@@ -39,6 +39,8 @@ describe('PedidosVendedor', () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain('Pedido #7');
     expect(root.textContent).toContain('En preparación');
+    expect(root.textContent).toContain('100.000');
+    expect(root.textContent).toContain('2026');
     expect(root.querySelector('a[href="/vendedor/pedidos/7"]')).not.toBeNull();
   });
 

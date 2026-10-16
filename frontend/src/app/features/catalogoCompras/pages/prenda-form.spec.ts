@@ -46,11 +46,12 @@ describe('PrendaForm (UI-20)', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function completar(c: any) {
     c.form.patchValue({
-      nombre: 'Vestido Floral', categoria: 'VESTIDOS', precio: 45900, stockMinimo: 3,
+      nombre: 'Vestido Floral', categoria: 'VESTIDOS', precio: 45900,
       instruccionesCuidado: '  Lavar a mano en agua fría ',
     });
     c.tallas.at(0).patchValue({
       talla: ' xs ', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15, stock: 6,
+      stockMinimo: 2,
     });
   }
 
@@ -104,6 +105,7 @@ describe('PrendaForm (UI-20)', () => {
     expect(crearReq.request.method).toBe('POST');
     expect(crearReq.request.body.tallas[0]).toEqual({
       talla: 'XS', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15, stock: 6,
+      stockMinimo: 2,
     });
     expect(crearReq.request.body.composicion).toEqual([{ material: 'ALGODON', porcentaje: 100 }]);
     expect(crearReq.request.body.instruccionesCuidado).toBe('Lavar a mano en agua fría');

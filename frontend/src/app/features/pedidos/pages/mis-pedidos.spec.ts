@@ -39,6 +39,8 @@ describe('MisPedidos (US-12 / UI-17)', () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain('Pedido #7');
     expect(root.textContent).toContain('Enviado');
+    expect(root.textContent).toContain('107.000');
+    expect(root.textContent).toContain('COL123');
     const enlace = root.querySelector<HTMLAnchorElement>('a[href="/cliente/pedidos/7"]');
     expect(enlace).not.toBeNull();
   });

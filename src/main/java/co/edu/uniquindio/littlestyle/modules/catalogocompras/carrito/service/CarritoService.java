@@ -71,10 +71,14 @@ public class CarritoService {
                     .prendaId(prenda.getId())
                     .talla(talla.getTalla())
                     .cantidad(request.cantidad())
+                    .tallaSugerida(normalizarSugerida(request.tallaSugerida()))
                     .build();
             carrito.agregar(existente);
         } else {
             existente.setCantidad((int) cantidadSolicitada);
+            if (request.tallaSugerida() != null) {
+                existente.setTallaSugerida(normalizarSugerida(request.tallaSugerida()));
+            }
         }
         carritoRepository.saveAndFlush(carrito);
         return respuesta(carrito.getItems());
@@ -203,7 +207,7 @@ public class CarritoService {
             lineas.add(new ItemCarritoResponse(item.getId(), prenda.getId(), prenda.getNombre(),
                     prenda.imagenPrincipal().map(imagen -> imagen.getUrl()).orElse(null),
                     item.getTalla(), item.getCantidad(), prenda.getPrecio(), subtotalLinea,
-                    disponible));
+                    disponible, item.getTallaSugerida()));
         }
         BigDecimal costoEnvio = items.isEmpty() ? BigDecimal.ZERO : null;
         BigDecimal total = items.isEmpty() ? BigDecimal.ZERO : null;
@@ -217,6 +221,11 @@ public class CarritoService {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "La prenda, talla y cantidad deben ser válidas", "cantidad");
         }
+    }
+
+    private static String normalizarSugerida(String tallaSugerida) {
+        if (tallaSugerida == null || tallaSugerida.isBlank()) return null;
+        return tallaSugerida.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     private Long clienteActualId() {

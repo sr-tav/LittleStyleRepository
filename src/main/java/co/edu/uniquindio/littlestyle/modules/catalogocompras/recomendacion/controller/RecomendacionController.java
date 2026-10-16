@@ -22,16 +22,27 @@ public class RecomendacionController {
     public ResponseEntity<List<RecomendacionItem>> listar(@RequestParam Long perfilId) {
         long ini = System.nanoTime();
         PerfilBiometrico pb = perfiles.obtenerActivos(perfilId);
-        List<RecomendacionItem> res = motor.recomendar(pb.bio(), pb.alergias());
+        List<RecomendacionItem> res = motor.recomendar(pb);
         long ms = (System.nanoTime() - ini) / 1_000_000;
         return ResponseEntity.ok().header("X-Recomendacion-Ms", String.valueOf(ms)).body(res);
+    }
+
+    /**
+     * Solo identificadores recomendados, sin tope: la vitrina los usa como
+     * filtro de servidor ("Solo mi talla sugerida") y pagina en la base de
+     * datos, sin falsos negativos por la página actual.
+     */
+    @GetMapping("/ids")
+    public ResponseEntity<List<Long>> ids(@RequestParam Long perfilId) {
+        PerfilBiometrico pb = perfiles.obtenerActivos(perfilId);
+        return ResponseEntity.ok(motor.idsRecomendados(pb));
     }
 
     @GetMapping("/prenda/{prendaId}")
     public ResponseEntity<RecomendacionItem> porPrenda(@PathVariable Long prendaId, @RequestParam Long perfilId) {
         long ini = System.nanoTime();
         PerfilBiometrico pb = perfiles.obtenerActivos(perfilId);
-        RecomendacionItem item = motor.recomendarParaPrenda(pb.bio(), pb.alergias(), prendaId);
+        RecomendacionItem item = motor.recomendarParaPrenda(pb, prendaId);
         long ms = (System.nanoTime() - ini) / 1_000_000;
         return ResponseEntity.ok().header("X-Recomendacion-Ms", String.valueOf(ms)).body(item);
     }

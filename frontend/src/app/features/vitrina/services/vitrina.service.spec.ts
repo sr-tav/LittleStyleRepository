@@ -66,6 +66,18 @@ describe('VitrinaService (US-09)', () => {
     req.flush(pagina());
   });
 
+  it('envía edad e ids como query params', () => {
+    servicio.explorar({ edadMeses: 48, ids: '10,20', pagina: 0 }).subscribe();
+    const req = http.expectOne(
+      (p) =>
+        p.url === '/api/cliente/catalogo' &&
+        p.params.get('edadMeses') === '48' &&
+        p.params.get('ids') === '10,20',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(pagina());
+  });
+
   it('pide el detalle por id', () => {
     servicio.detalle(10).subscribe();
     const req = http.expectOne('/api/cliente/catalogo/10');

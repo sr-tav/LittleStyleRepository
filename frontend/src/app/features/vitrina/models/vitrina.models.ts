@@ -16,6 +16,8 @@ export interface VitrinaTalla {
   estaturaMaxCm: number;
   pesoMinKg: number;
   pesoMaxKg: number;
+  edadMinMeses?: number | null;
+  edadMaxMeses?: number | null;
   stockDisponible: number;
   disponible: boolean;
 }
@@ -55,6 +57,10 @@ export interface FiltrosVitrina {
   disponible?: boolean;
   material?: string;
   talla?: string;
+  /** Edad en meses: coincide con tallas que declaran el rango (o no declaran). */
+  edadMeses?: number;
+  /** Prendas recomendadas (filtro de servidor "Solo mi talla sugerida"). */
+  ids?: string;
   pagina?: number;
   tamano?: number;
   orden?: string;

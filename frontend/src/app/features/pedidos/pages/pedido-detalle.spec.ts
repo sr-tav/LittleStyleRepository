@@ -1,8 +1,8 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { PedidoDetalle } from '../models/pedido.models';
 import { PedidosService } from '../services/pedidos.service';
@@ -31,7 +31,12 @@ function detalle(): PedidoDetalle {
 }
 
 describe('PedidoDetallePage (US-12 / UI-16)', () => {
+  const pedidos = { detalle: vi.fn(), cancelar: vi.fn() };
+
   beforeEach(async () => {
+    pedidos.detalle.mockReset();
+    pedidos.cancelar.mockReset();
+    pedidos.detalle.mockReturnValue(of(detalle()));
     await TestBed.configureTestingModule({
       imports: [PedidoDetallePage],
       providers: [
@@ -42,7 +47,7 @@ describe('PedidoDetallePage (US-12 / UI-16)', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: '7' }) } },
         },
-        { provide: PedidosService, useValue: { detalle: () => of(detalle()) } },
+        { provide: PedidosService, useValue: pedidos },
       ],
     }).compileComponents();
   });
@@ -55,7 +60,69 @@ describe('PedidoDetallePage (US-12 / UI-16)', () => {
     expect(root.textContent).toContain('COL123');
     expect(root.textContent).toContain('Pantalón Jogger Azul');
     expect(root.textContent).toContain('107.000');
-    expect(root.querySelectorAll('.pedido-linea-tiempo li')).toHaveLength(4);
+    expect(root.querySelectorAll('.pedido-linea-tiempo li')).toHaveLength(5);
+    expect(root.querySelectorAll('.pedido-historial li')).toHaveLength(3);
     expect(root.querySelector('.pedido-linea-tiempo li.is-actual')?.textContent).toContain('Enviado');
+  });
+
+  it('muestra el historial con fechas por transición', () => {
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const historial = root.querySelector('[aria-label="Historial del pedido"]');
+    expect(historial?.textContent).toContain('Pendiente de pago');
+    expect(historial?.textContent).toContain('En preparación');
+    expect(historial?.textContent).toContain('2026');
+  });
+
+  it('muestra el aviso de cancelado sin línea de tiempo pero con historial', () => {
+    pedidos.detalle.mockReturnValue(of({ ...detalle(), estado: 'CANCELADO' }));
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.textContent).toContain('fue cancelado');
+    expect(root.querySelector('.pedido-linea-tiempo li.is-actual')).toBeNull();
+    expect(root.querySelectorAll('.pedido-historial li')).toHaveLength(3);
+  });
+
+  it('muestra el error si la consulta falla', () => {
+    pedidos.detalle.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404, error: { mensaje: 'No existe' } })),
+    );
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No existe');
+  });
+
+  it('recarga el detalle al pulsar Actualizar', () => {
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+    expect(pedidos.detalle).toHaveBeenCalledTimes(1);
+
+    const boton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Actualizar'),
+    )!;
+    boton.click();
+
+    expect(pedidos.detalle).toHaveBeenCalledTimes(2);
+  });
+
+  it('cancela el pedido pendiente de pago tras confirmar', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    pedidos.detalle.mockReturnValue(of({ ...detalle(), estado: 'PENDIENTE_PAGO', numeroGuia: null }));
+    pedidos.cancelar.mockReturnValue(of({ id: 7, estado: 'CANCELADO', numeroGuia: null }));
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    const boton = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Cancelar pedido'),
+    )!;
+    boton.click();
+
+    expect(pedidos.cancelar).toHaveBeenCalledWith(7);
+    vi.restoreAllMocks();
   });
 });

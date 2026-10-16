@@ -11,8 +11,7 @@ import { InventarioService } from '../services/inventario.service';
 
 interface Edicion {
   prendaId: number;
-  tallas: { talla: string; stock: number | null }[];
-  stockMinimo: number | null;
+  tallas: { talla: string; stock: number | null; stockMinimo: number | null }[];
 }
 
 /** UI-21: Inventario del vendedor con actualización de stock por talla en línea. */
@@ -36,6 +35,12 @@ export class Inventario implements OnInit {
   protected readonly mensaje = signal<{ tipo: 'exito' | 'alerta' | 'error'; texto: string } | null>(null);
 
   protected readonly categoria = (item: InventarioItem) => ETIQUETAS_CATEGORIAS[item.categoria];
+  protected readonly minimosDe = (item: InventarioItem) => {
+    const definidos = item.tallas.filter((t) => t.stockMinimo !== null && t.stockMinimo !== undefined);
+    return definidos.length === 0
+      ? '—'
+      : definidos.map((t) => `${t.talla}: ${t.stockMinimo}`).join(' · ');
+  };
 
   ngOnInit(): void {
     this.cargar();
@@ -76,7 +81,6 @@ export class Inventario implements OnInit {
     this.edicion.set({
       prendaId: item.prendaId,
       tallas: item.tallas.map((t) => ({ ...t })),
-      stockMinimo: item.stockMinimo,
     });
   }
 
@@ -91,8 +95,11 @@ export class Inventario implements OnInit {
     );
   }
 
-  protected cambiarMinimo(valor: string): void {
-    this.edicion.update((e) => (e ? { ...e, stockMinimo: entero(valor) } : e));
+  protected cambiarMinimo(indice: number, valor: string): void {
+    const minimo = valor.trim() === '' ? null : entero(valor);
+    this.edicion.update((e) =>
+      e ? { ...e, tallas: e.tallas.map((t, i) => (i === indice ? { ...t, stockMinimo: minimo } : t)) } : e,
+    );
   }
 
   protected totalEdicion(): number {
@@ -102,9 +109,10 @@ export class Inventario implements OnInit {
   protected guardar(): void {
     const e = this.edicion();
     if (!e || this.guardando()) return;
-    const invalido = (v: number | null, max: number) => v === null || v < 0 || v > max;
-    if (e.tallas.some((t) => invalido(t.stock, 100_000)) || invalido(e.stockMinimo, 10_000)) {
-      this.errorEdicion.set('Usa números enteros: stock entre 0 y 100000 y mínimo entre 0 y 10000.');
+    const stockInvalido = (v: number | null) => v === null || v < 0 || v > 100_000;
+    const minimoInvalido = (v: number | null) => v !== null && (v < 0 || v > 10_000);
+    if (e.tallas.some((t) => stockInvalido(t.stock) || minimoInvalido(t.stockMinimo))) {
+      this.errorEdicion.set('Usa números enteros: stock entre 0 y 100000 y mínimo entre 0 y 10000 (vacío = sin alerta).');
       return;
     }
     const anterior = this.items().find((i) => i.prendaId === e.prendaId);
@@ -113,8 +121,7 @@ export class Inventario implements OnInit {
     this.mensaje.set(null);
     this.inventarioService
       .actualizarStock(e.prendaId, {
-        tallas: e.tallas.map((t) => ({ talla: t.talla, stock: t.stock as number })),
-        stockMinimo: e.stockMinimo,
+        tallas: e.tallas.map((t) => ({ talla: t.talla, stock: t.stock as number, stockMinimo: t.stockMinimo })),
       })
       .subscribe({
         next: (actualizado) => {
@@ -139,7 +146,7 @@ export class Inventario implements OnInit {
     if (actualizado.nivel !== 'DISPONIBLE' && actualizado.nivel !== nivelAnterior) {
       return {
         tipo: 'alerta',
-        texto: `${actualizado.nombre} entró en ${ETIQUETAS_NIVEL[actualizado.nivel]}: actual ${actualizado.stockTotal}, mínimo ${actualizado.stockMinimo}.`,
+        texto: `${actualizado.nombre} entró en ${ETIQUETAS_NIVEL[actualizado.nivel]}: mínimos por talla ${this.minimosDe(actualizado)}.`,
       };
     }
     if (actualizado.nivel === 'DISPONIBLE' && nivelAnterior !== null && nivelAnterior !== 'DISPONIBLE') {

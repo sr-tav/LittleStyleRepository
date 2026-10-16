@@ -76,7 +76,8 @@ public class CheckoutFacade {
             BigDecimal subtotalLinea = prenda.getPrecio().multiply(BigDecimal.valueOf(item.cantidad()));
             subtotal = subtotal.add(subtotalLinea);
             lineas.add(new LineaResumenCheckoutResponse(prenda.getId(), prenda.getNombre(),
-                    talla.getTalla(), item.cantidad(), prenda.getPrecio(), subtotalLinea));
+                    talla.getTalla(), item.cantidad(), prenda.getPrecio(), subtotalLinea,
+                    item.tallaSugerida()));
         }
 
         validarStockDisponible(prendas, cantidadesSolicitadas);

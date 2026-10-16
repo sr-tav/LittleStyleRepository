@@ -3,13 +3,11 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.stra
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.RangoTalla;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.TablaTallas;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.dto.DatosBiometricos;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
 @Component
-@Order(1)
 public class EstrategiaExacta implements EstrategiaTalla {
 
     @Override

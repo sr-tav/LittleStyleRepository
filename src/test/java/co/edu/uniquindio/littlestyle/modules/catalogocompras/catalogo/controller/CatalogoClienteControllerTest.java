@@ -23,6 +23,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -47,7 +48,7 @@ class CatalogoClienteControllerTest {
 
     @Test
     void explorarDevuelvePaginaSinDatosInternos() throws Exception {
-        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
                 .thenReturn(PaginaResponse.from(new PageImpl<>(List.of(
                         new PrendaVitrinaResponse(10L, "Pantalón Jogger Azul", CategoriaPrenda.PANTALONES,
                                 GeneroPrenda.NINA, "Tienda Sol", new BigDecimal("32900"), "/media/a.png", true,
@@ -65,10 +66,33 @@ class CatalogoClienteControllerTest {
 
     @Test
     void filtroInvalidoDevuelve400() throws Exception {
-        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
                 .thenThrow(new BusinessException(HttpStatus.BAD_REQUEST, "La categoría no es válida", "categoria"));
 
         mockMvc.perform(get("/api/cliente/catalogo").param("categoria", "ROPA"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void idsDeRecomendadosLleganAlServicio() throws Exception {
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), eq(List.of(10L, 20L)),
+                any(), anyInt(), anyInt(), any()))
+                .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
+
+        mockMvc.perform(get("/api/cliente/catalogo").param("ids", "10,20"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void paginaNoNumericaDevuelve400EnVezDe500() throws Exception {
+        mockMvc.perform(get("/api/cliente/catalogo").param("pagina", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.pagina").value("Revisa el valor enviado"));
+    }
+
+    @Test
+    void idNoNumericoDevuelve400EnVezDe500() throws Exception {
+        mockMvc.perform(get("/api/cliente/catalogo/abc"))
                 .andExpect(status().isBadRequest());
     }
 }

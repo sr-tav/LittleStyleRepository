@@ -11,6 +11,10 @@ export class RecomendacionService {
   listar(perfilId: number): Observable<RecomendacionItem[]> {
     return this.http.get<RecomendacionItem[]>(this.base, { params: { perfilId } });
   }
+  /** Solo identificadores recomendados, sin tope: filtro de servidor de la vitrina. */
+  ids(perfilId: number): Observable<number[]> {
+    return this.http.get<number[]>(`${this.base}/ids`, { params: { perfilId } });
+  }
   porPrenda(prendaId: number, perfilId: number): Observable<RecomendacionItem> {
     return this.http.get<RecomendacionItem>(`${this.base}/prenda/${prendaId}`, { params: { perfilId } });
   }

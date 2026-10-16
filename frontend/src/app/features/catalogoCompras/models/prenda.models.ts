@@ -42,6 +42,7 @@ export interface Talla {
   pesoMinKg: number;
   pesoMaxKg: number;
   stock: number;
+  stockMinimo?: number | null;
 }
 
 export interface ImagenPrenda {
@@ -60,7 +61,6 @@ export interface Prenda {
   marca: string | null;
   precio: number;
   estado: EstadoPrenda;
-  stockMinimo: number;
   stockTotal: number;
   nivelStock: NivelStock;
   colores: ColorPreferido[];
@@ -84,6 +84,8 @@ export interface TallaRequest {
   pesoMaxKg: number;
   /** Solo se usa para tallas nuevas; el stock de las existentes se cambia en el inventario. */
   stock: number | null;
+  /** Mínimo de alerta de esta talla; nulo si no alerta. */
+  stockMinimo?: number | null;
 }
 
 export interface PrendaRequest {
@@ -94,7 +96,6 @@ export interface PrendaRequest {
   instruccionesCuidado: string | null;
   marca: string | null;
   precio: number;
-  stockMinimo: number;
   colores: ColorPreferido[];
   estampado: Estampado | null;
   tintesSinteticos: boolean;
@@ -112,14 +113,12 @@ export interface InventarioItem {
   imagenUrl: string | null;
   estado: EstadoPrenda;
   stockTotal: number;
-  stockMinimo: number;
   nivel: NivelStock;
-  tallas: { talla: string; stock: number }[];
+  tallas: { talla: string; stock: number; stockMinimo: number | null }[];
 }
 
 export interface ActualizarStockRequest {
-  tallas: { talla: string; stock: number }[];
-  stockMinimo: number | null;
+  tallas: { talla: string; stock: number; stockMinimo: number | null }[];
 }
 
 export interface AlertaInventario {
@@ -128,6 +127,7 @@ export interface AlertaInventario {
   nombre: string;
   categoria: CategoriaPrenda;
   imagenUrl: string | null;
+  talla: string | null;
   nivel: Exclude<NivelStock, 'DISPONIBLE'>;
   stockActual: number;
   stockMinimo: number;

@@ -1,6 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto;
 
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

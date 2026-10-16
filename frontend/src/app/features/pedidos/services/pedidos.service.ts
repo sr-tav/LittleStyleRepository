@@ -18,4 +18,12 @@ export class PedidosService {
   detalle(id: number): Observable<PedidoDetalle> {
     return this.http.get<PedidoDetalle>(`${this.base}/${id}`);
   }
+
+  /** Retracto del cliente antes del pago. */
+  cancelar(id: number): Observable<{ id: number; estado: string; numeroGuia: string | null }> {
+    return this.http.post<{ id: number; estado: string; numeroGuia: string | null }>(
+      `${this.base}/${id}/cancelar`,
+      {},
+    );
+  }
 }

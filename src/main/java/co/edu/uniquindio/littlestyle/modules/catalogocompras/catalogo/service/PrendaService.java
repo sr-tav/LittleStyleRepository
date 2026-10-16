@@ -103,7 +103,6 @@ public class PrendaService {
         prenda.setInstruccionesCuidado(r.instruccionesCuidado().trim());
         prenda.setMarca(textoOpcional(r.marca()));
         prenda.setPrecio(r.precio());
-        prenda.setStockMinimo(r.stockMinimo());
         prenda.setEstampado(r.estampado());
         prenda.setGenero(r.genero() != null ? r.genero() : GeneroPrenda.UNISEX);
         prenda.setTintesSinteticos(Boolean.TRUE.equals(r.tintesSinteticos()));
@@ -155,6 +154,9 @@ public class PrendaService {
         talla.setEstaturaMaxCm(t.estaturaMaxCm());
         talla.setPesoMinKg(t.pesoMinKg());
         talla.setPesoMaxKg(t.pesoMaxKg());
+        talla.setEdadMinMeses(t.edadMinMeses());
+        talla.setEdadMaxMeses(t.edadMaxMeses());
+        talla.setStockMinimo(t.stockMinimo());
     }
 
     private Prenda propia(Long id) {

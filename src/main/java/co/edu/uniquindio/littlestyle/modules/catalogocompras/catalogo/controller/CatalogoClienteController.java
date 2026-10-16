@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * Vitrina del cliente autenticado (base de US-09). El prefijo /api/cliente
  * exige rol CLIENTE; el controlador solo orquesta, la lógica está en el servicio.
@@ -35,12 +37,14 @@ public class CatalogoClienteController {
             @RequestParam(required = false) String disponible,
             @RequestParam(required = false) String material,
             @RequestParam(required = false) String talla,
+            @RequestParam(required = false) List<Long> ids,
+            @RequestParam(required = false) Integer edadMeses,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "12") int tamano,
             @RequestParam(defaultValue = "novedades") String orden) {
         long ini = System.nanoTime();
         PaginaResponse<PrendaVitrinaResponse> res = catalogo.explorar(texto, categoria, genero, precioMin,
-                precioMax, disponible, material, talla, pagina, tamano, orden);
+                precioMax, disponible, material, talla, ids, edadMeses, pagina, tamano, orden);
         long ms = (System.nanoTime() - ini) / 1_000_000;
         return ResponseEntity.ok().header("X-Catalogo-Ms", String.valueOf(ms)).body(res);
     }

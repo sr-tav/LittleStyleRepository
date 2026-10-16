@@ -12,6 +12,15 @@
         <p class="reco-eyebrow">Pedido #{{ p.id }}</p>
         <h1>{{ estadoDe(p.estado) }}</h1>
       </div>
+      <div class="reco-acciones">
+        <button type="button" class="btn-ghost btn-inline btn-small" (click)="recargar()">Actualizar</button>
+        @if (p.estado === 'PENDIENTE_PAGO') {
+          <button
+            type="button" class="btn-ghost btn-inline btn-small"
+            [disabled]="cancelando()" (click)="cancelar()"
+          >{{ cancelando() ? 'Cancelando…' : 'Cancelar pedido' }}</button>
+        }
+      </div>
       <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">{{ estadoDe(p.estado) }}</span>
     </header>
 
@@ -50,6 +59,23 @@
         <div><dt>Envío ({{ p.ciudad }})</dt><dd>{{ precio(p.costoEnvio) }}</dd></div>
         <div><dt>Total</dt><dd>{{ precio(p.total) }}</dd></div>
       </dl>
+    </section>
+
+    <section class="vitrina-seccion" aria-label="Historial del pedido">
+      <h3>Historial</h3>
+      @if (p.historial.length === 0) {
+        <p class="product-meta">Aún no hay movimientos registrados.</p>
+      } @else {
+        <ol class="pedido-historial">
+          @for (m of p.historial; track m.fecha + '-' + m.nuevo) {
+            <li class="is-hecho">
+              <span class="pedido-punto" aria-hidden="true"></span>
+              <span>{{ m.anterior ? estadoDe(m.anterior) + ' → ' : '' }}{{ estadoDe(m.nuevo) }}</span>
+              <span class="product-meta">{{ fechaDe(m.fecha) }}</span>
+            </li>
+          }
+        </ol>
+      }
     </section>
   }
 </main>

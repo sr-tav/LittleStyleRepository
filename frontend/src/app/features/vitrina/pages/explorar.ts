@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
@@ -15,8 +15,9 @@ import {
   formatearPrecio,
 } from '../../catalogoCompras/models/prenda-opciones';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
+import { RecomendacionItem } from '../../recomendacion/models/recomendacion.models';
 import { RecomendacionService } from '../../recomendacion/services/recomendacion.service';
-import { Pagina, VitrinaItem } from '../models/vitrina.models';
+import { Pagina, VitrinaItem, FiltrosVitrina } from '../models/vitrina.models';
 import { VitrinaService } from '../services/vitrina.service';
 
 /** Filtro por talla con existencias. */
@@ -52,6 +53,7 @@ export class Explorar {
   protected readonly precioMin = signal('');
   protected readonly precioMax = signal('');
   protected readonly talla = signal('');
+  protected readonly edadAnos = signal('');
   protected readonly disponible = signal(false);
   protected readonly orden = signal('novedades');
   protected readonly pagina = signal(0);
@@ -63,17 +65,35 @@ export class Explorar {
   protected readonly totalPaginas = signal(0);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly idsMiTalla = signal<Set<number> | null>(null);
+  protected readonly idsMiTalla = signal<number[] | null>(null);
   protected readonly cargandoMiTalla = signal(false);
+  /** Talla sugerida y advertencias por prenda (mejor esfuerzo, tope 24 del motor). */
+  protected readonly sugerencias = signal<Map<number, RecomendacionItem>>(new Map());
 
-  protected readonly visibles = computed(() => {
-    const ids = this.idsMiTalla();
-    if (!this.soloMiTalla() || ids === null) return this.items();
-    return this.items().filter((item) => ids.has(item.id));
-  });
+  protected readonly visibles = computed(() => this.items());
   protected readonly precio = (item: VitrinaItem) => formatearPrecio(item.precio);
 
   constructor() {
+    // switchMap: si el usuario cambia filtros antes de que responda la
+    // anterior, la petición vieja se cancela y nunca pinta resultados viejos.
+    // (Se suscribe primero: el Subject no repite emisiones anteriores.)
+    this.recargar
+      .pipe(
+        switchMap(() => this.vitrina.explorar(this.filtrosActuales())),
+        takeUntilDestroyed(),
+      )
+      .subscribe({
+        next: (res: Pagina<VitrinaItem>) => {
+          this.items.set(res.contenido);
+          this.totalElementos.set(res.totalElementos);
+          this.totalPaginas.set(res.totalPaginas);
+          this.cargando.set(false);
+        },
+        error: (err: unknown) => {
+          this.error.set(procesarErrorApi(err));
+          this.cargando.set(false);
+        },
+      });
     // Los enlaces del menú cambian los query params sin recrear la página:
     // cada cambio precarga los filtros y vuelve a buscar.
     this.ruta.queryParamMap.subscribe((params) => {
@@ -102,10 +122,12 @@ export class Explorar {
     this.precioMin.set('');
     this.precioMax.set('');
     this.talla.set('');
+    this.edadAnos.set('');
     this.disponible.set(false);
     this.orden.set('novedades');
     this.soloMiTalla.set(false);
     this.idsMiTalla.set(null);
+    this.sugerencias.set(new Map());
     this.buscarDesdePrimera();
   }
 
@@ -127,6 +149,8 @@ export class Explorar {
     if (this.soloMiTalla()) {
       this.soloMiTalla.set(false);
       this.idsMiTalla.set(null);
+      this.sugerencias.set(new Map());
+      this.buscarDesdePrimera();
       return;
     }
     const perfilId = this.activo.perfil()?.id ?? null;
@@ -135,12 +159,17 @@ export class Explorar {
       return;
     }
     this.cargandoMiTalla.set(true);
-    this.recomendaciones.listar(perfilId).subscribe({
+    // Filtro de servidor: los ids recomendados viajan como parámetro y la
+    // paginación y el contador los calcula la base de datos (antes se filtraba
+    // solo la página actual de 12 sobre un máximo de 24, con falsos negativos).
+    this.recomendaciones.ids(perfilId).subscribe({
       next: (res) => {
         this.error.set(null);
-        this.idsMiTalla.set(new Set(res.map((r) => r.prendaId)));
+        this.idsMiTalla.set(res);
         this.soloMiTalla.set(true);
         this.cargandoMiTalla.set(false);
+        this.buscarDesdePrimera();
+        this.cargarBadges(perfilId);
       },
       error: (err: unknown) => {
         this.cargandoMiTalla.set(false);
@@ -161,31 +190,35 @@ export class Explorar {
   private buscar(): void {
     this.cargando.set(true);
     this.error.set(null);
-    this.vitrina
-      .explorar({
-        q: this.q() || undefined,
-        categoria: this.categoria() || undefined,
-        genero: this.genero() || undefined,
-        precioMin: this.precioMin() === '' ? undefined : Number(this.precioMin()),
-        precioMax: this.precioMax() === '' ? undefined : Number(this.precioMax()),
-        disponible: this.disponible() || undefined,
-        material: this.material() || undefined,
-        talla: this.talla() || undefined,
-        pagina: this.pagina(),
-        tamano: 12,
-        orden: this.orden(),
-      })
-      .subscribe({
-        next: (res: Pagina<VitrinaItem>) => {
-          this.items.set(res.contenido);
-          this.totalElementos.set(res.totalElementos);
-          this.totalPaginas.set(res.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: (err: unknown) => {
-          this.error.set(procesarErrorApi(err));
-          this.cargando.set(false);
-        },
-      });
+    this.recargar.next();
+  }
+
+  /** Badges por tarjeta (mejor esfuerzo): el filtro exacto ya lo da /ids. */
+  private cargarBadges(perfilId: number): void {
+    this.recomendaciones.listar(perfilId).subscribe({
+      next: (res) => this.sugerencias.set(new Map(res.map((r) => [r.prendaId, r]))),
+      error: () => this.sugerencias.set(new Map()),
+    });
+  }
+
+  private readonly recargar = new Subject<void>();
+
+  private filtrosActuales(): FiltrosVitrina {
+    const edad = this.edadAnos().trim() === '' ? NaN : Number(this.edadAnos());
+    return {
+      q: this.q() || undefined,
+      categoria: this.categoria() || undefined,
+      genero: this.genero() || undefined,
+      precioMin: this.precioMin() === '' ? undefined : Number(this.precioMin()),
+      precioMax: this.precioMax() === '' ? undefined : Number(this.precioMax()),
+      disponible: this.disponible() || undefined,
+      material: this.material() || undefined,
+      talla: this.talla() || undefined,
+      edadMeses: Number.isNaN(edad) ? undefined : Math.max(0, Math.round(edad * 12)),
+      ids: this.soloMiTalla() && this.idsMiTalla() ? this.idsMiTalla()!.join(',') : undefined,
+      pagina: this.pagina(),
+      tamano: 12,
+      orden: this.orden(),
+    };
   }
 }

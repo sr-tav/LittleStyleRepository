@@ -83,6 +83,9 @@ public class PedidoPagoService {
             talla.setStock(talla.getStock() - cantidad);
         });
         transicionarConHistorial(pedido, EstadoPedido.PAGADO);
+        // PAGADO es transitorio: el pedido queda REGISTRADO y listo para
+        // preparar en la misma transacción (dos filas de historial).
+        transicionarConHistorial(pedido, EstadoPedido.REGISTRADO);
         prendas.values().forEach(alertasInventarioService::evaluar);
         return new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.CONFIRMADO, List.of());
     }
@@ -97,7 +100,9 @@ public class PedidoPagoService {
                 .fechaCambio(LocalDateTime.now(clock))
                 .build());
         if (nuevo == EstadoPedido.PAGADO) {
+            // PAGADO tiene correo propio; el genérico duplicaría el aviso.
             eventos.publishEvent(new PedidoPagadoEvent(pedido.getId()));
+            return;
         }
         eventos.publishEvent(new PedidoEstadoCambiadoEvent(pedido.getId(), nuevo));
     }

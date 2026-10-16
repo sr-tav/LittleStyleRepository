@@ -12,7 +12,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Comp
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,12 +38,12 @@ public final class CatalogoFixtures {
 
     public static TallaRequest tallaRequest(String talla, int estMin, int estMax, int pesoMin, int pesoMax, Integer stock) {
         return new TallaRequest(talla, BigDecimal.valueOf(estMin), BigDecimal.valueOf(estMax),
-                BigDecimal.valueOf(pesoMin), BigDecimal.valueOf(pesoMax), stock);
+                BigDecimal.valueOf(pesoMin), BigDecimal.valueOf(pesoMax), stock, null, null, null);
     }
 
     public static PrendaRequest prendaRequest(List<ComponenteRequest> composicion, List<TallaRequest> tallas) {
         return new PrendaRequest("  Vestido Floral Rosa ", CategoriaPrenda.VESTIDOS, "Vestido de algodón", " Lavar a mano en agua fría ", null,
-                new BigDecimal("45900"), 5, Set.of(ColorPreferido.ROSA), Estampado.FLORES, GeneroPrenda.NINA,
+                new BigDecimal("45900"), Set.of(ColorPreferido.ROSA), Estampado.FLORES, GeneroPrenda.NINA,
                 false, false, false, false, composicion, tallas);
     }
 
@@ -53,17 +53,23 @@ public final class CatalogoFixtures {
     }
 
     public static TallaPrenda talla(Prenda prenda, String nombre, int estMin, int estMax, int stock) {
+        return talla(prenda, nombre, estMin, estMax, stock, null);
+    }
+
+    public static TallaPrenda talla(Prenda prenda, String nombre, int estMin, int estMax, int stock,
+                                    Integer stockMinimo) {
         TallaPrenda talla = TallaPrenda.builder()
                 .prenda(prenda).talla(nombre)
                 .estaturaMinCm(BigDecimal.valueOf(estMin)).estaturaMaxCm(BigDecimal.valueOf(estMax))
                 .pesoMinKg(BigDecimal.valueOf(15)).pesoMaxKg(BigDecimal.valueOf(26))
                 .stock(stock)
+                .stockMinimo(stockMinimo)
                 .build();
         prenda.getTallas().add(talla);
         return talla;
     }
 
-    /** Prenda activa del vendedor de prueba con tallas 4 y 6. */
+    /** Prenda activa del vendedor de prueba con tallas 4 y 6 (mínimo por talla). */
     public static Prenda prenda(Long id, int stockMinimo, int stockTalla4, int stockTalla6) {
         Prenda prenda = Prenda.builder()
                 .id(id)
@@ -72,14 +78,13 @@ public final class CatalogoFixtures {
                 .categoria(CategoriaPrenda.PANTALONES)
                 .precio(new BigDecimal("32900"))
                 .estado(EstadoPrenda.ACTIVA)
-                .stockMinimo(stockMinimo)
                 .fechaCreacion(LocalDateTime.now())
                 .fechaActualizacion(LocalDateTime.now())
                 .build();
         prenda.getComposicion().add(new ComponenteComposicion(MaterialTextil.ALGODON, 80));
         prenda.getComposicion().add(new ComponenteComposicion(MaterialTextil.POLIESTER, 20));
-        talla(prenda, "4", 100, 110, stockTalla4);
-        talla(prenda, "6", 111, 122, stockTalla6);
+        talla(prenda, "4", 100, 110, stockTalla4, stockMinimo);
+        talla(prenda, "6", 111, 122, stockTalla6, stockMinimo);
         return prenda;
     }
 }

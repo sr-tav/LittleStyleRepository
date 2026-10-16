@@ -43,4 +43,8 @@ public class ItemCarrito {
     @Column(nullable = false)
     private int cantidad;
 
+    /** Talla sugerida por el motor al agregar; nula si se eligió sin sugerencia (RNF-11). */
+    @Column(name = "talla_sugerida", length = 10)
+    private String tallaSugerida;
+
 }

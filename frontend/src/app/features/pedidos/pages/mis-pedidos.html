@@ -31,7 +31,10 @@
           >
             <div>
               <strong>Pedido #{{ p.id }}</strong>
-              <span class="product-meta">{{ p.cantidadItems }} prenda(s)</span>
+              <span class="product-meta">{{ p.cantidadItems }} prenda(s) · {{ precioTotal(p) }} · {{ fechaDe(p.fechaCreacion) }}</span>
+              @if (p.numeroGuia) {
+                <span class="product-meta">Guía: {{ p.numeroGuia }}</span>
+              }
             </div>
             <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">
               {{ estado(p) }}

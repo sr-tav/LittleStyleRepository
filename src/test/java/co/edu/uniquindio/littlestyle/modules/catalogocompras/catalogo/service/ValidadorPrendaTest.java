@@ -1,7 +1,8 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.ComponenteRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -62,6 +63,16 @@ class ValidadorPrendaTest {
 
         assertThatThrownBy(() -> validador.validar(estatura)).hasMessageContaining("estatura mínima");
         assertThatThrownBy(() -> validador.validar(peso)).hasMessageContaining("peso mínimo");
+    }
+
+    @Test
+    void rechazaEdadMinimaMayorQueLaMaxima() {
+        var base = tallaRequest("4", 100, 110, 15, 20, 1);
+        var invertida = new TallaRequest(base.talla(), base.estaturaMinCm(), base.estaturaMaxCm(),
+                base.pesoMinKg(), base.pesoMaxKg(), base.stock(), 72, 24, null);
+
+        assertThatThrownBy(() -> validador.validar(prendaRequest(ALGODON, List.of(invertida))))
+                .hasMessageContaining("edad mínima");
     }
 
     @Test

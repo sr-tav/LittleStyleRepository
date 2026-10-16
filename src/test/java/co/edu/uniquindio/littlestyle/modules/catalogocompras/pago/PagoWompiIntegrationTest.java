@@ -47,9 +47,9 @@ class PagoWompiIntegrationTest {
     private static final String SECRETO_EVENTOS = "test_events_secreto";
     private static final String PRENDA = """
             {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
-             "stockMinimo":1,"colores":["AZUL"],"estampado":"LISO",
+             "colores":["AZUL"],"estampado":"LISO",
              "composicion":[{"material":"ALGODON","porcentaje":100}],
-             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8}]}
+             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8,"stockMinimo":1}]}
             """;
 
     @Autowired
@@ -88,7 +88,7 @@ class PagoWompiIntegrationTest {
         var transaccion = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
         assertThat(transaccion.getPedido()).isNotNull();
         assertThat(pedidoRepository.findById(transaccion.getPedido().getId()).orElseThrow().getEstado())
-                .isEqualTo(EstadoPedido.PAGADO);
+                .isEqualTo(EstadoPedido.REGISTRADO);
         assertThat(stockTalla(compra.prendaId())).isEqualTo(6);
         assertThat(transaccion.getEstado())
                 .isEqualTo(EstadoTransaccionPago.APROBADA);
@@ -106,7 +106,7 @@ class PagoWompiIntegrationTest {
         mockMvc.perform(get("/api/cliente/pagos/" + referencia).header("Authorization", compra.cliente()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoPago").value("APROBADA"))
-                .andExpect(jsonPath("$.estadoPedido").value("PAGADO"));
+                .andExpect(jsonPath("$.estadoPedido").value("REGISTRADO"));
     }
 
     @Test
@@ -183,7 +183,7 @@ class PagoWompiIntegrationTest {
 
         var transaccion = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
         assertThat(pedidoRepository.findById(transaccion.getPedido().getId()).orElseThrow().getEstado())
-                .isEqualTo(EstadoPedido.PAGADO);
+                .isEqualTo(EstadoPedido.REGISTRADO);
     }
 
     @Test
@@ -243,7 +243,7 @@ class PagoWompiIntegrationTest {
                         .content("{\"transaccionId\":\"wompi-3\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estadoPago").value("APROBADA"))
-                .andExpect(jsonPath("$.estadoPedido").value("PAGADO"))
+                .andExpect(jsonPath("$.estadoPedido").value("REGISTRADO"))
                 .andExpect(jsonPath("$.pedidoId").isNumber())
                 .andExpect(jsonPath("$.metodoPago").value("NEQUI"));
         assertThat(stockTalla(compra.prendaId())).isEqualTo(7);
