@@ -1,0 +1,33 @@
+# Despliegue base (US-13): backend + web. Producción en EC2 usa este archivo con RDS y S3.
+#   docker compose up -d --build
+# Local con MySQL en contenedor: ver docker-compose.local.yml
+services:
+  backend:
+    build: .
+    image: littlestyle-backend
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8080"
+    volumes:
+      - uploads:/app/data/uploads
+
+  web:
+    build: ./frontend
+    image: littlestyle-web
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  uploads:
+  caddy_data:
+  caddy_config:
