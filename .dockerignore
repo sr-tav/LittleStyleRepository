@@ -1,0 +1,11 @@
+.git
+.idea
+.vscode
+target
+data
+frontend
+docs
+DocumentosArq
+.env
+.env.*
+*.iml

@@ -1,0 +1,28 @@
+# SITE_ADDRESS=":80" sirve HTTP plano (local).
+# SITE_ADDRESS="littlestyle.duckdns.org" activa HTTPS con Let's Encrypt (producción).
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# API y webhook de Wompi
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	# Imágenes con almacenamiento local (en producción se sirven desde S3)
+	handle /media/* {
+		reverse_proxy backend:8080
+	}
+
+	# SPA de Angular: cualquier ruta desconocida cae en index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -34,3 +34,8 @@ build/
 
 ### H2 local ###
 /data/
+
+### Docker / secretos ###
+.env
+.env.*
+!.env.example

@@ -1,0 +1,34 @@
+# Entorno local completo con MySQL en contenedor e imágenes en disco (sin AWS).
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: littlestyle
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root-local}
+      TZ: America/Bogota
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    environment:
+      DB_HOST: mysql
+      # Base vacía: JPA crea el esquema (en producción se mantiene validate)
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APP_STORAGE_TIPO: local
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
