@@ -83,6 +83,8 @@ class PagoServiceTest {
     private FirmaWompiService firmaWompiService;
     @Mock
     private WompiClient wompiClient;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventos;
 
     private PagoService pagoService;
     private Pedido pedido;
@@ -406,13 +408,26 @@ class PagoServiceTest {
         assertThat(PagoService.centavos(new BigDecimal("72800.50"))).isEqualTo(7280050L);
     }
 
+    @Test
+    void rechazoDeWompiPublicaEventoParaAvisarAlCliente() {
+        TransaccionPago pendiente = transaccion(EstadoTransaccionPago.PENDIENTE);
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA))
+                .thenReturn(Optional.of(pendiente));
+
+        pagoService.aplicarEvento(evento("DECLINED", 7280000L));
+
+        assertThat(pendiente.getEstado()).isEqualTo(EstadoTransaccionPago.RECHAZADA);
+        verify(eventos).publishEvent(
+                new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagoRechazadoEvent(1L));
+    }
+
     private PagoService servicio(WompiProperties propiedades) {
         CheckoutProperties checkout = new CheckoutProperties(new BigDecimal("7000"), new BigDecimal("10000"),
                 new BigDecimal("15000"), List.of(), Duration.ofMinutes(30));
         return new PagoService(pedidoRepository, transaccionPagoRepository, pedidoPagoService,
                 pedidoCheckoutService, procesadorCheckoutPagadoService, new ObjectMapper(),
                 firmaWompiService, wompiClient, propiedades, checkout, PagoProperties.porDefecto(),
-                new TransactionTemplate(mock(PlatformTransactionManager.class)), CLOCK);
+                new TransactionTemplate(mock(PlatformTransactionManager.class)), CLOCK, eventos);
     }
 
     private static WompiProperties propiedadesWompi(String llavePublica, String secretoIntegridad) {

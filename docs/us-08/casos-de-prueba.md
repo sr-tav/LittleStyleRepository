@@ -16,14 +16,14 @@
 | CP-US08-08 | RNF-25 | Consistencia BD ↔ S3 | 2.ª subida falla | Se borra el objeto ya subido al revertir; al eliminar, el objeto se borra solo tras commit | Unitaria | `ImagenPrendaServiceTest.siLaTransaccionNoSeConfirmaBorraLoQueYaSeSubio`, `alEliminarBorraElObjetoSoloDespuesDeConfirmar` |
 | CP-US08-09 | RNF-25 | Integración con Amazon S3 (SDK v2) | Cliente S3 simulado | Bucket, clave con prefijo, content-type, URL pública o CDN; fallo → 502 sin detalle técnico | Unitaria | `S3AlmacenamientoImagenesTest` (5 casos) |
 | CP-US08-10 | RNF-14 | Nivel de stock por mínimo | — | 0 → agotado; ≤ mínimo → bajo; > mínimo → disponible | Unitaria | `NivelStockTest` (6 casos) |
-| CP-US08-11 | RNF-14 | Emisión y ciclo de vida de alertas | Prenda con mínimo 5 | Emite bajo y notifica; no repite; escala a agotado y notifica; reabastecer parcial reemplaza sin notificar; superar mínimo o desactivar resuelve | Unitaria | `AlertasInventarioServiceTest` (6 casos) |
-| CP-US08-12 | RNF-14 | Actualizar stock emite y resuelve alertas en la misma transacción | PM-03 | 3 uds → `STOCK_BAJO`; 0 → `AGOTADO`; 20 → sin alertas; 2 alertas en historial | Integración / Postman | `CatalogoInventarioIntegrationTest.altaFotosStockYAlertasDeReabastecimiento` + PM-07…PM-10 |
+| CP-US08-11 | RNF-14 | Emisión y ciclo de vida de alertas por talla | Tallas con mínimo 5 | Emite bajo y notifica con talla; sin mínimo no alerta; no repite; escala a agotado y notifica; reabastecer parcial reemplaza sin notificar; superar mínimo o desactivar resuelve; heredadas sin talla se resuelven | Unitaria | `AlertasInventarioServiceTest` (9 casos) |
+| CP-US08-12 | RNF-14 | Actualizar stock emite y resuelve alertas en la misma transacción | PM-03 | Talla 4 (2 ≤ 5) → `STOCK_BAJO` con talla y diferencia -3; 0 → `AGOTADO`; 20 → sin alertas; 2 alertas en historial | Integración / Postman | `CatalogoInventarioIntegrationTest.altaFotosStockYAlertasDeReabastecimiento` + PM-07…PM-10 |
 | CP-US08-13 | VAL | Stock por talla inválido | Talla inexistente o repetida | 400 sin evaluar alertas | Unitaria | `InventarioServiceTest.rechazaUnaTallaQueLaPrendaNoTieneSinEvaluarAlertas`, `rechazaTallasRepetidasEnLaMismaPeticion` |
 | CP-US08-14 | RNF-06 | Aislamiento entre vendedores y por rol | Vendedores A y B, cliente | B → 404 sobre prenda de A; cliente → 403; sin token → 401 | Unitaria / integración | `CatalogoInventarioIntegrationTest.cadaVendedorSoloAccedeASusPrendasYElClienteNoAccede`, `InventarioServiceTest.noPermiteModificarElInventarioDeOtroVendedor` + PM-11 |
 | CP-US08-15 | RNF-29 | El motor de US-07 lee el catálogo real | Prenda activa con níquel | Adapter expone tabla, composición, stock por talla y marca; una prenda rota se omite; inactiva desaparece | Unitaria / integración | `CatalogoRecomendacionAdapterTest` (2), `CatalogoInventarioIntegrationTest.elMotorDeRecomendacionesLeeElCatalogoRealYSoloLasPrendasActivas` + PM-12 |
 | CP-US08-16 | RNF-19 | UI-19 lista, busca sin tildes y publica/oculta | Catálogo con 2 prendas | Fila con composición, precio COP y nivel; filtro; PATCH estado | Frontend | `productos-lista.spec.ts` (4 casos) |
 | CP-US08-17 | RNF-16 | UI-20 crea con fotos y recupera fallo parcial | Formulario válido | POST + 1 multipart; si fallan fotos: modo edición, fotos conservadas, reintento; formulario inválido no envía | Frontend | `prenda-form.spec.ts` (7 casos) |
-| CP-US08-18 | RNF-19 | UI-21/UI-22 inventario y alertas | 1 prenda en stock bajo | Edición por talla con total en vivo, PUT correcto, contador de alertas; tarjetas con diferencia y mensaje | Frontend | `inventario.spec.ts` (5 casos) |
+| CP-US08-18 | RNF-19 | UI-21/UI-22 inventario y alertas | 1 prenda en stock bajo | Mínimos por talla en fila y editor, PUT por talla, contador de alertas; tarjetas con talla, diferencia y mensaje | Frontend | `inventario.spec.ts` (5 casos) |
 | CP-US08-19 | RNF-25 | Subida real a un bucket S3 | Bucket con lectura pública y credenciales IAM | Imagen visible desde la URL pública en Angular | Manual | Pendiente de ejecución en AWS |
 
 ## 2. Environment Postman
@@ -61,7 +61,6 @@ Content-Type: application/json
   "categoria": "PANTALONES",
   "descripcion": "Pantalón cómodo con pretina elástica",
   "precio": 32900,
-  "stockMinimo": 5,
   "colores": ["AZUL"],
   "estampado": "LISO",
   "tintesSinteticos": false,
@@ -73,8 +72,8 @@ Content-Type: application/json
     { "material": "POLIESTER", "porcentaje": 20 }
   ],
   "tallas": [
-    { "talla": "4", "estaturaMinCm": 100, "estaturaMaxCm": 110, "pesoMinKg": 15, "pesoMaxKg": 20, "stock": 8 },
-    { "talla": "6", "estaturaMinCm": 111, "estaturaMaxCm": 122, "pesoMinKg": 21, "pesoMaxKg": 26, "stock": 4 }
+    { "talla": "4", "estaturaMinCm": 100, "estaturaMaxCm": 110, "pesoMinKg": 15, "pesoMaxKg": 20, "stock": 8, "stockMinimo": 5 },
+    { "talla": "6", "estaturaMinCm": 111, "estaturaMaxCm": 122, "pesoMinKg": 21, "pesoMaxKg": 26, "stock": 4, "stockMinimo": 3 }
   ]
 }
 
@@ -114,7 +113,7 @@ PUT {{baseUrl}}/api/vendedor/inventario/{{prendaId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "tallas": [ { "talla": "4", "stock": 10 }, { "talla": "6", "stock": 10 } ], "stockMinimo": 4 }
+{ "tallas": [ { "talla": "4", "stock": 10, "stockMinimo": 4 }, { "talla": "6", "stock": 10 } ] }
 
 ### PM-11 GET prenda con token de cliente (CP-14)
 GET {{baseUrl}}/api/vendedor/prendas/{{prendaId}}

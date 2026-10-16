@@ -31,4 +31,11 @@ describe('PedidosService (US-12)', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ id: 7 });
   });
+
+  it('cancela el pedido pendiente de pago', () => {
+    servicio.cancelar(7).subscribe();
+    const req = http.expectOne('/api/cliente/checkout/pedidos/7/cancelar');
+    expect(req.request.method).toBe('POST');
+    req.flush({ id: 7, estado: 'CANCELADO', numeroGuia: null });
+  });
 });

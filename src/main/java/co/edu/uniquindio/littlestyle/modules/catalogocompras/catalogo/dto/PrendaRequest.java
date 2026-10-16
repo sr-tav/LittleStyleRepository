@@ -48,11 +48,6 @@ public record PrendaRequest(
         @Digits(integer = 10, fraction = 2, message = "El precio admite máximo dos decimales")
         BigDecimal precio,
 
-        @NotNull(message = "El stock mínimo es obligatorio")
-        @Min(value = 0, message = "El stock mínimo no puede ser negativo")
-        @Max(value = 10000, message = "El stock mínimo debe ser máximo 10000")
-        Integer stockMinimo,
-
         @Size(max = 10, message = "Selecciona máximo 10 colores")
         Set<ColorPreferido> colores,
 

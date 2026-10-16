@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
+import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { Pagina, VitrinaItem } from '../models/vitrina.models';
 import { Explorar } from './explorar';
 
@@ -28,11 +29,21 @@ function pagina(items: VitrinaItem[]): Pagina<VitrinaItem> {
 
 describe('Explorar (US-09)', () => {
   let http: HttpTestingController;
+  let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  let perfilActual: { id: number } | null;
 
   beforeEach(async () => {
+    params = new BehaviorSubject(convertToParamMap({}));
+    perfilActual = null;
     await TestBed.configureTestingModule({
       imports: [Explorar],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { queryParamMap: params.asObservable() } },
+        { provide: PerfilActivoService, useValue: { perfil: () => perfilActual } },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -85,32 +96,52 @@ describe('Explorar (US-09)', () => {
   });
 
   it('reacciona a los query params del menú sin recargar la página', () => {
-    // Se prueba en un módulo aparte porque el proveedor debe definirse antes de instanciar
-    const params = new BehaviorSubject(convertToParamMap({}));
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({
-      imports: [Explorar],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: { queryParamMap: params.asObservable() } },
-      ],
-    });
-    const httpLocal = TestBed.inject(HttpTestingController);
-    const fixture = TestBed.createComponent(Explorar);
-    fixture.detectChanges();
-    httpLocal.expectOne('/api/cliente/catalogo?pagina=0&tamano=12&orden=novedades').flush(pagina([item()]));
-    fixture.detectChanges();
+    const { fixture, el } = crear();
 
     // Como al elegir Niñas en el menú hamburguesa
     params.next(convertToParamMap({ genero: 'NINA' }));
-    httpLocal
+    http
       .expectOne((p) => p.url === '/api/cliente/catalogo' && p.params.get('genero') === 'NINA')
       .flush(pagina([item()]));
     fixture.detectChanges();
 
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Pantalón Jogger Azul');
-    httpLocal.verify();
+    expect(el.textContent).toContain('Pantalón Jogger Azul');
+  });
+
+  it('filtra por mi talla en el servidor con los ids recomendados (US-07)', () => {
+    perfilActual = { id: 3 };
+    const { fixture, el } = crear();
+
+    const casillas = el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+    casillas[1].click();
+    fixture.detectChanges();
+
+    http.expectOne('/api/cliente/recomendaciones/ids?perfilId=3').flush([10, 20]);
+    const conFiltro = http.expectOne(
+      (p) => p.url === '/api/cliente/catalogo' && p.params.get('ids') === '10,20',
+    );
+    expect(conFiltro.request.params.get('pagina')).toBe('0');
+    conFiltro.flush(pagina([item()]));
+    http.expectOne('/api/cliente/recomendaciones?perfilId=3').flush([
+      { prendaId: 10, nombre: 'Pantalón Jogger Azul', precio: 32900, tallaSugerida: '4', puntaje: 95, afinidad: 5, riesgo: 'ADVERTENCIA', advertencias: ['Contiene lana'], tieneStock: true, imagenUrl: null },
+    ]);
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Pantalón Jogger Azul');
+    expect(el.textContent).toContain('Talla sugerida: 4');
+  });
+
+  it('envía la edad en meses como filtro de servidor (US-09)', () => {
+    const { fixture, el } = crear();
+
+    const edad = el.querySelectorAll<HTMLInputElement>('input[type="number"]')[0]!;
+    edad.value = '4';
+    edad.dispatchEvent(new Event('change'));
+    http
+      .expectOne((p) => p.url === '/api/cliente/catalogo' && p.params.get('edadMeses') === '48')
+      .flush(pagina([item()]));
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Pantalón Jogger Azul');
   });
 });

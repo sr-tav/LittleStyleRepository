@@ -23,9 +23,16 @@ public class EstrategiaTallaTest {
         assertEquals("4", new EstrategiaExacta().sugerir(bio("110","20",Holgura.REGULAR), tabla()).orElseThrow().talla());
     }
     @Test void proximidadCuandoNoHayExacta() {
+        var ex = new EstrategiaExacta().sugerir(bio("109","21",Holgura.REGULAR), tabla());
+        assertTrue(ex.isEmpty());
+        assertEquals("6", new EstrategiaProximidad().sugerir(bio("109","21",Holgura.REGULAR), tabla()).orElseThrow().talla());
+    }
+    @Test void proximidadMuyLejosDevuelveVacioRNF11() {
+        // 150 cm / 40 kg frente a un máximo de 122 cm / 26 kg: antes sugería
+        // la talla 6; ahora es "sin talla compatible" por superar el umbral.
         var ex = new EstrategiaExacta().sugerir(bio("150","40",Holgura.REGULAR), tabla());
         assertTrue(ex.isEmpty());
-        assertEquals("6", new EstrategiaProximidad().sugerir(bio("150","40",Holgura.REGULAR), tabla()).orElseThrow().talla());
+        assertTrue(new EstrategiaProximidad().sugerir(bio("150","40",Holgura.REGULAR), tabla()).isEmpty());
     }
     @Test void holgadaSubeUnaTalla() {
         var e = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
@@ -34,5 +41,20 @@ public class EstrategiaTallaTest {
     }
     @Test void tablaVaciaRetornaEmpty() {
         assertTrue(new EstrategiaExacta().sugerir(bio("105","18",Holgura.REGULAR), new TablaTallas(List.of())).isEmpty());
+    }
+    @Test void holgadaEnUltimaTallaNoSeSaleDeLaTabla() {
+        var e = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
+        assertEquals("6", e.sugerir(bio("115","24",Holgura.HOLGADA), tabla()).orElseThrow().talla());
+    }
+    @Test void ajustadaBajaUnaTalla() {
+        var e = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
+        assertEquals("4", e.sugerir(bio("115","24",Holgura.AJUSTADA), tabla()).orElseThrow().talla());
+        assertEquals("4", e.sugerir(bio("105","18",Holgura.AJUSTADA), tabla()).orElseThrow().talla());
+    }
+    @Test void bioNuloRetornaEmpty() {
+        assertTrue(new EstrategiaExacta().sugerir(null, tabla()).isEmpty());
+        assertTrue(new EstrategiaProximidad().sugerir(null, tabla()).isEmpty());
+        assertTrue(new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad())
+                .sugerir(null, tabla()).isEmpty());
     }
 }

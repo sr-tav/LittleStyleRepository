@@ -21,12 +21,37 @@ export class PedidoVendedorDetallePage implements OnInit {
   protected readonly pedido = signal<PedidoVendedorDetalle | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly guia = signal('');
+  protected readonly avanzando = signal(false);
+  protected readonly errorAvance = signal<string | null>(null);
 
   protected readonly estadoDe = (estado: PedidoVendedorDetalle['estado']) => ETIQUETAS_ESTADO[estado];
   protected readonly precio = (valor: number) => formatearPrecio(valor);
+  protected readonly fechaDe = (iso: string) =>
+    new Date(iso).toLocaleString('es-CO', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  protected readonly totalPropio = () =>
+    (this.pedido()?.items ?? []).reduce((total, item) => total + item.subtotal, 0);
+  protected readonly fechaCreacion = () => {
+    const fecha = this.pedido()?.fechaCreacion ?? null;
+    return fecha === null
+      ? '—'
+      : new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   ngOnInit(): void {
+    this.cargar();
+  }
+
+  protected cargar(): void {
     const id = Number(this.ruta.snapshot.paramMap.get('id'));
+    this.cargando.set(true);
+    this.error.set(null);
     this.pedidos.detalle(id).subscribe({
       next: (p) => {
         this.pedido.set(p);
@@ -35,6 +60,38 @@ export class PedidoVendedorDetallePage implements OnInit {
       error: (err: unknown) => {
         this.error.set(procesarErrorApi(err));
         this.cargando.set(false);
+      },
+    });
+  }
+
+  protected puedePreparar(): boolean {
+    const estado = this.pedido()?.estado;
+    return estado === 'PAGADO' || estado === 'REGISTRADO';
+  }
+
+  protected puedeEnviar(): boolean {
+    return this.pedido()?.estado === 'EN_PREPARACION';
+  }
+
+  protected avanzar(nuevo: 'EN_PREPARACION' | 'ENVIADO'): void {
+    const p = this.pedido();
+    if (!p || this.avanzando()) return;
+    const numeroGuia = nuevo === 'ENVIADO' ? this.guia().trim() : null;
+    if (nuevo === 'ENVIADO' && !numeroGuia) {
+      this.errorAvance.set('Indica el número de guía para enviar el pedido.');
+      return;
+    }
+    this.avanzando.set(true);
+    this.errorAvance.set(null);
+    this.pedidos.avanzarEstado(p.id, nuevo, numeroGuia).subscribe({
+      next: (actualizado) => {
+        this.pedido.set(actualizado);
+        this.guia.set('');
+        this.avanzando.set(false);
+      },
+      error: (err: unknown) => {
+        this.avanzando.set(false);
+        this.errorAvance.set(procesarErrorApi(err));
       },
     });
   }

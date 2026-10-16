@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -24,6 +25,12 @@ describe('PagoResultadoPage', () => {
   const pagoService = { verificar: vi.fn() };
   const carrito = {
     cargar: vi.fn(() => of({ items: [], cantidad: 0, subtotal: 0, costoEnvio: null, total: null })),
+    panelAbierto: signal(false),
+    items: signal([]),
+    cantidad: signal(0),
+    subtotal: signal(0),
+    alternarPanel: vi.fn(),
+    cerrarPanel: vi.fn(),
   };
   let transaccionId: string | null = 'wompi-1';
 
@@ -95,6 +102,14 @@ describe('PagoResultadoPage', () => {
       estadoPago: 'RECHAZADA',
       estadoPedido: null,
     }));
+    const { root } = crear();
+
+    expect(root.textContent).toContain('Tu pago no fue aprobado');
+    expect(root.textContent).toContain('no se creó el pedido');
+    expect(root.textContent).toContain('Los productos siguen en tu carrito');
+    expect(root.querySelector<HTMLAnchorElement>('a[routerLink="/cliente/checkout"]')).not.toBeNull();
+  });
+
   it('sigue consultando si una verificación falla de forma momentánea (504)', () => {
     const timeout = new HttpErrorResponse({ status: 504, error: { mensaje: 'Wompi no respondió a tiempo' } });
     pagoService.verificar

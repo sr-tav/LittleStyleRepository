@@ -13,6 +13,7 @@ class EstadoPedidoTest {
         Pedido pedido = Pedido.builder().estado(EstadoPedido.PENDIENTE_PAGO).build();
 
         pedido.transicionarA(EstadoPedido.PAGADO);
+        pedido.transicionarA(EstadoPedido.REGISTRADO);
         pedido.transicionarA(EstadoPedido.EN_PREPARACION);
         pedido.transicionarA(EstadoPedido.ENVIADO);
 
@@ -40,5 +41,13 @@ class EstadoPedidoTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("PENDIENTE_PAGO")
                 .hasMessageContaining("ENVIADO");
+    }
+
+    @Test
+    void pagadoSoloRegistraYRegistradoSoloPrepara() {
+        assertThat(EstadoPedido.PAGADO.permiteTransicionA(EstadoPedido.EN_PREPARACION)).isFalse();
+        assertThat(EstadoPedido.PAGADO.permiteTransicionA(EstadoPedido.REGISTRADO)).isTrue();
+        assertThat(EstadoPedido.REGISTRADO.permiteTransicionA(EstadoPedido.EN_PREPARACION)).isTrue();
+        assertThat(EstadoPedido.REGISTRADO.etiqueta()).isEqualTo("Registrado");
     }
 }

@@ -10,6 +10,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionEnvioRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ItemResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoPagoSnapshot;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.CrearPedidoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutResponse;
@@ -23,6 +24,7 @@ import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service.PerfilIn
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class PedidoCheckoutService {
     private final PedidoRepository pedidoRepository;
     private final HistorialEstadoRepository historialRepository;
     private final Clock clock;
+    private final ApplicationEventPublisher eventos;
 
     @Transactional
     public PedidoPagoSnapshot prepararPago(CrearPedidoRequest request) {
@@ -65,7 +68,8 @@ public class PedidoCheckoutService {
                         .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                                 "Una prenda del carrito ya no se encuentra disponible")));
         List<ItemResumenCheckoutRequest> items = carrito.items().stream()
-                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad()))
+                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(),
+                        item.tallaSugerida()))
                 .toList();
         ResumenCheckoutResponse resumen = checkoutFacade.calcularResumen(
                 new ResumenCheckoutRequest(request.perfilInfantilId(), request.direccion()), items);
@@ -105,6 +109,7 @@ public class PedidoCheckoutService {
                 .cantidad(linea.cantidad())
                 .precioUnitario(linea.precioUnitario())
                 .subtotal(linea.subtotal())
+                .tallaSugerida(linea.tallaSugerida())
                 .build()));
         pedidoRepository.saveAndFlush(pedido);
         historialRepository.save(HistorialEstadoPedido.builder()
@@ -113,6 +118,7 @@ public class PedidoCheckoutService {
                 .nuevo(EstadoPedido.PENDIENTE_PAGO)
                 .fechaCambio(ahora)
                 .build());
+        eventos.publishEvent(new PedidoCreadoEvent(pedido.getId()));
         return pedido;
     }
 

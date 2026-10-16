@@ -62,6 +62,9 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
                   <span>Compatibilidad: <strong>{{ r.puntaje }}%</strong></span>
                   <span class="reco-score-track" aria-hidden="true"><span [style.width.%]="r.puntaje"></span></span>
                 </p>
+                @if (r.afinidad > 0) {
+                  <p class="reco-affinity">Afinidad de estilo: +{{ r.afinidad }}</p>
+                }
                 <div class="reco-card-cta">
                   <a class="btn-primary btn-inline btn-small" [routerLink]="['/cliente/catalogo', r.prendaId]" [queryParams]="{ perfilId: perfilId() }" [attr.aria-label]="'Ver ' + r.nombre">Ver</a>
                 </div>

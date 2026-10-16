@@ -3,7 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.ComponenteRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -56,6 +56,10 @@ public class ValidadorPrenda {
             }
             if (talla.pesoMinKg().compareTo(talla.pesoMaxKg()) > 0) {
                 throw error("En la talla " + nombre + " el peso mínimo supera al máximo", "tallas");
+            }
+            if (talla.edadMinMeses() != null && talla.edadMaxMeses() != null
+                    && talla.edadMinMeses() > talla.edadMaxMeses()) {
+                throw error("En la talla " + nombre + " la edad mínima supera a la máxima", "tallas");
             }
         }
     }

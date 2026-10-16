@@ -52,9 +52,9 @@ class CarritoCheckoutIntegrationTest {
 
     private static final String PRENDA = """
             {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
-             "stockMinimo":5,"colores":["AZUL"],"estampado":"LISO",
+             "colores":["AZUL"],"estampado":"LISO",
              "composicion":[{"material":"ALGODON","porcentaje":80},{"material":"POLIESTER","porcentaje":20}],
-             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8}]}
+             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8,"stockMinimo":5}]}
             """;
 
     @Autowired
@@ -340,7 +340,7 @@ class CarritoCheckoutIntegrationTest {
             assertThat(prenda.stockDisponible()).isZero();
         });
         assertThat(pedidoRepository.findById(primero.getId()).orElseThrow().getEstado())
-                .isEqualTo(EstadoPedido.PAGADO);
+                .isEqualTo(EstadoPedido.REGISTRADO);
         assertThat(pedidoRepository.findById(segundo.getId()).orElseThrow().getEstado())
                 .isEqualTo(EstadoPedido.CANCELADO);
         assertThat(stockTalla(prendaId)).isZero();

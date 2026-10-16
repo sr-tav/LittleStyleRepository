@@ -11,6 +11,7 @@ public record ItemCarritoResponse(
         int cantidad,
         BigDecimal precioUnitario,
         BigDecimal subtotal,
-        boolean disponible
+        boolean disponible,
+        String tallaSugerida
 ) {
 }

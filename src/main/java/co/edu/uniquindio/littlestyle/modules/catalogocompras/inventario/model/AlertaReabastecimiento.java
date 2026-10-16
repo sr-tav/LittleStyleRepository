@@ -22,9 +22,10 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Alerta de reabastecimiento emitida cuando una prenda alcanzó su stock mínimo o se agotó.
- * Queda activa ({@code fechaResolucion == null}) hasta que el stock vuelve a superar el mínimo,
- * lo que deja trazabilidad de que la alerta se emitió antes del agotamiento (RNF-14).
+ * Alerta de reabastecimiento por talla: cada talla con mínimo declarado alerta
+ * por su cuenta. Queda activa ({@code fechaResolucion == null}) hasta que su
+ * stock vuelve a superar su mínimo, lo que deja trazabilidad de que la alerta
+ * se emitió antes del agotamiento (RNF-14).
  */
 @Entity
 @Table(name = "alertas_reabastecimiento", indexes = {
@@ -45,11 +46,15 @@ public class AlertaReabastecimiento {
     @JoinColumn(name = "prenda_id", nullable = false)
     private Prenda prenda;
 
+    /** Talla en alerta; nula solo en filas heredadas de antes del mínimo por talla. */
+    @Column(length = 10)
+    private String talla;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 12)
     private NivelStock nivel;
 
-    /** Stock total de la prenda en el momento de emitir la alerta. */
+    /** Stock de la talla en el momento de emitir la alerta. */
     @Column(name = "stock_al_emitir", nullable = false)
     private int stockAlEmitir;
 

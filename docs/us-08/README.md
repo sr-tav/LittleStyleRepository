@@ -20,12 +20,15 @@ y controlar la disponibilidad en tiempo real.
   petición multipart, todo o nada: se validan todos los archivos por su firma (JPG,
   PNG, WEBP) antes de subir, y si la transacción no se confirma se borran los objetos
   ya subidos. La BD solo guarda URL y clave.
-- **Stock mínimo y alertas (tarea 3):** `InventarioService` bloquea la prenda
-  (`PESSIMISTIC_WRITE`), aplica el stock y llama a `AlertasInventarioService` en la
-  misma transacción. Stock total ≤ mínimo → `STOCK_BAJO`; 0 → `AGOTADO`. Una alerta
-  activa por prenda; escalar a agotado notifica de nuevo; superar el mínimo la
-  resuelve. Se publica `AlertaReabastecimientoEmitida` y
-  `NotificadorAlertasReabastecimiento` la procesa tras el commit (ADR-14).
+- **Stock mínimo por talla y alertas (tarea 3):** `InventarioService` bloquea la prenda
+  (`PESSIMISTIC_WRITE`), aplica stock y mínimos por talla y llama a
+  `AlertasInventarioService` en la misma transacción. Cada talla con mínimo
+  alerta por su cuenta (stock ≤ mínimo → `STOCK_BAJO`; 0 → `AGOTADO`); sin
+  mínimo no alerta. Una alerta activa por prenda y talla; escalar a agotado
+  notifica de nuevo; superar el mínimo la resuelve. Se publica
+  `AlertaReabastecimientoEmitida` (con talla) y
+  `NotificadorAlertasReabastecimiento` la procesa tras el commit (ADR-14)
+  con correo al vendedor.
 - **Integración con US-07:** `CatalogoRecomendacionAdapter` reemplaza al catálogo de
   ejemplo. `CatalogoEjemploAdapter` queda solo con `app.recomendacion.catalogo=ejemplo`.
 - **Panel del vendedor (tarea 4):** UI-18 con KPIs reales de productos y stock bajo,

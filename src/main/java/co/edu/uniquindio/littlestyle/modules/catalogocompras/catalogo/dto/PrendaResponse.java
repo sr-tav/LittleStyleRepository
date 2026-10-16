@@ -7,7 +7,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Imag
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 
@@ -27,7 +27,6 @@ public record PrendaResponse(
         String marca,
         BigDecimal precio,
         EstadoPrenda estado,
-        int stockMinimo,
         int stockTotal,
         NivelStock nivelStock,
         Set<ColorPreferido> colores,
@@ -47,10 +46,12 @@ public record PrendaResponse(
     }
 
     public record Talla(Long id, String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
-                        BigDecimal pesoMinKg, BigDecimal pesoMaxKg, int stock) {
+                        BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses, Integer edadMaxMeses,
+                        int stock, Integer stockMinimo) {
         static Talla from(TallaPrenda t) {
             return new Talla(t.getId(), t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
-                    t.getPesoMinKg(), t.getPesoMaxKg(), t.getStock());
+                    t.getPesoMinKg(), t.getPesoMaxKg(), t.getEdadMinMeses(), t.getEdadMaxMeses(),
+                    t.getStock(), t.getStockMinimo());
         }
     }
 
@@ -64,12 +65,20 @@ public record PrendaResponse(
         int stockTotal = p.stockTotal();
         return new PrendaResponse(
                 p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getDescripcion(), p.getInstruccionesCuidado(), p.getMarca(), p.getPrecio(),
-                p.getEstado(), p.getStockMinimo(), stockTotal, NivelStock.calcular(stockTotal, p.getStockMinimo()),
+                p.getEstado(), stockTotal, nivelDe(p),
                 new TreeSet<>(p.getColores()), p.getEstampado(),
                 p.isTintesSinteticos(), p.isBrochesMetalicos(), p.isContieneNiquel(), p.isTratamientoFormaldehido(),
                 p.getComposicion().stream().map(c -> new Componente(c.getMaterial(), c.getPorcentaje())).toList(),
                 p.getTallas().stream().map(Talla::from).toList(),
                 p.getImagenes().stream().map(Imagen::from).toList(),
                 p.getFechaCreacion(), p.getFechaActualizacion());
+    }
+
+    /** Peor nivel entre las tallas con mínimo; sin mínimos siempre disponible. */
+    static NivelStock nivelDe(Prenda p) {
+        return NivelStock.peor(p.getTallas().stream()
+                .filter(t -> t.getStockMinimo() != null)
+                .map(t -> NivelStock.calcular(t.getStock(), t.getStockMinimo()))
+                .toList());
     }
 }

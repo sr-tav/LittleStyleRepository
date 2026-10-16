@@ -40,6 +40,21 @@ public record TallaRequest(
 
         @Min(value = 0, message = "El stock no puede ser negativo")
         @Max(value = 100000, message = "El stock debe ser máximo 100000")
-        Integer stock
+        Integer stock,
+
+        /** Edad mínima en meses que cubre la talla; nula si no se declara. */
+        @Min(value = 0, message = "La edad mínima no puede ser negativa")
+        @Max(value = 216, message = "La edad máxima es 216 meses (18 años)")
+        Integer edadMinMeses,
+
+        /** Edad máxima en meses que cubre la talla; nula si no se declara. */
+        @Min(value = 0, message = "La edad mínima no puede ser negativa")
+        @Max(value = 216, message = "La edad máxima es 216 meses (18 años)")
+        Integer edadMaxMeses,
+
+        /** Mínimo de esta talla para alertas; nulo si la talla no alerta. */
+        @Min(value = 0, message = "El stock mínimo no puede ser negativo")
+        @Max(value = 10000, message = "El stock mínimo debe ser máximo 10000")
+        Integer stockMinimo
 ) {
 }

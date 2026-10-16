@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +43,9 @@ class PedidoVendedorServiceTest {
     private PrendaRepository prendaRepository;
     @Mock
     private HistorialEstadoRepository historialRepository;
+
+    @Mock
+    private PedidoEstadoService estados;
 
     @InjectMocks
     private PedidoVendedorService service;
@@ -111,5 +115,47 @@ class PedidoVendedorServiceTest {
         assertThat(detalle.items().stream().map(PedidoDetalleResponse.Item::nombre).toList())
                 .containsExactly("Pantalón");
         assertThat(detalle.ciudad()).isEqualTo("Armenia");
+    }
+
+    @Test
+    void avanzarEstadoDePedidoPropioDelegaAlServicioDeEstados() {
+        Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.REGISTRADO)
+                .subtotal(new BigDecimal("150000")).costoEnvio(new BigDecimal("7000"))
+                .total(new BigDecimal("157000")).fechaCreacion(LocalDateTime.now()).build();
+        pedido.agregar(LineaPedido.builder().prendaId(10L).nombre("Pantalón").talla("4")
+                .cantidad(2).precioUnitario(new BigDecimal("50000")).subtotal(new BigDecimal("100000")).build());
+        when(prendaRepository.findIdsByVendedorId(VENDEDOR_ID)).thenReturn(List.of(10L));
+        Pedido avanzado = Pedido.builder().id(7L).estado(EstadoPedido.EN_PREPARACION)
+                .subtotal(new BigDecimal("150000")).costoEnvio(new BigDecimal("7000"))
+                .total(new BigDecimal("157000")).fechaCreacion(LocalDateTime.now()).build();
+        avanzado.agregar(LineaPedido.builder().prendaId(10L).nombre("Pantalón").talla("4")
+                .cantidad(2).precioUnitario(new BigDecimal("50000")).subtotal(new BigDecimal("100000")).build());
+        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido), Optional.of(avanzado));
+        when(estados.avanzarComoVendedor(7L, EstadoPedido.EN_PREPARACION, null)).thenReturn(avanzado);
+        when(historialRepository.findAllByPedidoIdOrderByFechaCambioAsc(7L)).thenReturn(List.of());
+
+        var detalle = service.avanzarEstado(7L,
+                new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.AvanzarEstadoRequest(
+                        EstadoPedido.EN_PREPARACION, null));
+
+        assertThat(detalle.estado()).isEqualTo(EstadoPedido.EN_PREPARACION);
+        verify(estados).avanzarComoVendedor(7L, EstadoPedido.EN_PREPARACION, null);
+    }
+
+    @Test
+    void avanzarEstadoDePedidoAjenoDevuelve404() {
+        Pedido ajeno = pedido(8L);
+        ajeno.getItems().clear();
+        ajeno.agregar(LineaPedido.builder().prendaId(99L).nombre("Vestido ajeno").talla("6")
+                .cantidad(1).precioUnitario(new BigDecimal("50000"))
+                .subtotal(new BigDecimal("50000")).build());
+        when(prendaRepository.findIdsByVendedorId(VENDEDOR_ID)).thenReturn(List.of(10L));
+        when(pedidoRepository.findById(8L)).thenReturn(Optional.of(ajeno));
+
+        assertThatThrownBy(() -> service.avanzarEstado(8L,
+                new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.AvanzarEstadoRequest(
+                        EstadoPedido.EN_PREPARACION, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 }

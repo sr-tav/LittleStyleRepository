@@ -13,10 +13,10 @@ public record PedidoDetalleResponse(Long id, EstadoPedido estado, BigDecimal sub
                                     List<Item> items, List<Movimiento> historial) {
 
     public record Item(Long prendaId, String nombre, String talla, int cantidad,
-                       BigDecimal precioUnitario, BigDecimal subtotal) {
+                       BigDecimal precioUnitario, BigDecimal subtotal, String tallaSugerida) {
         public static Item from(LineaPedido l) {
             return new Item(l.getPrendaId(), l.getNombre(), l.getTalla(), l.getCantidad(),
-                    l.getPrecioUnitario(), l.getSubtotal());
+                    l.getPrecioUnitario(), l.getSubtotal(), l.getTallaSugerida());
         }
     }
 

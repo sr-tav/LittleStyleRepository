@@ -84,8 +84,8 @@ class CheckoutFacadeTest {
     @Test
     void calculaSubtotalesYTotalConTarifaSegunDireccion() {
         var respuesta = facade.calcularResumen(solicitud(), items(
-                new ItemResumenCheckoutRequest(7L, "4", 2),
-                new ItemResumenCheckoutRequest(7L, "6", 1)));
+                new ItemResumenCheckoutRequest(7L, "4", 2, "4"),
+                new ItemResumenCheckoutRequest(7L, "6", 1, null)));
 
         assertThat(respuesta.subtotal()).isEqualByComparingTo("98700");
         assertThat(respuesta.costoEnvio()).isEqualByComparingTo("7000");
@@ -95,10 +95,19 @@ class CheckoutFacadeTest {
     }
 
     @Test
+    void conservaLaTallaSugeridaDelMotorParaMedirAdopcionRNF11() {
+        var respuesta = facade.calcularResumen(solicitud(), items(
+                new ItemResumenCheckoutRequest(7L, "4", 2, "4"),
+                new ItemResumenCheckoutRequest(7L, "6", 1, null)));
+
+        assertThat(respuesta.items()).extracting("tallaSugerida").containsExactly("4", null);
+    }
+
+    @Test
     void sumaLineasRepetidasAntesDeValidarStock() {
         assertThatThrownBy(() -> facade.calcularResumen(solicitud(), items(
-                new ItemResumenCheckoutRequest(7L, "4", 5),
-                new ItemResumenCheckoutRequest(7L, "4", 4))))
+                new ItemResumenCheckoutRequest(7L, "4", 5, null),
+                new ItemResumenCheckoutRequest(7L, "4", 4, null))))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getStatus())
                         .isEqualTo(HttpStatus.CONFLICT));
@@ -112,7 +121,7 @@ class CheckoutFacadeTest {
                 .thenReturn(new EvaluacionAlergia(NivelRiesgo.EXCLUIDA, List.of("Contiene níquel")));
 
         assertThatThrownBy(() -> facade.calcularResumen(
-                solicitud(), items(new ItemResumenCheckoutRequest(7L, "4", 1))))
+                solicitud(), items(new ItemResumenCheckoutRequest(7L, "4", 1, "6"))))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getStatus())
                         .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));

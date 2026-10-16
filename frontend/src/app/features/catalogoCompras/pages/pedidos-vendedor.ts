@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
+import { formatearPrecio } from '../models/prenda-opciones';
 import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
 import { PedidoVendedorResumen } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
@@ -21,6 +22,13 @@ export class PedidosVendedor implements OnInit {
   protected readonly error = signal<string | null>(null);
 
   protected readonly estado = (p: PedidoVendedorResumen) => ETIQUETAS_ESTADO[p.estado];
+  protected readonly precio = (p: PedidoVendedorResumen) => formatearPrecio(p.subtotalPropio);
+  protected readonly fecha = (p: PedidoVendedorResumen) =>
+    new Date(p.fechaCreacion).toLocaleDateString('es-CO', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
 
   ngOnInit(): void {
     this.cargar();

@@ -5,7 +5,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Gene
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 
@@ -42,11 +42,13 @@ public record PrendaDetalleResponse(
     }
 
     public record TallaDisponible(String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
-                                  BigDecimal pesoMinKg, BigDecimal pesoMaxKg, int stockDisponible,
+                                  BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses,
+                                  Integer edadMaxMeses, int stockDisponible,
                                   boolean disponible) {
         static TallaDisponible from(TallaPrenda t) {
             return new TallaDisponible(t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
-                    t.getPesoMinKg(), t.getPesoMaxKg(), t.getStock(), t.getStock() > 0);
+                    t.getPesoMinKg(), t.getPesoMaxKg(), t.getEdadMinMeses(), t.getEdadMaxMeses(),
+                    t.getStock(), t.getStock() > 0);
         }
     }
 

@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <body style="font-family: Arial, sans-serif; color: #233127;">
-  <h2>Hola {{nombre}}, tu pago fue aprobado</h2>
-  <p>El pago del pedido <strong>#{{pedidoId}}</strong> por un total de <strong>${{total}}</strong> fue confirmado y el stock quedó reservado.</p>
-  <h3>Productos</h3>
+  <h2>Estimado(a) {{nombre}}: su pago fue aprobado</h2>
+  <p>El pago del pedido <strong>#{{pedidoId}}</strong> por un valor total de <strong>${{total}}</strong> fue confirmado exitosamente y las unidades quedaron reservadas.</p>
+  <h3>Productos facturados</h3>
   <ul>{{filas}}</ul>
-  <p>Te avisaremos cuando tu pedido sea enviado con su número de guía.</p>
+  <p>Su pedido pasará ahora a preparación. Le avisaremos cuando sea despachado junto con su número de guía para el seguimiento.</p>
+  <hr />
+  <p style="font-size: 12px; color: #6b7280;">LittleStyle · Este es un mensaje automático, por favor no responda a este correo.</p>
 </body>
 </html>

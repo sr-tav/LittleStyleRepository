@@ -174,7 +174,7 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-tallas">
         <h2 id="sec-tallas" class="catalog-section-title"><span aria-hidden="true">📏</span> Tabla de tallas</h2>
         <p class="field-hint">
-          Indica la estatura y el peso que cubre cada talla. Así el sistema sugiere la talla correcta a cada cliente.
+          Indica la estatura y el peso que cubre cada talla, su stock y su mínimo de alerta. Así el sistema sugiere la talla correcta a cada cliente.
           @if (!esNueva()) { El stock de las tallas existentes se actualiza desde el inventario. }
         </p>
         <div formArrayName="tallas" class="dynamic-rows">
@@ -204,6 +204,10 @@
                 <label [for]="'stock-' + i">{{ fila.getRawValue()['existente'] ? 'Stock actual' : 'Stock inicial' }}</label>
                 <input [id]="'stock-' + i" type="number" formControlName="stock" min="0" />
               </div>
+              <div class="field">
+                <label [for]="'minimo-' + i">Mínimo de alerta</label>
+                <input [id]="'minimo-' + i" type="number" formControlName="stockMinimo" min="0" placeholder="Sin alerta" />
+              </div>
               <button type="button" class="icon-button" (click)="quitarTalla(i)"
                 [disabled]="tallas.length <= 1" [attr.aria-label]="'Quitar talla ' + (i + 1)" title="Quitar">✕</button>
               @if (invalido(fila)) {
@@ -232,14 +236,10 @@
       <!-- Inventario -->
       <section class="profile-section catalog-section" aria-labelledby="sec-inv">
         <h2 id="sec-inv" class="catalog-section-title"><span aria-hidden="true">📦</span> Inventario</h2>
-        <div class="field" [class.has-error]="invalido(form.controls.stockMinimo)">
-          <label for="stockMinimo">Stock mínimo de alerta</label>
-          <input id="stockMinimo" type="number" formControlName="stockMinimo" min="0" />
-          <span class="field-hint">Recibirás una alerta de reabastecimiento cuando el stock total llegue a este valor.</span>
-          @if (invalido(form.controls.stockMinimo)) {
-            <span class="field-error">Ingresa un número entero entre 0 y 10000.</span>
-          }
-        </div>
+        <p class="field-hint">
+          El mínimo de alerta se define por talla, en la tabla de arriba: recibirás un aviso
+          cuando el stock de esa talla llegue a su mínimo. Vacío significa sin alerta.
+        </p>
       </section>
 
       <!-- Fotos -->

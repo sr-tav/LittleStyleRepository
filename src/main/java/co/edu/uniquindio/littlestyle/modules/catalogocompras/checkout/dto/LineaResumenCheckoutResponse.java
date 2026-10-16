@@ -8,6 +8,7 @@ public record LineaResumenCheckoutResponse(
         String talla,
         int cantidad,
         BigDecimal precioUnitario,
-        BigDecimal subtotal
+        BigDecimal subtotal,
+        String tallaSugerida
 ) {
 }

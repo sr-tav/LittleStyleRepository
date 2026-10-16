@@ -19,6 +19,41 @@
       <p class="alert alert-info" role="status">Número de guía: <strong>{{ p.numeroGuia }}</strong></p>
     }
 
+    <dl class="pedido-resumen-grid" aria-label="Resumen del pedido">
+      <div><dt>Fecha</dt><dd>{{ fechaCreacion() }}</dd></div>
+      <div><dt>Estado</dt><dd>{{ estadoDe(p.estado) }}</dd></div>
+      <div><dt>Tus productos</dt><dd>{{ p.items.length }} línea(s)</dd></div>
+      <div><dt>Tu subtotal</dt><dd>{{ precio(totalPropio()) }}</dd></div>
+    </dl>
+
+    @if (puedePreparar() || puedeEnviar()) {
+      <section class="catalog-card" aria-label="Avanzar el pedido">
+        <h2 class="catalog-section-title">Avanzar el pedido</h2>
+        @if (errorAvance()) {
+          <p class="alert alert-error" role="alert">{{ errorAvance() }}</p>
+        }
+        @if (puedePreparar()) {
+          <button
+            type="button" class="btn-primary btn-inline btn-small"
+            [disabled]="avanzando()" (click)="avanzar('EN_PREPARACION')"
+          >{{ avanzando() ? 'Guardando…' : 'Marcar en preparación' }}</button>
+        }
+        @if (puedeEnviar()) {
+          <label class="field">
+            <span>Número de guía</span>
+            <input
+              type="text" maxlength="60" placeholder="COL123"
+              [value]="guia()" (input)="guia.set($any($event.target).value)"
+            />
+          </label>
+          <button
+            type="button" class="btn-primary btn-inline btn-small"
+            [disabled]="avanzando()" (click)="avanzar('ENVIADO')"
+          >{{ avanzando() ? 'Guardando…' : 'Marcar como enviado' }}</button>
+        }
+      </section>
+    }
+
     <section class="catalog-card" aria-label="Tus productos en este pedido">
       <h2 class="catalog-section-title">Tus productos</h2>
       <ul class="pedido-items">
@@ -46,14 +81,19 @@
 
     <section class="catalog-card" aria-label="Historial del pedido">
       <h2 class="catalog-section-title">Historial</h2>
-      <ol class="pedido-linea-tiempo">
-        @for (m of p.historial; track m.fecha + '-' + m.nuevo) {
-          <li class="is-hecho">
-            <span class="pedido-punto" aria-hidden="true"></span>
-            <span>{{ m.anterior ? estadoDe(m.anterior) + ' → ' : '' }}{{ estadoDe(m.nuevo) }}</span>
-          </li>
-        }
-      </ol>
+      @if (p.historial.length === 0) {
+        <p class="product-meta">Aún no hay movimientos registrados.</p>
+      } @else {
+        <ol class="pedido-historial">
+          @for (m of p.historial; track m.fecha + '-' + m.nuevo) {
+            <li class="is-hecho">
+              <span class="pedido-punto" aria-hidden="true"></span>
+              <span>{{ m.anterior ? estadoDe(m.anterior) + ' → ' : '' }}{{ estadoDe(m.nuevo) }}</span>
+              <span class="product-meta">{{ fechaDe(m.fecha) }}</span>
+            </li>
+          }
+        </ol>
+      }
     </section>
   }
 </main>

@@ -28,10 +28,10 @@ class CatalogoClienteIntegrationTest {
 
     private static final String PRENDA = """
             {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
-             "stockMinimo":5,"colores":["AZUL"],"estampado":"LISO",
+             "colores":["AZUL"],"estampado":"LISO",
              "composicion":[{"material":"ALGODON","porcentaje":80},{"material":"POLIESTER","porcentaje":20}],
-             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8},
-                       {"talla":"6","estaturaMinCm":111,"estaturaMaxCm":122,"pesoMinKg":21,"pesoMaxKg":26,"stock":4}]}
+             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8,"edadMinMeses":24,"edadMaxMeses":72,"stockMinimo":5},
+                       {"talla":"6","estaturaMinCm":111,"estaturaMaxCm":122,"pesoMinKg":21,"pesoMaxKg":26,"stock":4,"edadMinMeses":72,"edadMaxMeses":144,"stockMinimo":3}]}
             """;
 
     @Autowired
@@ -77,6 +77,10 @@ class CatalogoClienteIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(1));
         mockMvc.perform(get("/api/cliente/catalogo").header("Authorization", cliente)
+                        .param("material", "ALGODON,POLIESTER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1));
+        mockMvc.perform(get("/api/cliente/catalogo").header("Authorization", cliente)
                         .param("material", "CUERO"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(0));
@@ -84,6 +88,18 @@ class CatalogoClienteIntegrationTest {
                         .param("talla", "4"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(1));
+        // Filtro por edad en meses sobre el rango declarado (nulo = coincide)
+        mockMvc.perform(get("/api/cliente/catalogo").header("Authorization", cliente)
+                        .param("edadMeses", "36"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1));
+        mockMvc.perform(get("/api/cliente/catalogo").header("Authorization", cliente)
+                        .param("edadMeses", "200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(0));
+        mockMvc.perform(get("/api/cliente/catalogo").header("Authorization", cliente)
+                        .param("edadMeses", "-1"))
+                .andExpect(status().isBadRequest());
         // Sin género declarado la prenda aplica a todos
         mockMvc.perform(get("/api/cliente/catalogo").header("Authorization", cliente)
                         .param("genero", "NINA"))
@@ -106,6 +122,8 @@ class CatalogoClienteIntegrationTest {
                 .andExpect(jsonPath("$.tallas.length()").value(2))
                 .andExpect(jsonPath("$.tallas[0].disponible").value(true))
                 .andExpect(jsonPath("$.tallas[0].stockDisponible").value(8))
+                .andExpect(jsonPath("$.tallas[0].edadMinMeses").value(24))
+                .andExpect(jsonPath("$.tallas[0].edadMaxMeses").value(72))
                 .andExpect(jsonPath("$.tallas[1].stockDisponible").value(4))
                 .andExpect(jsonPath("$.stockMinimo").doesNotExist());
 

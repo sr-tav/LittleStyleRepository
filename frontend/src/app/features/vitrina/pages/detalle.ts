@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
@@ -17,7 +18,7 @@ import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-ac
 import { TallaSugerida } from '../../recomendacion/components/talla-sugerida';
 import { RecomendacionItem } from '../../recomendacion/models/recomendacion.models';
 import { RecomendacionService } from '../../recomendacion/services/recomendacion.service';
-import { VitrinaDetalle } from '../models/vitrina.models';
+import { VitrinaDetalle, VitrinaTalla } from '../models/vitrina.models';
 import { VitrinaService } from '../services/vitrina.service';
 
 /** US-09: ficha del producto con ficha técnica textil y tabla de medidas. */
@@ -84,7 +85,12 @@ export class DetalleProducto implements OnInit {
     this.agregandoAlCarrito.set(true);
     this.mensajeCarrito.set(null);
     this.errorCarrito.set(null);
-    this.carrito.agregar({ prendaId: prenda.id, talla, cantidad }).subscribe({
+    this.carrito.agregar({
+      prendaId: prenda.id,
+      talla,
+      cantidad,
+      tallaSugerida: this.sugerida()?.tallaSugerida || null,
+    }).subscribe({
       next: () => {
         this.mensajeCarrito.set('Prenda agregada al carrito.');
         this.carrito.abrirPanel();
@@ -111,7 +117,11 @@ export class DetalleProducto implements OnInit {
     );
   protected readonly colorDe = (c: string) =>
     ETIQUETAS_COLORES[c as keyof typeof ETIQUETAS_COLORES] ?? c;
-  protected readonly estampadoDe = (e: string | null) =>
+
+  protected readonly edadDe = (t: VitrinaTalla) =>
+    t.edadMinMeses == null && t.edadMaxMeses == null
+      ? '—'
+      : `${t.edadMinMeses ?? '…'} – ${t.edadMaxMeses ?? '…'} m`;  protected readonly estampadoDe = (e: string | null) =>
     e === null ? '—' : (ETIQUETAS_ESTAMPADOS[e as keyof typeof ETIQUETAS_ESTAMPADOS] ?? e);
 
   ngOnInit(): void {
@@ -151,7 +161,30 @@ export class DetalleProducto implements OnInit {
   private cargarSugerida(prendaId: number, perfilId: number): void {
     this.recomendaciones.porPrenda(prendaId, perfilId).subscribe({
       next: (r) => this.sugerida.set(r),
-      error: () => this.sugerida.set(null),
+      error: (err: unknown) => {
+        // El backend responde 422 cuando la prenda está excluida por alergia:
+        // en vez del mensaje genérico se muestra el motivo con riesgo EXCLUIDA.
+        if (err instanceof HttpErrorResponse && err.status === 422) {
+          const mensaje = procesarErrorApi(err);
+          const prenda = this.prenda();
+          if (prenda && mensaje.toLowerCase().includes('alergia')) {
+            this.sugerida.set({
+              prendaId,
+              nombre: prenda.nombre,
+              precio: prenda.precio,
+              tallaSugerida: '',
+              puntaje: 0,
+              afinidad: 0,
+              riesgo: 'EXCLUIDA',
+              advertencias: [mensaje],
+              tieneStock: false,
+              imagenUrl: prenda.imagenes[0] ?? null,
+            });
+            return;
+          }
+        }
+        this.sugerida.set(null);
+      },
     });
   }
 }

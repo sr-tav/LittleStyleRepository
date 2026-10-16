@@ -8,6 +8,7 @@ export interface ItemCarrito {
   precioUnitario: number;
   subtotal: number;
   disponible: boolean;
+  tallaSugerida?: string | null;
 }
 
 export interface Carrito {
@@ -22,6 +23,8 @@ export interface AgregarItemCarritoRequest {
   prendaId: number;
   talla: string;
   cantidad: number;
+  /** Talla sugerida por el motor al agregar; base de la métrica RNF-11. */
+  tallaSugerida?: string | null;
 }
 
 export interface CambiarCantidadCarritoRequest {

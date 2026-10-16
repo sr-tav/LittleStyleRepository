@@ -50,6 +50,7 @@ import { InventarioService } from '../services/inventario.service';
                 <app-nivel-stock-badge [nivel]="alerta.nivel" />
               </div>
               <dl class="alert-card-stats">
+                <div><dt>Talla</dt><dd class="stat-actual">{{ alerta.talla ?? '—' }}</dd></div>
                 <div><dt>Actual</dt><dd class="stat-actual">{{ alerta.stockActual }}</dd></div>
                 <div><dt>Mínimo</dt><dd>{{ alerta.stockMinimo }}</dd></div>
                 <div><dt>Diferencia</dt><dd class="stat-diff">{{ alerta.diferencia }} ({{ textoDiferencia(alerta) }})</dd></div>

@@ -3,6 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.controlle
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoDetalleResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoEstadoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoResumenResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionEnvioRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionGuardadaResponse;
@@ -11,8 +12,12 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.service.Car
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.CheckoutFacade;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.DireccionClienteService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoConsultaService;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoEstadoService;
+import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
+import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +38,7 @@ public class CheckoutController {
 
     private final CheckoutFacade checkoutFacade;
     private final PedidoConsultaService pedidoConsultaService;
+    private final PedidoEstadoService pedidoEstadoService;
     private final CarritoService carritoService;
     private final DireccionClienteService direccionClienteService;
 
@@ -51,7 +57,8 @@ public class CheckoutController {
     public ResponseEntity<ResumenCheckoutResponse> calcularResumen(
             @Valid @RequestBody ResumenCheckoutRequest request) {
         var items = carritoService.obtener().items().stream()
-                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad()))
+                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(),
+                        item.tallaSugerida()))
                 .toList();
         return ResponseEntity.ok(checkoutFacade.calcularResumen(request, items));
     }
@@ -64,5 +71,19 @@ public class CheckoutController {
     @GetMapping("/pedidos/{id}")
     public ResponseEntity<PedidoDetalleResponse> detallePedido(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoConsultaService.detalle(id));
+    }
+
+    /**
+     * Retracto del cliente antes del pago: solo desde PENDIENTE_PAGO, sin
+     * stock ni reembolso involucrados. Después del pago la cancelación es
+     * del vendedor/administrador.
+     */
+    @PostMapping("/pedidos/{id}/cancelar")
+    public ResponseEntity<PedidoEstadoResponse> cancelarPedido(@PathVariable Long id) {
+        Long clienteId = SecurityUtils.usuarioActual()
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado")).id();
+        var pedido = pedidoEstadoService.cancelarComoCliente(clienteId, id);
+        return ResponseEntity.ok(new PedidoEstadoResponse(
+                pedido.getId(), pedido.getEstado(), pedido.getNumeroGuia(), pedido.getFechaActualizacion()));
     }
 }

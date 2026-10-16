@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.config.WompiProperties;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.CrearPedidoRequest;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagoRechazadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaDisponibilidadPagoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaResumenCheckoutResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoPagoSnapshot;
@@ -31,6 +32,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +76,7 @@ public class PagoService {
     private final PagoProperties pagoProperties;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
+    private final ApplicationEventPublisher eventos;
     private final SecureRandom random = new SecureRandom();
 
     @Transactional
@@ -261,6 +264,10 @@ public class PagoService {
             confirmarPedido(transaccion);
         } else {
             transaccion.setEstado(nuevoEstado);
+            if (nuevoEstado == EstadoTransaccionPago.RECHAZADA) {
+                // Sin cargo ni pedido: se avisa al cliente para que reintente.
+                eventos.publishEvent(new PedidoPagoRechazadoEvent(transaccion.getId()));
+            }
         }
         transaccion.setFechaActualizacion(LocalDateTime.now(clock));
     }

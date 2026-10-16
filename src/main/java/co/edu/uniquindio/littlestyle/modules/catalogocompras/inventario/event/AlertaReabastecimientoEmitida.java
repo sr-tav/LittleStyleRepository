@@ -11,6 +11,7 @@ public record AlertaReabastecimientoEmitida(
         Long prendaId,
         Long vendedorId,
         String nombrePrenda,
+        String talla,
         NivelStock nivel,
         int stockActual,
         int stockMinimo

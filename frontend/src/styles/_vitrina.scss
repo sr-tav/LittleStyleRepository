@@ -396,9 +396,50 @@
   }
 }
 
-.pedido-linea-tiempo {
+.pedido-tarjeta-info {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+/* Resumen en grilla del detalle: fecha, estado, líneas y subtotal propio */
+.pedido-resumen-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+
+  div {
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--ls-border);
+    border-radius: 14px;
+    background: var(--ls-surface);
+  }
+
+  dt {
+    color: var(--ls-muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0.2rem 0 0;
+    font-weight: 800;
+  }
+}
+
+@media (max-width: 600px) {
+  .pedido-resumen-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pedido-linea-tiempo {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.5rem;
   margin: 0 0 1.25rem;
   padding: 1.25rem;
@@ -415,6 +456,22 @@
     font-size: 0.8rem;
     font-weight: 700;
     text-align: center;
+  }
+}
+
+/* Historial con fechas: lista vertical, no los 5 pasos */
+.pedido-historial {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    font-size: 0.9rem;
   }
 }
 

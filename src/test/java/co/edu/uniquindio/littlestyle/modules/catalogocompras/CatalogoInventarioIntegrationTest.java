@@ -35,10 +35,10 @@ class CatalogoInventarioIntegrationTest {
 
     private static final String PRENDA = """
             {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
-             "stockMinimo":5,"colores":["AZUL"],"estampado":"LISO","contieneNiquel":true,
+             "colores":["AZUL"],"estampado":"LISO","contieneNiquel":true,
              "composicion":[{"material":"ALGODON","porcentaje":80},{"material":"POLIESTER","porcentaje":20}],
-             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8},
-                       {"talla":"6","estaturaMinCm":111,"estaturaMaxCm":122,"pesoMinKg":21,"pesoMaxKg":26,"stock":4}]}
+             "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8,"stockMinimo":5},
+                       {"talla":"6","estaturaMinCm":111,"estaturaMaxCm":122,"pesoMinKg":21,"pesoMaxKg":26,"stock":4,"stockMinimo":3}]}
             """;
 
     @Autowired
@@ -72,7 +72,7 @@ class CatalogoInventarioIntegrationTest {
 
     private String stock(int talla4, int talla6) {
         return """
-                {"tallas":[{"talla":"4","stock":%d},{"talla":"6","stock":%d}]}
+                {"tallas":[{"talla":"4","stock":%d,"stockMinimo":5},{"talla":"6","stock":%d,"stockMinimo":3}]}
                 """.formatted(talla4, talla6);
     }
 
@@ -93,26 +93,28 @@ class CatalogoInventarioIntegrationTest {
         assertThat(url).startsWith("/media/prendas/" + id + "/").endsWith(".png");
         mockMvc.perform(get(url)).andExpect(status().isOk());
 
-        // Stock total 3 ≤ mínimo 5 → alerta de stock bajo en la misma transacción
+        // La talla 4 (2 ≤ 5) alerta; la 6 (5 > 3) sigue disponible
         mockMvc.perform(put("/api/vendedor/inventario/{id}", id).header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content(stock(2, 1)))
+                        .contentType(MediaType.APPLICATION_JSON).content(stock(2, 5)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.stockTotal").value(3))
+                .andExpect(jsonPath("$.stockTotal").value(7))
                 .andExpect(jsonPath("$.nivel").value("STOCK_BAJO"));
         mockMvc.perform(get("/api/vendedor/inventario/alertas").header("Authorization", vendedor))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].nivel").value("STOCK_BAJO"))
-                .andExpect(jsonPath("$[0].diferencia").value(-2))
+                .andExpect(jsonPath("$[0].talla").value("4"))
+                .andExpect(jsonPath("$[0].diferencia").value(-3))
                 .andExpect(jsonPath("$[0].imagenUrl").value(url));
 
         // Agotarse escala la alerta; reabastecer por encima del mínimo la resuelve
         mockMvc.perform(put("/api/vendedor/inventario/{id}", id).header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content(stock(0, 0)))
+                        .contentType(MediaType.APPLICATION_JSON).content(stock(0, 5)))
                 .andExpect(jsonPath("$.nivel").value("AGOTADO"));
         mockMvc.perform(get("/api/vendedor/inventario/alertas").header("Authorization", vendedor))
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].nivel").value("AGOTADO"));
+                .andExpect(jsonPath("$[0].nivel").value("AGOTADO"))
+                .andExpect(jsonPath("$[0].talla").value("4"));
 
         mockMvc.perform(put("/api/vendedor/inventario/{id}", id).header("Authorization", vendedor)
                         .contentType(MediaType.APPLICATION_JSON).content(stock(10, 10)))

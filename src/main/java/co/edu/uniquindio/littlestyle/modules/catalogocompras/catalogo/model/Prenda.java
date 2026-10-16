@@ -36,8 +36,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Prenda del catálogo de un vendedor. El stock se lleva por talla ({@link TallaPrenda}) y el
- * {@code stockMinimo} se compara contra el total de la prenda para emitir alertas de reabastecimiento.
+ * Prenda del catálogo de un vendedor. El stock se lleva por talla ({@link TallaPrenda}) y cada
+ * talla con mínimo declarado emite alertas de reabastecimiento.
  */
 @Entity
 @Table(name = "prendas", indexes = {
@@ -90,9 +90,6 @@ public class Prenda {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private EstadoPrenda estado;
-
-    @Column(name = "stock_minimo", nullable = false)
-    private int stockMinimo;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

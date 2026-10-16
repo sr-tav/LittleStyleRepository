@@ -24,10 +24,17 @@ public class EstrategiaConHolgura implements  EstrategiaTalla {
         boolean fueExacta = base.isPresent();
         if (base.isEmpty()) base = proximidad.sugerir(bio, tabla);
         if (base.isEmpty()) return Optional.empty();
-        if (bio.holgura() == null) return base;
+        if (bio.holgura() == null || !fueExacta) return base;
+        // El ajuste por holgura solo aplica sobre una coincidencia exacta y
+        // nunca se sale de la tabla. El stock de la talla resultante no se
+        // decide aquí (la estrategia no conoce inventario): el motor lo informa
+        // con tieneStock y el checkout lo valida antes de vender (RNF-03).
         int i = tabla.rangos().indexOf(base.get());
-        if (fueExacta && bio.holgura() == Holgura.HOLGADA&& i < tabla.rangos().size() -1) {
-            return Optional.of(tabla.rangos().get(i +1));
+        if (bio.holgura() == Holgura.HOLGADA && i < tabla.rangos().size() - 1) {
+            return Optional.of(tabla.rangos().get(i + 1));
+        }
+        if (bio.holgura() == Holgura.AJUSTADA && i > 0) {
+            return Optional.of(tabla.rangos().get(i - 1));
         }
         return base;
     }

@@ -16,8 +16,10 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -63,6 +65,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<ErrorResponse> handleMultipart(MultipartException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "La carga de archivos no es válida", req, null);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParam(MissingServletRequestParameterException ex,
+                                                            HttpServletRequest req) {
+        // Antes caía en handleGeneric con 500 (RNF-29): p. ej. GET
+        // /recomendaciones sin perfilId ahora responde 400 con el parámetro.
+        return build(HttpStatus.BAD_REQUEST, "Falta el parámetro '" + ex.getParameterName() + "'",
+                req, Map.of(ex.getParameterName(), "Este parámetro es obligatorio"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
+                                                            HttpServletRequest req) {
+        String campo = ex.getName();
+        return build(HttpStatus.BAD_REQUEST, "El parámetro '" + campo + "' no tiene un formato válido",
+                req, Map.of(campo, "Revisa el valor enviado"));
     }
 
     @ExceptionHandler(BusinessException.class)

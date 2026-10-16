@@ -63,6 +63,15 @@
         </select>
       </label>
 
+      <label class="field">
+        <span>Edad (años)</span>
+        <input
+          type="number" min="0" max="18" step="0.5" inputmode="decimal" placeholder="Cualquiera"
+          [value]="edadAnos()"
+          (change)="edadAnos.set($any($event.target).value); alCambiarFiltro()"
+        />
+      </label>
+
       <div class="field-row">
         <label class="field">
           <span>Precio mín.</span>
@@ -98,7 +107,7 @@
           (change)="alternarMiTalla()"
         />
         Solo mi talla sugerida
-        <small class="hint">Aplica a esta página de resultados</small>
+        <small class="hint">Filtra todo el catálogo según tu perfil</small>
       </label>
 
       <label class="field">
@@ -143,6 +152,14 @@
                 <div class="reco-card-body">
                   <h2 class="reco-card-title">{{ item.nombre }}</h2>
                   <p class="reco-price">{{ precio(item) }}</p>
+                  @if (sugerencias().get(item.id); as s) {
+                    <p class="reco-sugerida">
+                      <span class="talla-badge">Talla sugerida: {{ s.tallaSugerida }}</span>
+                      @if (s.riesgo === 'ADVERTENCIA' && s.advertencias.length > 0) {
+                        <span class="alert-warn" role="alert" [title]="s.advertencias.join(', ')">⚠ Alergia</span>
+                      }
+                    </p>
+                  }
                   @if (!item.disponible) {
                     <span class="alert-stock">Agotado</span>
                   }

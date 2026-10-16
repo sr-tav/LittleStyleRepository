@@ -30,6 +30,7 @@ export interface LineaResumenCheckout {
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
+  tallaSugerida?: string | null;
 }
 
 export interface ResumenCheckout {

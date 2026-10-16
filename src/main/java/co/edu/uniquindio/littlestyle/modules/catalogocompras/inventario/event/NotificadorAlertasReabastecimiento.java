@@ -28,14 +28,15 @@ public class NotificadorAlertasReabastecimiento {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alEmitirAlerta(AlertaReabastecimientoEmitida evento) {
-        log.info("Alerta de reabastecimiento {} emitida: vendedorId={} prendaId={} stock={} mínimo={} alertaId={}",
-                evento.nivel(), evento.vendedorId(), evento.prendaId(), evento.stockActual(),
+        log.info("Alerta de reabastecimiento {} emitida: vendedorId={} prendaId={} talla={} stock={} mínimo={} alertaId={}",
+                evento.nivel(), evento.vendedorId(), evento.prendaId(), evento.talla(), evento.stockActual(),
                 evento.stockMinimo(), evento.alertaId());
         usuarios.findById(evento.vendedorId()).ifPresentOrElse(
                 vendedor -> correo.enviarAlertaStock(
                         vendedor.getEmail(),
                         vendedor.getNombreTienda() == null ? vendedor.getNombre() : vendedor.getNombreTienda(),
                         evento.nombrePrenda(),
+                        evento.talla(),
                         evento.nivel().name(),
                         evento.stockActual(),
                         evento.stockMinimo()),

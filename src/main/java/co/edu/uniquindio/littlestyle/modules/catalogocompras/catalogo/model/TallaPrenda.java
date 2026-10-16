@@ -54,6 +54,23 @@ public class TallaPrenda {
     @Column(name = "peso_max_kg", nullable = false, precision = 5, scale = 1)
     private BigDecimal pesoMaxKg;
 
+    /**
+     * Edad orientativa en meses que cubre la talla (criterio de la US-09).
+     * Nula = la talla no declara rango de edad y coincide con cualquier filtro.
+     */
+    @Column(name = "edad_min_meses")
+    private Integer edadMinMeses;
+
+    @Column(name = "edad_max_meses")
+    private Integer edadMaxMeses;
+
+    /**
+     * Mínimo de esta talla para alertas de reabastecimiento. Nulo = la talla
+     * no alerta (cada talla es un SKU con demanda propia).
+     */
+    @Column(name = "stock_minimo")
+    private Integer stockMinimo;
+
     @Column(nullable = false)
     private int stock;
 }

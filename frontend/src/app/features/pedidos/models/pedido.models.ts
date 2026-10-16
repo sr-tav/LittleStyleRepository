@@ -1,6 +1,7 @@
 export type EstadoPedido =
   | 'PENDIENTE_PAGO'
   | 'PAGADO'
+  | 'REGISTRADO'
   | 'EN_PREPARACION'
   | 'ENVIADO'
   | 'CANCELADO';
@@ -8,6 +9,7 @@ export type EstadoPedido =
 export const ETIQUETAS_ESTADO: Record<EstadoPedido, string> = {
   PENDIENTE_PAGO: 'Pendiente de pago',
   PAGADO: 'Pagado',
+  REGISTRADO: 'Registrado',
   EN_PREPARACION: 'En preparación',
   ENVIADO: 'Enviado',
   CANCELADO: 'Cancelado',
@@ -17,6 +19,7 @@ export const ETIQUETAS_ESTADO: Record<EstadoPedido, string> = {
 export const ORDEN_ESTADOS: EstadoPedido[] = [
   'PENDIENTE_PAGO',
   'PAGADO',
+  'REGISTRADO',
   'EN_PREPARACION',
   'ENVIADO',
 ];

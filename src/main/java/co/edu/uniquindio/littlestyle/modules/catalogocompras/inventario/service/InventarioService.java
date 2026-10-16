@@ -53,9 +53,9 @@ public class InventarioService {
             TallaPrenda talla = prenda.buscarTalla(nombre).orElseThrow(() -> new BusinessException(
                     HttpStatus.BAD_REQUEST, "La prenda no tiene la talla " + nombre, "tallas"));
             talla.setStock(cambio.stock());
-        }
-        if (request.stockMinimo() != null) {
-            prenda.setStockMinimo(request.stockMinimo());
+            if (cambio.stockMinimo() != null) {
+                talla.setStockMinimo(cambio.stockMinimo());
+            }
         }
         prenda.setFechaActualizacion(LocalDateTime.now());
         alertas.evaluar(prenda);

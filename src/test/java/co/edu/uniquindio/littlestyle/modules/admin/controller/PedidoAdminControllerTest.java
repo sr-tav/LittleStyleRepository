@@ -62,4 +62,15 @@ class PedidoAdminControllerTest {
                 .content("{\"nuevo\":\"ENVIADO\"}"))
                 .andExpect(status().isConflict());
     }
+
+    @Test
+    void marcarPagadoAManoDevuelve409() throws Exception {
+        when(estados.avanzar(eq(7L), eq(EstadoPedido.PAGADO), any())).thenThrow(new BusinessException(
+                HttpStatus.CONFLICT, "El estado manual debe ser REGISTRADO, EN_PREPARACION, ENVIADO o CANCELADO"));
+
+        mockMvc.perform(put("/api/admin/pedidos/7/estado")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nuevo\":\"PAGADO\"}"))
+                .andExpect(status().isConflict());
+    }
 }

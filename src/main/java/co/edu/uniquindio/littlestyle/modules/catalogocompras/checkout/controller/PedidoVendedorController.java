@@ -2,20 +2,24 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.controlle
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoVendedorDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoVendedorResumenResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.AvanzarEstadoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoVendedorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 /**
- * Pedidos del vendedor autenticado para preparar despachos. Solo lectura: los
- * cambios de estado los hace el administrador.
+ * Pedidos del vendedor autenticado para preparar despachos. Puede avanzar
+ * sus pedidos a EN_PREPARACION y ENVIADO; cancelar es del administrador.
  */
 @RestController
 @RequestMapping("/api/vendedor/pedidos")
@@ -33,5 +37,11 @@ public class PedidoVendedorController {
     @GetMapping("/{id}")
     public ResponseEntity<PedidoVendedorDetalleResponse> detalle(@PathVariable Long id) {
         return ResponseEntity.ok(pedidos.detalle(id));
+    }
+
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<PedidoVendedorDetalleResponse> avanzarEstado(
+            @PathVariable Long id, @Valid @RequestBody AvanzarEstadoRequest request) {
+        return ResponseEntity.ok(pedidos.avanzarEstado(id, request));
     }
 }

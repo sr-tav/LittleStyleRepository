@@ -7,11 +7,12 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -20,7 +21,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Exploración del catálogo para el cliente autenticado (base de US-09).
@@ -40,6 +46,24 @@ public class CatalogoClienteService {
                                                           String precioMin, String precioMax, String disponible,
                                                           String material, String talla, int pagina,
                                                           int tamano, String orden) {
+        return explorar(texto, categoria, genero, precioMin, precioMax, disponible, material, talla, null, null,
+                pagina, tamano, orden);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
+                                                          String precioMin, String precioMax, String disponible,
+                                                          String material, String talla, List<Long> ids, int pagina,
+                                                          int tamano, String orden) {
+        return explorar(texto, categoria, genero, precioMin, precioMax, disponible, material, talla, ids, null,
+                pagina, tamano, orden);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
+                                                          String precioMin, String precioMax, String disponible,
+                                                          String material, String talla, List<Long> ids,
+                                                          Integer edadMeses, int pagina, int tamano, String orden) {
         if (pagina < 0) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "La página no puede ser negativa", "pagina");
         }
@@ -49,12 +73,39 @@ public class CatalogoClienteService {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "El precio mínimo no puede superar al máximo", "precioMin");
         }
+        if (edadMeses != null && edadMeses < 0) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "La edad no puede ser negativa", "edadMeses");
+        }
         Pageable paginable = PageRequest.of(pagina, Math.min(Math.max(tamano, 1), TAMANO_MAXIMO), orden(orden));
         String q = texto == null || texto.isBlank() ? null : texto.trim();
         String t = talla == null || talla.isBlank() ? null : talla.trim();
-        return PaginaResponse.from(prendaRepository.buscarVitrina(EstadoPrenda.ACTIVA, categoria(categoria),
-                genero(genero), min, max, q, disponibilidad(disponible), material(material), t,
-                paginable).map(PrendaVitrinaResponse::from));
+        List<MaterialTextil> materiales = materiales(material);
+        Page<Long> paginaIds;
+        if (ids != null) {
+            if (ids.isEmpty()) {
+                return PaginaResponse.from(Page.empty(paginable));
+            }
+            paginaIds = prendaRepository.buscarIdsVitrinaPorIds(EstadoPrenda.ACTIVA, ids,
+                    categoria(categoria), genero(genero), min, max, q, disponibilidad(disponible),
+                    materiales, t, edadMeses, paginable);
+        } else {
+            paginaIds = prendaRepository.buscarIdsVitrina(EstadoPrenda.ACTIVA,
+                    categoria(categoria), genero(genero), min, max, q, disponibilidad(disponible),
+                    materiales, t, edadMeses, paginable);
+        }
+        if (paginaIds.isEmpty()) {
+            return PaginaResponse.from(Page.empty(paginable));
+        }
+        // Paso 2: trae las tallas de la página ya calculada y reordena, porque
+        // el `in` no conserva el orden del `Pageable`.
+        Map<Long, Prenda> porId = new HashMap<>();
+        prendaRepository.buscarPorIds(paginaIds.getContent()).forEach(p -> porId.put(p.getId(), p));
+        List<PrendaVitrinaResponse> contenido = paginaIds.getContent().stream()
+                .map(porId::get)
+                .filter(Objects::nonNull)
+                .map(PrendaVitrinaResponse::from)
+                .toList();
+        return PaginaResponse.from(new PageImpl<>(contenido, paginable, paginaIds.getTotalElements()));
     }
 
     @Transactional(readOnly = true)
@@ -75,13 +126,18 @@ public class CatalogoClienteService {
         }
     }
 
-    private static MaterialTextil material(String valor) {
+    private static List<MaterialTextil> materiales(String valor) {
         if (valor == null || valor.isBlank()) return null;
-        try {
-            return MaterialTextil.valueOf(valor.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex ) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "El material no es válido", "material");
+        List<MaterialTextil> lista = new ArrayList<>();
+        for (String parte : valor.split(",")) {
+            if (parte.isBlank()) continue;
+            try {
+                lista.add(MaterialTextil.valueOf(parte.trim().toUpperCase(Locale.ROOT)));
+            } catch (IllegalArgumentException ex) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST, "El material no es válido", "material");
+            }
         }
+        return lista.isEmpty() ? null : lista;
     }
 
     private static GeneroPrenda genero(String valor) {
@@ -125,13 +181,16 @@ public class CatalogoClienteService {
     }
 
     private static Sort orden(String valor) {
+        // Desempate por id: sin orden total la paginación devuelve filas
+        // repetidas o saltadas entre páginas.
+        Sort desempate = Sort.by("id");
         if (valor == null || valor.isBlank() || valor.equalsIgnoreCase("novedades")) {
-            return Sort.by(Sort.Direction.DESC, "fechaActualizacion");
+            return Sort.by(Sort.Direction.DESC, "fechaActualizacion").and(desempate);
         }
         return switch (valor.trim()) {
-            case "precioAsc" -> Sort.by(Sort.Direction.ASC, "precio");
-            case "precioDesc" -> Sort.by(Sort.Direction.DESC, "precio");
-            case "nombre" -> Sort.by(Sort.Direction.ASC, "nombre");
+            case "precioAsc" -> Sort.by(Sort.Direction.ASC, "precio").and(desempate);
+            case "precioDesc" -> Sort.by(Sort.Direction.DESC, "precio").and(desempate);
+            case "nombre" -> Sort.by(Sort.Direction.ASC, "nombre").and(desempate);
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "El orden debe ser novedades, precioAsc, precioDesc o nombre", "orden");
         };

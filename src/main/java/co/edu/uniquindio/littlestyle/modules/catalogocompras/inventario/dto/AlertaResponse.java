@@ -9,7 +9,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.Ni
 import java.time.LocalDateTime;
 
 /**
- * Alerta activa con los valores actuales de la prenda. {@code diferencia} es stock actual menos mínimo
+ * Alerta activa con los valores actuales de la talla. {@code diferencia} es stock actual menos mínimo
  * (negativo o cero cuando hace falta reabastecer), como en UI-22.
  */
 public record AlertaResponse(
@@ -18,6 +18,7 @@ public record AlertaResponse(
         String nombre,
         CategoriaPrenda categoria,
         String imagenUrl,
+        String talla,
         NivelStock nivel,
         int stockActual,
         int stockMinimo,
@@ -27,11 +28,22 @@ public record AlertaResponse(
 
     public static AlertaResponse from(AlertaReabastecimiento alerta) {
         Prenda p = alerta.getPrenda();
-        int actual = p.stockTotal();
+        if (alerta.getTalla() == null) {
+            // Fila heredada de antes del mínimo por talla.
+            return new AlertaResponse(
+                    alerta.getId(), p.getId(), p.getNombre(), p.getCategoria(),
+                    p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null), null,
+                    alerta.getNivel(), alerta.getStockAlEmitir(), alerta.getStockMinimoAlEmitir(),
+                    alerta.getStockAlEmitir() - alerta.getStockMinimoAlEmitir(),
+                    alerta.getFechaEmision());
+        }
+        var talla = p.getTallas().stream().filter(t -> t.getTalla().equals(alerta.getTalla())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("La talla ya no existe"));
+        int minimo = talla.getStockMinimo() == null ? 0 : talla.getStockMinimo();
         return new AlertaResponse(
                 alerta.getId(), p.getId(), p.getNombre(), p.getCategoria(),
-                p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null),
-                alerta.getNivel(), actual, p.getStockMinimo(), actual - p.getStockMinimo(),
+                p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null), talla.getTalla(),
+                alerta.getNivel(), talla.getStock(), minimo, talla.getStock() - minimo,
                 alerta.getFechaEmision());
     }
 }

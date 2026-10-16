@@ -14,6 +14,12 @@ public record AgregarItemCarritoRequest(
         String talla,
         @NotNull(message = "La cantidad es obligatoria")
         @Positive(message = "La cantidad debe ser mayor que cero")
-        Integer cantidad
+        Integer cantidad,
+        /**
+         * Talla que sugirió el motor al agregar (RNF-11: permite medir la
+         * adopción de la recomendación). Opcional; no se valida contra stock.
+         */
+        @Size(max = 10, message = "La talla sugerida no puede superar 10 caracteres")
+        String tallaSugerida
 ) {
 }
