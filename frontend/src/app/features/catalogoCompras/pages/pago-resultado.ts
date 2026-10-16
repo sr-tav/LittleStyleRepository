@@ -1,12 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { EMPTY, catchError, concatMap, from, last, switchMap, take, takeWhile, throwError, timer } from 'rxjs';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { EMPTY, catchError, switchMap, take, takeWhile, throwError, timer } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
-import { PagoWompi } from '../components/pago-wompi';
 import { ResultadoPago } from '../models/pago.models';
 import { formatearPrecio } from '../models/prenda-opciones';
 import { CarritoService } from '../services/carrito.service';
@@ -28,12 +27,11 @@ const esTransitorio = (error: unknown) =>
 /** UI-15: confirmación del pago tras volver del Widget o de la redirección de Wompi. */
 @Component({
   selector: 'app-pago-resultado',
-  imports: [Navbar, RouterLink, PagoWompi],
+  imports: [Navbar, RouterLink],
   templateUrl: './pago-resultado.html',
 })
 export class PagoResultadoPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly pagoService = inject(PagoService);
   private readonly carrito = inject(CarritoService);
@@ -41,7 +39,6 @@ export class PagoResultadoPage implements OnInit {
   protected readonly resultado = signal<ResultadoPago | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly recomprando = signal(false);
   protected readonly precio = formatearPrecio;
 
   protected readonly vista = computed(() => {
@@ -85,6 +82,11 @@ export class PagoResultadoPage implements OnInit {
       next: (resultado) => {
         this.resultado.set(resultado);
         this.cargando.set(false);
+        if (resultado.estadoPago === 'APROBADA') {
+          this.carrito.cargar().subscribe({
+            error: (error: unknown) => this.error.set(procesarErrorApi(error)),
+          });
+        }
       },
       error: (error: unknown) => {
         this.error.set(procesarErrorApi(error));
@@ -100,25 +102,4 @@ export class PagoResultadoPage implements OnInit {
     });
   }
 
-  /** Vuelve a agregar al carrito las prendas que sí tenían stock y regresa al checkout. */
-  protected continuarSinAgotadas(): void {
-    const lineas = this.resultado()?.lineasDisponibles ?? [];
-    if (lineas.length === 0 || this.recomprando()) return;
-    this.recomprando.set(true);
-    this.error.set(null);
-    from(lineas).pipe(
-      concatMap((linea) => this.carrito.agregar({
-        prendaId: linea.prendaId,
-        talla: linea.talla,
-        cantidad: linea.cantidad,
-      })),
-      last(),
-    ).subscribe({
-      next: () => void this.router.navigate(['/cliente/checkout']),
-      error: (error: unknown) => {
-        this.error.set(procesarErrorApi(error));
-        this.recomprando.set(false);
-      },
-    });
-  }
 }

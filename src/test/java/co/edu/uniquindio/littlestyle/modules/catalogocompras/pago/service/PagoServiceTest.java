@@ -11,6 +11,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoCheckoutService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoPagoService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.ResultadoConfirmacionPago;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.EventoWompiRequest;
@@ -21,6 +22,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.EstadoTr
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.MotivoReembolso;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.TransaccionPago;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service.ProcesadorCheckoutPagadoService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +36,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -72,6 +75,10 @@ class PagoServiceTest {
     private TransaccionPagoRepository transaccionPagoRepository;
     @Mock
     private PedidoPagoService pedidoPagoService;
+    @Mock
+    private PedidoCheckoutService pedidoCheckoutService;
+    @Mock
+    private ProcesadorCheckoutPagadoService procesadorCheckoutPagadoService;
     @Mock
     private FirmaWompiService firmaWompiService;
     @Mock
@@ -403,6 +410,7 @@ class PagoServiceTest {
         CheckoutProperties checkout = new CheckoutProperties(new BigDecimal("7000"), new BigDecimal("10000"),
                 new BigDecimal("15000"), List.of(), Duration.ofMinutes(30));
         return new PagoService(pedidoRepository, transaccionPagoRepository, pedidoPagoService,
+                pedidoCheckoutService, procesadorCheckoutPagadoService, new ObjectMapper(),
                 firmaWompiService, wompiClient, propiedades, checkout, PagoProperties.porDefecto(),
                 new TransactionTemplate(mock(PlatformTransactionManager.class)), CLOCK);
     }

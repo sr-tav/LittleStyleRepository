@@ -9,7 +9,7 @@ import { PagoWompi } from './pago-wompi';
 
 describe('PagoWompi', () => {
   const inicio = {
-    pedidoId: 55,
+    pedidoId: null,
     referencia: 'LS-55-ABC',
     montoCentavos: 7280000,
     moneda: 'COP',
@@ -19,6 +19,18 @@ describe('PagoWompi', () => {
     emailCliente: null,
     nombreCliente: null,
     telefonoCliente: null,
+  };
+  const solicitud = {
+    perfilInfantilId: 3,
+    direccion: {
+      destinatario: 'Ana Ruiz',
+      direccion: 'Calle 1 # 2-3',
+      complemento: null,
+      codigoPostal: '630001',
+      departamento: 'Quindío',
+      municipio: 'Armenia',
+      telefono: '3001234567',
+    },
   };
   const pagoService = { iniciar: vi.fn() };
   const widget = { abrir: vi.fn() };
@@ -38,7 +50,8 @@ describe('PagoWompi', () => {
 
   function crear(etiqueta?: string) {
     const fixture = TestBed.createComponent(PagoWompi);
-    fixture.componentRef.setInput('pedidoId', 55);
+    fixture.componentRef.setInput('solicitud', solicitud);
+    fixture.componentRef.setInput('claveIdempotencia', 'clave-1');
     if (etiqueta) fixture.componentRef.setInput('etiqueta', etiqueta);
     fixture.detectChanges();
     return { fixture, root: fixture.nativeElement as HTMLElement };
@@ -51,7 +64,7 @@ describe('PagoWompi', () => {
 
     root.querySelector<HTMLButtonElement>('button')?.click();
 
-    expect(pagoService.iniciar).toHaveBeenCalledWith(55);
+    expect(pagoService.iniciar).toHaveBeenCalledWith(solicitud, 'clave-1');
     expect(widget.abrir).toHaveBeenCalledWith(inicio, expect.any(Function));
     expect(navigate).toHaveBeenCalledWith(['/cliente/pago/resultado'], { queryParams: { id: 'wompi-1' } });
   });
@@ -97,7 +110,7 @@ describe('PagoWompi', () => {
   it('muestra el aviso de intentar más tarde si el pago no responde a tiempo', () => {
     pagoService.iniciar.mockReturnValue(throwError(() => new HttpErrorResponse({
       status: 504,
-      error: { mensaje: 'El pago está tardando en responder. Intenta más tarde; tu pedido se conserva.' },
+      error: { mensaje: 'El pago está tardando en responder. Intenta más tarde; tu carrito se conserva.' },
     })));
     const { fixture, root } = crear();
 
@@ -111,7 +124,7 @@ describe('PagoWompi', () => {
   it('muestra el error del backend si no se puede iniciar el pago', () => {
     pagoService.iniciar.mockReturnValue(throwError(() => new HttpErrorResponse({
       status: 409,
-      error: { mensaje: 'El pedido no está pendiente de pago' },
+      error: { mensaje: 'El carrito está vacío' },
     })));
     const { fixture, root } = crear();
 

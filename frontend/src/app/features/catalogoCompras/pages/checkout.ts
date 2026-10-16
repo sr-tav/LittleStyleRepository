@@ -1,19 +1,19 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   FormBuilder,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { concatMap, forkJoin, from, last, switchMap, tap } from 'rxjs';
+import { forkJoin } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
 import { formatearPrecio } from '../models/prenda-opciones';
-import { DireccionEnvio, PedidoCreado, ResumenCheckout } from '../models/checkout.models';
+import { DireccionEnvio, ResumenCheckout } from '../models/checkout.models';
 import { DEPARTAMENTOS_COLOMBIA, municipiosDe } from '../data/municipios-colombia';
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
@@ -40,12 +40,12 @@ export class CheckoutPage implements OnInit {
   protected readonly perfilId = signal<number | null>(null);
   protected readonly paso = signal<'informacion' | 'resumen'>('informacion');
   protected readonly resumen = signal<ResumenCheckout | null>(null);
-  protected readonly pedido = signal<PedidoCreado | null>(null);
-  /** Clave del ciclo de confirmación vigente; reintentar con ella no duplica el pedido. */
-  protected readonly claveIdempotencia = signal<string | null>(null);
-  protected readonly conflictoStock = signal(false);
-  protected readonly prendasAgotadas = signal<{ id: number; nombre: string; talla: string }[]>([]);
-  protected readonly carritoVacioPorStock = signal(false);
+  protected readonly claveIdempotencia = signal(crypto.randomUUID());
+  protected readonly solicitudPago = computed(() => {
+    const perfilInfantilId = this.perfilId();
+    if (this.resumen() === null || perfilInfantilId === null) return null;
+    return { perfilInfantilId, direccion: this.direccionFormulario() };
+  });
   protected readonly cargando = signal(true);
   protected readonly procesando = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -163,6 +163,7 @@ export class CheckoutPage implements OnInit {
     }).subscribe({
       next: (resumen) => {
         this.resumen.set(resumen);
+        this.claveIdempotencia.set(crypto.randomUUID());
         this.paso.set('resumen');
         this.procesando.set(false);
       },
@@ -221,123 +222,8 @@ export class CheckoutPage implements OnInit {
   }
 
   protected volverAInformacion(): void {
-    if (this.pedido()) return;
     this.paso.set('informacion');
     this.resumen.set(null);
-  }
-
-  protected continuarSinPrendasAgotadas(): void {
-    if (this.procesando()) return;
-    const agotadas = this.carrito.items().filter((item) => !item.disponible);
-    const perfilInfantilId = this.perfilId();
-    if (agotadas.length === 0 || perfilInfantilId === null) return;
-
-    this.procesando.set(true);
-    this.error.set(null);
-    this.prendasAgotadas.set(agotadas.map(({ id, nombre, talla }) => ({ id, nombre, talla })));
-    from(agotadas).pipe(
-      concatMap((item) => this.carrito.quitar(item.id)),
-      last(),
-      switchMap((carrito) => {
-        if (carrito.items.length === 0) {
-          return from([]);
-        }
-        return this.checkoutService.calcularResumen({
-          perfilInfantilId,
-          direccion: this.direccionFormulario(),
-        }).pipe(
-          tap((resumen) => {
-            this.resumen.set(resumen);
-            // Cada resumen nuevo abre un ciclo de confirmación con clave propia;
-            // reintentar con la misma clave devuelve el pedido ya creado.
-            this.claveIdempotencia.set(crypto.randomUUID());
-          }),
-          switchMap(() => this.checkoutService.crearPedido({
-            perfilInfantilId,
-            direccion: this.direccionFormulario(),
-          }, this.claveIdempotencia())),
-        );
-      }),
-    ).subscribe({
-      next: (pedido) => {
-        this.pedido.set(pedido);
-        this.conflictoStock.set(false);
-        this.prendasAgotadas.set([]);
-        this.carritoVacioPorStock.set(false);
-        this.procesando.set(false);
-        this.carrito.cargar().subscribe({
-          error: (error: unknown) => this.error.set(procesarErrorApi(error)),
-        });
-      },
-      complete: () => {
-        if (this.carrito.items().length === 0 && !this.pedido()) {
-          this.resumen.set(null);
-          this.claveIdempotencia.set(null);
-          this.carritoVacioPorStock.set(true);
-          this.conflictoStock.set(false);
-          this.procesando.set(false);
-        }
-      },
-      error: (error: unknown) => {
-        if (error instanceof HttpErrorResponse && error.status === 409) {
-          this.actualizarCarritoTrasConflicto(error);
-          return;
-        }
-        this.error.set(procesarErrorApi(error));
-        this.procesando.set(false);
-      },
-    });
-  }
-
-  protected confirmarPedido(): void {
-    if (this.procesando() || this.pedido() || this.resumen() === null) return;
-    const perfilInfantilId = this.perfilId();
-    if (perfilInfantilId === null) {
-      this.error.set('Selecciona un perfil infantil para confirmar el pedido.');
-      return;
-    }
-    if (this.claveIdempotencia() === null) {
-      this.claveIdempotencia.set(crypto.randomUUID());
-    }
-    this.procesando.set(true);
-    this.error.set(null);
-    this.checkoutService.crearPedido({
-      perfilInfantilId,
-      direccion: this.direccionFormulario(),
-    }, this.claveIdempotencia()).subscribe({
-      next: (pedido) => {
-        this.pedido.set(pedido);
-        this.procesando.set(false);
-        this.carrito.cargar().subscribe({
-          error: (error: unknown) => this.error.set(procesarErrorApi(error)),
-        });
-      },
-      error: (error: unknown) => {
-        if (!(error instanceof HttpErrorResponse) || error.status !== 409) {
-          this.error.set(procesarErrorApi(error));
-          this.procesando.set(false);
-          return;
-        }
-        this.actualizarCarritoTrasConflicto(error);
-      },
-    });
-  }
-
-  private actualizarCarritoTrasConflicto(error: HttpErrorResponse): void {
-    this.carrito.cargar().subscribe({
-      next: (carrito) => {
-        const agotadas = carrito.items.filter((item) => !item.disponible);
-        this.conflictoStock.set(agotadas.length > 0);
-        this.prendasAgotadas.set(agotadas.map(({ id, nombre, talla }) => ({ id, nombre, talla })));
-        this.carritoVacioPorStock.set(false);
-        this.error.set(agotadas.length > 0 ? null : procesarErrorApi(error));
-        this.procesando.set(false);
-      },
-      error: (errorCarga: unknown) => {
-        this.error.set(procesarErrorApi(errorCarga));
-        this.procesando.set(false);
-      },
-    });
   }
 
   protected stockDisponible(): boolean {

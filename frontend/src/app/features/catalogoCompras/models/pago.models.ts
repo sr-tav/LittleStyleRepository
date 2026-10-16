@@ -1,5 +1,7 @@
+import { CrearPedidoRequest } from './checkout.models';
+
 export interface InicioPago {
-  pedidoId: number;
+  pedidoId: number | null;
   referencia: string;
   montoCentavos: number;
   moneda: string;
@@ -38,13 +40,15 @@ export interface LineaRecompra {
 }
 
 export interface ResultadoPago {
-  pedidoId: number;
+  pedidoId: number | null;
   referencia: string;
   estadoPago: EstadoTransaccionPago;
-  estadoPedido: 'PENDIENTE_PAGO' | 'PAGADO' | 'EN_PREPARACION' | 'ENVIADO' | 'CANCELADO';
+  estadoPedido: 'PENDIENTE_PAGO' | 'PAGADO' | 'EN_PREPARACION' | 'ENVIADO' | 'CANCELADO' | null;
   motivoReembolso: MotivoReembolso | null;
   metodoPago: string | null;
   total: number;
   prendasAgotadas: PrendaAgotadaPago[];
   lineasDisponibles: LineaRecompra[];
 }
+
+export type SolicitudPago = CrearPedidoRequest;
