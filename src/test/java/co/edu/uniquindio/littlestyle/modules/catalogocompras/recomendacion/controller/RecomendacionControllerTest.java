@@ -61,6 +61,16 @@ class RecomendacionControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("El perfil no tiene mediciones"));
     }
 
+    @Test void listarConMedicionDesactualizadaDevuelve422ConCodigo() throws Exception {
+        when(perfiles.obtenerActivos(1L)).thenThrow(new BusinessException(
+                HttpStatus.UNPROCESSABLE_ENTITY, "Medición desactualizada, registra una nueva",
+                "perfilId", "MEDICION_DESACTUALIZADA"));
+
+        mockMvc.perform(get("/api/cliente/recomendaciones").param("perfilId", "1"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("MEDICION_DESACTUALIZADA"));
+    }
+
     @Test void porPrendaDevuelve200() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.recomendarParaPrenda(any(), eq(1L))).thenReturn(

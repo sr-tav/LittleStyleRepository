@@ -12,14 +12,20 @@ public class BusinessException extends RuntimeException {
 
     private final HttpStatus status;
     private final String campo;
+    private final String codigo;
 
     public BusinessException(HttpStatus status, String mensaje) {
-        this(status, mensaje, null);
+        this(status, mensaje, null, null);
     }
 
     public BusinessException(HttpStatus status, String mensaje, String campo) {
+        this(status, mensaje, campo, null);
+    }
+
+    public BusinessException(HttpStatus status, String mensaje, String campo, String codigo) {
         super(mensaje);
         this.status = status;
         this.campo = campo;
+        this.codigo = codigo;
     }
 }

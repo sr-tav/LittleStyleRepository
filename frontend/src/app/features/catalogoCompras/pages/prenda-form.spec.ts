@@ -78,6 +78,19 @@ describe('PrendaForm (UI-20)', () => {
     expect(tallasValidas(new FormArray([talla('4'), talla('6')]))).toBeNull();
   });
 
+  it('muestra el inventario por talla con sus casillas en la sección Inventario', () => {
+    const { fixture, c, el } = crear();
+    completar(c);
+    fixture.detectChanges();
+
+    const inventario = el.querySelector('[aria-label="Inventario por talla"]');
+    expect(inventario?.textContent).toContain('xs');
+    const stock = inventario?.querySelector<HTMLInputElement>('#stock-0');
+    const minimo = inventario?.querySelector<HTMLInputElement>('#minimo-0');
+    expect(stock?.value).toBe('6');
+    expect(minimo?.value).toBe('2');
+  });
+
   it('no envía la prenda si el formulario es inválido', () => {
     const { fixture, c, el } = crear();
     c.form.patchValue({ nombre: 'Vestido', precio: 45900 });

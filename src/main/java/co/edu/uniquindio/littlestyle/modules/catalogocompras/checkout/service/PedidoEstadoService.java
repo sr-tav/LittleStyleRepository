@@ -31,42 +31,30 @@ import java.util.Set;
 public class PedidoEstadoService {
 
     /**
-     * Transiciones manuales del ADMINISTRADOR. PAGADO y PENDIENTE_PAGO se
-     * excluyen: marcar pagado a mano vendería sin pago ni descuento de stock.
+     * Transiciones manuales del ADMINISTRADOR. Con despachos por vendedor nadie
+     * edita el estado global a mano: el administrador solo puede CANCELAR (con
+     * reposición total). El avance lo hace cada vendedor sobre su despacho y el
+     * pedido madre se recalcula de forma derivada.
      */
-    private static final Set<EstadoPedido> MANUAL_ADMIN = EnumSet.of(
-            EstadoPedido.REGISTRADO, EstadoPedido.EN_PREPARACION, EstadoPedido.ENVIADO, EstadoPedido.CANCELADO);
-    /**
-     * Transiciones manuales del VENDEDOR sobre sus pedidos: solo avanzar
-     * (preparar y despachar). Cancelar es del administrador porque el pedido
-     * tiene estado y guía únicos aunque incluya varios vendedores.
-     */
-    private static final Set<EstadoPedido> MANUAL_VENDEDOR = EnumSet.of(
-            EstadoPedido.EN_PREPARACION, EstadoPedido.ENVIADO);
+    private static final Set<EstadoPedido> MANUAL_ADMIN = EnumSet.of(EstadoPedido.CANCELADO);
     /** Cancelar repone stock solo si ya se había descontado (hubo pago). */
     private static final Set<EstadoPedido> CON_STOCK_DESCONTADO = EnumSet.of(
-            EstadoPedido.PAGADO, EstadoPedido.REGISTRADO, EstadoPedido.EN_PREPARACION);
+            EstadoPedido.PAGADO, EstadoPedido.REGISTRADO, EstadoPedido.EN_PREPARACION,
+            EstadoPedido.PARCIALMENTE_ENVIADO);
 
     private final PedidoRepository pedidoRepository;
     private final HistorialEstadoRepository historialRepository;
     private final PrendaRepository prendaRepository;
     private final AlertasInventarioService alertasInventarioService;
+    private final co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DespachoRepository despachoRepository;
     private final ApplicationEventPublisher eventos;
 
     @Transactional
     public Pedido avanzar(Long pedidoId, EstadoPedido nuevo, String numeroGuia) {
         if (nuevo == null || !MANUAL_ADMIN.contains(nuevo)) {
             throw new BusinessException(HttpStatus.CONFLICT,
-                    "El estado manual debe ser REGISTRADO, EN_PREPARACION, ENVIADO o CANCELADO", "nuevo");
-        }
-        return avanzarConBloqueo(pedidoId, nuevo, numeroGuia);
-    }
-
-    @Transactional
-    public Pedido avanzarComoVendedor(Long pedidoId, EstadoPedido nuevo, String numeroGuia) {
-        if (nuevo == null || !MANUAL_VENDEDOR.contains(nuevo)) {
-            throw new BusinessException(HttpStatus.CONFLICT,
-                    "El vendedor solo puede avanzar a EN_PREPARACION o ENVIADO", "nuevo");
+                    "El administrador solo puede cancelar el pedido; el avance lo hace cada vendedor en su despacho",
+                    "nuevo");
         }
         return avanzarConBloqueo(pedidoId, nuevo, numeroGuia);
     }
@@ -93,6 +81,15 @@ public class PedidoEstadoService {
         Pedido pedido = pedidoRepository.bloquearPorId(pedidoId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
         EstadoPedido anterior = pedido.getEstado();
+        if (nuevo == EstadoPedido.CANCELADO) {
+            boolean parcial = anterior == EstadoPedido.PARCIALMENTE_ENVIADO
+                    || despachoRepository.findAllByPedidoIdOrderByIdAsc(pedidoId).stream()
+                            .anyMatch(d -> d.getEstado() == EstadoPedido.ENVIADO);
+            if (parcial || anterior == EstadoPedido.ENVIADO) {
+                throw new BusinessException(HttpStatus.CONFLICT,
+                        "No se puede cancelar un pedido ya parcial o totalmente enviado", "estado");
+            }
+        }
         pedido.avanzarA(nuevo, numeroGuia);
         if (nuevo == EstadoPedido.CANCELADO && CON_STOCK_DESCONTADO.contains(anterior)) {
             reponerStock(pedido);
@@ -114,29 +111,27 @@ public class PedidoEstadoService {
     /**
      * Devuelve al inventario lo descontado al pagar. El reembolso del dinero
      * NO es automático y queda pendiente del dueño (se documenta en US-12).
+     * Si una línea falla, la transacción completa falla (rollback): dejar el
+     * pedido CANCELADO con stock repuesto a medias y solo un log es peor que
+     * reintentar la cancelación. La discrepancia queda en el log con el error.
      */
     private void reponerStock(Pedido pedido) {
         for (LineaPedido linea : pedido.getItems()) {
-            try {
-                Prenda prenda = prendaRepository.bloquearPorId(linea.getPrendaId()).orElse(null);
-                if (prenda == null) {
-                    log.warn("Sin reposición: prenda {} del pedido {} ya no existe",
-                            linea.getPrendaId(), pedido.getId());
-                    continue;
-                }
-                String tallaNombre = linea.getTalla().trim().toUpperCase(Locale.ROOT);
-                TallaPrenda talla = prenda.buscarTalla(tallaNombre).orElse(null);
-                if (talla == null) {
-                    log.warn("Sin reposición: talla {} de la prenda {} ya no existe",
-                            tallaNombre, linea.getPrendaId());
-                    continue;
-                }
-                talla.setStock(talla.getStock() + linea.getCantidad());
-                alertasInventarioService.evaluar(prenda);
-            } catch (RuntimeException ex) {
-                log.error("Sin reposición para la línea {} del pedido {}",
-                        linea.getPrendaId(), pedido.getId(), ex);
+            Prenda prenda = prendaRepository.bloquearPorId(linea.getPrendaId()).orElse(null);
+            if (prenda == null) {
+                throw new BusinessException(HttpStatus.CONFLICT,
+                        "No se pudo reponer el stock: la prenda " + linea.getPrendaId()
+                                + " del pedido " + pedido.getId() + " ya no existe");
             }
+            String tallaNombre = linea.getTalla().trim().toUpperCase(Locale.ROOT);
+            TallaPrenda talla = prenda.buscarTalla(tallaNombre).orElse(null);
+            if (talla == null) {
+                throw new BusinessException(HttpStatus.CONFLICT,
+                        "No se pudo reponer el stock: la talla " + tallaNombre + " de la prenda "
+                                + linea.getPrendaId() + " ya no existe");
+            }
+            talla.setStock(talla.getStock() + linea.getCantidad());
+            alertasInventarioService.evaluar(prenda);
         }
     }
 }

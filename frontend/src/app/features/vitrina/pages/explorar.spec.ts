@@ -108,7 +108,7 @@ describe('Explorar (US-09)', () => {
     expect(el.textContent).toContain('Pantalón Jogger Azul');
   });
 
-  it('filtra por mi talla en el servidor con los ids recomendados (US-07)', () => {
+  it('filtra por mi talla en el servidor con perfilId sin ids en la URL (US-07)', () => {
     perfilActual = { id: 3 };
     const { fixture, el } = crear();
 
@@ -116,9 +116,13 @@ describe('Explorar (US-09)', () => {
     casillas[1].click();
     fixture.detectChanges();
 
-    http.expectOne('/api/cliente/recomendaciones/ids?perfilId=3').flush([10, 20]);
+    // Solo viaja el perfilId: el servidor calcula los ids recomendados dentro.
     const conFiltro = http.expectOne(
-      (p) => p.url === '/api/cliente/catalogo' && p.params.get('ids') === '10,20',
+      (p) =>
+        p.url === '/api/cliente/catalogo' &&
+        p.params.get('perfilId') === '3' &&
+        p.params.get('soloMiTalla') === 'true' &&
+        !p.params.has('ids'),
     );
     expect(conFiltro.request.params.get('pagina')).toBe('0');
     conFiltro.flush(pagina([item()]));

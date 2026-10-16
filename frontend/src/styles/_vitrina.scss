@@ -90,6 +90,12 @@
     border-bottom: 1px solid var(--ls-border);
   }
 
+  .detail-card dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
   .detail-card > div:last-child {
     border-bottom: 0;
   }
@@ -317,6 +323,10 @@
   box-shadow: var(--ls-shadow);
 }
 
+.catalog-table.tabla-medidas {
+  min-width: 0;
+}
+
 .tabla-medidas {
   min-width: 0;
 
@@ -382,6 +392,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
   padding: 1.1rem 1.25rem;
   border: 1px solid var(--ls-border);
@@ -507,8 +518,8 @@ li.is-actual .pedido-punto {
   li {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
     padding: 0.6rem 0;
     border-bottom: 1px solid var(--ls-border);
   }
@@ -518,8 +529,47 @@ li.is-actual .pedido-punto {
   }
 }
 
+.pedido-item-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+
+  strong {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Miniatura del producto en el detalle del pedido, como cualquier e-commerce. */
+.pedido-miniatura {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--ls-bg);
+}
+
+.pedido-miniatura-vacia {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: var(--ls-primary-dark);
+  background: var(--ls-primary-soft);
+}
+
+.price-cell {
+  margin-left: auto;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 @media (max-width: 600px) {
   .pedido-linea-tiempo {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pedido-items li {
+    gap: 0.6rem;
   }
 }

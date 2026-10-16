@@ -3,6 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.DespachoEnviadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoEnviadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagoRechazadoEvent;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoEstadoCambiadoEvent;
@@ -35,6 +36,7 @@ public class NotificacionPedidoListener {
 
     private final PedidoRepository pedidoRepository;
     private final PrendaRepository prendaRepository;
+    private final co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DespachoRepository despachoRepository;
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository transaccionRepository;
     private final CorreoService correo;
 
@@ -49,13 +51,38 @@ public class NotificacionPedidoListener {
     public void alEnviarse(PedidoEnviadoEvent evento) {
         pedidoRepository.findById(evento.pedidoId()).ifPresent(pedido -> {
             List<CorreoService.ItemCorreo> items = pedido.getItems().stream()
-                    .map(i -> new CorreoService.ItemCorreo(i.getNombre(), i.getTalla(), i.getCantidad()))
+                    .map(this::itemDe)
                     .toList();
             correo.enviarPedidoEnviado(
                     pedido.getCliente().getEmail(),
                     pedido.getCliente().getNombre(),
                     pedido.getId(),
                     pedido.getNumeroGuia(),
+                    pedido.getTotal().toPlainString(),
+                    items);
+        });
+    }
+
+    /**
+     * Un correo por despacho, con su guía: cuando un vendedor envía su paquete,
+     * el cliente recibe el aviso con la guía de ese paquete y solo sus líneas.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alEnviarDespacho(DespachoEnviadoEvent evento) {
+        var despachoOpt = despachoRepository.findById(evento.despachoId());
+        if (despachoOpt.isEmpty()) return;
+        var despacho = despachoOpt.get();
+        pedidoRepository.findById(evento.pedidoId()).ifPresent(pedido -> {
+            List<CorreoService.ItemCorreo> items = pedido.getItems().stream()
+                    .filter(i -> i.getDespacho() != null && i.getDespacho().getId().equals(despacho.getId()))
+                    .map(this::itemDe)
+                    .toList();
+            correo.enviarPedidoEnviado(
+                    pedido.getCliente().getEmail(),
+                    pedido.getCliente().getNombre(),
+                    pedido.getId(),
+                    despacho.getNumeroGuia(),
                     pedido.getTotal().toPlainString(),
                     items);
         });
@@ -118,7 +145,7 @@ public class NotificacionPedidoListener {
         for (var entry : lineasPorVendedor.entrySet()) {
             var vendedor = vendedores.get(entry.getKey());
             List<CorreoService.ItemCorreo> items = entry.getValue().stream()
-                    .map(i -> new CorreoService.ItemCorreo(i.getNombre(), i.getTalla(), i.getCantidad()))
+                    .map(this::itemDe)
                     .toList();
             correo.enviarPedidoNuevoVendedor(
                     vendedor.getEmail(),
@@ -132,8 +159,9 @@ public class NotificacionPedidoListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alCambiarEstado(PedidoEstadoCambiadoEvent evento) {
-        if (evento.nuevo() == EstadoPedido.ENVIADO) {
-            return; // ya tiene correo propio con guía
+        if (evento.nuevo() == EstadoPedido.ENVIADO
+                || evento.nuevo() == EstadoPedido.PARCIALMENTE_ENVIADO) {
+            return; // ya tiene correo propio por despacho con su guía
         }
         pedidoRepository.findById(evento.pedidoId()).ifPresent(pedido -> correo.enviarCambioEstado(
                 pedido.getCliente().getEmail(),
@@ -143,10 +171,24 @@ public class NotificacionPedidoListener {
                 pedido.getTotal().toPlainString()));
     }
 
-    private static List<CorreoService.ItemCorreo> itemsDe(
+    private List<CorreoService.ItemCorreo> itemsDe(
             co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido pedido) {
         return pedido.getItems().stream()
-                .map(i -> new CorreoService.ItemCorreo(i.getNombre(), i.getTalla(), i.getCantidad()))
+                .map(this::itemDe)
                 .toList();
+    }
+
+    /**
+     * Línea estilo e-commerce: la imagen se resuelve desde la prenda actual
+     * (la línea solo guarda el snapshot de compra); si la prenda ya no tiene
+     * fotos, la fila sale sin imagen pero con toda la información.
+     */
+    private CorreoService.ItemCorreo itemDe(LineaPedido linea) {
+        String imagen = prendaRepository.findById(linea.getPrendaId())
+                .flatMap(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda::imagenPrincipal)
+                .map(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda::getUrl)
+                .orElse(null);
+        return new CorreoService.ItemCorreo(linea.getNombre(), linea.getTalla(), linea.getCantidad(),
+                linea.getPrecioUnitario().toPlainString(), linea.getSubtotal().toPlainString(), imagen);
     }
 }

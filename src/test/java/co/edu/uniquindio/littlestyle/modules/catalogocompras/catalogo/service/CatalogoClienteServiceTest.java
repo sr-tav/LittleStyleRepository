@@ -35,6 +35,10 @@ class CatalogoClienteServiceTest {
 
     @Mock
     private PrendaRepository prendaRepository;
+    @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.PerfilBiometricoPort perfiles;
+    @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.MotorRecomendacionService motor;
 
     @InjectMocks
     private CatalogoClienteService service;
@@ -181,6 +185,55 @@ class CatalogoClienteServiceTest {
     @Test
     void generoInvalidoDevuelve400() {
         assertThatThrownBy(() -> service.explorar(null, null, "ADULTO", null, null, null, null, null, 0, 12, "novedades"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void soloMiTallaResuelveIdsDentroDelServidor() {
+        var p = prenda(10L, 5, 3, 0);
+        var bio = org.mockito.Mockito.mock(
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.dto.PerfilBiometrico.class);
+        when(perfiles.obtenerActivos(3L)).thenReturn(bio);
+        when(motor.idsRecomendados(bio)).thenReturn(List.of(10L, 20L));
+        when(prendaRepository.buscarIdsVitrinaPorIds(eq(EstadoPrenda.ACTIVA), eq(List.of(10L, 20L)), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(10L), PageRequest.of(0, 12), 1));
+        when(prendaRepository.buscarPorIds(List.of(10L))).thenReturn(List.of(p));
+
+        var pagina = service.explorar(null, null, null, null, null, null, null, null, null,
+                3L, true, null, 0, 12, "novedades");
+
+        assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
+    }
+
+    @Test
+    void soloMiTallaSinPerfilDevuelve400() {
+        assertThatThrownBy(() -> service.explorar(null, null, null, null, null, null, null, null, null,
+                null, true, null, 0, 12, "novedades"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void precioYDisponibilidadFiltranEnBaseDeDatos() {
+        var p = prenda(10L, 5, 3, 0);
+        when(prendaRepository.buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(),
+                eq(new java.math.BigDecimal("10000")), eq(new java.math.BigDecimal("50000")), any(),
+                eq(Boolean.TRUE), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(10L), PageRequest.of(0, 12), 1));
+        when(prendaRepository.buscarPorIds(List.of(10L))).thenReturn(List.of(p));
+
+        var pagina = service.explorar(null, null, null, "10000", "50000", "true", null, null, null,
+                null, 0, 12, "novedades");
+
+        assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
+    }
+
+    @Test
+    void disponibilidadInvalidaDevuelve400() {
+        assertThatThrownBy(() -> service.explorar(null, null, null, null, null, "si", null, null,
+                null, null, 0, 12, "novedades"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }

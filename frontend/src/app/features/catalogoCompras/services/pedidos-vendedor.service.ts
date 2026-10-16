@@ -3,25 +3,29 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { PedidoVendedorDetalle, PedidoVendedorResumen } from '../models/pedido-vendedor.models';
+import { DespachoVendedor } from '../models/pedido-vendedor.models';
 
-/** Pedidos con líneas del vendedor autenticado, para preparar despachos. */
+/** Paquetes del vendedor autenticado (US-12 multi-vendedor): solo su despacho. */
 @Injectable({ providedIn: 'root' })
 export class PedidosVendedorService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/vendedor/pedidos`;
 
-  listar(): Observable<PedidoVendedorResumen[]> {
-    return this.http.get<PedidoVendedorResumen[]>(this.baseUrl);
+  listar(): Observable<DespachoVendedor[]> {
+    return this.http.get<DespachoVendedor[]>(this.baseUrl);
   }
 
-  detalle(id: number): Observable<PedidoVendedorDetalle> {
-    return this.http.get<PedidoVendedorDetalle>(`${this.baseUrl}/${id}`);
+  detalle(despachoId: number): Observable<DespachoVendedor> {
+    return this.http.get<DespachoVendedor>(`${this.baseUrl}/${despachoId}`);
   }
 
-  /** El vendedor avanza sus pedidos a preparación o enviado (con guía). */
-  avanzarEstado(id: number, nuevo: string, numeroGuia?: string | null): Observable<PedidoVendedorDetalle> {
-    return this.http.put<PedidoVendedorDetalle>(`${this.baseUrl}/${id}/estado`, {
+  /** El vendedor avanza su despacho a preparación o enviado (con guía). */
+  avanzarEstado(
+    despachoId: number,
+    nuevo: string,
+    numeroGuia?: string | null,
+  ): Observable<DespachoVendedor> {
+    return this.http.put<DespachoVendedor>(`${this.baseUrl}/${despachoId}/estado`, {
       nuevo,
       numeroGuia: numeroGuia ?? null,
     });

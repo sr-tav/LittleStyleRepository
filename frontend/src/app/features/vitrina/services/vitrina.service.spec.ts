@@ -66,13 +66,15 @@ describe('VitrinaService (US-09)', () => {
     req.flush(pagina());
   });
 
-  it('envía edad e ids como query params', () => {
-    servicio.explorar({ edadMeses: 48, ids: '10,20', pagina: 0 }).subscribe();
+  it('envía edad y filtro mi-talla como perfilId sin ids en la URL', () => {
+    servicio.explorar({ edadMeses: 48, perfilId: 3, soloMiTalla: true, pagina: 0 }).subscribe();
     const req = http.expectOne(
       (p) =>
         p.url === '/api/cliente/catalogo' &&
         p.params.get('edadMeses') === '48' &&
-        p.params.get('ids') === '10,20',
+        p.params.get('perfilId') === '3' &&
+        p.params.get('soloMiTalla') === 'true' &&
+        !p.params.has('ids'),
     );
     expect(req.request.method).toBe('GET');
     req.flush(pagina());

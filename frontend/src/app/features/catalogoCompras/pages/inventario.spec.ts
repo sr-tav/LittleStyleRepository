@@ -51,7 +51,8 @@ describe('Inventario (UI-21)', () => {
 
     const fila = el.querySelector('tbody tr')!;
     expect(fila.querySelector('.stock-number')?.textContent?.trim()).toBe('3');
-    expect(fila.textContent).toContain('4: 5');
+    expect(fila.querySelectorAll('td')[2]?.textContent?.trim()).toBe('5 · 3');
+    expect(fila.querySelectorAll('td')[2]?.textContent).not.toMatch(/talla\s*4/i);
     expect(fila.querySelector('.stock-badge')?.textContent).toContain('Stock bajo');
     expect(el.querySelector('.btn-alerts-count')?.textContent?.trim()).toBe('1');
   });

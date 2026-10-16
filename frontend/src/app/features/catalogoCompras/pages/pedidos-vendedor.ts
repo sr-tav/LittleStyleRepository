@@ -5,10 +5,10 @@ import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { formatearPrecio } from '../models/prenda-opciones';
 import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
-import { PedidoVendedorResumen } from '../models/pedido-vendedor.models';
+import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 
-/** Pedidos con productos del vendedor para preparar despachos. */
+/** Paquetes del vendedor (US-12 multi-vendedor): solo su despacho por pedido. */
 @Component({
   selector: 'app-pedidos-vendedor',
   imports: [Navbar, RouterLink],
@@ -17,18 +17,21 @@ import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 export class PedidosVendedor implements OnInit {
   private readonly pedidos = inject(PedidosVendedorService);
 
-  protected readonly items = signal<PedidoVendedorResumen[]>([]);
+  protected readonly items = signal<DespachoVendedor[]>([]);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
 
-  protected readonly estado = (p: PedidoVendedorResumen) => ETIQUETAS_ESTADO[p.estado];
-  protected readonly precio = (p: PedidoVendedorResumen) => formatearPrecio(p.subtotalPropio);
-  protected readonly fecha = (p: PedidoVendedorResumen) =>
-    new Date(p.fechaCreacion).toLocaleDateString('es-CO', {
+  protected readonly estado = (p: DespachoVendedor) => ETIQUETAS_ESTADO[p.estado];
+  protected readonly precio = (p: DespachoVendedor) =>
+    formatearPrecio(p.items.reduce((t, i) => t + i.subtotal, 0));
+  protected readonly fecha = (p: DespachoVendedor) =>
+    new Date(p.fechaActualizacion).toLocaleDateString('es-CO', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
+  protected readonly unidades = (p: DespachoVendedor) =>
+    p.items.reduce((t, i) => t + i.cantidad, 0);
 
   ngOnInit(): void {
     this.cargar();

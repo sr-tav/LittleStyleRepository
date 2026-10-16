@@ -2,13 +2,13 @@
 <main class="catalog-page">
   <header class="catalog-heading">
     <div>
-      <h1>Pedidos por despachar</h1>
-      <p class="catalog-subtitle">Pedidos que incluyen tus productos</p>
+      <h1>Mis despachos</h1>
+      <p class="catalog-subtitle">Tu paquete por pedido: solo tus productos</p>
     </div>
   </header>
 
   @if (cargando()) {
-    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando pedidos...</div>
+    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando despachos...</div>
   } @else if (error()) {
     <div class="alert alert-error" role="alert">
       {{ error() }}
@@ -19,18 +19,18 @@
       <p>Ningún pedido incluye tus productos todavía.</p>
     </div>
   } @else {
-    <ul class="pedido-lista" aria-label="Pedidos por despachar">
-      @for (p of items(); track p.id) {
+    <ul class="pedido-lista" aria-label="Despachos por enviar">
+      @for (p of items(); track p.despachoId) {
         <li>
           <a
             class="pedido-tarjeta"
-            [routerLink]="['/vendedor/pedidos', p.id]"
-            [attr.aria-label]="'Ver pedido ' + p.id + ', ' + estado(p)"
+            [routerLink]="['/vendedor/pedidos', p.despachoId]"
+            [attr.aria-label]="'Ver despacho ' + p.despachoId + ', ' + estado(p)"
           >
             <div class="pedido-tarjeta-info">
-              <strong>Pedido #{{ p.id }}</strong>
+              <strong>Pedido #{{ p.pedidoId }} · Tu paquete</strong>
               <span class="product-meta">
-                {{ p.cantidadItemsPropios }} unidad(es) tuyas · {{ precio(p) }} · {{ fecha(p) }}
+                {{ unidades(p) }} unidad(es) tuyas · {{ precio(p) }} · {{ fecha(p) }}
               </span>
               @if (p.numeroGuia) {
                 <span class="product-meta">Guía: {{ p.numeroGuia }}</span>

@@ -41,15 +41,15 @@ class PedidoAdminControllerTest {
     }
 
     @Test
-    void avanzarDevuelve200ConGuia() throws Exception {
-        Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.ENVIADO).build();
-        when(estados.avanzar(eq(7L), eq(EstadoPedido.ENVIADO), eq("COL123"))).thenReturn(pedido);
+    void avanzarDevuelve200AlCancelar() throws Exception {
+        Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.CANCELADO).build();
+        when(estados.avanzar(eq(7L), eq(EstadoPedido.CANCELADO), any())).thenReturn(pedido);
 
         mockMvc.perform(put("/api/admin/pedidos/7/estado")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nuevo\":\"ENVIADO\",\"numeroGuia\":\"COL123\"}"))
+                        .content("{\"nuevo\":\"CANCELADO\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estado").value("ENVIADO"));
+                .andExpect(jsonPath("$.estado").value("CANCELADO"));
     }
 
     @Test

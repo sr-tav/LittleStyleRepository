@@ -397,11 +397,21 @@ app-acceso-rapido-prenda {
     gap: 0.75rem;
   }
 
+  .reco-heading h1 {
+    font-size: 1.45rem;
+  }
+
   .reco-card-body {
     padding: 0.75rem 0.8rem 0.9rem;
   }
 
   .reco-card-title {
     font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .reco-grid {
+    grid-template-columns: 1fr;
   }
 }

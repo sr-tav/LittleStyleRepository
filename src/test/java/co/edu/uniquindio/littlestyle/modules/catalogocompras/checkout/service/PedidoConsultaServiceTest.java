@@ -39,6 +39,10 @@ class PedidoConsultaServiceTest {
     private PedidoRepository pedidoRepository;
     @Mock
     private HistorialEstadoRepository historialRepository;
+    @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DespachoRepository despachoRepository;
+    @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository prendaRepository;
 
     @InjectMocks
     private PedidoConsultaService service;
@@ -78,6 +82,7 @@ class PedidoConsultaServiceTest {
     @Test
     void detalleIncluyeItemsEHistorial() {
         when(pedidoRepository.findByIdAndClienteId(7L, CLIENTE_ID)).thenReturn(Optional.of(pedido(7L)));
+        when(despachoRepository.findAllByPedidoIdOrderByIdAsc(7L)).thenReturn(List.of());
         when(historialRepository.findAllByPedidoIdOrderByFechaCambioAsc(7L)).thenReturn(List.of(
                 HistorialEstadoPedido.builder().pedido(pedido(7L)).anterior(null)
                         .nuevo(EstadoPedido.PENDIENTE_PAGO).fechaCambio(LocalDateTime.now()).build(),
@@ -90,6 +95,23 @@ class PedidoConsultaServiceTest {
         assertThat(detalle.items().getFirst().nombre()).isEqualTo("Pantalón");
         assertThat(detalle.historial()).extracting(PedidoDetalleResponse.Movimiento::nuevo)
                 .containsExactly(EstadoPedido.PENDIENTE_PAGO, EstadoPedido.ENVIADO);
+    }
+
+    @Test
+    void detalleIncluyeMiniaturaDelProducto() {
+        when(pedidoRepository.findByIdAndClienteId(7L, CLIENTE_ID)).thenReturn(Optional.of(pedido(7L)));
+        when(despachoRepository.findAllByPedidoIdOrderByIdAsc(7L)).thenReturn(List.of());
+        when(historialRepository.findAllByPedidoIdOrderByFechaCambioAsc(7L)).thenReturn(List.of());
+        var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
+                .id(10L).build();
+        prenda.getImagenes().add(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda
+                .builder().url("/media/a.png").clave("a").orden(0)
+                .fechaCarga(LocalDateTime.now()).build());
+        when(prendaRepository.findById(10L)).thenReturn(Optional.of(prenda));
+
+        PedidoDetalleResponse detalle = service.detalle(7L);
+
+        assertThat(detalle.items().getFirst().imagenUrl()).isEqualTo("/media/a.png");
     }
 
     @Test

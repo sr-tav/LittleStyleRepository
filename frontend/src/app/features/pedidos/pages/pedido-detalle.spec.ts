@@ -20,7 +20,21 @@ function detalle(): PedidoDetalle {
     ciudad: 'Armenia',
     departamento: 'Quindío',
     items: [
-      { prendaId: 10, nombre: 'Pantalón Jogger Azul', talla: '4', cantidad: 1, precioUnitario: 100000, subtotal: 100000 },
+      { prendaId: 10, nombre: 'Pantalón Jogger Azul', talla: '4', cantidad: 1, precioUnitario: 100000, subtotal: 100000, imagenUrl: '/media/a.png' },
+    ],
+    despachos: [
+      {
+        despachoId: 5,
+        pedidoId: 7,
+        vendedorId: 31,
+        tienda: 'Tienda Sol',
+        estado: 'ENVIADO',
+        numeroGuia: 'COL123',
+        fechaActualizacion: '2026-10-03T10:00:00',
+        items: [
+          { prendaId: 10, nombre: 'Pantalón Jogger Azul', talla: '4', cantidad: 1, precioUnitario: 100000, subtotal: 100000, imagenUrl: '/media/a.png' },
+        ],
+      },
     ],
     historial: [
       { anterior: null, nuevo: 'PENDIENTE_PAGO', fecha: '2026-10-01T10:00:00' },
@@ -60,9 +74,32 @@ describe('PedidoDetallePage (US-12 / UI-16)', () => {
     expect(root.textContent).toContain('COL123');
     expect(root.textContent).toContain('Pantalón Jogger Azul');
     expect(root.textContent).toContain('107.000');
-    expect(root.querySelectorAll('.pedido-linea-tiempo li')).toHaveLength(5);
+    expect(root.querySelectorAll('.pedido-linea-tiempo li')).toHaveLength(6);
     expect(root.querySelectorAll('.pedido-historial li')).toHaveLength(3);
     expect(root.querySelector('.pedido-linea-tiempo li.is-actual')?.textContent).toContain('Enviado');
+  });
+
+  it('muestra un bloque por vendedor con su estado y guía', () => {
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const bloques = root.querySelector('[aria-label="Despachos por vendedor"]');
+    expect(bloques?.textContent).toContain('Tienda Sol');
+    expect(bloques?.textContent).toContain('Enviado');
+    expect(bloques?.textContent).toContain('COL123');
+  });
+
+  it('muestra la miniatura del producto en el detalle', () => {
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const img = root.querySelector('img.pedido-miniatura') as HTMLImageElement;
+    expect(img).not.toBeNull();
+    expect(img.getAttribute('src')).toBe('/media/a.png');
+    expect(img.getAttribute('alt')).toContain('Pantalón Jogger Azul');
+    expect(root.textContent).toContain('c/u');
   });
 
   it('muestra el historial con fechas por transición', () => {

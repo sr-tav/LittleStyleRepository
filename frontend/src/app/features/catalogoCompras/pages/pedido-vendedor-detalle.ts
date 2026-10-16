@@ -5,10 +5,10 @@ import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
 import { formatearPrecio } from '../models/prenda-opciones';
-import { PedidoVendedorDetalle } from '../models/pedido-vendedor.models';
+import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 
-/** Detalle del pedido para el vendedor: sus líneas, dirección e historial. */
+/** Detalle del despacho del vendedor: su paquete, su estado y sus productos. */
 @Component({
   selector: 'app-pedido-vendedor-detalle',
   imports: [Navbar, RouterLink],
@@ -18,27 +18,19 @@ export class PedidoVendedorDetallePage implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
   private readonly pedidos = inject(PedidosVendedorService);
 
-  protected readonly pedido = signal<PedidoVendedorDetalle | null>(null);
+  protected readonly despacho = signal<DespachoVendedor | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly guia = signal('');
   protected readonly avanzando = signal(false);
   protected readonly errorAvance = signal<string | null>(null);
 
-  protected readonly estadoDe = (estado: PedidoVendedorDetalle['estado']) => ETIQUETAS_ESTADO[estado];
+  protected readonly estadoDe = (estado: DespachoVendedor['estado']) => ETIQUETAS_ESTADO[estado];
   protected readonly precio = (valor: number) => formatearPrecio(valor);
-  protected readonly fechaDe = (iso: string) =>
-    new Date(iso).toLocaleString('es-CO', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   protected readonly totalPropio = () =>
-    (this.pedido()?.items ?? []).reduce((total, item) => total + item.subtotal, 0);
-  protected readonly fechaCreacion = () => {
-    const fecha = this.pedido()?.fechaCreacion ?? null;
+    (this.despacho()?.items ?? []).reduce((total, item) => total + item.subtotal, 0);
+  protected readonly fechaActualizacion = () => {
+    const fecha = this.despacho()?.fechaActualizacion ?? null;
     return fecha === null
       ? '—'
       : new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -54,7 +46,7 @@ export class PedidoVendedorDetallePage implements OnInit {
     this.error.set(null);
     this.pedidos.detalle(id).subscribe({
       next: (p) => {
-        this.pedido.set(p);
+        this.despacho.set(p);
         this.cargando.set(false);
       },
       error: (err: unknown) => {
@@ -65,27 +57,26 @@ export class PedidoVendedorDetallePage implements OnInit {
   }
 
   protected puedePreparar(): boolean {
-    const estado = this.pedido()?.estado;
-    return estado === 'PAGADO' || estado === 'REGISTRADO';
+    return this.despacho()?.estado === 'REGISTRADO';
   }
 
   protected puedeEnviar(): boolean {
-    return this.pedido()?.estado === 'EN_PREPARACION';
+    return this.despacho()?.estado === 'EN_PREPARACION';
   }
 
   protected avanzar(nuevo: 'EN_PREPARACION' | 'ENVIADO'): void {
-    const p = this.pedido();
+    const p = this.despacho();
     if (!p || this.avanzando()) return;
     const numeroGuia = nuevo === 'ENVIADO' ? this.guia().trim() : null;
     if (nuevo === 'ENVIADO' && !numeroGuia) {
-      this.errorAvance.set('Indica el número de guía para enviar el pedido.');
+      this.errorAvance.set('Indica el número de guía para enviar tu paquete.');
       return;
     }
     this.avanzando.set(true);
     this.errorAvance.set(null);
-    this.pedidos.avanzarEstado(p.id, nuevo, numeroGuia).subscribe({
+    this.pedidos.avanzarEstado(p.despachoId, nuevo, numeroGuia).subscribe({
       next: (actualizado) => {
-        this.pedido.set(actualizado);
+        this.despacho.set(actualizado);
         this.guia.set('');
         this.avanzando.set(false);
       },

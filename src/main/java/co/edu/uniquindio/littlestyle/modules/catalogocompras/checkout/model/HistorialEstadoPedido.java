@@ -18,6 +18,10 @@ public class HistorialEstadoPedido {
     @JoinColumn(name = "pedido_id", nullable = false)
     private Pedido pedido;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "despacho_id", nullable = true)
+    private Despacho despacho;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_anterior", length = 30)
     private EstadoPedido anterior;
