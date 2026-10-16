@@ -100,6 +100,7 @@ public class PrendaService {
         prenda.setNombre(r.nombre().trim());
         prenda.setCategoria(r.categoria());
         prenda.setDescripcion(textoOpcional(r.descripcion()));
+        prenda.setInstruccionesCuidado(r.instruccionesCuidado().trim());
         prenda.setMarca(textoOpcional(r.marca()));
         prenda.setPrecio(r.precio());
         prenda.setStockMinimo(r.stockMinimo());

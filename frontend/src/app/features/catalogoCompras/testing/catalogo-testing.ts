@@ -7,6 +7,7 @@ export function crearPrenda(cambios: Partial<Prenda> = {}): Prenda {
     categoria: 'PANTALONES',
     genero: 'UNISEX',
     descripcion: null,
+    instruccionesCuidado: 'Lavar a mano en agua fría',
     marca: null,
     precio: 32900,
     estado: 'ACTIVA',

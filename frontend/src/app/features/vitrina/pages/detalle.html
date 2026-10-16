@@ -132,6 +132,9 @@
           <div><dt>Composición</dt><dd>{{ composicionDe(p) }}</dd></div>
           <div><dt>Colores</dt><dd>{{ p.colores.map(colorDe).join(', ') || '—' }}</dd></div>
           <div><dt>Estampado</dt><dd>{{ estampadoDe(p.estampado) }}</dd></div>
+          @if (p.instruccionesCuidado) {
+            <div><dt>Cuidado</dt><dd>{{ p.instruccionesCuidado }}</dd></div>
+          }
           @if (p.descripcion) {
             <div><dt>Descripción</dt><dd>{{ p.descripcion }}</dd></div>
           }

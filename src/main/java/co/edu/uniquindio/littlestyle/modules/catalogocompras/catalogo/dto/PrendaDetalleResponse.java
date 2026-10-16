@@ -26,6 +26,7 @@ public record PrendaDetalleResponse(
         CategoriaPrenda categoria,
         GeneroPrenda genero,
         String descripcion,
+        String instruccionesCuidado,
         String marca,
         BigDecimal precio,
         List<String> imagenes,
@@ -51,7 +52,7 @@ public record PrendaDetalleResponse(
 
     public static PrendaDetalleResponse from(Prenda p) {
         return new PrendaDetalleResponse(
-                p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getDescripcion(), p.getMarca(), p.getPrecio(),
+                p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getDescripcion(), p.getInstruccionesCuidado(), p.getMarca(), p.getPrecio(),
                 p.getImagenes().stream().map(ImagenPrenda::getUrl).toList(),
                 p.stockTotal() > 0,
                 new TreeSet<>(p.getColores()), p.getEstampado(),

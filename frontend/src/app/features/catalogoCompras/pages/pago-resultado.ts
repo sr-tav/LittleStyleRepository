@@ -1,7 +1,8 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { switchMap, take, takeWhile, timer } from 'rxjs';
+import { EMPTY, catchError, switchMap, take, takeWhile, throwError, timer } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
@@ -14,6 +15,14 @@ import { PagoService } from '../services/pago.service';
 const ESTADOS_EN_PROCESO = new Set(['CREADA', 'PENDIENTE']);
 export const INTERVALO_CONSULTA_MS = 4000;
 export const MAX_CONSULTAS = 15;
+
+/**
+ * RNF-28: sin conexión o con Wompi lento el backend responde 502/503/504. Esas fallas son momentáneas,
+ * así que no detienen la verificación: se omite esa consulta y se reintenta en la siguiente.
+ */
+const ESTADOS_TRANSITORIOS = new Set([0, 502, 503, 504]);
+const esTransitorio = (error: unknown) =>
+  error instanceof HttpErrorResponse && ESTADOS_TRANSITORIOS.has(error.status);
 
 /** UI-15: confirmación del pago tras volver del Widget o de la redirección de Wompi. */
 @Component({
@@ -57,9 +66,16 @@ export class PagoResultadoPage implements OnInit {
       return;
     }
 
+    let ultimoErrorTransitorio: unknown = null;
     timer(0, INTERVALO_CONSULTA_MS).pipe(
       take(MAX_CONSULTAS),
-      switchMap(() => this.pagoService.verificar(transaccionId)),
+      switchMap(() => this.pagoService.verificar(transaccionId).pipe(
+        catchError((error: unknown) => {
+          if (!esTransitorio(error)) return throwError(() => error);
+          ultimoErrorTransitorio = error;
+          return EMPTY;
+        }),
+      )),
       takeWhile((resultado) => ESTADOS_EN_PROCESO.has(resultado.estadoPago), true),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
@@ -75,6 +91,13 @@ export class PagoResultadoPage implements OnInit {
       error: (error: unknown) => {
         this.error.set(procesarErrorApi(error));
         this.cargando.set(false);
+      },
+      complete: () => {
+        // Se agotaron las consultas sin que ninguna respondiera.
+        if (!this.resultado() && ultimoErrorTransitorio) {
+          this.error.set(procesarErrorApi(ultimoErrorTransitorio));
+          this.cargando.set(false);
+        }
       },
     });
   }

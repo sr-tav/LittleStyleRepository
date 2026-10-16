@@ -46,7 +46,7 @@ class PagoWompiIntegrationTest {
 
     private static final String SECRETO_EVENTOS = "test_events_secreto";
     private static final String PRENDA = """
-            {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","precio":32900,
+            {"nombre":"Pantalón Jogger Azul","categoria":"PANTALONES","descripcion":"Cómodo","instruccionesCuidado":"Lavar a máquina en agua fría","precio":32900,
              "stockMinimo":1,"colores":["AZUL"],"estampado":"LISO",
              "composicion":[{"material":"ALGODON","porcentaje":100}],
              "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8}]}
