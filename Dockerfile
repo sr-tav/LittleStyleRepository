@@ -1,6 +1,6 @@
 # Imagen del backend Spring Boot (US-13).
 #   docker build .                                   -> imagen de ejecución (sin pruebas)
-#   docker build --target reportes --output reportes .  -> ejecuta las pruebas y exporta los JUnit (CI)
+#   docker build --target reportes --output reportes .  -> ejecuta las pruebas y exporta JUnit y cobertura (CI)
 
 # --- Dependencias Maven (capa en caché mientras no cambie el pom) ---
 FROM eclipse-temurin:25-jdk AS deps
@@ -16,6 +16,7 @@ RUN ./mvnw -B test -Dmaven.test.failure.ignore=true
 
 FROM scratch AS reportes
 COPY --from=test /build/target/surefire-reports/ /backend/
+COPY --from=test /build/target/site/jacoco/ /cobertura/backend/
 
 # --- Compilación ---
 FROM deps AS build

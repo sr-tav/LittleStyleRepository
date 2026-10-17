@@ -39,3 +39,7 @@ build/
 .env
 .env.*
 !.env.example
+
+# Resultados de las pruebas de carga (US-13)
+pruebas-carga/informe*.json
+pruebas-carga/informe*.html

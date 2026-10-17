@@ -13,7 +13,7 @@ Jenkins corre en la misma EC2, en Docker. Cada push a `main` ejecuta el `Jenkins
 |-------|----------|
 | Pruebas backend | `docker build --target reportes .`: `mvnw test` con H2 y exporta los JUnit |
 | Pruebas frontend | `docker build --target reportes frontend`: `ng test` (Vitest) y exporta el JUnit |
-| Resultados | Publica los reportes en Jenkins. **Si hay una prueba fallida, se detiene y no despliega** |
+| Resultados | Publica las pruebas y la **cobertura** (JaCoCo en el backend, Vitest en el frontend). **Si hay una prueba fallida, se detiene y no despliega** |
 | Construir imágenes | Guarda la versión actual como `:anterior` y construye las nuevas |
 | Desplegar | `docker compose up -d backend web` con el `.env` de `~/littlestyle` |
 | Verificar | Espera a que la API responda 401 sin token. **Si no responde en 3 minutos, vuelve a `:anterior` (rollback)** |
@@ -29,7 +29,7 @@ Se probó en local: 524 pruebas (344 backend + 180 frontend) en verde, despliegu
 |---------|-----------|
 | `Jenkinsfile` | Pipeline |
 | `deploy/jenkins/Dockerfile` | Jenkins LTS + Docker CLI, Compose y Buildx + plugins |
-| `deploy/jenkins/plugins.txt` | Plugins: pipeline, git, github, junit, JCasC, job-dsl… |
+| `deploy/jenkins/plugins.txt` | Plugins: pipeline, git, github, junit, coverage, JCasC, job-dsl… |
 | `deploy/jenkins/casc/jenkins.yaml` | Usuario admin, seguridad, credencial de GitHub y job |
 | `deploy/jenkins/docker-compose.yml` | Contenedor Jenkins en la red de la app, con el socket de Docker |
 | `deploy/jenkins/.env.example` | Variables de Jenkins (se copia a `deploy/jenkins/.env`, no se versiona) |
@@ -94,6 +94,30 @@ Al guardarlo, GitHub envía un *ping*. En **Recent Deliveries** debe aparecer co
 
 En Jenkins → `littlestyle` → **Build Now**. Desde ahí, cada push o merge a `main` lo dispara solo.
 En **Stage View** se ve el avance por etapa y en **Test Result**, las pruebas.
+
+## Cobertura de pruebas
+
+Cada build publica la cobertura en Jenkins → `littlestyle` → **Cobertura** (gráfica por build y detalle por
+paquete y archivo). Los reportes HTML completos quedan en **Build Artifacts** → `reportes/cobertura/`.
+
+En local:
+- Backend: `./mvnw test` → `target/site/jacoco/index.html`
+- Frontend: `cd frontend && npx ng test --watch=false --coverage` → `coverage/frontend/index.html`
+
+### Actualizar Jenkins cuando cambian sus plugins
+
+Si `deploy/jenkins/plugins.txt` cambia (por ejemplo, al agregar `coverage`), Jenkins se reconstruye en la EC2
+después de mergear. Hasta entonces, el build automático de ese merge falla con un error del tipo
+`No such DSL method 'recordCoverage'` sin llegar a desplegar, así que producción no se toca.
+
+```bash
+cd ~/littlestyle && git pull
+cd deploy/jenkins && docker compose up -d --build     # ~3 min
+```
+
+Luego, en Jenkins, **Build Now**.
+
+Los builds y la configuración se conservan: están en el volumen `jenkins_home`.
 
 ## Uso diario
 

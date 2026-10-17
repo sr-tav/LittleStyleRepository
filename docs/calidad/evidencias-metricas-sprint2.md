@@ -12,8 +12,8 @@ de las sesiones de prueba en TestRail: esas pruebas son las que crean los datos.
 |--------|----------------|----------|
 | **A. Base de datos (RDS)** | SSH a la EC2 + `docs/calidad/metricas.sql` | Adopción de tallas, completitud, actualización, cifrado, abandono, sincronización de stock, trazabilidad, alertas, pagos |
 | **B. Logs del backend** | SSH a la EC2, en `~/littlestyle`: `docker compose logs backend`. ⚠ Solo guarda desde el último despliegue: cada build de Jenkins recrea el contenedor. Saca estas capturas antes de mergear algo nuevo. | Fallos del motor, correos, webhooks |
-| **C. Jenkins** | https://littlestyle.duckdns.org/jenkins | Pruebas automatizadas, cobertura, tiempo de reparación |
-| **D. Pruebas de carga (Artillery)** | Reporte de Artillery | Tiempos de respuesta, filtros, 100 usuarios simultáneos, CPU y RAM |
+| **C. Jenkins** | https://littlestyle.duckdns.org/jenkins → `littlestyle` → *Test Result* y *Cobertura* | Pruebas automatizadas, cobertura, tiempo de reparación |
+| **D. Pruebas de carga (Artillery)** | [`pruebas-carga/README.md`](../../pruebas-carga/README.md) → `informe.html` | Tiempos de respuesta, filtros, 100 usuarios simultáneos, CPU y RAM |
 | **E. AWS** | Consola de AWS (CloudWatch, S3) | CPU, disponibilidad, imágenes |
 | **F. Herramientas externas** | Wompi, Gmail, SonarCloud, GitHub, navegador | Firmas HMAC, correos, defectos, dependencias, navegadores |
 
@@ -72,7 +72,7 @@ Cada consulta tiene una etiqueta (`[P1-A]`, `[P2-C]`…) que coincide con las ta
 |---------|----------------------------|---------|
 | **Disponibilidad operativa** | **UptimeRobot** (gratis): monitor HTTPS a `https://littlestyle.duckdns.org` cada 5 min. Dejarlo 24–48 h antes de la entrega (~3–5 USD de créditos). Alternativa: EC2 → *Monitoring* → *Status check failed* en 0. Se miden solo las ventanas en que el servidor debía estar prendido. | Dashboard de UptimeRobot con el % |
 | **Consumo de CPU y RAM** | Durante la prueba de carga: CPU en EC2 → *Monitoring* → *CPU utilization*; RAM con `docker stats --no-stream` en la EC2 (CloudWatch no mide RAM sin un agente). | Gráfica de CPU + salida de `docker stats` |
-| **Cobertura de pruebas automatizadas** | Jenkins → `littlestyle` → *Test Result*: 368 pruebas de backend y 185 de frontend en verde. ⚠ El **porcentaje de líneas** requiere JaCoCo (backend) y `--coverage` (frontend), que aún no están configurados. | *Test Result Trend* de Jenkins (+ reporte de cobertura cuando esté) |
+| **Cobertura de pruebas automatizadas** | Jenkins → `littlestyle` → **Cobertura**: % de líneas cubiertas por las pruebas (JaCoCo en el backend, Vitest en el frontend). Medido en local: backend 89.3 %, frontend 86.5 %, total 87.7 %. Detalle por paquete: *Build Artifacts* → `reportes/cobertura/backend/index.html` y `frontend/index.html`. | Gráfica y tabla de *Cobertura* + *Test Result Trend* |
 | **Excepciones en integración con la pasarela** | Panel de Wompi *sandbox* → *Desarrolladores → Eventos*: cada evento enviado y la respuesta del servidor. Fallos en el backend: `docker compose logs backend \| grep -E "Evento de Wompi (rechazado\|descartado)\|No fue posible aplicar"`. % = fallidos ÷ eventos. | Lista de eventos de Wompi + salida del grep |
 | **Tiempo medio de reparación ante caídas** | Historial de builds de Jenkins. Ejemplo real: el despliegue de US-12 falló por la tabla `despachos`, Jenkins hizo rollback automático y se corrigió con la migración. MTTR = tiempo desde el build fallido hasta el build verde. Gracias al rollback, la página no estuvo caída. | *Build History* con las horas del build rojo y del verde + consola del rollback |
 | **Cobertura de pruebas E2E** | Fase 4 (Playwright): flujos automatizados exitosos ÷ flujos críticos de compra. Mientras no existan, los casos E2E ejecutados en TestRail. | Reporte de Playwright o *Test Run* de TestRail |
@@ -111,8 +111,7 @@ Resultado esperado: una sola línea, `N 200`. Cualquier otro código es una imag
 
 | Pendiente | Para qué métricas |
 |-----------|-------------------|
-| Pruebas de carga con Artillery (fase 5 de la US-13) | Tiempos del motor y filtros, carga simultánea, CPU y RAM, consultas sin fallos |
-| JaCoCo y cobertura de Vitest en Jenkins | Porcentaje de cobertura |
+| Ejecutar Artillery contra producción (`pruebas-carga/README.md`) | Tiempos del motor y filtros, carga simultánea, CPU y RAM, consultas sin fallos |
 | SonarCloud o SonarQube | Densidad de defectos |
 | UptimeRobot 24–48 h | Disponibilidad |
 | Sesiones de TestRail en producción | Generan los datos de las consultas de la fuente A, plataformas compatibles y error de captura |
