@@ -11,10 +11,13 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 
 # --- Pruebas: los fallos no cortan el build para poder exportar el reporte; CI decide con él ---
+# Vitest borra coverage/frontend al empezar; si se cae a mitad, se recrea para que el COPY no rompa
+# y sea Jenkins quien marque el fallo al no encontrar el JUnit.
 FROM deps AS test
-RUN mkdir -p reportes coverage/frontend && (npx ng test --watch=false --reporters=junit --reporters=default \
+RUN mkdir -p reportes && (npx ng test --watch=false --reporters=junit --reporters=default \
       --output-file=reportes/frontend.xml --coverage --coverage-reporters=cobertura \
-      --coverage-reporters=html --coverage-reporters=text-summary || echo "PRUEBAS FALLIDAS")
+      --coverage-reporters=html --coverage-reporters=text-summary || echo "PRUEBAS FALLIDAS") \
+    && mkdir -p coverage/frontend
 
 FROM scratch AS reportes
 COPY --from=test /app/reportes/ /frontend/

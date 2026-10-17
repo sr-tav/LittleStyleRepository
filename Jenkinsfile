@@ -22,13 +22,14 @@ pipeline {
     stages {
         stage('Pruebas backend') {
             steps {
-                sh 'rm -rf reportes && docker build --target reportes --output type=local,dest=reportes .'
+                // --no-cache-filter test: las pruebas siempre corren; si no, un fallo queda en caché y se repite en cada build
+                sh 'rm -rf reportes && docker build --no-cache-filter test --target reportes --output type=local,dest=reportes .'
             }
         }
 
         stage('Pruebas frontend') {
             steps {
-                sh 'docker build --target reportes --output type=local,dest=reportes frontend'
+                sh 'docker build --no-cache-filter test --target reportes --output type=local,dest=reportes frontend'
             }
         }
 
