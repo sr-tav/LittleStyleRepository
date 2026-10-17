@@ -21,7 +21,7 @@ describe('PedidoVendedorDetallePage', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: '7' }) } },
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: '5' }) } },
         },
         {
           provide: PedidosVendedorService,
@@ -31,19 +31,15 @@ describe('PedidoVendedorDetallePage', () => {
     }).compileComponents();
   });
 
-  function detalleBase(estado: string) {
+  function despachoBase(estado: string) {
     return {
-      id: 7,
+      despachoId: 5,
+      pedidoId: 7,
+      vendedorId: 31,
+      tienda: 'Tienda Sol',
       estado,
-      fechaCreacion: '2026-10-01T10:00:00',
       numeroGuia: null,
-      destinatario: 'Ana Ruiz',
-      direccion: 'Calle 1 # 2-3',
-      complemento: null,
-      codigoPostal: '630001',
-      ciudad: 'Armenia',
-      departamento: 'Quindío',
-      telefono: '3001234567',
+      fechaActualizacion: '2026-10-01T10:00:00',
       items: [
         {
           prendaId: 10,
@@ -52,31 +48,30 @@ describe('PedidoVendedorDetallePage', () => {
           cantidad: 2,
           precioUnitario: 50000,
           subtotal: 100000,
+          imagenUrl: '/media/a.png',
         },
-      ],
-      historial: [
-        { anterior: null, nuevo: 'REGISTRADO', fecha: '2026-10-01T10:00:00' },
-        { anterior: 'REGISTRADO', nuevo: 'EN_PREPARACION', fecha: '2026-10-02T10:00:00' },
       ],
     };
   }
 
-  it('muestra dirección, productos propios e historial', () => {
-    servicio.detalle.mockReturnValue(of(detalleBase('EN_PREPARACION')));
+  it('muestra tu paquete, productos propios y estado', () => {
+    servicio.detalle.mockReturnValue(of(despachoBase('EN_PREPARACION')));
     const fixture = TestBed.createComponent(PedidoVendedorDetallePage);
     fixture.detectChanges();
 
     const root: HTMLElement = fixture.nativeElement;
     expect(root.textContent).toContain('Pedido #7');
-    expect(root.textContent).toContain('Calle 1 # 2-3');
+    expect(root.textContent).toContain('Tu paquete');
     expect(root.textContent).toContain('Pantalón Jogger Azul');
-    expect(root.textContent).toContain('Registrado');
-    expect(root.textContent).toContain('2026');
+    expect(root.textContent).toContain('En preparación');
+    const img = root.querySelector('img.pedido-miniatura') as HTMLImageElement;
+    expect(img?.getAttribute('src')).toBe('/media/a.png');
+    expect(root.textContent).toContain('c/u');
   });
 
   it('avanza a preparación sin guía', () => {
-    servicio.detalle.mockReturnValue(of(detalleBase('REGISTRADO')));
-    const actualizado = { ...detalleBase('EN_PREPARACION') };
+    servicio.detalle.mockReturnValue(of(despachoBase('REGISTRADO')));
+    const actualizado = { ...despachoBase('EN_PREPARACION') };
     servicio.avanzarEstado.mockReturnValue(of(actualizado));
     const fixture = TestBed.createComponent(PedidoVendedorDetallePage);
     fixture.detectChanges();
@@ -86,12 +81,12 @@ describe('PedidoVendedorDetallePage', () => {
     )!;
     boton.click();
 
-    expect(servicio.avanzarEstado).toHaveBeenCalledWith(7, 'EN_PREPARACION', null);
+    expect(servicio.avanzarEstado).toHaveBeenCalledWith(5, 'EN_PREPARACION', null);
   });
 
   it('exige la guía para marcar como enviado', () => {
-    servicio.detalle.mockReturnValue(of(detalleBase('EN_PREPARACION')));
-    servicio.avanzarEstado.mockReturnValue(of({ ...detalleBase('ENVIADO'), numeroGuia: 'COL123' }));
+    servicio.detalle.mockReturnValue(of(despachoBase('EN_PREPARACION')));
+    servicio.avanzarEstado.mockReturnValue(of({ ...despachoBase('ENVIADO'), numeroGuia: 'COL123' }));
     const fixture = TestBed.createComponent(PedidoVendedorDetallePage);
     fixture.detectChanges();
 
@@ -110,6 +105,6 @@ describe('PedidoVendedorDetallePage', () => {
     guia.dispatchEvent(new Event('input'));
     boton.click();
 
-    expect(servicio.avanzarEstado).toHaveBeenCalledWith(7, 'ENVIADO', 'COL123');
+    expect(servicio.avanzarEstado).toHaveBeenCalledWith(5, 'ENVIADO', 'COL123');
   });
 });

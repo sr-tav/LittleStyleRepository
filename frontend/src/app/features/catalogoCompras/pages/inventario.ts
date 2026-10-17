@@ -36,10 +36,8 @@ export class Inventario implements OnInit {
 
   protected readonly categoria = (item: InventarioItem) => ETIQUETAS_CATEGORIAS[item.categoria];
   protected readonly minimosDe = (item: InventarioItem) => {
-    const definidos = item.tallas.filter((t) => t.stockMinimo !== null && t.stockMinimo !== undefined);
-    return definidos.length === 0
-      ? '—'
-      : definidos.map((t) => `${t.talla}: ${t.stockMinimo}`).join(' · ');
+    const valores = item.tallas.map((t) => t.stockMinimo).filter((v): v is number => v != null);
+    return valores.length === 0 ? '—' : String(Math.min(...valores));
   };
 
   ngOnInit(): void {

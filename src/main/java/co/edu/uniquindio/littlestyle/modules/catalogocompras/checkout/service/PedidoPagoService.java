@@ -40,6 +40,7 @@ public class PedidoPagoService {
     private final CheckoutProperties checkoutProperties;
     private final Clock clock;
     private final ApplicationEventPublisher eventos;
+    private final DespachoService despachoService;
 
     @Transactional
     public ResultadoConfirmacionPago confirmarPago(Long pedidoId) {
@@ -86,6 +87,9 @@ public class PedidoPagoService {
         // PAGADO es transitorio: el pedido queda REGISTRADO y listo para
         // preparar en la misma transacción (dos filas de historial).
         transicionarConHistorial(pedido, EstadoPedido.REGISTRADO);
+        // Multi-vendedor: agrupa líneas por vendedor y crea un despacho en
+        // REGISTRADO por cada uno, en la misma transacción del pago.
+        despachoService.crearDespachosAlPagar(pedido.getId());
         prendas.values().forEach(alertasInventarioService::evaluar);
         return new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.CONFIRMADO, List.of());
     }

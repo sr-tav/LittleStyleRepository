@@ -34,6 +34,10 @@ public class LineaPedido {
     @JoinColumn(name = "pedido_id", nullable = false)
     private Pedido pedido;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "despacho_id")
+    private  Despacho despacho;
+
     @Column(name = "prenda_id", nullable = false)
     private Long prendaId;
 

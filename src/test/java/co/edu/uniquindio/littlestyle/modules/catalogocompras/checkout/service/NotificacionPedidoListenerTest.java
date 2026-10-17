@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -36,6 +37,8 @@ class NotificacionPedidoListenerTest {
     @Mock
     private co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository transaccionRepository;
     @Mock
+    private co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DespachoRepository despachoRepository;
+    @Mock
     private CorreoService correo;
 
     @InjectMocks
@@ -49,7 +52,8 @@ class NotificacionPedidoListenerTest {
                 .total(new BigDecimal("107000"))
                 .build();
         pedido.agregar(LineaPedido.builder().prendaId(3L).nombre("Pantalón")
-                .talla("4").cantidad(1).precioUnitario(new BigDecimal("107000")).build());
+                .talla("4").cantidad(1).precioUnitario(new BigDecimal("107000"))
+                .subtotal(new BigDecimal("107000")).build());
         return pedido;
     }
 
@@ -117,6 +121,54 @@ class NotificacionPedidoListenerTest {
         listener.alRechazarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagoRechazadoEvent(9L));
 
         verify(correo).enviarPagoRechazado(eq("a@b.com"), eq("Ana"), eq("LS-55-X"), eq("7280000"));
+    }
+
+    @Test
+    void alEnviarDespachoAvisaConGuiaDelPaquete() {
+        Pedido pedido = pedido();
+        var vendedor = Usuario.builder().id(9L).nombre("Luis").email("v@tienda.com").build();
+        var despachado = new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Despacho();
+        despachado.setId(5L);
+        despachado.setPedido(pedido);
+        despachado.setVendedor(vendedor);
+        despachado.setEstado(EstadoPedido.ENVIADO);
+        despachado.setNumeroGuia("GUIA-5");
+        despachado.setFechaActualizacion(java.time.LocalDateTime.now());
+        pedido.getItems().getFirst().setDespacho(despachado);
+        when(despachoRepository.findById(5L)).thenReturn(Optional.of(despachado));
+        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido));
+
+        listener.alEnviarDespacho(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.DespachoEnviadoEvent(7L, 5L));
+
+        verify(correo).enviarPedidoEnviado(eq("a@b.com"), eq("Ana"), eq(7L), eq("GUIA-5"), eq("107000"), anyList());
+    }
+
+    @Test
+    void lineaConFotoIncluyeMiniimagenYPrecios() {
+        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
+        var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
+                .id(3L).build();
+        prenda.getImagenes().add(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda
+                .builder().url("/media/a.png").clave("a").orden(0)
+                .fechaCarga(java.time.LocalDateTime.now()).build());
+        when(prendaRepository.findById(3L)).thenReturn(Optional.of(prenda));
+
+        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(7L));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(java.util.List.class);
+        verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), captor.capture());
+        var items = (List<CorreoService.ItemCorreo>) captor.getValue();
+        assertThat(items).hasSize(1);
+        assertThat(items.getFirst().imagenUrl()).isEqualTo("/media/a.png");
+        assertThat(items.getFirst().precioUnitario()).isEqualTo("107000");
+    }
+
+    @Test
+    void cambioAParcialmenteEnviadoNoDuplicaElCorreo() {
+        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.PARCIALMENTE_ENVIADO));
+
+        verify(pedidoRepository, never()).findById(anyLong());
+        verify(correo, never()).enviarCambioEstado(anyString(), anyString(), anyLong(), anyString(), anyString());
     }
 
     @Test

@@ -174,7 +174,8 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-tallas">
         <h2 id="sec-tallas" class="catalog-section-title"><span aria-hidden="true">📏</span> Tabla de tallas</h2>
         <p class="field-hint">
-          Indica la estatura y el peso que cubre cada talla, su stock y su mínimo de alerta. Así el sistema sugiere la talla correcta a cada cliente.
+          Indica la estatura y el peso que cubre cada talla. Así el sistema sugiere la talla correcta a cada cliente.
+          El stock y el mínimo de alerta de cada talla se rellenan abajo, en Inventario.
           @if (!esNueva()) { El stock de las tallas existentes se actualiza desde el inventario. }
         </p>
         <div formArrayName="tallas" class="dynamic-rows">
@@ -199,14 +200,6 @@
               <div class="field">
                 <label [for]="'pmax-' + i">Peso máx. (kg)</label>
                 <input [id]="'pmax-' + i" type="number" formControlName="pesoMaxKg" step="0.1" />
-              </div>
-              <div class="field">
-                <label [for]="'stock-' + i">{{ fila.getRawValue()['existente'] ? 'Stock actual' : 'Stock inicial' }}</label>
-                <input [id]="'stock-' + i" type="number" formControlName="stock" min="0" />
-              </div>
-              <div class="field">
-                <label [for]="'minimo-' + i">Mínimo de alerta</label>
-                <input [id]="'minimo-' + i" type="number" formControlName="stockMinimo" min="0" placeholder="Sin alerta" />
               </div>
               <button type="button" class="icon-button" (click)="quitarTalla(i)"
                 [disabled]="tallas.length <= 1" [attr.aria-label]="'Quitar talla ' + (i + 1)" title="Quitar">✕</button>
@@ -237,9 +230,33 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-inv">
         <h2 id="sec-inv" class="catalog-section-title"><span aria-hidden="true">📦</span> Inventario</h2>
         <p class="field-hint">
-          El mínimo de alerta se define por talla, en la tabla de arriba: recibirás un aviso
-          cuando el stock de esa talla llegue a su mínimo. Vacío significa sin alerta.
+          Stock y mínimo de alerta por talla: recibirás un aviso cuando el stock de esa talla
+          llegue a su mínimo. Mínimo vacío significa sin alerta.
         </p>
+        <div formArrayName="tallas" class="dynamic-rows" aria-label="Inventario por talla">
+          @for (fila of tallas.controls; track fila; let i = $index) {
+            <div class="dynamic-row stock-row" [formGroupName]="i">
+              <div class="field">
+                <span class="stock-talla-caption">Talla</span>
+                <strong class="stock-talla-valor">{{ fila.getRawValue()['talla'] || '—' }}</strong>
+              </div>
+              <div class="field" [class.has-error]="invalido(fila.get('stock'))">
+                <label [for]="'stock-' + i">{{ fila.getRawValue()['existente'] ? 'Stock actual' : 'Stock inicial' }}</label>
+                <input [id]="'stock-' + i" type="number" formControlName="stock" min="0" />
+                @if (invalido(fila.get('stock'))) {
+                  <span class="field-error">Ingresa un stock de 0 en adelante.</span>
+                }
+              </div>
+              <div class="field" [class.has-error]="invalido(fila.get('stockMinimo'))">
+                <label [for]="'minimo-' + i">Mínimo de alerta</label>
+                <input [id]="'minimo-' + i" type="number" formControlName="stockMinimo" min="0" placeholder="Sin alerta" />
+                @if (invalido(fila.get('stockMinimo'))) {
+                  <span class="field-error">Ingresa un mínimo de 0 en adelante.</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
       </section>
 
       <!-- Fotos -->

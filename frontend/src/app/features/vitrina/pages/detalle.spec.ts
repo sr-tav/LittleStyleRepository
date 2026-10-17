@@ -97,6 +97,16 @@ describe('DetalleProducto (US-09)', () => {
     expect(visor()).toBe('/media/a.png');
   });
 
+  it('muestra la ficha técnica textil con composición y cuidado (US-09)', () => {
+    const { el, http } = crear(detalle());
+    http.verify();
+
+    const ficha = el.querySelector('[aria-label="Ficha técnica textil"]');
+    expect(ficha?.textContent).toContain('Algodón');
+    expect(ficha?.textContent).toContain('100');
+    expect(ficha?.textContent).toContain('Lavar a mano en agua fría');
+  });
+
   it('muestra insignia de nuevo y tabla de medidas con estados', () => {
     const { el, http } = crear(detalle());
     http.verify();
@@ -150,16 +160,27 @@ describe('DetalleProducto (US-09)', () => {
     expect(el.querySelector<HTMLSelectElement>('#talla-carrito')?.disabled).toBe(true);
   });
 
-  it('muestra el motivo de exclusión cuando el 422 es por alergia (US-07)', () => {
+  it('muestra el motivo de exclusión cuando el 422 trae código PRENDA_EXCLUIDA_ALERGIA (US-07)', () => {
     perfilId = '3';
     const { fixture, el, http } = crear(detalle());
     http.expectOne((p) => p.url === '/api/cliente/recomendaciones/prenda/10')
-      .flush({ mensaje: 'Prenda excluida por alergia: Contiene níquel' }, { status: 422, statusText: 'Unprocessable Entity' });
+      .flush({ mensaje: 'Prenda excluida por alergia: Contiene níquel', codigo: 'PRENDA_EXCLUIDA_ALERGIA' }, { status: 422, statusText: 'Unprocessable Entity' });
     fixture.detectChanges();
     http.verify();
 
     expect(el.textContent).toContain('No compatible');
     expect(el.textContent).toContain('Contiene níquel');
     expect(el.textContent).not.toContain('Si tienes alergias textiles');
+  });
+
+  it('no muestra exclusión cuando el 422 trae otro código (US-07)', () => {
+    perfilId = '3';
+    const { fixture, el, http } = crear(detalle());
+    http.expectOne((p) => p.url === '/api/cliente/recomendaciones/prenda/10')
+      .flush({ mensaje: 'Sin talla compatible', codigo: 'SIN_TALLA_COMPATIBLE' }, { status: 422, statusText: 'Unprocessable Entity' });
+    fixture.detectChanges();
+    http.verify();
+
+    expect(el.textContent).not.toContain('No compatible');
   });
 });

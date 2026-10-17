@@ -59,8 +59,13 @@ export interface FiltrosVitrina {
   talla?: string;
   /** Edad en meses: coincide con tallas que declaran el rango (o no declaran). */
   edadMeses?: number;
-  /** Prendas recomendadas (filtro de servidor "Solo mi talla sugerida"). */
-  ids?: string;
+  /**
+   * Filtro "Solo mi talla sugerida": el frontend manda solo perfilId y el
+   * servidor calcula los ids recomendados dentro (los ids ya no viajan en la
+   * URL para no superar el límite de cabecera de Tomcat).
+   */
+  perfilId?: number;
+  soloMiTalla?: boolean;
   pagina?: number;
   tamano?: number;
   orden?: string;

@@ -240,8 +240,7 @@ import static org.mockito.Mockito.*;
             assertEquals("EXACTA", motor.elegirEstrategia(vestido).nombre());
         }
 
-        @Test void estrategiaDesconocidaUsaLaPorDefectoSinRomper() {
-            var holgura = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
+        @Test void estrategiaDesconocidaUsaLaPorDefectoSinRomper() {            var holgura = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
             var props = new RecomendacionProperties(6, 24, null, Map.of("VESTIDOS", "inexistente"), null);
             var motor = new MotorRecomendacionService(catalogo, holgura,
                     List.of(new EstrategiaExacta(), new EstrategiaProximidad(), holgura),
@@ -251,5 +250,38 @@ import static org.mockito.Mockito.*;
                     false,false,false,false,null,null,Map.of("4",5));
 
             assertEquals("HOLGURA", motor.elegirEstrategia(vestido).nombre());
+        }
+
+        @Test void estrategiaPorMarcaMandaSobreCategoria() {
+            var holgura = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
+            var props = new RecomendacionProperties(6, 24, null,
+                    Map.of("VESTIDOS", "proximidad"), Map.of("TIENDA SOL", "exacta"));
+            var motor = new MotorRecomendacionService(catalogo, holgura,
+                    List.of(new EstrategiaExacta(), new EstrategiaProximidad(), holgura),
+                    new FiltroAlergiaEstandar(), props);
+            var vestido = new PrendaRecomendable(9L,"V","VESTIDOS","Tienda Sol",BigDecimal.TEN,null,
+                    new TablaTallas(List.of(r("4",100,110,15,20))), List.of(),
+                    false,false,false,false,null,null,Map.of("4",5));
+
+            assertEquals("EXACTA", motor.elegirEstrategia(vestido).nombre());
+        }
+
+        @Test void contexturaDistintaNoCambiaElPuntaje() {
+            var prenda = new PrendaRecomendable(1L,"P1","C","M",BigDecimal.TEN,null,
+                    new TablaTallas(List.of(r("4",100,110,15,20))),
+                    List.of(new ComponenteMaterial(MaterialTextil.ALGODON,100)),
+                    false,false,false,false,Set.of(ColorPreferido.AZUL),Estampado.LISO,Map.of("4",5));
+            var bioMedia = new DatosBiometricos(new BigDecimal("105"), new BigDecimal("18"),
+                    LocalDate.now(), Holgura.REGULAR, Contextura.MEDIA);
+            var bioRobusta = new DatosBiometricos(new BigDecimal("105"), new BigDecimal("18"),
+                    LocalDate.now(), Holgura.REGULAR, Contextura.ROBUSTA);
+            var perfilMedia = new PerfilBiometrico(bioMedia, Set.of(), null,
+                    Set.of(ColorPreferido.AZUL), Set.of(Estampado.LISO));
+            var perfilRobusta = new PerfilBiometrico(bioRobusta, Set.of(), null,
+                    Set.of(ColorPreferido.AZUL), Set.of(Estampado.LISO));
+
+            // La contextura se captura en el perfil pero no puntúa.
+            assertEquals(MotorRecomendacionService.afinidad(perfilMedia, prenda),
+                    MotorRecomendacionService.afinidad(perfilRobusta, prenda));
         }
 }

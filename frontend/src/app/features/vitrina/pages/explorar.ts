@@ -1,6 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 
@@ -65,8 +64,6 @@ export class Explorar {
   protected readonly totalPaginas = signal(0);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly idsMiTalla = signal<number[] | null>(null);
-  protected readonly cargandoMiTalla = signal(false);
   /** Talla sugerida y advertencias por prenda (mejor esfuerzo, tope 24 del motor). */
   protected readonly sugerencias = signal<Map<number, RecomendacionItem>>(new Map());
 
@@ -126,7 +123,6 @@ export class Explorar {
     this.disponible.set(false);
     this.orden.set('novedades');
     this.soloMiTalla.set(false);
-    this.idsMiTalla.set(null);
     this.sugerencias.set(new Map());
     this.buscarDesdePrimera();
   }
@@ -148,7 +144,6 @@ export class Explorar {
   protected alternarMiTalla(): void {
     if (this.soloMiTalla()) {
       this.soloMiTalla.set(false);
-      this.idsMiTalla.set(null);
       this.sugerencias.set(new Map());
       this.buscarDesdePrimera();
       return;
@@ -158,28 +153,13 @@ export class Explorar {
       this.error.set('Para filtrar por tu talla, selecciona primero un perfil.');
       return;
     }
-    this.cargandoMiTalla.set(true);
-    // Filtro de servidor: los ids recomendados viajan como parámetro y la
-    // paginación y el contador los calcula la base de datos (antes se filtraba
-    // solo la página actual de 12 sobre un máximo de 24, con falsos negativos).
-    this.recomendaciones.ids(perfilId).subscribe({
-      next: (res) => {
-        this.error.set(null);
-        this.idsMiTalla.set(res);
-        this.soloMiTalla.set(true);
-        this.cargandoMiTalla.set(false);
-        this.buscarDesdePrimera();
-        this.cargarBadges(perfilId);
-      },
-      error: (err: unknown) => {
-        this.cargandoMiTalla.set(false);
-        this.error.set(
-          err instanceof HttpErrorResponse && err.status === 422
-            ? 'Tu perfil no tiene medidas vigentes. Agrega una medición para usar este filtro.'
-            : procesarErrorApi(err),
-        );
-      },
-    });
+    // Filtro de servidor: solo viaja el perfilId y el servidor calcula los ids
+    // recomendados dentro (antes los ids viajaban en la URL y con muchas
+    // prendas se superaba el límite de cabecera de Tomcat).
+    this.error.set(null);
+    this.soloMiTalla.set(true);
+    this.buscarDesdePrimera();
+    this.cargarBadges(perfilId);
   }
 
   private buscarDesdePrimera(): void {
@@ -215,7 +195,8 @@ export class Explorar {
       material: this.material() || undefined,
       talla: this.talla() || undefined,
       edadMeses: Number.isNaN(edad) ? undefined : Math.max(0, Math.round(edad * 12)),
-      ids: this.soloMiTalla() && this.idsMiTalla() ? this.idsMiTalla()!.join(',') : undefined,
+      perfilId: this.soloMiTalla() ? (this.activo.perfil()?.id ?? undefined) : undefined,
+      soloMiTalla: this.soloMiTalla() || undefined,
       pagina: this.pagina(),
       tamano: 12,
       orden: this.orden(),

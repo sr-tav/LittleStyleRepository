@@ -122,6 +122,28 @@ public class Pedido {
         fechaActualizacion = LocalDateTime.now();
     }
 
+    /**
+     * Aplica el estado global derivado de los despachos (US-12 multi-vendedor).
+     * No es una transición manual: el pedido madre se recalcula cada vez que
+     * cambia un despacho, dentro de la misma transacción y con bloqueo pesimista.
+     */
+    public void aplicarEstadoDerivado(EstadoPedido derivado) {
+        if (derivado == null) {
+            throw new BusinessException(HttpStatus.CONFLICT, "El estado derivado no puede ser nulo");
+        }
+        if (estado == EstadoPedido.CANCELADO || estado == EstadoPedido.PENDIENTE_PAGO
+                || estado == EstadoPedido.PAGADO) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "No se puede recalcular el pedido en estado " + estado);
+        }
+        if (estado != derivado && !estado.permiteTransicionA(derivado)) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el pedido de " + estado + " a " + derivado);
+        }
+        estado = derivado;
+        fechaActualizacion = LocalDateTime.now();
+    }
+
     public void avanzarA(EstadoPedido siguiente, String guia) {
         transicionarA(siguiente);
         if (siguiente == EstadoPedido.ENVIADO) {

@@ -162,25 +162,30 @@ export class DetalleProducto implements OnInit {
     this.recomendaciones.porPrenda(prendaId, perfilId).subscribe({
       next: (r) => this.sugerida.set(r),
       error: (err: unknown) => {
-        // El backend responde 422 cuando la prenda está excluida por alergia:
-        // en vez del mensaje genérico se muestra el motivo con riesgo EXCLUIDA.
+        // El backend responde 422 con código estable: PRENDA_EXCLUIDA_ALERGIA
+        // se muestra con riesgo EXCLUIDA; otros 422 (SIN_TALLA_COMPATIBLE,
+        // MEDICION_DESACTUALIZADA, PERFIL_SIN_MEDICIONES) no muestran nada.
+        // No se decide por texto del mensaje: si el mensaje cambia, se rompería.
         if (err instanceof HttpErrorResponse && err.status === 422) {
-          const mensaje = procesarErrorApi(err);
-          const prenda = this.prenda();
-          if (prenda && mensaje.toLowerCase().includes('alergia')) {
-            this.sugerida.set({
-              prendaId,
-              nombre: prenda.nombre,
-              precio: prenda.precio,
-              tallaSugerida: '',
-              puntaje: 0,
-              afinidad: 0,
-              riesgo: 'EXCLUIDA',
-              advertencias: [mensaje],
-              tieneStock: false,
-              imagenUrl: prenda.imagenes[0] ?? null,
-            });
-            return;
+          const body = err.error as { codigo?: string; mensaje?: string } | null;
+          if (body?.codigo === 'PRENDA_EXCLUIDA_ALERGIA') {
+            const mensaje = procesarErrorApi(err);
+            const prenda = this.prenda();
+            if (prenda) {
+              this.sugerida.set({
+                prendaId,
+                nombre: prenda.nombre,
+                precio: prenda.precio,
+                tallaSugerida: '',
+                puntaje: 0,
+                afinidad: 0,
+                riesgo: 'EXCLUIDA',
+                advertencias: [mensaje],
+                tieneStock: false,
+                imagenUrl: prenda.imagenes[0] ?? null,
+              });
+              return;
+            }
           }
         }
         this.sugerida.set(null);

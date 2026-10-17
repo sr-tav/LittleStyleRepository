@@ -40,6 +40,8 @@ public class CatalogoClienteService {
     static final int TAMANO_MAXIMO = 50;
 
     private final PrendaRepository prendaRepository;
+    private final co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.PerfilBiometricoPort perfiles;
+    private final co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.MotorRecomendacionService motor;
 
     @Transactional(readOnly = true)
     public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
@@ -64,6 +66,32 @@ public class CatalogoClienteService {
                                                           String precioMin, String precioMax, String disponible,
                                                           String material, String talla, List<Long> ids,
                                                           Integer edadMeses, int pagina, int tamano, String orden) {
+        return explorar(texto, categoria, genero, precioMin, precioMax, disponible, material, talla, ids,
+                null, null, edadMeses, pagina, tamano, orden);
+    }
+
+    /**
+     * Filtro "Solo mi talla sugerida" del lado del servidor (US-09): el
+     * frontend manda solo {@code perfilId} + {@code soloMiTalla} y los ids
+     * recomendados se calculan dentro del servidor. Los ids ya no viajan en la
+     * URL: con muchas prendas se superaba el límite de cabecera de Tomcat
+     * (~8 KB, del orden de mil ids). El parámetro {@code ids} legacy se
+     * mantiene solo para compatibilidad de pruebas.
+     */
+    @Transactional(readOnly = true)
+    public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
+                                                          String precioMin, String precioMax, String disponible,
+                                                          String material, String talla, List<Long> ids,
+                                                          Long perfilId, Boolean soloMiTalla,
+                                                          Integer edadMeses, int pagina, int tamano, String orden) {
+        List<Long> idsEfectivos = ids;
+        if (Boolean.TRUE.equals(soloMiTalla)) {
+            if (perfilId == null) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "El perfil es obligatorio para filtrar por tu talla", "perfilId");
+            }
+            idsEfectivos = motor.idsRecomendados(perfiles.obtenerActivos(perfilId));
+        }
         if (pagina < 0) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "La página no puede ser negativa", "pagina");
         }
@@ -81,11 +109,11 @@ public class CatalogoClienteService {
         String t = talla == null || talla.isBlank() ? null : talla.trim();
         List<MaterialTextil> materiales = materiales(material);
         Page<Long> paginaIds;
-        if (ids != null) {
-            if (ids.isEmpty()) {
+        if (idsEfectivos != null) {
+            if (idsEfectivos.isEmpty()) {
                 return PaginaResponse.from(Page.empty(paginable));
             }
-            paginaIds = prendaRepository.buscarIdsVitrinaPorIds(EstadoPrenda.ACTIVA, ids,
+            paginaIds = prendaRepository.buscarIdsVitrinaPorIds(EstadoPrenda.ACTIVA, idsEfectivos,
                     categoria(categoria), genero(genero), min, max, q, disponibilidad(disponible),
                     materiales, t, edadMeses, paginable);
         } else {

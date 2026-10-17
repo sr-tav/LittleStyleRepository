@@ -426,6 +426,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -506,7 +507,7 @@
 }
 
 .size-row {
-  grid-template-columns: minmax(60px, 0.8fr) repeat(5, minmax(0, 1fr)) 36px;
+  grid-template-columns: minmax(60px, 0.8fr) repeat(4, minmax(0, 1fr)) 36px;
   padding: 0.6rem;
   border: 1px solid var(--ls-border);
   border-radius: 12px;
@@ -523,6 +524,50 @@
   &.has-error {
     border-color: var(--ls-error);
   }
+}
+
+/* Inventario por talla (UI-20): nombre + stock + mínimo con el mismo ritmo
+   visual de la tabla (etiqueta arriba, valor abajo) para que las líneas base
+   queden alineadas. Grilla propia de 3 columnas: con la de 7 de .size-row los
+   campos quedaban angostos y el placeholder se cortaba. */
+.stock-row {
+  grid-template-columns: minmax(90px, 0.6fr) repeat(2, minmax(0, 1fr));
+  padding: 0.6rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 12px;
+
+  label {
+    font-size: 0.75rem;
+  }
+
+  input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  input:disabled {
+    background: #eef0ea;
+    color: var(--ls-muted);
+  }
+
+  &.has-error {
+    border-color: var(--ls-error);
+  }
+}
+
+.stock-talla-caption {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.stock-talla-valor {
+  display: flex;
+  align-items: center;
+  min-height: 2.9rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .size-row-error {
@@ -821,7 +866,8 @@
 }
 
 @media (max-width: 760px) {
-  .size-row {
+  .size-row,
+  .stock-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
 
@@ -836,6 +882,10 @@
 }
 
 @media (max-width: 600px) {
+  .catalog-table {
+    min-width: 560px;
+  }
+
   .catalog-page {
     padding: 1.5rem 1rem 2.5rem;
   }

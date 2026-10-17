@@ -51,6 +51,10 @@ public class EstrategiaTallaTest {
         assertEquals("4", e.sugerir(bio("115","24",Holgura.AJUSTADA), tabla()).orElseThrow().talla());
         assertEquals("4", e.sugerir(bio("105","18",Holgura.AJUSTADA), tabla()).orElseThrow().talla());
     }
+    @Test void ajustadaEnPrimeraTallaNoSeSaleDeLaTabla() {
+        var e = new EstrategiaConHolgura(new EstrategiaExacta(), new EstrategiaProximidad());
+        assertEquals("4", e.sugerir(bio("90","12",Holgura.AJUSTADA), tabla()).orElseThrow().talla());
+    }
     @Test void bioNuloRetornaEmpty() {
         assertTrue(new EstrategiaExacta().sugerir(null, tabla()).isEmpty());
         assertTrue(new EstrategiaProximidad().sugerir(null, tabla()).isEmpty());

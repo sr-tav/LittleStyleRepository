@@ -90,13 +90,16 @@ public class MotorRecomendacionService {
             throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "Catálogo no disponible, intenta de nuevo");
         }
         if (prenda.tablaTallas() == null || prenda.tablaTallas().estaVacia()) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible",
+                    "prenda", "SIN_TALLA_COMPATIBLE");
         }
         RangoTalla talla = elegirEstrategia(prenda).sugerir(bio, prenda.tablaTallas())
-                .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Sin talla compatible",
+                        "prenda", "SIN_TALLA_COMPATIBLE"));
         var eval = conOtraAlergia(al, perfil == null ? null : perfil.otraAlergia(), filtro.evaluar(al, prenda));
         if (eval.excluye()) throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
-                "Prenda excluida por alergia: " + String.join(", ", eval.motivos()));
+                "Prenda excluida por alergia: " + String.join(", ", eval.motivos()),
+                "prenda", "PRENDA_EXCLUIDA_ALERGIA");
         int puntaje = PuntajeRecomendacion.puntaje(bio, talla, eval, prenda.tieneStock(talla.talla()));
         int afinidad = afinidad(perfil, prenda);
         return new RecomendacionItem(prenda.id(), prenda.nombre(), prenda.precio(),

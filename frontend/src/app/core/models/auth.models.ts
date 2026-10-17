@@ -56,5 +56,16 @@ export interface ApiError {
   error: string;
   mensaje: string;
   path: string;
+  /** Código estable de error (p. ej. PRENDA_EXCLUIDA_ALERGIA): el frontend decide por código, no por texto. */
+  codigo?: string | null;
   errores?: Record<string, string>;
+}
+
+/** Extrae el código de error estable del backend, si existe. */
+export function codigoErrorApi(error: unknown): string | null {
+  if (error instanceof Object && 'error' in (error as Record<string, unknown>)) {
+    const body = (error as { error: Partial<ApiError> | null }).error;
+    return body?.codigo ?? null;
+  }
+  return null;
 }

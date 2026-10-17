@@ -87,7 +87,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest req) {
         Map<String, String> errores = ex.getCampo() == null ? null : Map.of(ex.getCampo(), ex.getMessage());
-        return build(ex.getStatus(), ex.getMessage(), req, errores);
+        ErrorResponse body = ErrorResponse.of(ex.getStatus().value(), ex.getStatus().getReasonPhrase(),
+                ex.getMessage(), req.getRequestURI(), ex.getCodigo(), errores);
+        return ResponseEntity.status(ex.getStatus()).body(body);
     }
 
     @ExceptionHandler(LoginBloqueadoException.class)

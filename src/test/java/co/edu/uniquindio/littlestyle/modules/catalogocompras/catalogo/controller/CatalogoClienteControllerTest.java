@@ -48,7 +48,8 @@ class CatalogoClienteControllerTest {
 
     @Test
     void explorarDevuelvePaginaSinDatosInternos() throws Exception {
-        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(), anyInt(), anyInt(), any()))
                 .thenReturn(PaginaResponse.from(new PageImpl<>(List.of(
                         new PrendaVitrinaResponse(10L, "Pantalón Jogger Azul", CategoriaPrenda.PANTALONES,
                                 GeneroPrenda.NINA, "Tienda Sol", new BigDecimal("32900"), "/media/a.png", true,
@@ -66,7 +67,8 @@ class CatalogoClienteControllerTest {
 
     @Test
     void filtroInvalidoDevuelve400() throws Exception {
-        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt(), any()))
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(), anyInt(), anyInt(), any()))
                 .thenThrow(new BusinessException(HttpStatus.BAD_REQUEST, "La categoría no es válida", "categoria"));
 
         mockMvc.perform(get("/api/cliente/catalogo").param("categoria", "ROPA"))
@@ -76,10 +78,20 @@ class CatalogoClienteControllerTest {
     @Test
     void idsDeRecomendadosLleganAlServicio() throws Exception {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), eq(List.of(10L, 20L)),
-                any(), anyInt(), anyInt(), any()))
+                any(), any(), any(), anyInt(), anyInt(), any()))
                 .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
 
         mockMvc.perform(get("/api/cliente/catalogo").param("ids", "10,20"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void filtroMiTallaViajaComoPerfilIdSinIdsEnLaUrl() throws Exception {
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                eq(3L), eq(true), any(), anyInt(), anyInt(), any()))
+                .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
+
+        mockMvc.perform(get("/api/cliente/catalogo").param("perfilId", "3").param("soloMiTalla", "true"))
                 .andExpect(status().isOk());
     }
 

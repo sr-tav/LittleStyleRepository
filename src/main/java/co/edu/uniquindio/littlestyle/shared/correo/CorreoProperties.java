@@ -19,7 +19,13 @@ public record CorreoProperties(
         /** Reintentos de envío ante fallo transitorio (ADR-14). */
         @DefaultValue("3") int reintentos,
         /** Espera entre reintentos en ms. */
-        @DefaultValue("2000") long esperaReintentoMs) {
+        @DefaultValue("2000") long esperaReintentoMs,
+        /**
+         * Origen público del backend (sin barra final). Las miniaturas locales
+         * {@code /media/...} se convierten a URL absoluta para que el cliente
+         * de correo pueda cargarlas; las de S3 ya vienen absolutas.
+         */
+        @DefaultValue("http://localhost:8080") String urlPublica) {
 
     /** Sin usuario o clave no se envía nada: se registra y se continúa. */
     public boolean enviosHabilitados() {

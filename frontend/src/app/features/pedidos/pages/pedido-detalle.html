@@ -41,14 +41,50 @@
       <p class="alert alert-info" role="status">Número de guía: <strong>{{ p.numeroGuia }}</strong></p>
     }
 
+    @if (p.despachos && p.despachos.length > 0) {
+      <section class="vitrina-seccion" aria-label="Despachos por vendedor">
+        <h3>Tu pedido por vendedor</h3>
+        @for (d of p.despachos; track d.despachoId) {
+          <article class="detail-card" [attr.aria-label]="'Paquete de ' + d.tienda">
+            <div><dt>Vendedor</dt><dd>{{ d.tienda }}</dd></div>
+            <div><dt>Estado del paquete</dt><dd>{{ estadoDe(d.estado) }}</dd></div>
+            @if (d.numeroGuia) {
+              <div><dt>Guía del paquete</dt><dd><strong>{{ d.numeroGuia }}</strong></dd></div>
+            }
+            <ul class="pedido-items">
+              @for (item of d.items; track item.prendaId + '-' + item.talla) {
+                <li>
+                  @if (item.imagenUrl) {
+                    <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
+                  } @else {
+                    <span class="pedido-miniatura pedido-miniatura-vacia" aria-hidden="true">{{ item.nombre.charAt(0) }}</span>
+                  }
+                  <div class="pedido-item-info">
+                    <strong>{{ item.nombre }}</strong>
+                    <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u</span>
+                  </div>
+                  <span class="price-cell">{{ precio(item.subtotal) }}</span>
+                </li>
+              }
+            </ul>
+          </article>
+        }
+      </section>
+    }
+
     <section class="vitrina-seccion" aria-label="Productos del pedido">
       <h3>Productos</h3>
       <ul class="pedido-items">
         @for (item of p.items; track item.prendaId + '-' + item.talla) {
           <li>
-            <div>
+            @if (item.imagenUrl) {
+              <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
+            } @else {
+              <span class="pedido-miniatura pedido-miniatura-vacia" aria-hidden="true">{{ item.nombre.charAt(0) }}</span>
+            }
+            <div class="pedido-item-info">
               <strong>{{ item.nombre }}</strong>
-              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un.</span>
+              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u</span>
             </div>
             <span class="price-cell">{{ precio(item.subtotal) }}</span>
           </li>
@@ -71,6 +107,9 @@
             <li class="is-hecho">
               <span class="pedido-punto" aria-hidden="true"></span>
               <span>{{ m.anterior ? estadoDe(m.anterior) + ' → ' : '' }}{{ estadoDe(m.nuevo) }}</span>
+              @if (m.numeroGuia) {
+                <span class="product-meta">Guía: {{ m.numeroGuia }}</span>
+              }
               <span class="product-meta">{{ fechaDe(m.fecha) }}</span>
             </li>
           }

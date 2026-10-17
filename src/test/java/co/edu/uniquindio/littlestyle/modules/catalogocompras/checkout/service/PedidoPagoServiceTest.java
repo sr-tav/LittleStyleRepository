@@ -49,6 +49,8 @@ class PedidoPagoServiceTest {
     private AlertasInventarioService alertasInventarioService;
     @Mock
     private ApplicationEventPublisher eventos;
+    @Mock
+    private DespachoService despachoService;
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-10T10:00:00Z"), ZoneId.of("UTC"));
     private final CheckoutProperties props = new CheckoutProperties(
@@ -60,7 +62,7 @@ class PedidoPagoServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void armar() {
         service = new PedidoPagoService(pedidoRepository, historialRepository, prendaRepository,
-                alertasInventarioService, props, clock, eventos);
+                alertasInventarioService, props, clock, eventos, despachoService);
     }
 
     private Pedido pedidoPendiente() {

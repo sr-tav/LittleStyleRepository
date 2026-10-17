@@ -38,13 +38,15 @@ public class CatalogoClienteController {
             @RequestParam(required = false) String material,
             @RequestParam(required = false) String talla,
             @RequestParam(required = false) List<Long> ids,
+            @RequestParam(required = false) Long perfilId,
+            @RequestParam(required = false) Boolean soloMiTalla,
             @RequestParam(required = false) Integer edadMeses,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "12") int tamano,
             @RequestParam(defaultValue = "novedades") String orden) {
         long ini = System.nanoTime();
         PaginaResponse<PrendaVitrinaResponse> res = catalogo.explorar(texto, categoria, genero, precioMin,
-                precioMax, disponible, material, talla, ids, edadMeses, pagina, tamano, orden);
+                precioMax, disponible, material, talla, ids, perfilId, soloMiTalla, edadMeses, pagina, tamano, orden);
         long ms = (System.nanoTime() - ini) / 1_000_000;
         return ResponseEntity.ok().header("X-Catalogo-Ms", String.valueOf(ms)).body(res);
     }

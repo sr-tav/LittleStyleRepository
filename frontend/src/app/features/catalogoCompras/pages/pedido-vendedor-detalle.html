@@ -1,34 +1,34 @@
 <app-navbar />
 <main class="catalog-page">
-  <a class="back-link" routerLink="/vendedor/pedidos" aria-label="Volver a pedidos">← Pedidos</a>
+  <a class="back-link" routerLink="/vendedor/pedidos" aria-label="Volver a despachos">← Mis despachos</a>
 
   @if (cargando()) {
-    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando pedido...</div>
+    <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando despacho...</div>
   } @else if (error()) {
     <p class="alert alert-error" role="alert">{{ error() }}</p>
-  } @else if (pedido(); as p) {
+  } @else if (despacho(); as p) {
     <header class="catalog-heading">
       <div>
-        <h1>Pedido #{{ p.id }}</h1>
-        <p class="catalog-subtitle">{{ estadoDe(p.estado) }}</p>
+        <h1>Pedido #{{ p.pedidoId }} · Tu paquete</h1>
+        <p class="catalog-subtitle">{{ estadoDe(p.estado) }} · {{ p.tienda }}</p>
       </div>
-      <span class="state-chip" [class.is-off]="p.estado === 'CANCELADO'">{{ estadoDe(p.estado) }}</span>
+      <span class="state-chip">{{ estadoDe(p.estado) }}</span>
     </header>
 
     @if (p.numeroGuia) {
-      <p class="alert alert-info" role="status">Número de guía: <strong>{{ p.numeroGuia }}</strong></p>
+      <p class="alert alert-info" role="status">Tu guía: <strong>{{ p.numeroGuia }}</strong></p>
     }
 
-    <dl class="pedido-resumen-grid" aria-label="Resumen del pedido">
-      <div><dt>Fecha</dt><dd>{{ fechaCreacion() }}</dd></div>
-      <div><dt>Estado</dt><dd>{{ estadoDe(p.estado) }}</dd></div>
+    <dl class="pedido-resumen-grid" aria-label="Resumen del despacho">
+      <div><dt>Pedido</dt><dd>#{{ p.pedidoId }}</dd></div>
+      <div><dt>Estado de tu paquete</dt><dd>{{ estadoDe(p.estado) }}</dd></div>
       <div><dt>Tus productos</dt><dd>{{ p.items.length }} línea(s)</dd></div>
       <div><dt>Tu subtotal</dt><dd>{{ precio(totalPropio()) }}</dd></div>
     </dl>
 
     @if (puedePreparar() || puedeEnviar()) {
-      <section class="catalog-card" aria-label="Avanzar el pedido">
-        <h2 class="catalog-section-title">Avanzar el pedido</h2>
+      <section class="catalog-card" aria-label="Avanzar tu paquete">
+        <h2 class="catalog-section-title">Avanzar tu paquete</h2>
         @if (errorAvance()) {
           <p class="alert alert-error" role="alert">{{ errorAvance() }}</p>
         }
@@ -40,7 +40,7 @@
         }
         @if (puedeEnviar()) {
           <label class="field">
-            <span>Número de guía</span>
+            <span>Número de guía de tu paquete</span>
             <input
               type="text" maxlength="60" placeholder="COL123"
               [value]="guia()" (input)="guia.set($any($event.target).value)"
@@ -59,41 +59,19 @@
       <ul class="pedido-items">
         @for (item of p.items; track item.prendaId + '-' + item.talla) {
           <li>
-            <div>
+            @if (item.imagenUrl) {
+              <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
+            } @else {
+              <span class="pedido-miniatura pedido-miniatura-vacia" aria-hidden="true">{{ item.nombre.charAt(0) }}</span>
+            }
+            <div class="pedido-item-info">
               <strong>{{ item.nombre }}</strong>
-              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un.</span>
+              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u</span>
             </div>
             <span class="price-cell">{{ precio(item.subtotal) }}</span>
           </li>
         }
       </ul>
-    </section>
-
-    <section class="catalog-card" aria-label="Dirección de envío">
-      <h2 class="catalog-section-title">Enviar a</h2>
-      <p><strong>{{ p.destinatario }}</strong> · {{ p.telefono }}</p>
-      <p class="product-meta">
-        {{ p.direccion }}@if (p.complemento) {, {{ p.complemento }}}. {{ p.ciudad }}, {{ p.departamento }}@if (p.codigoPostal) {
-          ({{ p.codigoPostal }})
-        }
-      </p>
-    </section>
-
-    <section class="catalog-card" aria-label="Historial del pedido">
-      <h2 class="catalog-section-title">Historial</h2>
-      @if (p.historial.length === 0) {
-        <p class="product-meta">Aún no hay movimientos registrados.</p>
-      } @else {
-        <ol class="pedido-historial">
-          @for (m of p.historial; track m.fecha + '-' + m.nuevo) {
-            <li class="is-hecho">
-              <span class="pedido-punto" aria-hidden="true"></span>
-              <span>{{ m.anterior ? estadoDe(m.anterior) + ' → ' : '' }}{{ estadoDe(m.nuevo) }}</span>
-              <span class="product-meta">{{ fechaDe(m.fecha) }}</span>
-            </li>
-          }
-        </ol>
-      }
     </section>
   }
 </main>

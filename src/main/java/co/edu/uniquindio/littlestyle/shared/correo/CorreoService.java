@@ -20,7 +20,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CorreoService {
 
-    public record ItemCorreo(String nombre, String talla, int cantidad) {
+    /**
+     * Línea del pedido en el correo, como cualquier e-commerce: mini imagen
+     * del producto más su información importante (nombre, talla, cantidad y
+     * precios congelados al momento de la compra). La imagen puede ser nula
+     * (prenda sin fotos o eliminada): en ese caso la fila sale sin imagen.
+     */
+    public record ItemCorreo(String nombre, String talla, int cantidad, String precioUnitario,
+                             String subtotal, String imagenUrl) {
     }
 
     private final JavaMailSender envio;
@@ -37,10 +44,7 @@ public class CorreoService {
             String plantilla = new String(
                     new ClassPathResource("correo/pedido-enviado.html").getInputStream().readAllBytes(),
                     StandardCharsets.UTF_8);
-            String filas = items.stream()
-                    .map(i -> "<li>" + escaparHtml(i.nombre()) + " (talla " + escaparHtml(i.talla()) + ") x"
-                            + i.cantidad() + "</li>")
-                    .reduce("", String::concat);
+            String filas = filasHtml(items);
             String html = plantilla
                     .replace("{{nombre}}", escaparHtml(nombre))
                     .replace("{{pedidoId}}", String.valueOf(pedidoId))
@@ -190,11 +194,59 @@ public class CorreoService {
                 StandardCharsets.UTF_8);
     }
 
-    private static String filasHtml(List<ItemCorreo> items) {
-        return items.stream()
-                .map(i -> "<li>" + escaparHtml(i.nombre()) + " (talla " + escaparHtml(i.talla()) + ") x"
-                        + i.cantidad() + "</li>")
-                .reduce("", String::concat);
+    private String filasHtml(List<ItemCorreo> items) {
+        return items.stream().map(this::filaHtml).reduce("", String::concat);
+    }
+
+    /**
+     * Fila estilo e-commerce: miniatura 64×64, nombre, talla, cantidad y
+     * precios congelados. Gmail no carga rutas relativas: se absolutizan.
+     */
+    private String filaHtml(ItemCorreo i) {
+        String nombre = escaparHtml(i.nombre());
+        String img = urlPublicaDe(i.imagenUrl());
+        StringBuilder fila = new StringBuilder(
+                "<li style=\"list-style:none;margin:0 0 12px;padding:0 0 12px;border-bottom:1px solid #e1e6c6;\">"
+                        + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\">"
+                        + "<tr style=\"vertical-align:top;\">");
+        fila.append("<td width=\"72\" style=\"width:72px;padding-right:12px;\">");
+        if (img != null) {
+            fila.append("<img src=\"").append(escaparHtml(img)).append("\" alt=\"").append(nombre)
+                    .append("\" width=\"64\" height=\"64\" style=\"display:block;width:64px;height:64px;")
+                    .append("object-fit:cover;border-radius:8px;border:1px solid #e1e6c6;\" />");
+        } else {
+            String inicial = nombre.isEmpty() ? "?" : nombre.substring(0, 1);
+            fila.append("<div style=\"width:64px;height:64px;border-radius:8px;background:#d5f2ad;")
+                    .append("color:#2b7d40;font-weight:700;text-align:center;line-height:64px;\">")
+                    .append(inicial).append("</div>");
+        }
+        fila.append("</td><td style=\"font-family:Arial,sans-serif;color:#233127;font-size:14px;\">")
+                .append("<strong>").append(nombre).append("</strong>")
+                .append("<br />Talla ").append(escaparHtml(i.talla()))
+                .append(" · Cantidad ").append(i.cantidad());
+        if (i.precioUnitario() != null) {
+            fila.append("<br />$").append(escaparHtml(i.precioUnitario())).append(" c/u");
+        }
+        fila.append("</td>");
+        if (i.subtotal() != null) {
+            fila.append("<td style=\"text-align:right;white-space:nowrap;font-family:Arial,sans-serif;")
+                    .append("font-weight:700;color:#233127;\">$")
+                    .append(escaparHtml(i.subtotal())).append("</td>");
+        }
+        return fila.append("</tr></table></li>").toString();
+    }
+
+    /** Convierte {@code /media/...} en URL absoluta; deja intactas las de S3. */
+    String urlPublicaDe(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        String recortada = url.trim();
+        if (recortada.startsWith("http://") || recortada.startsWith("https://")) {
+            return recortada;
+        }
+        String base = props.urlPublica() == null ? "" : props.urlPublica().replaceAll("/+$", "");
+        return recortada.startsWith("/") ? base + recortada : base + "/" + recortada;
     }
 
     private void enviarHtml(String para, String asunto, String html) throws Exception {
