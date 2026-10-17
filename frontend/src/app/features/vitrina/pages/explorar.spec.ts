@@ -1,9 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 
+import { CarritoService } from '../../catalogoCompras/services/carrito.service';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { Pagina, VitrinaItem } from '../models/vitrina.models';
 import { Explorar } from './explorar';
@@ -22,6 +24,19 @@ function item(cambios: Partial<VitrinaItem> = {}): VitrinaItem {
     ...cambios,
   };
 }
+
+// El Navbar usa el carrito: con el servicio real, una sesión CLIENTE dejada por otro spec
+// dispara GET /api/cliente/carrito y rompe http.verify() según el orden de ejecución.
+const carritoMock = {
+  agregar: vi.fn(),
+  abrirPanel: vi.fn(),
+  panelAbierto: signal(false),
+  items: signal([]),
+  cantidad: signal(0),
+  subtotal: signal(0),
+  alternarPanel: vi.fn(),
+  cerrarPanel: vi.fn(),
+};
 
 function pagina(items: VitrinaItem[]): Pagina<VitrinaItem> {
   return { contenido: items, pagina: 0, tamano: 12, totalElementos: items.length, totalPaginas: 1 };
@@ -43,6 +58,7 @@ describe('Explorar (US-09)', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { queryParamMap: params.asObservable() } },
         { provide: PerfilActivoService, useValue: { perfil: () => perfilActual } },
+        { provide: CarritoService, useValue: carritoMock },
       ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
