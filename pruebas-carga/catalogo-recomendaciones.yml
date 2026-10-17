@@ -1,0 +1,138 @@
+# Pruebas de carga (US-13, fase 5): catálogo con filtros y motor de recomendación.
+# Métricas del Plan de Calidad: carga simultánea (>= 99 % sin error con 100 usuarios),
+# filtros (< 1.5 s), recomendaciones (< 2 s). Ver pruebas-carga/README.md.
+#   TARGET=https://littlestyle.duckdns.org npx -y artillery@2.0.34 run --output informe.json catalogo-recomendaciones.yml
+#   node informe.js informe.json      -> informe.html
+config:
+  target: "{{ $env.TARGET }}"
+  processor: "./procesador.js"
+  http:
+    timeout: 10
+  # Caddy comprime con zstd si se le ofrece y Artillery no lo descomprime: se pide gzip
+  defaults:
+    headers:
+      Accept-Encoding: gzip
+  phases:
+    - name: calentamiento
+      duration: 30
+      arrivalRate: 2
+    - name: rampa
+      duration: 60
+      arrivalRate: 2
+      rampTo: 25
+    # Cada usuario dura ~4.3 s (6 peticiones con pausas): 25 por segundo llegan al tope de 100 a la vez
+    - name: pico 100 usuarios
+      duration: 120
+      arrivalRate: 25
+      maxVusers: 100
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+  ensure:
+    maxErrorRate: 1
+    thresholds:
+      - http.response_time.p95: 1500
+
+# Una cuenta de cliente y un perfil infantil propios de la prueba, creados una sola vez
+before:
+  flow:
+    - function: "datosDeCuenta"
+    - post:
+        url: "/api/auth/register"
+        json:
+          nombre: "Carga"
+          apellido: "Artillery"
+          email: "{{ email }}"
+          telefono: "{{ telefono }}"
+          password: "{{ password }}"
+          confirmarPassword: "{{ password }}"
+          rol: "CLIENTE"
+          aceptaTerminos: true
+        capture:
+          json: "$.token"
+          as: "token"
+    - post:
+        url: "/api/cliente/perfiles/con-medicion-inicial"
+        headers:
+          Authorization: "Bearer {{ token }}"
+        json:
+          perfil:
+            nombre: "Perfil Carga"
+            fechaNacimiento: "2020-05-10"
+            contextura: "MEDIA"
+            holgura: "REGULAR"
+            alergias: []
+            sinAlergias: true
+            coloresPreferidos: ["AZUL"]
+            estampadosPreferidos: ["RAYAS"]
+          medicionInicial:
+            fechaMedicion: "{{ hoy }}"
+            estaturaCm: 110
+            pesoKg: 20
+        capture:
+          json: "$.id"
+          as: "perfilId"
+
+scenarios:
+  - name: Explorar catálogo con filtros
+    weight: 6
+    flow:
+      - get:
+          name: "Catálogo sin filtros"
+          url: "/api/cliente/catalogo"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"
+          capture:
+            json: "$.contenido[0].id"
+            as: "prendaId"
+            strict: false
+      - think: 1
+      - get:
+          name: "Filtro categoría y género"
+          url: "/api/cliente/catalogo?categoria=CAMISETAS&genero=UNISEX&disponible=true"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"
+      - think: 1
+      - get:
+          name: "Filtro talla, precio y orden"
+          url: "/api/cliente/catalogo?talla=6&precioMin=10000&precioMax=200000&orden=precioAsc"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"
+      - think: 1
+      - get:
+          name: "Búsqueda por texto"
+          url: "/api/cliente/catalogo?q=camisa&material=ALGODON"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"
+      - think: 1
+      - get:
+          name: "Filtro solo mi talla"
+          url: "/api/cliente/catalogo?perfilId={{ perfilId }}&soloMiTalla=true"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"
+      - think: 1
+      - get:
+          name: "Detalle de prenda"
+          url: "/api/cliente/catalogo/{{ prendaId }}"
+          headers: { Authorization: "Bearer {{ token }}" }
+          ifTrue: "prendaId"
+
+  - name: Recomendaciones del perfil
+    weight: 4
+    flow:
+      - get:
+          name: "Recomendaciones"
+          url: "/api/cliente/recomendaciones?perfilId={{ perfilId }}"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"
+      - think: 2
+      - get:
+          name: "Ids recomendados"
+          url: "/api/cliente/recomendaciones/ids?perfilId={{ perfilId }}"
+          headers: { Authorization: "Bearer {{ token }}" }
+      - think: 1
+      - get:
+          name: "Catálogo del perfil"
+          url: "/api/cliente/catalogo?perfilId={{ perfilId }}"
+          headers: { Authorization: "Bearer {{ token }}" }
+          afterResponse: "medirServidor"

@@ -6,9 +6,9 @@
 |---|------|--------|
 | 1 | Contenedores Docker y `docker compose` local | Hecho |
 | 2 | Despliegue manual en AWS (EC2 + RDS MySQL + S3, DuckDNS + HTTPS): [despliegue-aws.md](despliegue-aws.md) | Hecho |
-| 3 | CI/CD con Jenkins: [cicd-jenkins.md](cicd-jenkins.md) | Probado en local, falta instalar en la EC2 |
+| 3 | CI/CD con Jenkins: [cicd-jenkins.md](cicd-jenkins.md) | Hecho |
 | 4 | Pruebas E2E del flujo completo (Playwright) + registro en TestRail | Pendiente |
-| 5 | Pruebas de rendimiento y carga de la API (Artillery) | Pendiente |
+| 5 | Pruebas de rendimiento y carga de la API (Artillery): [pruebas-carga/](../../pruebas-carga/README.md) | Lista, probada en local; falta ejecutarla contra producción |
 | 6 | Corrección de errores y cierre | Pendiente |
 
 ## Fase 1: contenedores

@@ -1,5 +1,5 @@
 // CI/CD de LittleStyle (US-13). Corre en el Jenkins de la EC2 (deploy/jenkins) con el Docker del host:
-// pruebas -> reportes JUnit -> build de imágenes -> despliegue -> verificación, con rollback si falla.
+// pruebas -> reportes JUnit y cobertura -> build de imágenes -> despliegue -> verificación, con rollback si falla.
 pipeline {
     agent any
 
@@ -34,7 +34,13 @@ pipeline {
 
         stage('Resultados') {
             steps {
-                junit testResults: 'reportes/**/*.xml', allowEmptyResults: false
+                junit testResults: 'reportes/backend/*.xml, reportes/frontend/*.xml', allowEmptyResults: false
+                recordCoverage id: 'cobertura', name: 'Cobertura', sourceCodeRetention: 'NEVER',
+                    sourceDirectories: [[path: 'src/main/java'], [path: 'frontend']], tools: [
+                    [parser: 'JACOCO', pattern: 'reportes/cobertura/backend/jacoco.xml'],
+                    [parser: 'COBERTURA', pattern: 'reportes/cobertura/frontend/cobertura-coverage.xml']
+                ]
+                archiveArtifacts artifacts: 'reportes/cobertura/**', allowEmptyArchive: true
                 script {
                     if (currentBuild.resultIsWorseOrEqualTo('UNSTABLE')) {
                         error('Hay pruebas fallidas: no se despliega')

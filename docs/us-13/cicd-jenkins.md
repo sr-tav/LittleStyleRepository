@@ -4,7 +4,7 @@
 push / merge a main ──webhook──> https://littlestyle.duckdns.org/jenkins/github-webhook/
                                           │ (Caddy)
                                           ▼
-EC2 t3.medium ── Jenkins (contenedor) ── usa el Docker del host ──> contenedores backend + web
+EC2 c7i-flex.large ── Jenkins (contenedor) ── usa el Docker del host ──> contenedores backend + web
 ```
 
 Jenkins corre en la misma EC2, en Docker. Cada push a `main` ejecuta el `Jenkinsfile`:
@@ -13,7 +13,7 @@ Jenkins corre en la misma EC2, en Docker. Cada push a `main` ejecuta el `Jenkins
 |-------|----------|
 | Pruebas backend | `docker build --target reportes .`: `mvnw test` con H2 y exporta los JUnit |
 | Pruebas frontend | `docker build --target reportes frontend`: `ng test` (Vitest) y exporta el JUnit |
-| Resultados | Publica los reportes en Jenkins. **Si hay una prueba fallida, se detiene y no despliega** |
+| Resultados | Publica las pruebas y la **cobertura** (JaCoCo en el backend, Vitest en el frontend). **Si hay una prueba fallida, se detiene y no despliega** |
 | Construir imágenes | Guarda la versión actual como `:anterior` y construye las nuevas |
 | Desplegar | `docker compose up -d backend web` con el `.env` de `~/littlestyle` |
 | Verificar | Espera a que la API responda 401 sin token. **Si no responde en 3 minutos, vuelve a `:anterior` (rollback)** |
@@ -29,19 +29,19 @@ Se probó en local: 524 pruebas (344 backend + 180 frontend) en verde, despliegu
 |---------|-----------|
 | `Jenkinsfile` | Pipeline |
 | `deploy/jenkins/Dockerfile` | Jenkins LTS + Docker CLI, Compose y Buildx + plugins |
-| `deploy/jenkins/plugins.txt` | Plugins: pipeline, git, github, junit, JCasC, job-dsl… |
+| `deploy/jenkins/plugins.txt` | Plugins: pipeline, git, github, junit, coverage, JCasC, job-dsl… |
 | `deploy/jenkins/casc/jenkins.yaml` | Usuario admin, seguridad, credencial de GitHub y job |
 | `deploy/jenkins/docker-compose.yml` | Contenedor Jenkins en la red de la app, con el socket de Docker |
 | `deploy/jenkins/.env.example` | Variables de Jenkins (se copia a `deploy/jenkins/.env`, no se versiona) |
 
 ## Instalación en la EC2 (una sola vez)
 
-### 1. Subir la instancia a t3.medium y el disco a 30 GB
+### 1. Subir la instancia a c7i-flex.large (4 GB) y el disco a 30 GB
 
 Jenkins, los builds y la app no caben en 2 GB, y las imágenes y la caché de build ocupan disco.
 
 1. EC2 → la instancia → **Instance state → Stop**. Espera a que diga *Stopped*.
-2. **Actions → Instance settings → Change instance type** → `t3.medium` → **Apply**.
+2. **Actions → Instance settings → Change instance type** → `c7i-flex.large` (en el plan gratuito `t3.medium` no aparece) → **Apply**.
 3. En la pestaña **Storage**, haz clic en el volumen → **Actions → Modify volume** → Size `30` → **Modify**.
 4. **Instance state → Start**.
 5. Por SSH, confirma que el disco creció (Amazon Linux lo expande al arrancar):
@@ -95,15 +95,46 @@ Al guardarlo, GitHub envía un *ping*. En **Recent Deliveries** debe aparecer co
 En Jenkins → `littlestyle` → **Build Now**. Desde ahí, cada push o merge a `main` lo dispara solo.
 En **Stage View** se ve el avance por etapa y en **Test Result**, las pruebas.
 
+## Cobertura de pruebas
+
+Cada build publica la cobertura en Jenkins → `littlestyle` → **Cobertura** (gráfica por build y detalle por
+paquete y archivo). Los reportes HTML completos quedan en **Build Artifacts** → `reportes/cobertura/`.
+
+En local:
+- Backend: `./mvnw test` → `target/site/jacoco/index.html`
+- Frontend: `cd frontend && npx ng test --watch=false --coverage` → `coverage/frontend/index.html`
+
+### Actualizar Jenkins cuando cambian sus plugins
+
+Si `deploy/jenkins/plugins.txt` cambia (por ejemplo, al agregar `coverage`), Jenkins se reconstruye en la EC2
+después de mergear. Hasta entonces, el build automático de ese merge falla con un error del tipo
+`No such DSL method 'recordCoverage'` sin llegar a desplegar, así que producción no se toca.
+
+```bash
+cd ~/littlestyle && git pull
+cd deploy/jenkins && docker compose up -d --build     # ~3 min
+```
+
+Luego, en Jenkins, **Build Now**.
+
+Los builds y la configuración se conservan: están en el volumen `jenkins_home`.
+
 ## Uso diario
 
 - El equipo trabaja en sus ramas y hace PR a `main`. Al mergear, Jenkins prueba y despliega en ~10 minutos.
 - **No ejecutes `docker compose up --build` a mano en `~/littlestyle`.** Esa carpeta solo guarda el `.env`
   y, si tiene código viejo, pisaría lo que desplegó Jenkins.
 - Si un cambio agrega columnas o tablas, el pipeline falla en *Verificar* (`Schema validation`) y hace
-  rollback. Hay que aplicar la migración una vez, a mano: agregar
-  `SPRING_PROFILES_ACTIVE=prod,perfiles-migracion` al `.env`, ejecutar **Build Now**, quitar la línea y
-  volver a ejecutar **Build Now**.
+  rollback. Hay que aplicar la migración una vez, a mano, en `~/littlestyle`:
+  ```bash
+  printf '\nSPRING_PROFILES_ACTIVE=prod,perfiles-migracion\n' >> .env
+  # Build Now y esperar el verde. Luego quitar la línea sin cambiar el archivo de lugar
+  # (Jenkins lo monta como archivo; con `sed -i` seguiría viendo la versión vieja):
+  grep -v '^SPRING_PROFILES_ACTIVE=' .env > /tmp/env.tmp && cat /tmp/env.tmp > .env && rm /tmp/env.tmp
+  # Build Now otra vez
+  ```
+  Si la migración trae datos que rellenar (por ejemplo, `docs/us-12/migracion-despachos.sql`), esa parte
+  se ejecuta después en MySQL.
 - Variables nuevas: se agregan al `.env` de `~/littlestyle` antes de mergear.
 
 ## Probar Jenkins en local (opcional)
