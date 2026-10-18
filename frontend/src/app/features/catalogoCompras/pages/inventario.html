@@ -45,7 +45,7 @@
       </div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table inventory-table">
+        <table class="catalog-table inventory-table tabla-tarjetas">
           <caption class="visually-hidden">Inventario con existencias actuales, mínimos por talla y estado por producto</caption>
           <thead>
             <tr>
@@ -70,12 +70,12 @@
                     </div>
                   </div>
                 </td>
-                <td>
+                <td data-label="Stock actual">
                   <span class="stock-number" [class]="'stock-number stock-number-' + item.nivel">{{ item.stockTotal }}</span>
                 </td>
-                <td class="muted-cell">{{ minimosDe(item) }}</td>
-                <td><app-nivel-stock-badge [nivel]="item.nivel" /></td>
-                <td>
+                <td class="muted-cell" data-label="Mínimos por talla">{{ minimosDe(item) }}</td>
+                <td data-label="Estado"><app-nivel-stock-badge [nivel]="item.nivel" /></td>
+                <td class="celda-accion">
                   @if (edicion()?.prendaId !== item.prendaId) {
                     <button type="button" class="btn-soft" (click)="editar(item)">Actualizar stock</button>
                   }

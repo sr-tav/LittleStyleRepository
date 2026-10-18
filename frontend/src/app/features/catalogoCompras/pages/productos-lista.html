@@ -44,7 +44,7 @@
       <div class="catalog-state">No hay productos que coincidan con "{{ busqueda() }}".</div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table">
+        <table class="catalog-table tabla-tarjetas">
           <caption class="visually-hidden">Productos del catálogo con precio, existencias y estado</caption>
           <thead>
             <tr>
@@ -68,20 +68,20 @@
                     </div>
                   </div>
                 </td>
-                <td><span class="category-chip">{{ categoria(prenda) }}</span></td>
-                <td class="price-cell">{{ precio(prenda) }}</td>
-                <td>
+                <td data-label="Categoría"><span class="category-chip">{{ categoria(prenda) }}</span></td>
+                <td class="price-cell" data-label="Precio">{{ precio(prenda) }}</td>
+                <td data-label="Stock">
                   <div class="stock-cell">
                     <strong>{{ prenda.stockTotal }}</strong>
                     <app-nivel-stock-badge [nivel]="prenda.nivelStock" />
                   </div>
                 </td>
-                <td>
+                <td data-label="Estado">
                   <span class="state-chip" [class.is-off]="prenda.estado === 'INACTIVA'">
                     {{ prenda.estado === 'ACTIVA' ? 'Activo' : 'Inactivo' }}
                   </span>
                 </td>
-                <td>
+                <td class="celda-accion">
                   <div class="row-actions">
                     <a
                       class="icon-button icon-button-primary"

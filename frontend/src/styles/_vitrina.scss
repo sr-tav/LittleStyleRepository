@@ -344,15 +344,21 @@
   }
 }
 
+// minmax(0, 1fr): con 1fr la columna crece hasta el ancho de la tabla de medidas y la página se desborda
 @media (max-width: 900px) {
   .vitrina-detalle-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 1rem;
   }
 
   .vitrina-columnas {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
+}
+
+// Sin fotos no hay miniaturas: el visor ocupa todo el ancho en lugar de la columna de 56-76 px
+.galeria:has(> .galeria-viewer-vacio) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (max-width: 480px) {
