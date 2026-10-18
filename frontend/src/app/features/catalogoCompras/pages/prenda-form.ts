@@ -63,6 +63,9 @@ const rangoValido: ValidatorFn = (grupo: AbstractControl): ValidationErrors | nu
   if (v.pesoMinKg != null && v.pesoMaxKg != null && +v.pesoMinKg > +v.pesoMaxKg) {
     errores['rangoPeso'] = true;
   }
+  if (v.edadMinMeses != null && v.edadMaxMeses != null && +v.edadMinMeses > +v.edadMaxMeses) {
+    errores['rangoEdad'] = true;
+  }
   return Object.keys(errores).length ? errores : null;
 };
 
@@ -222,6 +225,16 @@ export class PrendaForm implements OnInit, OnDestroy {
         estaturaMaxCm: this.fb.control<number | null>(existente?.estaturaMaxCm ?? null, medida(40, 200)),
         pesoMinKg: this.fb.control<number | null>(existente?.pesoMinKg ?? null, medida(2, 120)),
         pesoMaxKg: this.fb.control<number | null>(existente?.pesoMaxKg ?? null, medida(2, 120)),
+        edadMinMeses: this.fb.control<number | null>(existente?.edadMinMeses ?? null, [
+          Validators.min(0),
+          Validators.max(216),
+          ENTERO,
+        ]),
+        edadMaxMeses: this.fb.control<number | null>(existente?.edadMaxMeses ?? null, [
+          Validators.min(0),
+          Validators.max(216),
+          ENTERO,
+        ]),
         stock: this.fb.control<number | null>(existente?.stock ?? 0, [
           Validators.required,
           Validators.min(0),
@@ -464,6 +477,8 @@ export class PrendaForm implements OnInit, OnDestroy {
         estaturaMaxCm: Number(t['estaturaMaxCm']),
         pesoMinKg: Number(t['pesoMinKg']),
         pesoMaxKg: Number(t['pesoMaxKg']),
+        edadMinMeses: t['edadMinMeses'] === null || t['edadMinMeses'] === '' ? null : Number(t['edadMinMeses']),
+        edadMaxMeses: t['edadMaxMeses'] === null || t['edadMaxMeses'] === '' ? null : Number(t['edadMaxMeses']),
         stock: t['existente'] ? null : Number(t['stock']),
         stockMinimo: t['stockMinimo'] === null || t['stockMinimo'] === '' ? null : Number(t['stockMinimo']),
       })),

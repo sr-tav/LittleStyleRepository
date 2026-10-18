@@ -13,6 +13,9 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Pren
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaResumenCheckoutResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.ValidadorAlergiaCompra;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilResponse;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service.PerfilInfantilService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,8 @@ public class CarritoService {
     private final CarritoRepository carritoRepository;
     private final PrendaRepository prendaRepository;
     private final DisponibilidadStockService disponibilidadStockService;
+    private final PerfilInfantilService perfilInfantilService;
+    private final ValidadorAlergiaCompra validadorAlergiaCompra;
 
     @Transactional(readOnly = true)
     public CarritoResponse obtener() {
@@ -58,6 +63,7 @@ public class CarritoService {
         validarAgregar(request);
         Carrito carrito = obtenerOBloquearActual();
         Prenda prenda = bloquearPrendaActiva(request.prendaId());
+        validarAlergias(prenda, request.perfilInfantilId());
         TallaPrenda talla = talla(prenda, request.talla());
         ItemCarrito existente = carrito.getItems().stream()
                 .filter(item -> item.getPrendaId().equals(prenda.getId())
@@ -217,10 +223,33 @@ public class CarritoService {
     private void validarAgregar(AgregarItemCarritoRequest request) {
         if (request == null || request.prendaId() == null || request.prendaId() <= 0
                 || request.talla() == null || request.talla().isBlank()
-                || request.cantidad() == null || request.cantidad() <= 0) {
+                || request.cantidad() == null || request.cantidad() <= 0
+                || request.perfilInfantilId() != null && request.perfilInfantilId() <= 0) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
                     "La prenda, talla y cantidad deben ser válidas", "cantidad");
         }
+    }
+
+    /**
+     * Bloquea el agregado cuando la prenda choca con una alergia grave
+     * (excluyente). Si la solicitud indica el perfil infantil activo, se evalúa
+     * solo contra ese perfil; si no llega, se evalúa contra todos los perfiles
+     * del cliente. Las coincidencias por advertencia (lana, algodón, tintes,
+     * broches, etc.) no bloquean el agregado.
+     */
+    private void validarAlergias(Prenda prenda, Long perfilInfantilId) {
+        if (perfilInfantilId != null) {
+            validarExcluida(perfilInfantilService.obtener(perfilInfantilId), prenda);
+            return;
+        }
+        for (PerfilResponse perfil : perfilInfantilService.listar()) {
+            validarExcluida(perfil, prenda);
+        }
+    }
+
+    private void validarExcluida(PerfilResponse perfil, Prenda prenda) {
+        validadorAlergiaCompra.validarExcluida(
+                ValidadorAlergiaCompra.alergiasEvaluables(perfil), prenda, perfil.id());
     }
 
     private static String normalizarSugerida(String tallaSugerida) {

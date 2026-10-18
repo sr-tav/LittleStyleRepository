@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.TransaccionWompi;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.EstadoTransaccionPago;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.MotivoReembolso;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service.WompiClient;
 import com.jayway.jsonpath.JsonPath;
@@ -26,6 +27,7 @@ import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -228,6 +230,63 @@ class PagoWompiIntegrationTest {
         mockMvc.perform(get("/api/cliente/carrito").header("Authorization", compra.cliente()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    void cancelarUnPagoLiberadoEsIdempotenteYUnCobroTardioTerminaEnReembolso() throws Exception {
+        Compra compra = crearCompra(1);
+        String referencia = iniciarPago(compra);
+
+        mockMvc.perform(delete("/api/cliente/pagos/" + referencia).header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoPago").value("ANULADA"));
+        // Cancelar dos veces deja la transacción en ANULADA (idempotente).
+        mockMvc.perform(delete("/api/cliente/pagos/" + referencia).header("Authorization", compra.cliente()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoPago").value("ANULADA"));
+
+        // La cancelación libera la compra: un nuevo intento crea otra transacción.
+        assertThat(transaccionPagoRepository.count()).isEqualTo(1);
+        String solicitud = """
+                {"perfilInfantilId":%d,
+                 "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "complemento":null,"codigoPostal":"630001",
+                 "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
+                """.formatted(compra.perfilId());
+
+        mockMvc.perform(post("/api/cliente/pagos/checkout")
+                        .header("Authorization", compra.cliente())
+                        .header("Idempotency-Key", "reintento-tras-cancelar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(solicitud))
+                .andExpect(status().isCreated());
+        assertThat(transaccionPagoRepository.count()).isEqualTo(2);
+
+        // Wompi aprueba un cobro tardío de la referencia anulada: reembolso, sin pedido.
+        mockMvc.perform(post("/api/pagos/wompi/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(evento("wompi-tardio", "APPROVED", referencia, 3990000L, SECRETO_EVENTOS)))
+                .andExpect(status().isOk());
+
+        var anulada = transaccionPagoRepository.findByReferencia(referencia).orElseThrow();
+        assertThat(anulada.getEstado()).isEqualTo(EstadoTransaccionPago.REEMBOLSO_PENDIENTE);
+        assertThat(anulada.getMotivoReembolso()).isEqualTo(MotivoReembolso.PAGO_ANULADO);
+        assertThat(anulada.getPedido()).isNull();
+        assertThat(pedidoRepository.count()).isZero();
+        assertThat(stockTalla(compra.prendaId())).isEqualTo(8);
+    }
+
+    @Test
+    void noSePuedeCancelarUnPagoYaAprobado() throws Exception {
+        Compra compra = crearCompra(1);
+        String referencia = iniciarPago(compra);
+        mockMvc.perform(post("/api/pagos/wompi/eventos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(evento("wompi-cancel-aprobada", "APPROVED", referencia, 3990000L, SECRETO_EVENTOS)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/cliente/pagos/" + referencia).header("Authorization", compra.cliente()))
+                .andExpect(status().isConflict());
     }
 
     @Test

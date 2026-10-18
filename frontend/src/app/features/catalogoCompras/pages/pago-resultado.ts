@@ -39,6 +39,7 @@ export class PagoResultadoPage implements OnInit {
   protected readonly resultado = signal<ResultadoPago | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly cancelando = signal(false);
   protected readonly precio = formatearPrecio;
 
   protected readonly vista = computed(() => {
@@ -57,6 +58,24 @@ export class PagoResultadoPage implements OnInit {
         return 'pendiente';
     }
   });
+
+  /** Anula el pago en CREADA: con ANULADA el carrito queda libre para un nuevo intento. */
+  protected cancelarPago(): void {
+    const pago = this.resultado();
+    if (!pago || this.cancelando()) return;
+    this.error.set(null);
+    this.cancelando.set(true);
+    this.pagoService.cancelar(pago.referencia).subscribe({
+      next: (resultado) => {
+        this.resultado.set(resultado);
+        this.cancelando.set(false);
+      },
+      error: (err: unknown) => {
+        this.error.set(procesarErrorApi(err));
+        this.cancelando.set(false);
+      },
+    });
+  }
 
   ngOnInit(): void {
     const transaccionId = this.route.snapshot.queryParamMap.get('id');

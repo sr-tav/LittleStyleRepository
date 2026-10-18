@@ -10,6 +10,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ItemResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionEnvioRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ResumenCheckoutRequest;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.ValidadorAlergiaCompra;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy.EvaluacionAlergia;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy.FiltroAlergia;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy.NivelRiesgo;
@@ -64,8 +65,9 @@ class CheckoutFacadeTest {
     void setUp() {
         lenient().when(tarifaEnvioService.calcular("Quindío", "Armenia"))
                 .thenReturn(new BigDecimal("7000"));
-        facade = new CheckoutFacade(prendaRepository, perfilInfantilService, filtroAlergia,
-                new DisponibilidadStockService(), tarifaEnvioService);
+        facade = new CheckoutFacade(prendaRepository, perfilInfantilService,
+                new ValidadorAlergiaCompra(filtroAlergia), new DisponibilidadStockService(),
+                tarifaEnvioService);
         prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(
@@ -123,8 +125,12 @@ class CheckoutFacadeTest {
         assertThatThrownBy(() -> facade.calcularResumen(
                 solicitud(), items(new ItemResumenCheckoutRequest(7L, "4", 1, "6"))))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(error -> assertThat(((BusinessException) error).getStatus())
-                        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+                .satisfies(error -> {
+                    assertThat(((BusinessException) error).getStatus())
+                            .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+                    assertThat(((BusinessException) error).getCodigo())
+                            .isEqualTo("PRENDA_EXCLUIDA_ALERGIA");
+                });
     }
 
     private ResumenCheckoutRequest solicitud() {

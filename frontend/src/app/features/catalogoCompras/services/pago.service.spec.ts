@@ -64,6 +64,17 @@ describe('PagoService', () => {
     expect(estado).toBe('APROBADA');
   });
 
+  it('anula un pago en proceso por su referencia', () => {
+    let estado = '';
+    service.cancelar('LS-C42-ABC').subscribe((resultado) => (estado = resultado.estadoPago));
+
+    const req = http.expectOne(`${environment.apiUrl}/cliente/pagos/LS-C42-ABC`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush({ estadoPago: 'ANULADA' });
+
+    expect(estado).toBe('ANULADA');
+  });
+
   it('corta la consulta si no responde a tiempo y avisa que se intente más tarde', () => {
     vi.useFakeTimers();
     let error: unknown;

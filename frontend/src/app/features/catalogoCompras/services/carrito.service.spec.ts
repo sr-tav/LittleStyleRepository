@@ -8,11 +8,11 @@ import { signal } from '@angular/core';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { Carrito } from '../models/carrito.models';
 import { CarritoService } from './carrito.service';
 
 const BASE_URL = `${environment.apiUrl}/cliente/carrito`;
-
 const CARRITO: Carrito = {
   items: [{
     id: 10,
@@ -34,16 +34,19 @@ const CARRITO: Carrito = {
 describe('CarritoService', () => {
   let http: HttpTestingController;
   let usuario: ReturnType<typeof signal<{ id: number; rol: string } | null>>;
+  let perfilActivo: { id: number } | null;
   let service: CarritoService;
 
   beforeEach(() => {
     localStorage.clear();
     usuario = signal({ id: 11, rol: 'CLIENTE' });
+    perfilActivo = { id: 7 };
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: { usuario } },
+        { provide: PerfilActivoService, useValue: { perfil: () => perfilActivo } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -61,7 +64,7 @@ describe('CarritoService', () => {
     service.agregar({ prendaId: 20, talla: '4', cantidad: 2 }).subscribe();
     const request = http.expectOne(`${BASE_URL}/items`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ prendaId: 20, talla: '4', cantidad: 2 });
+    expect(request.request.body).toEqual({ prendaId: 20, talla: '4', cantidad: 2, perfilInfantilId: 7 });
     request.flush(CARRITO);
 
     expect(service.items()).toEqual(CARRITO.items);
@@ -84,6 +87,19 @@ describe('CarritoService', () => {
     const clear = http.expectOne(BASE_URL);
     expect(clear.request.method).toBe('DELETE');
     clear.flush({ items: [], cantidad: 0, subtotal: 0, costoEnvio: 0, total: 0 });
+  });
+
+  it('envía perfilInfantilId null cuando no hay perfil activo', () => {
+    perfilActivo = null;
+    service.agregar({ prendaId: 20, talla: '4', cantidad: 1 }).subscribe();
+    const request = http.expectOne(`${BASE_URL}/items`);
+    expect(request.request.body).toEqual({
+      prendaId: 20,
+      talla: '4',
+      cantidad: 1,
+      perfilInfantilId: null,
+    });
+    request.flush({ items: [], cantidad: 0, subtotal: 0, costoEnvio: 0, total: 0 });
   });
 
   it('aísla y limpia la caché al cambiar de usuario o cerrar sesión', () => {

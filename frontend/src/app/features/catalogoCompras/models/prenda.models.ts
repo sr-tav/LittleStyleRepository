@@ -41,6 +41,9 @@ export interface Talla {
   estaturaMaxCm: number;
   pesoMinKg: number;
   pesoMaxKg: number;
+  /** Edad en meses que cubre la talla; nula si no se declara. */
+  edadMinMeses?: number | null;
+  edadMaxMeses?: number | null;
   stock: number;
   stockMinimo?: number | null;
 }
@@ -82,6 +85,9 @@ export interface TallaRequest {
   estaturaMaxCm: number;
   pesoMinKg: number;
   pesoMaxKg: number;
+  /** Edad en meses que cubre la talla; nula si no se declara. */
+  edadMinMeses?: number | null;
+  edadMaxMeses?: number | null;
   /** Solo se usa para tallas nuevas; el stock de las existentes se cambia en el inventario. */
   stock: number | null;
   /** Mínimo de alerta de esta talla; nulo si no alerta. */

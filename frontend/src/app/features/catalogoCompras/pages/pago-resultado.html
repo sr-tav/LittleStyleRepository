@@ -47,13 +47,18 @@
             El pedido se creará cuando el pago sea aprobado. Tu carrito se conserva; recarga esta página
             en unos minutos para ver el resultado.
           </p>
-          <a class="btn-ghost btn-inline" routerLink="/cliente">Volver al inicio</a>
+          <div class="pago-acciones">
+            <a class="btn-ghost btn-inline" routerLink="/cliente">Volver al inicio</a>
+            <button type="button" class="btn-ghost btn-inline" (click)="cancelarPago()" [disabled]="cancelando()">
+              {{ cancelando() ? 'Cancelando…' : 'Cancelar pago' }}
+            </button>
+          </div>
         </section>
       }
       @case ('rechazado') {
         <section class="pago-resultado pago-rechazado" role="alert">
           <h2>Tu pago no fue aprobado</h2>
-          <p>La transacción <strong>{{ pago.referencia }}</strong> fue rechazada o no pudo completarse. No se realizó ningún cobro y no se creó el pedido.</p>
+          <p>La transacción <strong>{{ pago.referencia }}</strong> fue rechazada, anulada o no pudo completarse. No se realizó ningún cobro y no se creó el pedido.</p>
           <p>Los productos siguen en tu carrito; puedes volver al checkout e intentarlo de nuevo.</p>
           <a class="btn-primary btn-inline" routerLink="/cliente/checkout">Volver al checkout</a>
         </section>

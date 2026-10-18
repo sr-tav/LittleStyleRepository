@@ -15,7 +15,6 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Line
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DireccionClienteRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoExpiracionService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoPagoService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.ResultadoConfirmacionPago;
 import org.junit.jupiter.api.Test;
@@ -55,6 +54,14 @@ class CarritoCheckoutIntegrationTest {
              "colores":["AZUL"],"estampado":"LISO",
              "composicion":[{"material":"ALGODON","porcentaje":80},{"material":"POLIESTER","porcentaje":20}],
              "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,"pesoMinKg":15,"pesoMaxKg":20,"stock":8,"stockMinimo":5}]}
+            """;
+
+    private static final String PRENDA_NIQUEL = """
+            {"nombre":"Orinal Broche Metalico","categoria":"PANTALONES","descripcion":"Con broche de níquel","instruccionesCuidado":"Lavar a mano","precio":25900,
+             "colores":["AZUL"],"estampado":"LISO",
+             "composicion":[{"material":"ALGODON","porcentaje":100}],
+             "tallas":[{"talla":"2","estaturaMinCm":85,"estaturaMaxCm":95,"pesoMinKg":11,"pesoMaxKg":15,"stock":5,"stockMinimo":3}],
+             "contieneNiquel":true}
             """;
 
     @Autowired
@@ -393,6 +400,57 @@ class CarritoCheckoutIntegrationTest {
                 .andExpect(jsonPath("$.items.length()").value(1));
     }
 
+    @Test
+    void bloqueaElAgregadoAlCarritoPorUnaAlergiaGraveDelPerfil() throws Exception {
+        String vendedor = registrar("alergia-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String correoCliente = "alergia-cliente-" + System.nanoTime() + "@correo.com";
+        String cliente = registrar(correoCliente, "CLIENTE");
+        int prendaNiquel = crearPrenda(vendedor, PRENDA_NIQUEL);
+        int perfilId = JsonPath.read(agregarPerfilConAlergia(cliente, "NIQUEL"), "$.id");
+
+        // El perfil activo viaja en la solicitud: el 422 falla al agregar,
+        // no recién al pagar.
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaNiquel + ",\"talla\":\"2\",\"cantidad\":1,"
+                                + "\"perfilInfantilId\":" + perfilId + "}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.codigo").value("PRENDA_EXCLUIDA_ALERGIA"));
+
+        // Sin perfil explícito el backend evalúa todos los perfiles del cliente
+        // (default seguro), así que también se bloquea.
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaNiquel + ",\"talla\":\"2\",\"cantidad\":1}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        Long clienteId = usuarioRepository.findByEmail(correoCliente).map(Usuario::getId).orElseThrow();
+        assertThat(pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(clienteId)).isEmpty();
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", cliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void noBloqueaElAgregadoAlCarritoCuandoLaCoincidenciaDeAlergiaSoloAdvierte() throws Exception {
+        String vendedor = registrar("advertencia-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String cliente = registrar("advertencia-cliente-" + System.nanoTime() + "@correo.com", "CLIENTE");
+        int prendaId = crearPrenda(vendedor);
+        int perfilId = JsonPath.read(agregarPerfilConAlergia(cliente, "ALGODON"), "$.id");
+
+        // El algodón coincide con la prenda (80%) pero su regla no es excluyente:
+        // solo bloquean las alergias graves.
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,"
+                                + "\"perfilInfantilId\":" + perfilId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
     private String registrar(String email, String rol) throws Exception {
         String tienda = "VENDEDOR".equals(rol) ? "\"Tienda Sol\"" : "null";
         String body = """
@@ -449,20 +507,29 @@ class CarritoCheckoutIntegrationTest {
     }
 
     private int crearPrenda(String vendedor) throws Exception {
+        return crearPrenda(vendedor, PRENDA);
+    }
+
+    private int crearPrenda(String vendedor, String cuerpoPrenda) throws Exception {
         String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpoPrenda))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.id");
     }
 
     private String agregarPerfil(String cliente) throws Exception {
+        return agregarPerfilConAlergia(cliente, null);
+    }
+
+    private String agregarPerfilConAlergia(String cliente, String alergia) throws Exception {
+        String cuerpo = """
+                {"nombre":"Sofía","fechaNacimiento":"2021-01-01","contextura":"MEDIA",
+                 "holgura":"REGULAR","alergias":[%s],"sinAlergias":%s,
+                 "coloresPreferidos":[],"estampadosPreferidos":[]}
+                """.formatted(alergia == null ? "" : "\"" + alergia + "\"", alergia == null);
         return mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"nombre":"Sofía","fechaNacimiento":"2021-01-01","contextura":"MEDIA",
-                                 "holgura":"REGULAR","alergias":[],"sinAlergias":true,
-                                 "coloresPreferidos":[],"estampadosPreferidos":[]}
-                                """))
+                        .content(cuerpo))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
     }
 

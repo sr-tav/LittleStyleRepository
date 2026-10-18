@@ -1,6 +1,5 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service;
 
-import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
@@ -37,7 +36,6 @@ public class PedidoPagoService {
     private final HistorialEstadoRepository historialRepository;
     private final PrendaRepository prendaRepository;
     private final AlertasInventarioService alertasInventarioService;
-    private final CheckoutProperties checkoutProperties;
     private final Clock clock;
     private final ApplicationEventPublisher eventos;
     private final DespachoService despachoService;
@@ -49,11 +47,6 @@ public class PedidoPagoService {
         if (pedido.getEstado() != EstadoPedido.PENDIENTE_PAGO) {
             throw new BusinessException(HttpStatus.CONFLICT,
                     "El pedido no está pendiente de pago");
-        }
-
-        if (pedidoVencido(pedido)) {
-            transicionarConHistorial(pedido, EstadoPedido.CANCELADO);
-            return new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.PEDIDO_VENCIDO, List.of());
         }
 
         Map<ClaveStock, Integer> cantidades = agruparItems(pedido);
@@ -109,12 +102,6 @@ public class PedidoPagoService {
             return;
         }
         eventos.publishEvent(new PedidoEstadoCambiadoEvent(pedido.getId(), nuevo));
-    }
-
-    private boolean pedidoVencido(Pedido pedido) {
-        LocalDateTime limite = LocalDateTime.now(clock)
-                .minus(checkoutProperties.tiempoExpiracionPedido());
-        return !pedido.getFechaCreacion().isAfter(limite);
     }
 
     private Map<ClaveStock, Integer> agruparItems(Pedido pedido) {

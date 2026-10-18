@@ -14,7 +14,6 @@ public record ResultadoConfirmacionPago(
 
     public enum Estado {
         CONFIRMADO,
-        STOCK_INSUFICIENTE,
-        PEDIDO_VENCIDO
+        STOCK_INSUFICIENTE
     }
 }

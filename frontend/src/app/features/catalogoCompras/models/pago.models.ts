@@ -22,7 +22,10 @@ export type EstadoTransaccionPago =
   | 'ERROR'
   | 'REEMBOLSO_PENDIENTE';
 
-export type MotivoReembolso = 'STOCK_INSUFICIENTE' | 'PEDIDO_VENCIDO' | 'PEDIDO_NO_PAGABLE';
+export type MotivoReembolso =
+  | 'STOCK_INSUFICIENTE'
+  | 'PEDIDO_NO_PAGABLE'
+  | 'PAGO_ANULADO';
 
 export interface PrendaAgotadaPago {
   prendaId: number;

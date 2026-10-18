@@ -174,32 +174,47 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-tallas">
         <h2 id="sec-tallas" class="catalog-section-title"><span aria-hidden="true">📏</span> Tabla de tallas</h2>
         <p class="field-hint">
-          Indica la estatura y el peso que cubre cada talla. Así el sistema sugiere la talla correcta a cada cliente.
+          Indica la estatura, el peso y la edad en meses que cubre cada talla. Así el sistema sugiere
+          la talla correcta a cada cliente. La edad es opcional y va de 0 a 216 meses (18 años).
           El stock y el mínimo de alerta de cada talla se rellenan abajo, en Inventario.
           @if (!esNueva()) { El stock de las tallas existentes se actualiza desde el inventario. }
         </p>
         <div formArrayName="tallas" class="dynamic-rows">
           @for (fila of tallas.controls; track fila; let i = $index) {
             <div class="dynamic-row size-row" [formGroupName]="i" [class.has-error]="invalido(fila)">
-              <div class="field">
-                <label [for]="'talla-' + i">Talla</label>
-                <input [id]="'talla-' + i" type="text" formControlName="talla" placeholder="4" maxlength="10" />
+              <div class="size-row-medidas">
+                <div class="field">
+                  <label [for]="'talla-' + i">Talla</label>
+                  <input [id]="'talla-' + i" type="text" formControlName="talla" placeholder="4" maxlength="10" />
+                </div>
+                <div class="field">
+                  <label [for]="'emin-' + i">Estatura mín. (cm)</label>
+                  <input [id]="'emin-' + i" type="number" formControlName="estaturaMinCm" step="0.1" />
+                </div>
+                <div class="field">
+                  <label [for]="'emax-' + i">Estatura máx. (cm)</label>
+                  <input [id]="'emax-' + i" type="number" formControlName="estaturaMaxCm" step="0.1" />
+                </div>
+                <div class="field">
+                  <label [for]="'pmin-' + i">Peso mín. (kg)</label>
+                  <input [id]="'pmin-' + i" type="number" formControlName="pesoMinKg" step="0.1" />
+                </div>
+                <div class="field">
+                  <label [for]="'pmax-' + i">Peso máx. (kg)</label>
+                  <input [id]="'pmax-' + i" type="number" formControlName="pesoMaxKg" step="0.1" />
+                </div>
               </div>
-              <div class="field">
-                <label [for]="'emin-' + i">Estatura mín. (cm)</label>
-                <input [id]="'emin-' + i" type="number" formControlName="estaturaMinCm" step="0.1" />
-              </div>
-              <div class="field">
-                <label [for]="'emax-' + i">Estatura máx. (cm)</label>
-                <input [id]="'emax-' + i" type="number" formControlName="estaturaMaxCm" step="0.1" />
-              </div>
-              <div class="field">
-                <label [for]="'pmin-' + i">Peso mín. (kg)</label>
-                <input [id]="'pmin-' + i" type="number" formControlName="pesoMinKg" step="0.1" />
-              </div>
-              <div class="field">
-                <label [for]="'pmax-' + i">Peso máx. (kg)</label>
-                <input [id]="'pmax-' + i" type="number" formControlName="pesoMaxKg" step="0.1" />
+              <div class="size-row-edad">
+                <div class="field">
+                  <label [for]="'edadmin-' + i">Edad mín. (meses)</label>
+                  <input [id]="'edadmin-' + i" type="number" formControlName="edadMinMeses" min="0" max="216"
+                    placeholder="Opcional" />
+                </div>
+                <div class="field">
+                  <label [for]="'edadmax-' + i">Edad máx. (meses)</label>
+                  <input [id]="'edadmax-' + i" type="number" formControlName="edadMaxMeses" min="0" max="216"
+                    placeholder="Opcional" />
+                </div>
               </div>
               <button type="button" class="icon-button" (click)="quitarTalla(i)"
                 [disabled]="tallas.length <= 1" [attr.aria-label]="'Quitar talla ' + (i + 1)" title="Quitar">✕</button>
@@ -207,7 +222,13 @@
                 <span class="field-error size-row-error">
                   @if (fila.errors?.['rangoEstatura']) { La estatura mínima supera a la máxima. }
                   @if (fila.errors?.['rangoPeso']) { El peso mínimo supera al máximo. }
-                  @if (!fila.errors) { Completa la talla con estatura entre 40 y 200 cm y peso entre 2 y 120 kg. }
+                  @if (fila.errors?.['rangoEdad']) { La edad mínima supera a la máxima. }
+                  @if (fila.get('edadMinMeses')?.invalid || fila.get('edadMaxMeses')?.invalid) {
+                    Ingresa edades en meses entre 0 y 216 (18 años).
+                  }
+                  @if (!fila.errors && fila.get('edadMinMeses')?.valid && fila.get('edadMaxMeses')?.valid) {
+                    Completa la talla con estatura entre 40 y 200 cm y peso entre 2 y 120 kg.
+                  }
                 </span>
               }
             </div>

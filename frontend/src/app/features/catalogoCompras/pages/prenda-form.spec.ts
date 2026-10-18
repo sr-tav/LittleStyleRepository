@@ -50,7 +50,8 @@ describe('PrendaForm (UI-20)', () => {
       instruccionesCuidado: '  Lavar a mano en agua fría ',
     });
     c.tallas.at(0).patchValue({
-      talla: ' xs ', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15, stock: 6,
+      talla: ' xs ', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15,
+      edadMinMeses: 3, edadMaxMeses: 18, stock: 6,
       stockMinimo: 2,
     });
   }
@@ -105,6 +106,17 @@ describe('PrendaForm (UI-20)', () => {
     http.expectNone('/api/vendedor/prendas');
   });
 
+  it('avisa cuando la edad mínima en meses supera a la máxima', () => {
+    const { fixture, c, el } = crear();
+    completar(c);
+    c.tallas.at(0).patchValue({ edadMinMeses: 24, edadMaxMeses: 6 });
+    c.tallas.at(0).markAllAsTouched();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('La edad mínima supera a la máxima');
+    http.expectNone('/api/vendedor/prendas');
+  });
+
   it('crea la prenda, sube las fotos en una sola petición y vuelve al catálogo', () => {
     const navegar = vi.mocked(TestBed.inject(Router).navigate);
     const { fixture, c, el } = crear();
@@ -117,7 +129,8 @@ describe('PrendaForm (UI-20)', () => {
     const crearReq = http.expectOne('/api/vendedor/prendas');
     expect(crearReq.request.method).toBe('POST');
     expect(crearReq.request.body.tallas[0]).toEqual({
-      talla: 'XS', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15, stock: 6,
+      talla: 'XS', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15,
+      edadMinMeses: 3, edadMaxMeses: 18, stock: 6,
       stockMinimo: 2,
     });
     expect(crearReq.request.body.composicion).toEqual([{ material: 'ALGODON', porcentaje: 100 }]);

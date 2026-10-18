@@ -1,7 +1,5 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service;
 
-import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
-import co.edu.uniquindio.littlestyle.config.PagoProperties;
 import co.edu.uniquindio.littlestyle.config.WompiProperties;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
@@ -53,8 +51,9 @@ import java.util.stream.Collectors;
 
 /**
  * Coordina el pago de pedidos con Wompi (US-11): genera los datos firmados para el Widget,
- * procesa los eventos verificados del webhook y la consulta directa a la API, y conecta la
- * aprobación con {@link PedidoPagoService}, que descuenta el stock de forma atómica (US-10).
+ * procesa los eventos verificados del webhook y la consulta directa a la API, permite al
+ * cliente anular un pago en CREADA, y conecta la aprobación con {@link PedidoPagoService},
+ * que descuenta el stock de forma atómica (US-10).
  */
 @Slf4j
 @Service
@@ -72,8 +71,6 @@ public class PagoService {
     private final FirmaWompiService firmaWompiService;
     private final WompiClient wompiClient;
     private final WompiProperties wompiProperties;
-    private final CheckoutProperties checkoutProperties;
-    private final PagoProperties pagoProperties;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final ApplicationEventPublisher eventos;
@@ -125,53 +122,28 @@ public class PagoService {
         return respuestaInicio(transaccion, usuario);
     }
 
+    /**
+     * Anula un pago del cliente que aún está en CREADA: suelta la compra y deja al cliente
+     * iniciar otra sin esperar confirmación de Wompi (idempotente si ya está ANULADA).
+     * Si Wompi más tarde aprueba un cobro de esta referencia, el evento pasa a
+     * REEMBOLSO_PENDIENTE en {@link #aplicar} para devolver el dinero.
+     */
     @Transactional
-    public InicioPagoResponse iniciar(Long pedidoId) {
-        if (!wompiProperties.pagosConfigurados()) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "La pasarela de pagos no está disponible en este momento");
-        }
+    public ResultadoPagoResponse cancelar(String referencia) {
         AuthenticatedUser usuario = usuarioActual();
-        Pedido pedido = pedidoRepository.bloquearPorId(pedidoId)
-                .filter(encontrado -> perteneceA(encontrado, usuario))
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pedido no encontrado"));
-        if (pedido.getEstado() != EstadoPedido.PENDIENTE_PAGO) {
-            throw new BusinessException(HttpStatus.CONFLICT, "El pedido no está pendiente de pago");
-        }
-        if (pedidoVencido(pedido)) {
-            throw new BusinessException(HttpStatus.CONFLICT,
-                    "El plazo para pagar este pedido venció. Vuelve a agregar las prendas al carrito.");
-        }
-        if (transaccionPagoRepository.existsByPedidoIdAndEstado(pedidoId, EstadoTransaccionPago.PENDIENTE)) {
-            throw new BusinessException(HttpStatus.CONFLICT,
-                    "Ya hay un pago en proceso para este pedido. Espera su confirmación antes de intentarlo de nuevo.");
-        }
-        if (transaccionPagoRepository.countByPedidoId(pedidoId) >= pagoProperties.maxIntentosPorPedido()) {
-            throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS,
-                    "Alcanzaste el máximo de " + pagoProperties.maxIntentosPorPedido()
-                            + " intentos de pago para este pedido. Vuelve a crear el pedido desde tu carrito.");
-        }
-
-        long montoCentavos = centavos(pedido.getTotal());
-        String moneda = wompiProperties.moneda();
-        String referencia = generarReferencia(pedidoId);
-        LocalDateTime ahora = LocalDateTime.now(clock);
-        transaccionPagoRepository.save(TransaccionPago.builder()
-                .cliente(pedido.getCliente())
-                .pedido(pedido)
-                .referencia(referencia)
-                .montoCentavos(montoCentavos)
-                .moneda(moneda)
-                .estado(EstadoTransaccionPago.CREADA)
-                .fechaCreacion(ahora)
-                .fechaActualizacion(ahora)
-                .build());
-
-        return new InicioPagoResponse(pedidoId, referencia, montoCentavos, moneda,
-                wompiProperties.llavePublica(),
-                firmaWompiService.firmaIntegridad(referencia, montoCentavos, moneda),
-                wompiProperties.urlRedireccionPublica(), usuario.email(), pedido.getDestinatario(),
-                pedido.getTelefono());
+        return transaccionPagoRepository.bloquearPorReferencia(referencia)
+                .filter(encontrada -> perteneceA(encontrada, usuario))
+                .map(transaccion -> {
+                    if (transaccion.getEstado() == EstadoTransaccionPago.CREADA) {
+                        transaccion.setEstado(EstadoTransaccionPago.ANULADA);
+                        transaccion.setFechaActualizacion(LocalDateTime.now(clock));
+                    } else if (transaccion.getEstado() != EstadoTransaccionPago.ANULADA) {
+                        throw new BusinessException(HttpStatus.CONFLICT,
+                                "Este pago ya no se puede cancelar");
+                    }
+                    return respuesta(transaccion);
+                })
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Pago no encontrado"));
     }
 
     /**
@@ -244,7 +216,19 @@ public class PagoService {
     }
 
     private void aplicar(TransaccionPago transaccion, TransaccionWompi transaccionWompi) {
-        if (transaccion.getEstado().esFinal()) {
+        EstadoTransaccionPago estadoAnterior = transaccion.getEstado();
+        if (estadoAnterior.esFinal()) {
+            // El cliente anuló el pago, pero Wompi aprobó un cobro tardío: hay que devolverle
+            // el dinero. Cualquier otro estado final se ignora (evento idempotente u tardío).
+            if (estadoAnterior == EstadoTransaccionPago.ANULADA
+                    && EstadoTransaccionPago.desdeWompi(transaccionWompi.estado()) == EstadoTransaccionPago.APROBADA) {
+                log.warn("Cobro aprobado {} sobre una transacción anulada; requiere reembolso "
+                                + "(informado {} {}, esperado {} {})",
+                        transaccion.getReferencia(), transaccionWompi.montoCentavos(),
+                        transaccionWompi.moneda(), transaccion.getMontoCentavos(), transaccion.getMoneda());
+                transaccion.marcarReembolsoPendiente(MotivoReembolso.PAGO_ANULADO, List.of());
+                transaccion.setFechaActualizacion(LocalDateTime.now(clock));
+            }
             return;
         }
         if (!Objects.equals(transaccionWompi.montoCentavos(), transaccion.getMontoCentavos())
@@ -305,11 +289,6 @@ public class PagoService {
                                         linea.talla(), linea.cantidadSolicitada(), linea.stockDisponible()))
                                 .toList());
             }
-            case PEDIDO_VENCIDO -> {
-                log.warn("Pago aprobado {} para el pedido vencido {}; requiere reembolso",
-                        transaccion.getReferencia(), pedidoId);
-                transaccion.marcarReembolsoPendiente(MotivoReembolso.PEDIDO_VENCIDO, List.of());
-            }
         }
     }
 
@@ -351,11 +330,6 @@ public class PagoService {
                 disponibles);
     }
 
-    private boolean pedidoVencido(Pedido pedido) {
-        LocalDateTime limite = LocalDateTime.now(clock).minus(checkoutProperties.tiempoExpiracionPedido());
-        return !pedido.getFechaCreacion().isAfter(limite);
-    }
-
     private boolean perteneceA(TransaccionPago transaccion, AuthenticatedUser usuario) {
         if (transaccion.getCliente() != null) {
             return usuario.id().equals(transaccion.getCliente().getId());
@@ -365,19 +339,9 @@ public class PagoService {
                 && usuario.id().equals(pedido.getCliente().getId());
     }
 
-    private boolean perteneceA(Pedido pedido, AuthenticatedUser usuario) {
-        return pedido.getCliente() != null && usuario.id().equals(pedido.getCliente().getId());
-    }
-
     private AuthenticatedUser usuarioActual() {
         return SecurityUtils.usuarioActual()
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
-    }
-
-    private String generarReferencia(Long pedidoId) {
-        byte[] aleatorio = new byte[5];
-        random.nextBytes(aleatorio);
-        return "LS-" + pedidoId + "-" + HexFormat.of().withUpperCase().formatHex(aleatorio);
     }
 
     private String generarReferenciaCheckout(Long clienteId) {
