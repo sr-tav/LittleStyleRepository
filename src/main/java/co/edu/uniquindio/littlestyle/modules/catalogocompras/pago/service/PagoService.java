@@ -134,7 +134,7 @@ public class PagoService {
         return transaccionPagoRepository.bloquearPorReferencia(referencia)
                 .filter(encontrada -> perteneceA(encontrada, usuario))
                 .map(transaccion -> {
-                    if (transaccion.getEstado() == EstadoTransaccionPago.CREADA) {
+                    if (transaccion.getEstado().anulablePorCliente()) {
                         transaccion.setEstado(EstadoTransaccionPago.ANULADA);
                         transaccion.setFechaActualizacion(LocalDateTime.now(clock));
                     } else if (transaccion.getEstado() != EstadoTransaccionPago.ANULADA) {
