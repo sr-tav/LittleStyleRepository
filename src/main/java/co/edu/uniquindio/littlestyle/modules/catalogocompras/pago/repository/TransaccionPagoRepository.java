@@ -23,8 +23,4 @@ public interface TransaccionPagoRepository extends JpaRepository<TransaccionPago
 
     Optional<TransaccionPago> findFirstByClienteIdAndEstadoInOrderByFechaCreacionDesc(
             Long clienteId, Collection<EstadoTransaccionPago> estados);
-
-    long countByPedidoId(Long pedidoId);
-
-    boolean existsByPedidoIdAndEstado(Long pedidoId, EstadoTransaccionPago estado);
 }

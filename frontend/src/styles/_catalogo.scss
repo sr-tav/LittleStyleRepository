@@ -506,11 +506,42 @@
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 36px;
 }
 
+/* Ficha por talla en dos filas: medidas corporales arriba y el rango de edad
+   (opcional) abajo. Una sola grilla de 7 columnas dejaba el campo de Edad mín.
+   angosto y Edad máx. desbordado a una fila fantasma. El botón Quitar abarca
+   ambas filas para que represente a la talla completa. */
 .size-row {
-  grid-template-columns: minmax(60px, 0.8fr) repeat(4, minmax(0, 1fr)) 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 0.55rem 0.75rem;
   padding: 0.6rem;
   border: 1px solid var(--ls-border);
   border-radius: 12px;
+
+  .size-row-medidas {
+    display: grid;
+    grid-template-columns: minmax(70px, 0.7fr) repeat(4, minmax(0, 1fr));
+    gap: 0 0.6rem;
+    align-items: end;
+  }
+
+  .size-row-edad {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 0.6rem;
+    align-items: end;
+  }
+
+  .icon-button {
+    /* Columna explícita: un ítem con fila definida (1/3) y columna auto se
+       coloca ANTES que los ítems de posición automática y le roba la columna 1
+       a las subgrillas. */
+    grid-row: 1 / 3;
+    grid-column: 2;
+    align-self: center;
+    justify-self: center;
+    margin-bottom: 0;
+  }
 
   label {
     font-size: 0.75rem;
@@ -528,8 +559,8 @@
 
 /* Inventario por talla (UI-20): nombre + stock + mínimo con el mismo ritmo
    visual de la tabla (etiqueta arriba, valor abajo) para que las líneas base
-   queden alineadas. Grilla propia de 3 columnas: con la de 7 de .size-row los
-   campos quedaban angostos y el placeholder se cortaba. */
+   queden alineadas. Grilla propia de 3 columnas: compartiendo la de .size-row
+   los campos quedaban angostos y el placeholder se cortaba. */
 .stock-row {
   grid-template-columns: minmax(90px, 0.6fr) repeat(2, minmax(0, 1fr));
   padding: 0.6rem;
@@ -866,7 +897,23 @@
 }
 
 @media (max-width: 760px) {
-  .size-row,
+  .size-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+
+    .size-row-medidas,
+    .size-row-edad {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .icon-button {
+      grid-row: auto;
+      grid-column: auto;
+      align-self: auto;
+      justify-self: end;
+    }
+  }
+
   .stock-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;

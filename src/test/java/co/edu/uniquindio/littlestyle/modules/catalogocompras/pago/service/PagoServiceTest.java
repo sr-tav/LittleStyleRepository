@@ -1,11 +1,10 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.service;
 
-import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
-import co.edu.uniquindio.littlestyle.config.PagoProperties;
 import co.edu.uniquindio.littlestyle.config.WompiProperties;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.CrearPedidoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaDisponibilidadPagoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
@@ -15,7 +14,6 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.Pe
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.PedidoPagoService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.ResultadoConfirmacionPago;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.EventoWompiRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.InicioPagoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.ResultadoPagoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.dto.TransaccionWompi;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.EstadoTransaccionPago;
@@ -28,7 +26,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -40,7 +37,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -53,8 +49,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,7 +60,7 @@ class PagoServiceTest {
 
     private static final Long CLIENTE_ID = 42L;
     private static final Long PEDIDO_ID = 55L;
-    private static final String REFERENCIA = "LS-55-ABCDEF0123";
+    private static final String REFERENCIA = "LS-C42-ABCDEF0123";
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-13T15:00:00Z"), ZoneOffset.UTC);
 
     @Mock
@@ -102,93 +96,50 @@ class PagoServiceTest {
     }
 
     @Test
-    void iniciaPagoConMontoEnCentavosYFirmaDeIntegridad() {
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pedido));
-        when(firmaWompiService.firmaIntegridad(anyString(), eq(7280000L), eq("COP"))).thenReturn("firma-sha256");
+    void cancelaUnPagoCreadoDelClienteYLiberaLaCompra() {
+        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.CREADA);
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
 
-        InicioPagoResponse respuesta = pagoService.iniciar(PEDIDO_ID);
+        ResultadoPagoResponse respuesta = pagoService.cancelar(REFERENCIA);
 
-        ArgumentCaptor<TransaccionPago> guardada = ArgumentCaptor.forClass(TransaccionPago.class);
-        verify(transaccionPagoRepository).save(guardada.capture());
-        assertThat(guardada.getValue().getEstado()).isEqualTo(EstadoTransaccionPago.CREADA);
-        assertThat(guardada.getValue().getMontoCentavos()).isEqualTo(7280000L);
-        assertThat(guardada.getValue().getReferencia()).matches("LS-55-[0-9A-F]{10}");
-        assertThat(respuesta.referencia()).isEqualTo(guardada.getValue().getReferencia());
-        assertThat(respuesta.montoCentavos()).isEqualTo(7280000L);
-        assertThat(respuesta.moneda()).isEqualTo("COP");
-        assertThat(respuesta.llavePublica()).isEqualTo("pub_test_llave");
-        assertThat(respuesta.firmaIntegridad()).isEqualTo("firma-sha256");
-        assertThat(respuesta.emailCliente()).isEqualTo("cliente@test.com");
-        assertThat(respuesta.telefonoCliente()).isEqualTo("3001234567");
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.ANULADA);
+        assertThat(transaccion.getFechaActualizacion()).isEqualTo(LocalDateTime.now(CLOCK));
+        assertThat(respuesta.estadoPago()).isEqualTo(EstadoTransaccionPago.ANULADA);
+        assertThat(respuesta.motivoReembolso()).isNull();
     }
 
     @Test
-    void cadaIntentoDePagoUsaUnaReferenciaDistinta() {
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pedido));
+    void cancelarEsIdempotenteSobreUnaTransaccionYaAnulada() {
+        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.ANULADA);
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
 
-        String primera = pagoService.iniciar(PEDIDO_ID).referencia();
-        String segunda = pagoService.iniciar(PEDIDO_ID).referencia();
+        ResultadoPagoResponse respuesta = pagoService.cancelar(REFERENCIA);
 
-        assertThat(primera).isNotEqualTo(segunda);
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.ANULADA);
+        assertThat(respuesta.estadoPago()).isEqualTo(EstadoTransaccionPago.ANULADA);
     }
 
     @Test
-    void noIniciaPagoDePedidoDeOtroCliente() {
-        Pedido ajeno = pedido(99L, EstadoPedido.PENDIENTE_PAGO, LocalDateTime.now(CLOCK));
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(ajeno));
+    void noCancelaUnPagoQueYaNoEstaEnCreada() {
+        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.PENDIENTE);
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
 
-        assertThatThrownBy(() -> pagoService.iniciar(PEDIDO_ID))
+        assertThatThrownBy(() -> pagoService.cancelar(REFERENCIA))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.PENDIENTE);
+    }
+
+    @Test
+    void noCancelaElPagoDeOtroCliente() {
+        TransaccionPago ajena = transaccion(EstadoTransaccionPago.CREADA);
+        ajena.getPedido().setCliente(Usuario.builder().id(99L).build());
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(ajena));
+
+        assertThatThrownBy(() -> pagoService.cancelar(REFERENCIA))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
-        verify(transaccionPagoRepository, never()).save(any());
-    }
-
-    @Test
-    void noIniciaPagoDePedidoQueNoEstaPendiente() {
-        Pedido pagado = pedido(CLIENTE_ID, EstadoPedido.PAGADO, LocalDateTime.now(CLOCK));
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pagado));
-
-        assertThatThrownBy(() -> pagoService.iniciar(PEDIDO_ID))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
-    }
-
-    @Test
-    void noIniciaPagoDePedidoVencido() {
-        Pedido vencido = pedido(CLIENTE_ID, EstadoPedido.PENDIENTE_PAGO, LocalDateTime.now(CLOCK).minusMinutes(31));
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(vencido));
-
-        assertThatThrownBy(() -> pagoService.iniciar(PEDIDO_ID))
-                .isInstanceOfSatisfying(BusinessException.class, e -> {
-                    assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT);
-                    assertThat(e.getMessage()).contains("venció");
-                });
-    }
-
-    @Test
-    void noIniciaOtroPagoMientrasHayaUnoPendiente() {
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pedido));
-        when(transaccionPagoRepository.existsByPedidoIdAndEstado(PEDIDO_ID, EstadoTransaccionPago.PENDIENTE))
-                .thenReturn(true);
-
-        assertThatThrownBy(() -> pagoService.iniciar(PEDIDO_ID))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
-        verify(transaccionPagoRepository, never()).save(any());
-    }
-
-    @Test
-    void limitaLosIntentosDePagoPorPedido() {
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pedido));
-        when(transaccionPagoRepository.countByPedidoId(PEDIDO_ID)).thenReturn(4L, 5L);
-
-        pagoService.iniciar(PEDIDO_ID);
-        assertThatThrownBy(() -> pagoService.iniciar(PEDIDO_ID))
-                .isInstanceOfSatisfying(BusinessException.class, e -> {
-                    assertThat(e.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-                    assertThat(e.getMessage()).contains("máximo de 5 intentos");
-                });
-        verify(transaccionPagoRepository).save(any());
+        assertThat(ajena.getEstado()).isEqualTo(EstadoTransaccionPago.CREADA);
     }
 
     @Test
@@ -216,10 +167,11 @@ class PagoServiceTest {
     void respondeServicioNoDisponibleSiWompiNoEstaConfigurado() {
         PagoService sinLlaves = servicio(propiedadesWompi("", ""));
 
-        assertThatThrownBy(() -> sinLlaves.iniciar(PEDIDO_ID))
+        // El guard de configuración corre antes de leer la solicitud.
+        assertThatThrownBy(() -> sinLlaves.iniciar((CrearPedidoRequest) null, null))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
-        verifyNoInteractions(pedidoRepository);
+        verifyNoInteractions(transaccionPagoRepository, pedidoRepository, pedidoCheckoutService);
     }
 
     @Test
@@ -291,19 +243,30 @@ class PagoServiceTest {
     }
 
     @Test
-    void eventoAprobadoParaPedidoVencidoDejaReembolsoPendiente() {
-        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.CREADA);
+    void eventoAprobadoLuegoDeCancelarDejaReembolsoPendiente() {
+        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.ANULADA);
         EventoWompiRequest evento = evento("APPROVED", 7280000L);
         when(firmaWompiService.eventoValido(evento)).thenReturn(true);
         when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
-        when(pedidoRepository.bloquearPorId(PEDIDO_ID)).thenReturn(Optional.of(pedido));
-        when(pedidoPagoService.confirmarPago(PEDIDO_ID)).thenReturn(
-                new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.PEDIDO_VENCIDO, List.of()));
 
         pagoService.procesarEvento(evento);
 
+        verify(pedidoPagoService, never()).confirmarPago(anyLong());
         assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.REEMBOLSO_PENDIENTE);
-        assertThat(transaccion.getMotivoReembolso()).isEqualTo(MotivoReembolso.PEDIDO_VENCIDO);
+        assertThat(transaccion.getMotivoReembolso()).isEqualTo(MotivoReembolso.PAGO_ANULADO);
+        assertThat(transaccion.getFechaActualizacion()).isEqualTo(LocalDateTime.now(CLOCK));
+    }
+
+    @Test
+    void eventoSinCobroAprobadoNoCambiaUnaTransaccionAnulada() {
+        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.ANULADA);
+        when(firmaWompiService.eventoValido(any())).thenReturn(true);
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
+
+        pagoService.procesarEvento(evento("DECLINED", 7280000L));
+
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.ANULADA);
+        assertThat(transaccion.getMotivoReembolso()).isNull();
     }
 
     @Test
@@ -422,11 +385,9 @@ class PagoServiceTest {
     }
 
     private PagoService servicio(WompiProperties propiedades) {
-        CheckoutProperties checkout = new CheckoutProperties(new BigDecimal("7000"), new BigDecimal("10000"),
-                new BigDecimal("15000"), List.of(), Duration.ofMinutes(30));
         return new PagoService(pedidoRepository, transaccionPagoRepository, pedidoPagoService,
                 pedidoCheckoutService, procesadorCheckoutPagadoService, new ObjectMapper(),
-                firmaWompiService, wompiClient, propiedades, checkout, PagoProperties.porDefecto(),
+                firmaWompiService, wompiClient, propiedades,
                 new TransactionTemplate(mock(PlatformTransactionManager.class)), CLOCK, eventos);
     }
 

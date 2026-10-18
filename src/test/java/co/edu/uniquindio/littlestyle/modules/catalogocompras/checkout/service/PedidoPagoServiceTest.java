@@ -1,6 +1,5 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service;
 
-import co.edu.uniquindio.littlestyle.config.CheckoutProperties;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
@@ -23,7 +22,6 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -53,16 +51,13 @@ class PedidoPagoServiceTest {
     private DespachoService despachoService;
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-10T10:00:00Z"), ZoneId.of("UTC"));
-    private final CheckoutProperties props = new CheckoutProperties(
-            new BigDecimal("7000"), new BigDecimal("10000"), new BigDecimal("15000"),
-            List.of(), Duration.ofMinutes(30));
 
     private PedidoPagoService service;
 
     @org.junit.jupiter.api.BeforeEach
     void armar() {
         service = new PedidoPagoService(pedidoRepository, historialRepository, prendaRepository,
-                alertasInventarioService, props, clock, eventos, despachoService);
+                alertasInventarioService, clock, eventos, despachoService);
     }
 
     private Pedido pedidoPendiente() {

@@ -5,6 +5,7 @@ import { Observable, finalize, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { procesarErrorApi } from '../../auth/auth.validators';
+import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { AgregarItemCarritoRequest, Carrito } from '../models/carrito.models';
 
 const CARRITO_CACHE_PREFIX = 'ls_carrito_usuario_';
@@ -13,6 +14,7 @@ const CARRITO_CACHE_PREFIX = 'ls_carrito_usuario_';
 export class CarritoService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
+  private readonly activo = inject(PerfilActivoService);
   private readonly baseUrl = `${environment.apiUrl}/cliente/carrito`;
 
   private readonly estado = signal<Carrito | null>(null);
@@ -74,7 +76,14 @@ export class CarritoService {
 
   agregar(request: AgregarItemCarritoRequest): Observable<Carrito> {
     const userId = this.requerirUsuarioId();
-    return this.http.post<Carrito>(`${this.baseUrl}/items`, request).pipe(
+    // El backend bloquea con 422 si la prenda choca con una alergia grave del
+    // perfil activo (o de cualquier perfil si no hay activo); las coincidencias
+    // por advertencia no impiden agregar.
+    const cuerpo: AgregarItemCarritoRequest = {
+      ...request,
+      perfilInfantilId: this.activo.perfil()?.id ?? null,
+    };
+    return this.http.post<Carrito>(`${this.baseUrl}/items`, cuerpo).pipe(
       tap((carrito) => this.actualizar(carrito, userId)),
     );
   }

@@ -22,7 +22,7 @@ describe('PagoResultadoPage', () => {
     prendasAgotadas: [],
     lineasDisponibles: [],
   };
-  const pagoService = { verificar: vi.fn() };
+  const pagoService = { verificar: vi.fn(), cancelar: vi.fn() };
   const carrito = {
     cargar: vi.fn(() => of({ items: [], cantidad: 0, subtotal: 0, costoEnvio: null, total: null })),
     panelAbierto: signal(false),
@@ -38,6 +38,7 @@ describe('PagoResultadoPage', () => {
     vi.useFakeTimers();
     transaccionId = 'wompi-1';
     pagoService.verificar.mockReset();
+    pagoService.cancelar.mockReset();
     carrito.cargar.mockClear();
     await TestBed.configureTestingModule({
       imports: [PagoResultadoPage],
@@ -157,6 +158,22 @@ describe('PagoResultadoPage', () => {
     expect(root.textContent).toContain('no se creó el pedido');
     expect(root.textContent).toContain('Los productos siguen en tu carrito');
     expect(root.querySelector<HTMLAnchorElement>('a[routerLink="/cliente/checkout"]')).not.toBeNull();
+  });
+
+  it('cancela el pago en proceso y muestra que quedó sin cobro', () => {
+    pagoService.verificar
+      .mockReturnValue(of({ ...base, estadoPago: 'PENDIENTE', estadoPedido: 'PENDIENTE_PAGO' }));
+    pagoService.cancelar.mockReturnValue(of({ ...base, estadoPago: 'ANULADA', estadoPedido: null }));
+    const { fixture, root } = crear();
+    expect(root.textContent).toContain('Cancelar pago');
+
+    root.querySelector<HTMLButtonElement>('.pago-acciones button')?.click();
+    fixture.detectChanges();
+
+    expect(pagoService.cancelar).toHaveBeenCalledWith('LS-55-ABC');
+    expect(root.textContent).toContain('Tu pago no fue aprobado');
+    expect(root.textContent).toContain('anulada');
+    expect(root.querySelector('.pago-acciones button')).toBeNull();
   });
 
   it('avisa las prendas agotadas, el reembolso y mantiene el carrito para revisión', () => {

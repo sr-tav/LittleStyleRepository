@@ -26,6 +26,11 @@ export class PagoService {
   verificar(transaccionId: string): Observable<ResultadoPago> {
     return this.http.post<ResultadoPago>(`${this.baseUrl}/verificar`, { transaccionId }).pipe(conTiempoMaximo());
   }
+
+  /** Anula un pago aún en CREADA: libera la compra para poder iniciar otra. */
+  cancelar(referencia: string): Observable<ResultadoPago> {
+    return this.http.delete<ResultadoPago>(`${this.baseUrl}/${referencia}`).pipe(conTiempoMaximo());
+  }
 }
 
 /** Corta la petición si no responde a tiempo y la convierte en un error 504 con mensaje para el cliente. */

@@ -92,7 +92,7 @@ Wompi no invoca el callback del Widget cuando el cliente cierra el modal sin pag
 
 ### Reembolso
 
-**Decisión de alcance:** si Wompi aprueba el cobro pero el pedido no puede pagarse, la transacción queda `REEMBOLSO_PENDIENTE` con `motivoReembolso` (`STOCK_INSUFICIENTE`, `PEDIDO_VENCIDO` o `PEDIDO_NO_PAGABLE`) para que el equipo gestione la devolución desde el panel de Wompi. El reembolso automático por API no se implementa porque Wompi solo permite anular por API ciertas transacciones con tarjeta. El cliente ve el aviso de reembolso en UI-15.
+**Decisión de alcance:** si Wompi aprueba el cobro pero el pedido no puede pagarse, la transacción queda `REEMBOLSO_PENDIENTE` con `motivoReembolso` (`STOCK_INSUFICIENTE`, `PEDIDO_NO_PAGABLE` o `PAGO_ANULADO` —cobro tardío sobre una transacción que el cliente anuló—) para que el equipo gestione la devolución desde el panel de Wompi. El reembolso automático por API no se implementa porque Wompi solo permite anular por API ciertas transacciones con tarjeta. El cliente ve el aviso de reembolso en UI-15.
 
 ### Prendas agotadas al pagar (resuelve CP-US10-26)
 
@@ -103,7 +103,7 @@ UI-15 lista nombre, talla, cantidad solicitada y existencia actual de cada prend
 | Contrato | Descripción |
 |---|---|
 | `POST /api/cliente/pagos/checkout` | Rol `CLIENTE`. Body `CrearPedidoRequest` con `perfilInfantilId` y `direccion`; las líneas se toman del carrito autenticado. Acepta `Idempotency-Key`. 201 con `InicioPagoResponse` (`pedidoId=null`, referencia, monto en centavos, moneda, llave pública y firma). 409 si hay otro pago activo para un checkout distinto; 503 si Wompi no está configurado. No crea pedido ni vacía carrito. |
-| `POST /api/cliente/pagos/pedidos/{pedidoId}` | Rol `CLIENTE`. Compatibilidad para pedidos `PENDIENTE_PAGO` creados por versiones anteriores; mantiene validación de propietario, vencimiento y máximo 5 intentos. |
+| `DELETE /api/cliente/pagos/{referencia}` | Rol `CLIENTE`. Anula la transacción del cliente si está en `CREADA` (200 con `ResultadoPagoResponse` en `ANULADA`) y libera la compra para un nuevo intento. Idempotente si ya está `ANULADA`; 409 en cualquier otro estado; 404 si no es suya. |
 | `POST /api/cliente/pagos/verificar` | Rol `CLIENTE`. Body `{ "transaccionId": "..." }`. Consulta Wompi, aplica el estado y responde `ResultadoPagoResponse`. 504 si Wompi no responde a tiempo, 503 si no está disponible, 502 si responde algo inválido. |
 | `GET /api/cliente/pagos/{referencia}` | Rol `CLIENTE`. Estado local del pago sin consultar Wompi. |
 | `POST /api/pagos/wompi/eventos` | Público (sin JWT), protegido por checksum SHA-256 y vigencia de 10 minutos. 200 recibido (se aplica en segundo plano); 401 firma inválida o evento vencido; 503 cola llena. |
@@ -131,8 +131,8 @@ Los límites operativos están en `app.pagos.*` (`PagoProperties`): `vigencia-ev
 
 ## Límites conocidos
 
-- El reembolso es manual (`REEMBOLSO_PENDIENTE`).
-- La expiración a los 30 minutos solo aplica a pedidos `PENDIENTE_PAGO` históricos. Para compras nuevas no se crea pedido mientras el pago está pendiente.
+- El reembolso es manual (`REEMBOLSO_PENDIENTE`), incluido el caso de un cobro aprobado por Wompi después de que el cliente canceló el pago.
+- Con el flujo de checkout no existe pedido mientras el pago está pendiente, así que no está en vigor la expiración de 30 minutos de pedidos `PENDIENTE_PAGO`; el cliente abandona una compra con la cancelación (`DELETE /api/cliente/pagos/{referencia}`).
 - La notificación por correo del pago aprobado corresponde a US-12.
 - Wompi reintenta el webhook cuando no recibe 200. Si un reintento llega después de la vigencia de 10 minutos se rechaza; el estado del pago se recupera igualmente con la consulta directa de UI-15 (`POST /api/cliente/pagos/verificar`).
 - Los eventos que esperan en la cola en memoria se pierden si el backend se reinicia antes de aplicarlos. Ya respondieron 200, así que Wompi no los reenvía; el estado se obtiene con la consulta directa.

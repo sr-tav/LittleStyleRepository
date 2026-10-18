@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,10 +33,10 @@ public class PagoController {
         return ResponseEntity.status(201).body(pagoService.iniciar(request, claveIdempotencia));
     }
 
-    /** Permite completar pedidos pendientes creados por versiones anteriores del flujo. */
-    @PostMapping("/pedidos/{pedidoId}")
-    public ResponseEntity<InicioPagoResponse> iniciar(@PathVariable Long pedidoId) {
-        return ResponseEntity.status(201).body(pagoService.iniciar(pedidoId));
+    /** Anula un pago del cliente que aún está en CREADA y libera la compra para un nuevo intento. */
+    @DeleteMapping("/{referencia}")
+    public ResponseEntity<ResultadoPagoResponse> cancelar(@PathVariable String referencia) {
+        return ResponseEntity.ok(pagoService.cancelar(referencia));
     }
 
     @PostMapping("/verificar")

@@ -2,7 +2,8 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model;
 
 /**
  * Estado local de un intento de pago con Wompi. {@code REEMBOLSO_PENDIENTE} indica que Wompi
- * aprobó el cobro pero el pedido no pudo pagarse (sin stock, vencido o ya no pendiente).
+ * aprobó el cobro pero la transacción no puede convertirse en pedido (sin stock, anulado
+ * por el cliente antes del cobro o el pedido ya no está pendiente de pago).
  */
 public enum EstadoTransaccionPago {
     CREADA,
