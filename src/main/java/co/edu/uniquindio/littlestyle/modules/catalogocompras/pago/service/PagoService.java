@@ -209,6 +209,9 @@ public class PagoService {
                     evento == null ? null : evento.event(), evento == null ? null : evento.timestampTexto());
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "Firma del evento inválida o vencida");
         }
+        // Junto con el warn de arriba da la métrica de RNF-07: válidos / (válidos + rechazados)
+        log.info("Evento de Wompi con firma válida (evento={}, timestamp={})",
+                evento.event(), evento.timestampTexto());
     }
 
     /** Aplica un evento ya validado con {@link #validarEvento}. Es idempotente ante reenvíos. */

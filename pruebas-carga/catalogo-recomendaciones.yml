@@ -7,7 +7,7 @@ config:
   target: "{{ $env.TARGET }}"
   processor: "./procesador.js"
   http:
-    timeout: 10
+    timeout: 30
   # Caddy comprime con zstd si se le ofrece y Artillery no lo descomprime: se pide gzip
   defaults:
     headers:
