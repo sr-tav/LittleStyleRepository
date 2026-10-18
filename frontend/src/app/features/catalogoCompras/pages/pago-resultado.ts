@@ -59,7 +59,10 @@ export class PagoResultadoPage implements OnInit {
     }
   });
 
-  /** Anula el pago en CREADA: con ANULADA el carrito queda libre para un nuevo intento. */
+  /**
+   * Anula el pago mientras la compra no se completó (CREADA o PENDIENTE): con ANULADA el carrito
+   * queda libre para un nuevo intento. Los estados finales no se pueden anular.
+   */
   protected cancelarPago(): void {
     const pago = this.resultado();
     if (!pago || this.cancelando()) return;
