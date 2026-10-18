@@ -20,5 +20,11 @@ SELECT COUNT(*) AS pedidos_pagados, SUM(EXISTS (SELECT 1 FROM pedido_estados h W
 SELECT COUNT(*) AS tallas_agotadas, SUM(EXISTS (SELECT 1 FROM alertas_reabastecimiento a WHERE a.prenda_id = t.prenda_id AND a.talla = t.talla)) AS con_alerta_previa FROM prenda_tallas t WHERE t.stock = 0 AND t.stock_minimo IS NOT NULL;
 -- [P2-E] Pagos: estado de la transacción vs. estado del pedido (webhooks y preservación ante fallos)
 SELECT t.estado AS transaccion, COALESCE(p.estado, '(sin pedido)') AS pedido, COUNT(*) AS cantidad FROM transacciones_pago t LEFT JOIN pedidos p ON p.id = t.pedido_id GROUP BY t.estado, p.estado ORDER BY t.estado;
+-- [P2-G] RNF-28 Preservación transaccional ante fallos externos (meta >= 99 %) = preservadas / afectadas.
+-- Afectada = el pago no terminó en un cobro normal. Preservada = no quedó un pedido pagado sin cobro y,
+-- si hubo cobro que no se pudo convertir en pedido, quedó marcado para reembolso con su motivo.
+SELECT COUNT(*) AS operaciones_afectadas, SUM(CASE WHEN t.estado = 'REEMBOLSO_PENDIENTE' THEN t.motivo_reembolso IS NOT NULL ELSE p.id IS NULL OR p.estado IN ('PENDIENTE_PAGO', 'CANCELADO') END) AS preservadas, ROUND(100 * SUM(CASE WHEN t.estado = 'REEMBOLSO_PENDIENTE' THEN t.motivo_reembolso IS NOT NULL ELSE p.id IS NULL OR p.estado IN ('PENDIENTE_PAGO', 'CANCELADO') END) / COUNT(*), 1) AS porcentaje FROM transacciones_pago t LEFT JOIN pedidos p ON p.id = t.pedido_id WHERE t.estado IN ('RECHAZADA', 'ERROR', 'ANULADA', 'REEMBOLSO_PENDIENTE');
+-- [P2-G detalle] Cada operación afectada y en qué quedó
+SELECT t.id, t.referencia, t.estado AS pago, t.motivo_reembolso, COALESCE(p.estado, '(sin pedido)') AS pedido, t.fecha_actualizacion FROM transacciones_pago t LEFT JOIN pedidos p ON p.id = t.pedido_id WHERE t.estado IN ('RECHAZADA', 'ERROR', 'ANULADA', 'REEMBOLSO_PENDIENTE') ORDER BY t.id DESC;
 -- [P2-F] Total de imágenes del catálogo (denominador de disponibilidad multimedia)
 SELECT COUNT(*) AS imagenes FROM prenda_imagenes;
