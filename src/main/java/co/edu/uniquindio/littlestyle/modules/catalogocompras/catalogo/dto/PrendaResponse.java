@@ -17,6 +17,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+/**
+ * Prenda completa para el vendedor: datos, estado, stock total y nivel, atributos de seguridad textil,
+ * composición, tallas con stock y mínimo, e imágenes.
+ */
 public record PrendaResponse(
         Long id,
         String nombre,
@@ -42,12 +46,15 @@ public record PrendaResponse(
         LocalDateTime fechaActualizacion
 ) {
 
+    /** Material y porcentaje de la composición. */
     public record Componente(MaterialTextil material, int porcentaje) {
     }
 
+    /** Talla con sus rangos, stock y stock mínimo. */
     public record Talla(Long id, String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
                         BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses, Integer edadMaxMeses,
                         int stock, Integer stockMinimo) {
+        /** Construye la talla a partir de la entidad. */
         static Talla from(TallaPrenda t) {
             return new Talla(t.getId(), t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
                     t.getPesoMinKg(), t.getPesoMaxKg(), t.getEdadMinMeses(), t.getEdadMaxMeses(),
@@ -55,12 +62,15 @@ public record PrendaResponse(
         }
     }
 
+    /** Foto de la prenda con su posición; la de orden 0 es la principal. */
     public record Imagen(Long id, String url, int orden) {
+        /** Construye la imagen a partir de la entidad. */
         public static Imagen from(ImagenPrenda i) {
             return new Imagen(i.getId(), i.getUrl(), i.getOrden());
         }
     }
 
+    /** Construye la respuesta a partir de la prenda y sus colecciones. */
     public static PrendaResponse from(Prenda p) {
         int stockTotal = p.stockTotal();
         return new PrendaResponse(

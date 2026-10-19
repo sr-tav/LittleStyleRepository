@@ -14,6 +14,10 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.Set;
 
+/**
+ * Datos de un perfil infantil: identificación, contextura y holgura, alergias (o la indicación de que no
+ * tiene) y preferencias de color y estampado, con opción de un valor libre para cada una.
+ */
 public record PerfilRequest(
         @NotBlank(message = "El nombre es obligatorio")
         @Size(max = 60, message = "El nombre no puede superar 60 caracteres")

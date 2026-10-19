@@ -33,6 +33,10 @@ public class CorreoService {
     private final JavaMailSender envio;
     private final CorreoProperties props;
 
+    /**
+     * Avisa al cliente que su pedido fue despachado, con el número de guía, el total y el detalle de las
+     * prendas.
+     */
     @Async
     public void enviarPedidoEnviado(String para, String nombre, Long pedidoId,
                                     String guia, String total, List<ItemCorreo> items) {
@@ -63,6 +67,7 @@ public class CorreoService {
         }
     }
 
+    /** Confirma al cliente que se recibió su pedido y queda pendiente de pago. */
     @Async
     public void enviarPedidoCreado(String para, String nombre, Long pedidoId,
                                    String total, List<ItemCorreo> items) {
@@ -82,6 +87,7 @@ public class CorreoService {
         }
     }
 
+    /** Avisa al cliente que el pago de su pedido fue aprobado, con el detalle de lo comprado. */
     @Async
     public void enviarPagoConfirmado(String para, String nombre, Long pedidoId,
                                      String total, List<ItemCorreo> items) {
@@ -101,6 +107,7 @@ public class CorreoService {
         }
     }
 
+    /** Avisa al cliente que su pedido cambió de estado. */
     @Async
     public void enviarCambioEstado(String para, String nombre, Long pedidoId,
                                    String estado, String total) {
@@ -120,6 +127,7 @@ public class CorreoService {
         }
     }
 
+    /** Alerta al vendedor que una talla de su prenda llegó al stock mínimo o se agotó. */
     @Async
     public void enviarAlertaStock(String para, String nombre, String prenda, String talla,
                                   String nivel, int stock, int minimo) {
@@ -141,6 +149,7 @@ public class CorreoService {
         }
     }
 
+    /** Avisa al cliente que su pago no fue aprobado, con la referencia y el monto del intento. */
     @Async
     public void enviarPagoRechazado(String para, String nombre, String referencia, String totalCentavos) {
         if (!props.enviosHabilitados()) {
@@ -158,6 +167,7 @@ public class CorreoService {
         }
     }
 
+    /** Avisa al vendedor que entró un pedido pagado con prendas de su tienda. */
     @Async
     public void enviarPedidoNuevoVendedor(String para, String tienda, Long pedidoId,
                                           String cliente, List<ItemCorreo> items) {
@@ -188,12 +198,14 @@ public class CorreoService {
                 .replace("\"", "&quot;");
     }
 
+    /** Lee una plantilla HTML del classpath en UTF-8. */
     private String leerPlantilla(String recurso) throws java.io.IOException {
         return new String(
                 new ClassPathResource(recurso).getInputStream().readAllBytes(),
                 StandardCharsets.UTF_8);
     }
 
+    /** Concatena las filas HTML de todas las líneas del pedido. */
     private String filasHtml(List<ItemCorreo> items) {
         return items.stream().map(this::filaHtml).reduce("", String::concat);
     }
@@ -249,6 +261,7 @@ public class CorreoService {
         return recortada.startsWith("/") ? base + recortada : base + "/" + recortada;
     }
 
+    /** Arma el mensaje HTML con el remitente configurado y lo envía con reintentos. */
     private void enviarHtml(String para, String asunto, String html) throws Exception {
         var mensaje = envio.createMimeMessage();
         var ayuda = new MimeMessageHelper(mensaje, false, "UTF-8");

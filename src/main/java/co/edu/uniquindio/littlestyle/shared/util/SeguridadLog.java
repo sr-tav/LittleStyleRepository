@@ -14,6 +14,7 @@ public final class SeguridadLog {
 
     public static final Logger LOG = LoggerFactory.getLogger("littlestyle.seguridad");
 
+    /** Clase de utilidades; no se instancia. */
     private SeguridadLog() {
     }
 

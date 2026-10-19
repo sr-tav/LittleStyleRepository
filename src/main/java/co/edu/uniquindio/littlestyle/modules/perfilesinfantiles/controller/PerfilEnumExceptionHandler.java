@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
+/**
+ * Traduce los valores de enumeración inválidos en las peticiones de perfiles (alergias, colores, estampados)
+ * a un error 400 asociado al campo, antes que el manejador global.
+ */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackageClasses = PerfilInfantilController.class)
 public class PerfilEnumExceptionHandler {
@@ -21,6 +25,10 @@ public class PerfilEnumExceptionHandler {
             "coloresPreferidos", "Seleccione un color válido",
             "estampadosPreferidos", "Seleccione un estampado válido");
 
+    /**
+     * Responde 400 con el mensaje del campo afectado si se identifica; si no, con el mensaje genérico de
+     * cuerpo inválido.
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleEnumInvalido(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
@@ -36,6 +44,7 @@ public class PerfilEnumExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    /** Busca en la cadena de causas del error el nombre de un campo conocido, o {@code null}. */
     private String campoEnError(HttpMessageNotReadableException error) {
         StringBuilder detalle = new StringBuilder();
         Throwable actual = error;

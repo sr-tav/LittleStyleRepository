@@ -8,6 +8,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+/**
+ * Reglas de alergias: níquel, formaldehído y 30 % o más de fibras sintéticas excluyen la prenda; lana, látex
+ * o elastano, cuero, algodón, tintes, broches metálicos y composición no declarada solo advierten.
+ */
 @Component
 public class FiltroAlergiaEstandar implements FiltroAlergia{
     private static final Set<MaterialTextil> SINTETICOS = EnumSet.of(
@@ -15,6 +19,7 @@ public class FiltroAlergiaEstandar implements FiltroAlergia{
             MaterialTextil.ELASTANO, MaterialTextil.VISCOSA);
     private static final int UMBRAL_SINTETICO = 30;
 
+    /** Alergia, si su coincidencia excluye la prenda y cómo detectarla (devuelve el motivo). */
     private record Regla(AlergiaTextil alergia, boolean excluyeSiCoincide,
                          java.util.function.Function<PrendaRecomendable, Optional<String>> detectar) {}
 
@@ -30,6 +35,10 @@ public class FiltroAlergiaEstandar implements FiltroAlergia{
             new Regla(AlergiaTextil.OTRA, false, p -> !p.tieneComposicion() ? Optional.of("Composición no declarada, verificar otra alergia") : Optional.empty())
     );
 
+    /**
+     * Aplica las reglas de las alergias declaradas: excluida si alguna regla grave coincide, advertencia si
+     * solo coinciden reglas leves y apta si ninguna.
+     */
     @Override
     public EvaluacionAlergia evaluar(Set<AlergiaTextil> alergias, PrendaRecomendable prenda) {
         if (alergias == null || alergias.isEmpty() || prenda == null) return EvaluacionAlergia.apta();
@@ -56,9 +65,11 @@ public class FiltroAlergiaEstandar implements FiltroAlergia{
         return new EvaluacionAlergia(excluye ? NivelRiesgo.EXCLUIDA : NivelRiesgo.ADVERTENCIA, motivos);
     }
 
+    /** Indica si la composición incluye el material. */
     private static boolean contiene(PrendaRecomendable p, MaterialTextil m) {
         return p.composicion().stream().anyMatch(c -> c.material() == m);
     }
+    /** Indica si la composición incluye alguno de los materiales. */
     private static boolean contieneAlguno(PrendaRecomendable p, MaterialTextil... ms) {
         Set<MaterialTextil> set = EnumSet.noneOf(MaterialTextil.class);
         Collections.addAll(set, ms);

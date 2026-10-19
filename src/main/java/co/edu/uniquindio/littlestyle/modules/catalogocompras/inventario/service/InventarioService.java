@@ -32,6 +32,7 @@ public class InventarioService {
     private final AlertaReabastecimientoRepository alertaRepository;
     private final AlertasInventarioService alertas;
 
+    /** Inventario del vendedor autenticado, de la prenda modificada más recientemente a la más antigua. */
     @Transactional(readOnly = true)
     public List<InventarioItemResponse> listar() {
         return prendaRepository.findAllByVendedorIdOrderByFechaActualizacionDesc(vendedorActual()).stream()
@@ -39,6 +40,10 @@ public class InventarioService {
                 .toList();
     }
 
+    /**
+     * Bloquea la prenda propia, fija el stock y el mínimo de las tallas enviadas (sin repetidas y existentes
+     * en la prenda) y evalúa las alertas en la misma transacción.
+     */
     @Transactional
     public InventarioItemResponse actualizarStock(Long prendaId, ActualizarStockRequest request) {
         Prenda prenda = prendaRepository.bloquearPropia(prendaId, vendedorActual())
@@ -62,6 +67,7 @@ public class InventarioService {
         return InventarioItemResponse.from(prenda);
     }
 
+    /** Alertas activas del vendedor autenticado. */
     @Transactional(readOnly = true)
     public List<AlertaResponse> alertasActivas() {
         return alertaRepository.findAllByPrendaVendedorIdAndFechaResolucionIsNullOrderByFechaEmisionDesc(vendedorActual())
@@ -70,6 +76,7 @@ public class InventarioService {
                 .toList();
     }
 
+    /** Id del vendedor autenticado; 401 si no hay sesión. */
     private static Long vendedorActual() {
         return SecurityUtils.usuarioActual()
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"))

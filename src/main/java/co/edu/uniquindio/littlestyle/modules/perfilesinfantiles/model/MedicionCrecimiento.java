@@ -21,6 +21,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/** Medición de estatura y peso de un perfil en una fecha; los tres valores se guardan cifrados. */
 @Entity
 @Table(name = "mediciones_crecimiento")
 @Getter

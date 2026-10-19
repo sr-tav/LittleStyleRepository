@@ -19,6 +19,7 @@ public enum EstadoPedido {
     CANCELADO;
     
 
+    /** Indica si se puede pasar de este estado al indicado. */
     public boolean permiteTransicionA(EstadoPedido siguiente) {
         if (siguiente == null) {
             return false;

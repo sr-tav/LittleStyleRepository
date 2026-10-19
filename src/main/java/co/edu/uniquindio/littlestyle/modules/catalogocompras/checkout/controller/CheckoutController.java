@@ -30,6 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * Checkout y pedidos del cliente autenticado: dirección de envío, resumen de compra, historial y detalle de
+ * pedidos, y cancelación antes del pago.
+ */
 @RestController
 @RequestMapping("/api/cliente/checkout")
 @RequiredArgsConstructor
@@ -42,17 +46,23 @@ public class CheckoutController {
     private final CarritoService carritoService;
     private final DireccionClienteService direccionClienteService;
 
+    /** Devuelve la dirección de envío guardada del cliente, si tiene una. */
     @GetMapping("/direccion")
     public ResponseEntity<DireccionGuardadaResponse> obtenerDireccion() {
         return ResponseEntity.ok(direccionClienteService.obtener());
     }
 
+    /** Guarda o reemplaza la dirección de envío del cliente. */
     @PutMapping("/direccion")
     public ResponseEntity<DireccionGuardadaResponse> guardarDireccion(
             @Valid @RequestBody DireccionEnvioRequest request) {
         return ResponseEntity.ok(direccionClienteService.guardar(request));
     }
 
+    /**
+     * Calcula el resumen de la compra con el carrito actual: valida stock y alergias del perfil y suma el
+     * costo de envío según la dirección.
+     */
     @PostMapping("/resumen")
     public ResponseEntity<ResumenCheckoutResponse> calcularResumen(
             @Valid @RequestBody ResumenCheckoutRequest request) {
@@ -63,11 +73,13 @@ public class CheckoutController {
         return ResponseEntity.ok(checkoutFacade.calcularResumen(request, items));
     }
 
+    /** Lista los pedidos del cliente, del más reciente al más antiguo. */
     @GetMapping("/pedidos")
     public ResponseEntity<List<PedidoResumenResponse>> misPedidos() {
         return ResponseEntity.ok(pedidoConsultaService.misPedidos());
     }
 
+    /** Devuelve el detalle de un pedido propio con sus despachos e historial. */
     @GetMapping("/pedidos/{id}")
     public ResponseEntity<PedidoDetalleResponse> detallePedido(@PathVariable Long id) {
         return ResponseEntity.ok(pedidoConsultaService.detalle(id));

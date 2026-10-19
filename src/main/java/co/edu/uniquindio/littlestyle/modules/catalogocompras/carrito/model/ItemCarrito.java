@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/** Línea del carrito: una prenda en una talla, única por carrito. */
 @Entity
 @Table(name = "carrito_items", uniqueConstraints = @UniqueConstraint(
         columnNames = {"carrito_id", "prenda_id", "talla"}))

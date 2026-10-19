@@ -53,6 +53,10 @@ public class AlertasInventarioService {
         return emitidas;
     }
 
+    /**
+     * Aplica las reglas a una talla: resuelve la alerta activa si ya no hace falta, la reemplaza si cambió el
+     * nivel y publica {@link AlertaReabastecimientoEmitida} si es la primera alerta o si la talla se agotó.
+     */
     private Optional<AlertaReabastecimiento> evaluarTalla(Prenda prenda, TallaPrenda talla,
                                                          boolean publicada, LocalDateTime ahora) {
         Integer minimo = talla.getStockMinimo();

@@ -29,11 +29,18 @@ public class ReceptorEventosWompi implements DisposableBean {
     private final PagoService pagoService;
     private final TaskExecutor ejecutor;
 
+    /**
+     * Usa un grupo de hilos acotado o, si los eventos asíncronos están desactivados, los aplica en la misma
+     * petición.
+     */
     public ReceptorEventosWompi(PagoService pagoService, PagoProperties pagoProperties) {
         this.pagoService = pagoService;
         this.ejecutor = pagoProperties.eventosAsincronos() ? crearEjecutor(pagoProperties) : new SyncTaskExecutor();
     }
 
+    /**
+     * Valida firma y vigencia (401 si fallan) y encola la aplicación del evento; 503 si la cola está llena.
+     */
     public void recibir(EventoWompiRequest evento) {
         pagoService.validarEvento(evento);
         try {
@@ -45,6 +52,10 @@ public class ReceptorEventosWompi implements DisposableBean {
         }
     }
 
+    /**
+     * Aplica el evento hasta {@link #MAX_REINTENTOS} veces ante errores inesperados; los errores de negocio
+     * lo descartan.
+     */
     private void aplicarConReintentos(EventoWompiRequest evento) {
         for (int intento = 1; intento <= MAX_REINTENTOS; intento++) {
             try {
@@ -65,6 +76,7 @@ public class ReceptorEventosWompi implements DisposableBean {
         }
     }
 
+    /** Espera creciente entre reintentos (200 ms por intento). */
     private static void esperar(int intento) {
         try {
             Thread.sleep(200L * intento);
@@ -73,6 +85,7 @@ public class ReceptorEventosWompi implements DisposableBean {
         }
     }
 
+    /** Grupo de hilos con el tamaño y la cola configurados. */
     private static ThreadPoolTaskExecutor crearEjecutor(PagoProperties propiedades) {
         ThreadPoolTaskExecutor ejecutor = new ThreadPoolTaskExecutor();
         ejecutor.setCorePoolSize(propiedades.hilosEventos());
@@ -85,6 +98,7 @@ public class ReceptorEventosWompi implements DisposableBean {
         return ejecutor;
     }
 
+    /** Detiene el grupo de hilos al cerrar la aplicación, esperando los eventos en curso. */
     @Override
     public void destroy() {
         if (ejecutor instanceof ThreadPoolTaskExecutor grupo) {

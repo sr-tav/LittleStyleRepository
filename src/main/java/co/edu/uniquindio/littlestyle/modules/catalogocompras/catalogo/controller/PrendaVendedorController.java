@@ -34,26 +34,33 @@ public class PrendaVendedorController {
     private final PrendaService prendaService;
     private final ImagenPrendaService imagenService;
 
+    /** Lista las prendas del vendedor, filtradas opcionalmente por nombre o categoría. */
     @GetMapping
     public ResponseEntity<List<PrendaResponse>> listar(@RequestParam(name = "q", required = false) String busqueda) {
         return ResponseEntity.ok(prendaService.listar(busqueda));
     }
 
+    /** Devuelve una prenda propia completa. */
     @GetMapping("/{id}")
     public ResponseEntity<PrendaResponse> obtener(@PathVariable Long id) {
         return ResponseEntity.ok(prendaService.obtener(id));
     }
 
+    /** Crea una prenda publicada con su composición y tabla de tallas. Responde 201. */
     @PostMapping
     public ResponseEntity<PrendaResponse> crear(@Valid @RequestBody PrendaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(prendaService.crear(request));
     }
 
+    /**
+     * Actualiza los datos y la tabla de tallas de una prenda propia (el stock se cambia en el inventario).
+     */
     @PutMapping("/{id}")
     public ResponseEntity<PrendaResponse> actualizar(@PathVariable Long id, @Valid @RequestBody PrendaRequest request) {
         return ResponseEntity.ok(prendaService.actualizar(id, request));
     }
 
+    /** Publica o retira una prenda propia del catálogo. */
     @PatchMapping("/{id}/estado")
     public ResponseEntity<PrendaResponse> cambiarEstado(@PathVariable Long id,
                                                         @Valid @RequestBody EstadoPrendaRequest request) {
@@ -67,12 +74,14 @@ public class PrendaVendedorController {
         return ResponseEntity.status(HttpStatus.CREATED).body(imagenService.subir(id, archivos));
     }
 
+    /** Convierte una foto en la imagen principal de la prenda. */
     @PutMapping("/{id}/imagenes/{imagenId}/principal")
     public ResponseEntity<List<PrendaResponse.Imagen>> marcarPrincipal(@PathVariable Long id,
                                                                        @PathVariable Long imagenId) {
         return ResponseEntity.ok(imagenService.marcarPrincipal(id, imagenId));
     }
 
+    /** Elimina una foto de la prenda. Responde 204. */
     @DeleteMapping("/{id}/imagenes/{imagenId}")
     public ResponseEntity<Void> eliminarImagen(@PathVariable Long id, @PathVariable Long imagenId) {
         imagenService.eliminar(id, imagenId);

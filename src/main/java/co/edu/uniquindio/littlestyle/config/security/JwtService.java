@@ -25,6 +25,10 @@ public class JwtService {
     private final SecretKey key;
     private final long expirationMs;
 
+    /**
+     * Construye la llave HMAC a partir del secreto en Base64. Falla al arrancar si el secreto no está
+     * configurado.
+     */
     public JwtService(JwtProperties properties) {
         if (properties.secret() == null || properties.secret().isBlank()) {
             throw new IllegalStateException("app.jwt.secret no está configurado");
@@ -33,6 +37,10 @@ public class JwtService {
         this.expirationMs = properties.expirationMs();
     }
 
+    /**
+     * Emite un JWT con el correo como sujeto y el id, rol y nombre del usuario como claims, válido durante el
+     * tiempo configurado.
+     */
     public TokenEmitido generarToken(Usuario usuario) {
         Date ahora = new Date();
         Date expiracion = new Date(ahora.getTime() + expirationMs);
@@ -61,6 +69,7 @@ public class JwtService {
                 .getPayload();
     }
 
+    /** Convierte los claims de un token ya validado en el principal que usa Spring Security. */
     public AuthenticatedUser toAuthenticatedUser(Claims claims) {
         Number id = claims.get(CLAIM_ID, Number.class);
         return new AuthenticatedUser(
@@ -71,6 +80,7 @@ public class JwtService {
         );
     }
 
+    /** Token firmado y su instante de expiración en milisegundos desde epoch. */
     public record TokenEmitido(String token, long expiraEn) {
     }
 }

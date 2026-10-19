@@ -10,6 +10,7 @@ import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/** Recomendaciones de talla para los perfiles infantiles del cliente (US-07). */
 @RestController
 @RequestMapping("/api/cliente/recomendaciones")
 @RequiredArgsConstructor
@@ -18,6 +19,10 @@ public class RecomendacionController {
     private final PerfilBiometricoPort perfiles;
     private final MotorRecomendacionService motor;
 
+    /**
+     * Prendas recomendadas para el perfil con su talla sugerida, ordenadas por compatibilidad. La cabecera
+     * {@code X-Recomendacion-Ms} informa el tiempo del cálculo.
+     */
     @GetMapping
     public ResponseEntity<List<RecomendacionItem>> listar(@RequestParam Long perfilId) {
         long ini = System.nanoTime();
@@ -38,6 +43,10 @@ public class RecomendacionController {
         return ResponseEntity.ok(motor.idsRecomendados(pb));
     }
 
+    /**
+     * Talla sugerida de una prenda para el perfil; 422 si no hay talla compatible o la prenda se excluye por
+     * alergia.
+     */
     @GetMapping("/prenda/{prendaId}")
     public ResponseEntity<RecomendacionItem> porPrenda(@PathVariable Long prendaId, @RequestParam Long perfilId) {
         long ini = System.nanoTime();

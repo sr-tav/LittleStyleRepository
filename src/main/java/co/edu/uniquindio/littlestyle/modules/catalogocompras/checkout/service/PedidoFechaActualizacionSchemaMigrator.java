@@ -14,6 +14,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 
+/**
+ * Agrega al arrancar la columna {@code pedidos.fecha_actualizacion} en bases creadas antes de que existiera.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,6 +25,10 @@ public class PedidoFechaActualizacionSchemaMigrator implements ApplicationRunner
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * Si la tabla existe sin la columna, la crea, la llena con la fecha de creación y la vuelve obligatoria
+     * (H2 o MySQL/MariaDB).
+     */
     @Override
     public void run(ApplicationArguments args) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
@@ -64,6 +71,7 @@ public class PedidoFechaActualizacionSchemaMigrator implements ApplicationRunner
         }
     }
 
+    /** Indica si existe la tabla {@code pedidos}. */
     private boolean tablaPedidosExiste(DatabaseMetaData metadata) throws SQLException {
         try (ResultSet tablas = metadata.getTables(null, null, null, new String[]{"TABLE"})) {
             while (tablas.next()) {
@@ -75,6 +83,7 @@ public class PedidoFechaActualizacionSchemaMigrator implements ApplicationRunner
         return false;
     }
 
+    /** Indica si la tabla {@code pedidos} ya tiene la columna. */
     private boolean columnaFechaActualizacionExiste(DatabaseMetaData metadata) throws SQLException {
         try (ResultSet columnas = metadata.getColumns(null, null, null, null)) {
             while (columnas.next()) {

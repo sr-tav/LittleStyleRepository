@@ -12,12 +12,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Dirección de envío guardada del cliente autenticado, para precargarla en el checkout. */
 @Service
 @RequiredArgsConstructor
 public class DireccionClienteService {
 
     private final DireccionClienteRepository direccionRepository;
 
+    /** Dirección guardada del cliente, o una respuesta vacía si no tiene. */
     @Transactional(readOnly = true)
     public DireccionGuardadaResponse obtener() {
         return direccionRepository.findByClienteId(clienteActualId())
@@ -25,6 +27,7 @@ public class DireccionClienteService {
                 .orElseGet(() -> new DireccionGuardadaResponse(false, null));
     }
 
+    /** Crea o reemplaza la dirección del cliente con los valores sin espacios sobrantes. */
     @Transactional
     public DireccionGuardadaResponse guardar(DireccionEnvioRequest request) {
         Long clienteId = clienteActualId();
@@ -42,6 +45,7 @@ public class DireccionClienteService {
         return respuesta(direccionRepository.save(direccion));
     }
 
+    /** Convierte la entidad en la respuesta de dirección guardada. */
     private DireccionGuardadaResponse respuesta(DireccionCliente direccion) {
         return new DireccionGuardadaResponse(true, new DireccionEnvioRequest(
                 direccion.getDestinatario(),
@@ -53,12 +57,14 @@ public class DireccionClienteService {
                 direccion.getTelefono()));
     }
 
+    /** Id del cliente autenticado; 401 si no hay sesión. */
     private Long clienteActualId() {
         return SecurityUtils.usuarioActual()
                 .map(usuario -> usuario.id())
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
     }
 
+    /** Texto sin espacios sobrantes, o {@code null} si viene vacío. */
     private static String normalizarOpcional(String valor) {
         return valor == null || valor.isBlank() ? null : valor.trim();
     }

@@ -14,6 +14,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 
+/**
+ * Migra al arrancar la columna {@code usuarios.estado} de ENUM a VARCHAR en bases creadas con versiones
+ * anteriores, para que admita todos los valores de
+ * {@link co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario}.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,6 +27,7 @@ public class EstadoUsuarioSchemaMigrator implements ApplicationRunner {
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
 
+    /** Si la columna sigue siendo ENUM, la convierte a VARCHAR(20) con la sintaxis de H2 o MySQL/MariaDB. */
     @Override
     public void run(ApplicationArguments args) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
@@ -45,6 +51,7 @@ public class EstadoUsuarioSchemaMigrator implements ApplicationRunner {
         }
     }
 
+    /** Indica si la columna {@code usuarios.estado} existe y es de tipo ENUM. */
     private boolean estadoEsEnum(DatabaseMetaData metadata) throws SQLException {
         try (ResultSet columnas = metadata.getColumns(null, null, null, null)) {
             while (columnas.next()) {

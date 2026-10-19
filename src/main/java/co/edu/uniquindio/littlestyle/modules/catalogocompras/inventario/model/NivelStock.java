@@ -9,6 +9,7 @@ public enum NivelStock {
     STOCK_BAJO,
     AGOTADO;
 
+    /** Nivel para un stock y un mínimo: sin stock es agotado y en el mínimo o por debajo es stock bajo. */
     public static NivelStock calcular(int stockTotal, int stockMinimo) {
         if (stockTotal <= 0) {
             return AGOTADO;
@@ -23,6 +24,7 @@ public enum NivelStock {
         return DISPONIBLE;
     }
 
+    /** Indica si el nivel debe generar una alerta (stock bajo o agotado). */
     public boolean requiereReabastecimiento() {
         return this != DISPONIBLE;
     }

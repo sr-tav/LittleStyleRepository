@@ -9,11 +9,13 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.util.Properties;
 
+/** Habilita el envío asíncrono de correos y registra sus propiedades. */
 @Configuration
 @EnableAsync
 @EnableConfigurationProperties(CorreoProperties.class)
 public class CorreoConfig {
 
+    /** Cliente SMTP con autenticación, STARTTLS y los tiempos de espera configurados (RNF-23). */
     @Bean
     public JavaMailSender javaMailSender(CorreoProperties props) {
         JavaMailSenderImpl envio = new JavaMailSenderImpl();

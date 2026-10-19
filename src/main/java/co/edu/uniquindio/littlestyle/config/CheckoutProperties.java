@@ -9,6 +9,10 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * Parámetros del checkout ({@code app.checkout}): tarifas de envío para Armenia, el resto del Quindío y otras
+ * ciudades, municipios que cuentan como Quindío y tiempo que un pedido puede esperar el pago.
+ */
 @Validated
 @ConfigurationProperties(prefix = "app.checkout")
 public record CheckoutProperties(
@@ -27,6 +31,9 @@ public record CheckoutProperties(
         }) List<String> municipiosQuindio,
         @DefaultValue("PT30M") Duration tiempoExpiracionPedido
 ) {
+    /**
+     * Normaliza los municipios a mayúsculas sin espacios sobrantes y exige un tiempo de expiración positivo.
+     */
     public CheckoutProperties {
         municipiosQuindio = municipiosQuindio == null
                 ? List.of()

@@ -27,6 +27,10 @@ public class MinimoPorTallaSchemaMigrator implements ApplicationRunner {
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * Si ambas columnas existen, copia el mínimo de la prenda a las tallas que no tienen uno y elimina la
+     * columna de la prenda.
+     */
     @Override
     public void run(ApplicationArguments args) throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
@@ -47,6 +51,7 @@ public class MinimoPorTallaSchemaMigrator implements ApplicationRunner {
         }
     }
 
+    /** Indica si la tabla tiene la columna. */
     private boolean existeColumna(DatabaseMetaData metadata, String tabla, String columna) throws SQLException {
         try (ResultSet columnas = metadata.getColumns(null, null, null, null)) {
             while (columnas.next()) {

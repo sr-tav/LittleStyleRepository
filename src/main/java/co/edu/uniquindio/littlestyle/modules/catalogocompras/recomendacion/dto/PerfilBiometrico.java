@@ -12,6 +12,7 @@ import java.util.Set;
  */
 public record PerfilBiometrico(DatosBiometricos bio, Set<AlergiaTextil> alergias, String otraAlergia,
                                Set<ColorPreferido> coloresPreferidos, Set<Estampado> estampadosPreferidos) {
+    /** Reemplaza los conjuntos nulos por vacíos y guarda copias inmutables. */
     public PerfilBiometrico {
         alergias = alergias == null ? Set.of() : Set.copyOf(alergias);
         coloresPreferidos = coloresPreferidos == null ? Set.of() : Set.copyOf(coloresPreferidos);

@@ -150,6 +150,10 @@ public class DespachoService {
         return pedido.getEstado();
     }
 
+    /**
+     * Agrupa las líneas del pedido por el vendedor de cada prenda; falla si una prenda no existe o no tiene
+     * vendedor.
+     */
     private Map<Long, List<LineaPedido>> agruparPorVendedor(Pedido pedido) {
         Map<Long, List<LineaPedido>> porVendedor = new LinkedHashMap<>();
         for (LineaPedido linea : pedido.getItems()) {

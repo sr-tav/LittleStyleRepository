@@ -32,6 +32,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Pedido de un cliente con su dirección (cifrada), líneas, totales y estado global. Cuando tiene prendas de
+ * varios vendedores, su estado se deriva de los despachos.
+ */
 @Entity
 @Table(name = "pedidos")
 @Getter
@@ -108,11 +112,13 @@ public class Pedido {
     @Builder.Default
     private List<LineaPedido> items = new ArrayList<>();
 
+    /** Agrega la línea y la asocia a este pedido. */
     public void agregar(LineaPedido item) {
         items.add(item);
         item.setPedido(this);
     }
 
+    /** Cambia el estado si la transición es válida; 409 en otro caso. */
     public void transicionarA(EstadoPedido siguiente) {
         if (estado == null || siguiente == null || !estado.permiteTransicionA(siguiente)) {
             throw new BusinessException(HttpStatus.CONFLICT,
@@ -144,6 +150,7 @@ public class Pedido {
         fechaActualizacion = LocalDateTime.now();
     }
 
+    /** Cambia el estado y registra la guía, que es obligatoria al enviar y no se admite en otro paso. */
     public void avanzarA(EstadoPedido siguiente, String guia) {
         transicionarA(siguiente);
         if (siguiente == EstadoPedido.ENVIADO) {

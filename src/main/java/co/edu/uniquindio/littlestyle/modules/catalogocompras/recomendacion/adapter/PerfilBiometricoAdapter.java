@@ -13,12 +13,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Obtiene del módulo de perfiles infantiles los datos que necesita el motor de recomendación. */
 @Component
 @RequiredArgsConstructor
 public class PerfilBiometricoAdapter implements PerfilBiometricoPort {
     private final PerfilInfantilRepository repo;
     private final RecomendacionProperties props;
 
+    /**
+     * Datos del perfil del cliente autenticado con su medición más reciente. Responde 422 si no tiene
+     * mediciones o si la última supera la vigencia configurada. El texto de "otra alergia" solo se incluye si
+     * se marcó esa alergia.
+     */
     @Override
     @Transactional(readOnly = true)
     public PerfilBiometrico obtenerActivos(Long perfilId) {

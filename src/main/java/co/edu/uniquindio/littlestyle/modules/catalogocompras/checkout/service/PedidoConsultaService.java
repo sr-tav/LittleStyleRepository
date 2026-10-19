@@ -34,12 +34,14 @@ public class PedidoConsultaService {
     private final DespachoRepository despachoRepository;
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository prendaRepository;
 
+    /** Pedidos del cliente autenticado, del más reciente al más antiguo. */
     @Transactional(readOnly = true)
     public List<PedidoResumenResponse> misPedidos() {
         return pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(clienteActual())
                 .stream().map(PedidoResumenResponse::from).toList();
     }
 
+    /** Detalle de un pedido propio con imágenes, despachos e historial; 404 si es ajeno. */
     @Transactional(readOnly = true)
     public PedidoDetalleResponse detalle(Long id) {
         Pedido pedido = pedidoRepository.findByIdAndClienteId(id, clienteActual())
@@ -64,6 +66,7 @@ public class PedidoConsultaService {
                 .orElse(null);
     }
 
+    /** Despachos del pedido, cada uno con sus propias líneas. */
     private List<DespachoResponse> despachosDe(Pedido pedido) {
         List<Despacho> despachos = despachoRepository.findAllByPedidoIdOrderByIdAsc(pedido.getId());
         List<DespachoResponse> salida = new ArrayList<>();
@@ -77,6 +80,7 @@ public class PedidoConsultaService {
         return salida;
     }
 
+    /** Id del cliente autenticado; 401 si no hay sesión. */
     private static Long clienteActual() {
         return SecurityUtils.usuarioActual()
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado")).id();

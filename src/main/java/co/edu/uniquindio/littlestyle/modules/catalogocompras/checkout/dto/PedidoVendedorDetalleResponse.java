@@ -19,6 +19,7 @@ public record PedidoVendedorDetalleResponse(Long id, EstadoPedido estado, LocalD
                                             List<PedidoDetalleResponse.Item> items,
                                             List<PedidoDetalleResponse.Movimiento> historial) {
 
+    /** Construye el detalle con solo las líneas de las prendas del vendedor. */
     public static PedidoVendedorDetalleResponse from(Pedido pedido, Set<Long> prendasDelVendedor,
                                                      List<PedidoDetalleResponse.Movimiento> historial) {
         List<PedidoDetalleResponse.Item> propias = pedido.getItems().stream()

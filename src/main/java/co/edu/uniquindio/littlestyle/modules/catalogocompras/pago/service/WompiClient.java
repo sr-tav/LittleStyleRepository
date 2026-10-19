@@ -37,6 +37,7 @@ public class WompiClient {
 
     private final RestClient restClient;
 
+    /** Cliente HTTP con la URL de la API y los tiempos de conexión y lectura configurados. */
     public WompiClient(WompiProperties wompiProperties, PagoProperties pagoProperties) {
         SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
         fabrica.setConnectTimeout(pagoProperties.timeoutConexion());
@@ -47,6 +48,10 @@ public class WompiClient {
                 .build();
     }
 
+    /**
+     * Consulta una transacción en Wompi. Traduce los fallos a errores de negocio: 404 si no existe, 504 si
+     * Wompi no responde a tiempo, 503 si no hay conexión y 502 ante respuestas inválidas.
+     */
     public TransaccionWompi consultarTransaccion(String transaccionId) {
         try {
             Map<String, Object> respuesta = restClient.get()
@@ -75,6 +80,7 @@ public class WompiClient {
         }
     }
 
+    /** Indica si alguna causa del error es un tiempo de espera agotado. */
     private static boolean esTiempoAgotado(Throwable error) {
         for (Throwable causa = error; causa != null; causa = causa.getCause()) {
             if (causa instanceof SocketTimeoutException || causa instanceof HttpTimeoutException) {

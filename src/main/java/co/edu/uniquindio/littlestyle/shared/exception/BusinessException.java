@@ -14,14 +14,20 @@ public class BusinessException extends RuntimeException {
     private final String campo;
     private final String codigo;
 
+    /** Error de negocio sin campo ni código asociado. */
     public BusinessException(HttpStatus status, String mensaje) {
         this(status, mensaje, null, null);
     }
 
+    /** Error de negocio asociado a un campo del formulario. */
     public BusinessException(HttpStatus status, String mensaje, String campo) {
         this(status, mensaje, campo, null);
     }
 
+    /**
+     * Error de negocio con campo y código opcionales que se devuelven en el
+     * {@link co.edu.uniquindio.littlestyle.shared.dto.ErrorResponse}.
+     */
     public BusinessException(HttpStatus status, String mensaje, String campo, String codigo) {
         super(mensaje);
         this.status = status;

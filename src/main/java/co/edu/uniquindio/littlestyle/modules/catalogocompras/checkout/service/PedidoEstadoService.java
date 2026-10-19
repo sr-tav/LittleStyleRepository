@@ -25,6 +25,10 @@ import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Set;
 
+/**
+ * Cambios manuales del estado global de un pedido: cancelación por el administrador o por el cliente antes
+ * del pago. Cada cambio queda en el historial y publica sus eventos.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -49,6 +53,7 @@ public class PedidoEstadoService {
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.DespachoRepository despachoRepository;
     private final ApplicationEventPublisher eventos;
 
+    /** Transición pedida por el administrador; solo admite cancelar. */
     @Transactional
     public Pedido avanzar(Long pedidoId, EstadoPedido nuevo, String numeroGuia) {
         if (nuevo == null || !MANUAL_ADMIN.contains(nuevo)) {
@@ -75,6 +80,10 @@ public class PedidoEstadoService {
         return avanzarConBloqueo(pedidoId, EstadoPedido.CANCELADO, null);
     }
 
+    /**
+     * Bloquea el pedido y aplica la transición. No permite cancelar si algo ya se envió, repone el stock si
+     * ya se había descontado, registra el historial y publica los eventos de cambio y de envío.
+     */
     private Pedido avanzarConBloqueo(Long pedidoId, EstadoPedido nuevo, String numeroGuia) {
         // Bloqueo pesimista como pago y expiración: dos avances concurrentes
         // no pueden pisar el estado ni duplicar la reposición de stock.

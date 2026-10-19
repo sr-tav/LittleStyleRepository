@@ -24,10 +24,12 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
     private final JsonMapper jsonMapper;
 
+    /** Recibe el mapeador JSON con el que se escribe la respuesta de error. */
     public RestAccessDeniedHandler(JsonMapper jsonMapper) {
         this.jsonMapper = jsonMapper;
     }
 
+    /** Registra el intento en el log de seguridad y escribe un {@link ErrorResponse} 403. */
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {

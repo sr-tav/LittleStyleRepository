@@ -17,6 +17,10 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
+/**
+ * Línea de un pedido. Guarda nombre y precio de la prenda al comprar, para que cambios posteriores en el
+ * catálogo no alteren el pedido.
+ */
 @Entity
 @Table(name = "pedido_items")
 @Getter

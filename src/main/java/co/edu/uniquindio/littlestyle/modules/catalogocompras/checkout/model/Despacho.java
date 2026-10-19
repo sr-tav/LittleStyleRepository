@@ -8,6 +8,10 @@ import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 
+/**
+ * Paquete de un vendedor dentro de un pedido (uno por vendedor). Avanza de {@code REGISTRADO} a {@code
+ * EN_PREPARACION} y luego a {@code ENVIADO} con guía.
+ */
 @Entity
 @Table(name = "despachos", uniqueConstraints = @UniqueConstraint(columnNames = {"pedido_id", "vendedor_id"}))
 @Getter @Setter @NoArgsConstructor
@@ -33,6 +37,7 @@ public class Despacho {
     @Column(name = "fecha_actualizacion", nullable = false)
     private LocalDateTime fechaActualizacion;
 
+    /** Avanza el despacho un paso. Exige la guía para pasar a enviado y la rechaza en cualquier otro paso. */
     public void avanzarA(EstadoPedido siguiente, String guia, LocalDateTime ahora) {
         boolean valida = (estado == EstadoPedido.REGISTRADO && siguiente == EstadoPedido.EN_PREPARACION)
                 || (estado == EstadoPedido.EN_PREPARACION && siguiente == EstadoPedido.ENVIADO);

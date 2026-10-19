@@ -20,6 +20,7 @@ public record ActualizarStockRequest(
         List<@Valid @NotNull StockTalla> tallas
 ) {
 
+    /** Stock absoluto y mínimo opcional de una talla. */
     public record StockTalla(
             @NotBlank(message = "La talla es obligatoria")
             String talla,

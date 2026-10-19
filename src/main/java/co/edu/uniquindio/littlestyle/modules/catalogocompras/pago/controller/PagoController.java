@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Pagos con Wompi del cliente autenticado (US-11). */
 @RestController
 @RequestMapping("/api/cliente/pagos")
 @RequiredArgsConstructor
@@ -26,6 +27,10 @@ public class PagoController {
 
     private final PagoService pagoService;
 
+    /**
+     * Prepara el pago de la compra actual y devuelve los datos firmados para abrir el Widget de Wompi. La
+     * cabecera {@code Idempotency-Key} evita crear dos intentos si el cliente reenvía la petición.
+     */
     @PostMapping("/checkout")
     public ResponseEntity<InicioPagoResponse> iniciarCheckout(
             @Valid @RequestBody CrearPedidoRequest request,
@@ -39,11 +44,13 @@ public class PagoController {
         return ResponseEntity.ok(pagoService.cancelar(referencia));
     }
 
+    /** Consulta en Wompi la transacción indicada y aplica su estado; se usa desde la página de resultado. */
     @PostMapping("/verificar")
     public ResponseEntity<ResultadoPagoResponse> verificar(@Valid @RequestBody VerificarPagoRequest request) {
         return ResponseEntity.ok(pagoService.verificar(request.transaccionId().trim()));
     }
 
+    /** Devuelve el estado local de un pago del cliente por su referencia. */
     @GetMapping("/{referencia}")
     public ResponseEntity<ResultadoPagoResponse> consultar(@PathVariable String referencia) {
         return ResponseEntity.ok(pagoService.consultarPorReferencia(referencia));

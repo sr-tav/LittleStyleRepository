@@ -26,6 +26,10 @@ public record AlertaResponse(
         LocalDateTime fechaEmision
 ) {
 
+    /**
+     * Construye la alerta con el stock y el mínimo actuales de la talla. Las alertas heredadas sin talla usan
+     * los valores guardados al emitirlas.
+     */
     public static AlertaResponse from(AlertaReabastecimiento alerta) {
         Prenda p = alerta.getPrenda();
         if (alerta.getTalla() == null) {

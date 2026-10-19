@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
+/** Registro de las migraciones de cifrado ya completadas. */
 @Entity
 @Table(name = "perfil_datos_cifrado_version")
 public class PerfilDatosCifradoVersion {

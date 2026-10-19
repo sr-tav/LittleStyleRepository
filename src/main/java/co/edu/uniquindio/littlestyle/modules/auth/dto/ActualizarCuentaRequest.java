@@ -4,6 +4,10 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Cambios a la cuenta propia. Los campos nulos o vacíos no se modifican; para cambiar la contraseña se envían
+ * la actual, la nueva y su confirmación.
+ */
 public record ActualizarCuentaRequest(
         @Size(min = 2, max = 60, message = "El nombre debe tener entre 2 y 60 caracteres")
         @Pattern(regexp = "^[\\p{L} ]+$", message = "El nombre solo puede contener letras")

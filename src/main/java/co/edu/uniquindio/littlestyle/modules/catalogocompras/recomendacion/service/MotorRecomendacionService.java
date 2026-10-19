@@ -15,6 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+/**
+ * Motor de recomendación de tallas (US-07): para cada prenda publicada elige la talla con la estrategia
+ * configurada, descarta las excluidas por alergia y ordena por compatibilidad y luego por afinidad de estilo.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,6 +31,7 @@ public class MotorRecomendacionService {
     private final FiltroAlergia filtro;
     private final RecomendacionProperties props;
 
+    /** Recomendaciones para el perfil, limitadas al máximo configurado. */
     public List<RecomendacionItem> recomendar(PerfilBiometrico perfil) {
         return recomendar(perfil, true);
     }
@@ -41,6 +46,10 @@ public class MotorRecomendacionService {
         return recomendar(perfil, false).stream().map(RecomendacionItem::prendaId).toList();
     }
 
+    /**
+     * Evalúa todo el catálogo para el perfil. Si el catálogo falla devuelve una lista vacía y si falla una
+     * prenda solo se omite esa (RNF-29).
+     */
     private List<RecomendacionItem> recomendar(PerfilBiometrico perfil, boolean limitar) {
         DatosBiometricos bio = perfil == null ? null : perfil.bio();
         Set<AlergiaTextil> al = perfil == null || perfil.alergias() == null ? Set.of() : perfil.alergias();
@@ -76,6 +85,10 @@ public class MotorRecomendacionService {
                         .thenComparingInt(RecomendacionItem::afinidad).reversed()).toList();
         return limitar ? ordenada.stream().limit(props.maxResultados()).toList() : ordenada;
     }
+    /**
+     * Talla sugerida y puntaje de una prenda para el perfil. Responde 404 si la prenda no está publicada, 503
+     * si el catálogo falla y 422 si no hay talla compatible o la prenda se excluye por alergia.
+     */
     public RecomendacionItem recomendarParaPrenda(PerfilBiometrico perfil, Long prendaId) {
         DatosBiometricos bio = perfil == null ? null : perfil.bio();
         Set<AlergiaTextil> al = perfil == null || perfil.alergias() == null ? Set.of() : perfil.alergias();

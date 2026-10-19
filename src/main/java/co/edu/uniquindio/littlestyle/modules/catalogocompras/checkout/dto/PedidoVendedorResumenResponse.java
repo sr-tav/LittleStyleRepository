@@ -17,6 +17,7 @@ public record PedidoVendedorResumenResponse(Long id, EstadoPedido estado, LocalD
                                             int cantidadItemsPropios, BigDecimal subtotalPropio,
                                             String numeroGuia) {
 
+    /** Cuenta las unidades y suma el subtotal de las líneas del vendedor. */
     public static PedidoVendedorResumenResponse from(Pedido pedido, Set<Long> prendasDelVendedor) {
         List<LineaPedido> propias = pedido.getItems().stream()
                 .filter(l -> prendasDelVendedor.contains(l.getPrendaId()))

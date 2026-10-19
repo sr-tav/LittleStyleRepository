@@ -81,6 +81,10 @@ public class ImagenPrendaService {
         return prenda.getImagenes().stream().map(PrendaResponse.Imagen::from).toList();
     }
 
+    /**
+     * Quita la foto de una prenda propia; el archivo se borra del almacenamiento solo si la transacción se
+     * confirma.
+     */
     @Transactional
     public void eliminar(Long prendaId, Long imagenId) {
         Prenda prenda = prendaRepository.bloquearPropia(prendaId, PrendaService.vendedorActual())
@@ -112,6 +116,7 @@ public class ImagenPrendaService {
         return prenda.getImagenes().stream().map(PrendaResponse.Imagen::from).toList();
     }
 
+    /** Foto de la prenda con ese id; 404 si no existe. */
     private static ImagenPrenda buscarImagen(Prenda prenda, Long imagenId) {
         return prenda.getImagenes().stream()
                 .filter(i -> i.getId().equals(imagenId))
@@ -119,6 +124,9 @@ public class ImagenPrendaService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Imagen no encontrada"));
     }
 
+    /**
+     * Valida que el archivo no esté vacío, no supere el tamaño máximo y sea JPG, PNG o WEBP por su contenido.
+     */
     private static ArchivoValidado validar(MultipartFile archivo, AlmacenamientoProperties.Imagenes limites) {
         String nombre = nombreVisible(archivo);
         if (archivo.isEmpty()) {
@@ -139,6 +147,7 @@ public class ImagenPrendaService {
         return new ArchivoValidado(datos, tipo);
     }
 
+    /** Nombre del archivo apto para mensajes: sin caracteres de control y recortado a 60 caracteres. */
     private static String nombreVisible(MultipartFile archivo) {
         String nombre = archivo.getOriginalFilename();
         if (nombre == null || nombre.isBlank()) {
@@ -148,6 +157,10 @@ public class ImagenPrendaService {
         return nombre.length() > 60 ? nombre.substring(0, 57) + "..." : nombre;
     }
 
+    /**
+     * Borra el objeto del almacenamiento; si falla solo lo registra, porque un huérfano no afecta al
+     * catálogo.
+     */
     private void eliminarDelAlmacenamiento(String clave) {
         try {
             almacenamiento.eliminar(clave);
@@ -157,6 +170,7 @@ public class ImagenPrendaService {
         }
     }
 
+    /** Ejecuta la acción al terminar la transacción, indicando si se confirmó. */
     private static void alFinalizarTransaccion(Consumer<Boolean> accion) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
@@ -166,6 +180,7 @@ public class ImagenPrendaService {
         });
     }
 
+    /** Contenido del archivo y tipo de imagen detectado. */
     private record ArchivoValidado(byte[] datos, TipoImagen tipo) {
     }
 }

@@ -18,11 +18,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+/** Acceso a las prendas del catálogo. */
 public interface PrendaRepository extends JpaRepository<Prenda, Long> {
 
+    /** Prendas del vendedor con sus tallas, de la modificada más recientemente a la más antigua. */
     @EntityGraph(attributePaths = "tallas")
     List<Prenda> findAllByVendedorIdOrderByFechaActualizacionDesc(Long vendedorId);
 
+    /** Prenda si pertenece al vendedor. */
     Optional<Prenda> findByIdAndVendedorId(Long id, Long vendedorId);
 
     /**
@@ -33,9 +36,11 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @Query("select p from Prenda p where p.id = :id and p.vendedor.id = :vendedorId")
     Optional<Prenda> bloquearPropia(@Param("id") Long id, @Param("vendedorId") Long vendedorId);
 
+    /** Ids de las prendas del vendedor. */
     @Query("select p.id from Prenda p where p.vendedor.id = :vendedorId")
     List<Long> findIdsByVendedorId(@Param("vendedorId") Long vendedorId);
 
+    /** Prendas en un estado, con tallas y vendedor cargados. */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     List<Prenda> findAllByEstado(EstadoPrenda estado);
 
@@ -115,6 +120,7 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
                                       @Param("edadMeses") Integer edadMeses,
                                       Pageable pageable);
 
+    /** Prenda si está en el estado indicado, con tallas y vendedor cargados. */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     Optional<Prenda> findByIdAndEstado(Long id, EstadoPrenda estado);
 
@@ -126,11 +132,13 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @EntityGraph(attributePaths = {"tallas"})
     @Query("select p from Prenda p where p.id in :ids")
     List<Prenda> buscarPorIds(@Param("ids") List<Long> ids);
+    /** Prenda en el estado indicado con bloqueo de escritura, para validar y mover stock sin carreras. */
     @EntityGraph(attributePaths = "tallas")
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Prenda p where p.id = :id and p.estado = :estado")
     Optional<Prenda> bloquearPorIdYEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
 
+    /** Prenda con bloqueo de escritura, sin importar su estado (pagos y reposición de stock). */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Prenda p where p.id = :id")

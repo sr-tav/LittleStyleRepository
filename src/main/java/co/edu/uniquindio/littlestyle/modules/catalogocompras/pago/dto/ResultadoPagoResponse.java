@@ -8,6 +8,10 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.MotivoRe
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * Estado de un pago para la página de resultado. Si se requiere reembolso por falta de stock, incluye las
+ * prendas agotadas y las líneas que siguen disponibles para volver a comprarlas.
+ */
 public record ResultadoPagoResponse(
         Long pedidoId,
         String referencia,
@@ -19,6 +23,7 @@ public record ResultadoPagoResponse(
         List<LineaDisponibilidadPagoResponse> prendasAgotadas,
         List<LineaRecompraResponse> lineasDisponibles
 ) {
+    /** Guarda copias inmutables de las listas. */
     public ResultadoPagoResponse {
         prendasAgotadas = List.copyOf(prendasAgotadas);
         lineasDisponibles = List.copyOf(lineasDisponibles);

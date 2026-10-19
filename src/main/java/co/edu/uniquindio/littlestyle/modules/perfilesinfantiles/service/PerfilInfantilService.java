@@ -34,6 +34,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+/**
+ * Gestión de los perfiles infantiles del cliente autenticado y sus mediciones. Un perfil ajeno se trata como
+ * inexistente (404).
+ */
 @Service
 @RequiredArgsConstructor
 public class PerfilInfantilService {
@@ -47,6 +51,7 @@ public class PerfilInfantilService {
     @Value("${app.perfiles.max:10}")
     private int maximoPerfiles;
 
+    /** Perfiles del cliente, del modificado más recientemente al más antiguo. */
     @Transactional(readOnly = true)
     public List<PerfilResponse> listar() {
         Long clienteId = clienteActual().id();
@@ -54,17 +59,20 @@ public class PerfilInfantilService {
                 .stream().map(this::respuesta).toList();
     }
 
+    /** Perfil propio; 404 si no existe o es de otro cliente. */
     @Transactional(readOnly = true)
     public PerfilResponse obtener(Long id) {
         return respuesta(obtenerPropio(id, clienteActual().id()));
     }
 
+    /** Crea un perfil sin mediciones. */
     @Transactional
     public PerfilResponse crear(PerfilRequest request) {
         bloquearClienteActual();
         return respuesta(crearPerfil(request));
     }
 
+    /** Crea el perfil y su primera medición, validando que las medidas sean coherentes con la edad. */
     @Transactional
     public PerfilResponse crearConMedicionInicial(CrearPerfilConMedicionRequest request) {
         bloquearClienteActual();
@@ -85,6 +93,10 @@ public class PerfilInfantilService {
         return respuesta(perfil);
     }
 
+    /**
+     * Valida el límite de perfiles por cliente, la fecha de nacimiento, que no haya otro perfil con el mismo
+     * nombre y fecha, las alergias y las preferencias, y guarda el perfil.
+     */
     private PerfilInfantil crearPerfil(PerfilRequest request) {
         Long clienteId = clienteActual().id();
         if (perfilRepository.countByClienteId(clienteId) >= maximoPerfiles) {
@@ -101,6 +113,10 @@ public class PerfilInfantilService {
         return perfilRepository.save(perfil);
     }
 
+    /**
+     * Actualiza un perfil propio con las mismas validaciones de la creación; las mediciones existentes deben
+     * seguir siendo coherentes con la nueva fecha de nacimiento.
+     */
     @Transactional
     public PerfilResponse actualizar(Long id, PerfilRequest request) {
         Long clienteId = bloquearClienteActual();
@@ -117,17 +133,23 @@ public class PerfilInfantilService {
         return respuesta(perfilRepository.save(perfil));
     }
 
+    /** Elimina un perfil propio con sus mediciones. */
     @Transactional
     public void eliminar(Long id) {
         bloquearClienteActual();
         perfilRepository.delete(obtenerPropio(id, clienteActual().id()));
     }
 
+    /** Elimina todos los perfiles de un cliente (al eliminar su cuenta). */
     @Transactional
     public void eliminarTodosDeCliente(Long clienteId) {
         perfilRepository.deleteAll(perfilRepository.findAllByClienteIdOrderByFechaActualizacionDesc(clienteId));
     }
 
+    /**
+     * Registra una medición nueva. No puede ser anterior a la última ni tener menor estatura; para eso se
+     * corrige la medición existente.
+     */
     @Transactional
     public MedicionResponse crearMedicion(Long perfilId, MedicionRequest request) {
         PerfilInfantil perfil = obtenerPropioForUpdate(perfilId, clienteActual().id());
@@ -157,6 +179,7 @@ public class PerfilInfantilService {
         return MedicionResponse.from(medicionRepository.save(medicion));
     }
 
+    /** Corrige una medición del perfil validando que sea coherente con la edad. */
     @Transactional
     public MedicionResponse actualizarMedicion(Long perfilId, Long medicionId, MedicionRequest request) {
         Long clienteId = clienteActual().id();
@@ -175,6 +198,7 @@ public class PerfilInfantilService {
         return MedicionResponse.from(medicionRepository.save(medicion));
     }
 
+    /** Mediciones del perfil propio, de la más reciente a la más antigua. */
     @Transactional(readOnly = true)
     public List<MedicionResponse> listarMediciones(Long perfilId) {
         Long clienteId = clienteActual().id();
@@ -187,6 +211,7 @@ public class PerfilInfantilService {
                 .map(MedicionResponse::from).toList();
     }
 
+    /** Copia al perfil los datos de identificación, contextura, holgura y alergias. */
     private PerfilInfantil aplicar(PerfilRequest request, PerfilInfantil perfil) {
         perfil.setNombre(request.nombre().trim());
         perfil.setFechaNacimiento(request.fechaNacimiento());
@@ -198,6 +223,7 @@ public class PerfilInfantilService {
         return perfil;
     }
 
+    /** Exige una fecha anterior a hoy que corresponda a un menor de 18 años. */
     private void validarFechaNacimiento(LocalDate fechaNacimiento) {
         if (fechaNacimiento.isAfter(LocalDate.now())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
@@ -213,6 +239,10 @@ public class PerfilInfantilService {
         }
     }
 
+    /**
+     * Exige declarar alergias o marcar que no tiene (no ambas cosas) y describir la otra alergia solo cuando
+     * se selecciona.
+     */
     private void validarAlergias(PerfilRequest request) {
         boolean contieneOtra = request.alergias().contains(AlergiaTextil.OTRA);
         if (request.sinAlergias()
@@ -238,6 +268,10 @@ public class PerfilInfantilService {
         }
     }
 
+    /**
+     * Normaliza las preferencias: si el valor libre coincide con una opción existente se agrega como esa
+     * opción. Admite máximo 10 colores y 10 estampados.
+     */
     private Preferencias validarPreferencias(PerfilRequest request) {
         Set<ColorPreferido> colores = request.coloresPreferidos().isEmpty()
                 ? EnumSet.noneOf(ColorPreferido.class)
@@ -269,6 +303,7 @@ public class PerfilInfantilService {
         return new Preferencias(colores, estampados, otroColor, otroEstampado);
     }
 
+    /** Valor libre sin espacios sobrantes y con mayúscula inicial; solo letras, de 2 a 30 caracteres. */
     private String normalizarPreferencia(String valor, String campo) {
         if (valor == null) {
             return null;
@@ -285,6 +320,7 @@ public class PerfilInfantilService {
                 + normalizado.substring(longitudPrimerCaracter);
     }
 
+    /** Opción del enum que coincide con el texto sin tildes, espacios ni guiones bajos, o {@code null}. */
     private <E extends Enum<E>> E enumCoincidente(String texto, Class<E> tipo) {
         if (texto == null) {
             return null;
@@ -298,6 +334,7 @@ public class PerfilInfantilService {
         return null;
     }
 
+    /** Texto sin tildes, espacios ni guiones bajos y en mayúsculas. */
     private String simplificar(String texto) {
         return Normalizer.normalize(texto, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
@@ -306,6 +343,7 @@ public class PerfilInfantilService {
                 .toUpperCase(Locale.ROOT);
     }
 
+    /** Copia al perfil las preferencias ya validadas. */
     private void aplicarPreferencias(Preferencias preferencias, PerfilInfantil perfil) {
         perfil.setColoresPreferidos(preferencias.colores());
         perfil.setEstampadosPreferidos(preferencias.estampados());
@@ -313,18 +351,24 @@ public class PerfilInfantilService {
         perfil.setOtroEstampado(preferencias.otroEstampado());
     }
 
+    /** Perfil del cliente; 404 si no existe o es de otro cliente. */
     private PerfilInfantil obtenerPropio(Long id, Long clienteId) {
         return perfilRepository.findByIdAndClienteId(id, clienteId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                         "Perfil infantil no encontrado"));
     }
 
+    /** Perfil del cliente con bloqueo de escritura; 404 en otro caso. */
     private PerfilInfantil obtenerPropioForUpdate(Long id, Long clienteId) {
         return perfilRepository.findByIdAndClienteIdForUpdate(id, clienteId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                         "Perfil infantil no encontrado"));
     }
 
+    /**
+     * Rechaza con 409 otro perfil del cliente con el mismo nombre (sin tildes ni mayúsculas) y fecha de
+     * nacimiento.
+     */
     private void validarPerfilNoDuplicado(String nombre, LocalDate fechaNacimiento,
                                           Long clienteId, Long perfilExcluidoId) {
         String nombreNormalizado = normalizarNombre(nombre);
@@ -339,6 +383,7 @@ public class PerfilInfantilService {
         }
     }
 
+    /** Nombre sin tildes, con espacios simples y en minúsculas. */
     private String normalizarNombre(String nombre) {
         return Normalizer.normalize(nombre.trim(), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
@@ -346,6 +391,10 @@ public class PerfilInfantilService {
                 .toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Bloquea la cuenta del cliente para serializar la creación de perfiles y verificar el límite sin
+     * carreras; 401 si no está activa.
+     */
     private Long bloquearClienteActual() {
         Long clienteId = clienteActual().id();
         Usuario cliente = usuarioRepository.findByIdForUpdate(clienteId)
@@ -356,6 +405,7 @@ public class PerfilInfantilService {
         return clienteId;
     }
 
+    /** Arma la respuesta con edad, última medición y completitud. */
     private PerfilResponse respuesta(PerfilInfantil perfil) {
         MedicionCrecimiento ultima = ultimaMedicion(perfil);
         Period edad = Period.between(perfil.getFechaNacimiento(), LocalDate.now());
@@ -372,6 +422,7 @@ public class PerfilInfantilService {
                 calculadoraCompletitud.camposPendientes(perfil, ultima));
     }
 
+    /** Medición más reciente por fecha (y por id si coinciden), o {@code null}. */
     private MedicionCrecimiento ultimaMedicion(PerfilInfantil perfil) {
         return perfil.getMediciones().stream()
                 .max(Comparator.comparing(MedicionCrecimiento::getFechaMedicion)
@@ -380,12 +431,14 @@ public class PerfilInfantilService {
                 .orElse(null);
     }
 
+    /** Cliente autenticado; 401 si no hay sesión. */
     private AuthenticatedUser clienteActual() {
         AuthenticatedUser usuario = SecurityUtils.usuarioActual().orElseThrow(
                 () -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
         return usuario;
     }
 
+    /** Colores y estampados normalizados, con los valores libres que no coincidieron con ninguna opción. */
     private record Preferencias(Set<ColorPreferido> colores, Set<Estampado> estampados,
                                 String otroColor, String otroEstampado) {
     }

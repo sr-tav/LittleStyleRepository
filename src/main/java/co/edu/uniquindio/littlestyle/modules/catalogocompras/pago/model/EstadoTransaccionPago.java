@@ -20,6 +20,7 @@ public enum EstadoTransaccionPago {
                 || this == ERROR || this == REEMBOLSO_PENDIENTE;
     }
 
+    /** Traduce el estado de Wompi; los desconocidos o ausentes quedan como {@code PENDIENTE}. */
     public static EstadoTransaccionPago desdeWompi(String estadoWompi) {
         if (estadoWompi == null) {
             return PENDIENTE;

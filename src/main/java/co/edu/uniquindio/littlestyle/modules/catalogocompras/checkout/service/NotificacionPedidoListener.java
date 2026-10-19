@@ -88,6 +88,7 @@ public class NotificacionPedidoListener {
         });
     }
 
+    /** Tras confirmar la transacción, envía al cliente el correo de pedido recibido. */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alCrearse(PedidoCreadoEvent evento) {
@@ -99,6 +100,7 @@ public class NotificacionPedidoListener {
                 itemsDe(pedido)));
     }
 
+    /** Tras confirmar la transacción, envía al cliente la confirmación de pago y avisa a cada vendedor. */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alPagarse(PedidoPagadoEvent evento) {
@@ -111,6 +113,7 @@ public class NotificacionPedidoListener {
         avisarVendedores(evento.pedidoId());
     }
 
+    /** Tras confirmar la transacción, avisa al cliente que su pago fue rechazado. */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alRechazarse(PedidoPagoRechazadoEvent evento) {
@@ -156,6 +159,10 @@ public class NotificacionPedidoListener {
         }
     }
 
+    /**
+     * Avisa al cliente del nuevo estado del pedido, salvo envíos totales o parciales, que tienen su propio
+     * correo con guía.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alCambiarEstado(PedidoEstadoCambiadoEvent evento) {
@@ -171,6 +178,7 @@ public class NotificacionPedidoListener {
                 pedido.getTotal().toPlainString()));
     }
 
+    /** Convierte las líneas del pedido en filas del correo. */
     private List<CorreoService.ItemCorreo> itemsDe(
             co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido pedido) {
         return pedido.getItems().stream()

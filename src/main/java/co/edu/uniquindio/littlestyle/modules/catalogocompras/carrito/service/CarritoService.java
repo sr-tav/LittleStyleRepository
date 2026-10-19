@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Operaciones sobre el carrito del cliente autenticado. Los cambios bloquean el carrito y la prenda para
+ * validar el stock sin carreras.
+ */
 @Service
 @RequiredArgsConstructor
 public class CarritoService {
@@ -40,6 +44,7 @@ public class CarritoService {
     private final PerfilInfantilService perfilInfantilService;
     private final ValidadorAlergiaCompra validadorAlergiaCompra;
 
+    /** Carrito del cliente actual; vacío si todavía no tiene uno. */
     @Transactional(readOnly = true)
     public CarritoResponse obtener() {
         Carrito carrito = carritoRepository.findByClienteId(clienteActualId()).orElse(null);
@@ -49,6 +54,7 @@ public class CarritoService {
         return respuesta(carrito.getItems());
     }
 
+    /** Bloquea el carrito del cliente y lo devuelve, para que el checkout lo lea sin cambios concurrentes. */
     @Transactional
     public CarritoResponse bloquearYObtenerActual() {
         Long clienteId = clienteActualId();
@@ -58,6 +64,10 @@ public class CarritoService {
                 : respuesta(carrito.getItems());
     }
 
+    /**
+     * Agrega la prenda publicada en la talla pedida, rechazándola si choca con una alergia grave del perfil.
+     * Si la línea ya existe suma la cantidad; en ambos casos valida que haya stock para el total.
+     */
     @Transactional
     public CarritoResponse agregar(AgregarItemCarritoRequest request) {
         validarAgregar(request);
@@ -90,6 +100,7 @@ public class CarritoService {
         return respuesta(carrito.getItems());
     }
 
+    /** Fija la cantidad de una línea propia validando el stock de la talla. */
     @Transactional
     public CarritoResponse cambiarCantidad(Long itemId, CambiarCantidadCarritoRequest request) {
         if (itemId == null || itemId <= 0 || request == null
@@ -107,6 +118,7 @@ public class CarritoService {
         return respuesta(carrito.getItems());
     }
 
+    /** Quita una línea propia del carrito. */
     @Transactional
     public CarritoResponse quitar(Long itemId) {
         if (itemId == null || itemId <= 0) {
@@ -119,6 +131,7 @@ public class CarritoService {
         return respuesta(carrito.getItems());
     }
 
+    /** Quita todas las líneas del carrito del cliente. */
     @Transactional
     public CarritoResponse vaciar() {
         Carrito carrito = obtenerOBloquearActual();
@@ -129,11 +142,19 @@ public class CarritoService {
         return respuesta(carrito.getItems());
     }
 
+    /**
+     * Bloquea el carrito del cliente antes de confirmar un pago, para ordenar los bloqueos con el carrito
+     * primero.
+     */
     @Transactional
     public void bloquearParaConfirmarPago(Long clienteId) {
         carritoRepository.bloquearPorClienteId(clienteId);
     }
 
+    /**
+     * Descuenta del carrito lo comprado en un pedido pagado: quita las líneas compradas por completo y reduce
+     * la cantidad de las que tenían más unidades.
+     */
     @Transactional
     public void retirarComprados(Long clienteId, List<LineaResumenCheckoutResponse> comprados) {
         Carrito carrito = carritoRepository.bloquearPorClienteId(clienteId).orElse(null);
@@ -161,6 +182,7 @@ public class CarritoService {
         carritoRepository.saveAndFlush(carrito);
     }
 
+    /** Bloquea el carrito del cliente actual o lo crea si no existe. */
     private Carrito obtenerOBloquearActual() {
         Long clienteId = clienteActualId();
         Carrito carrito = carritoRepository.bloquearPorClienteId(clienteId).orElseGet(() ->
@@ -170,6 +192,7 @@ public class CarritoService {
         return carrito;
     }
 
+    /** Busca la línea dentro del carrito del cliente; 404 si no le pertenece. */
     private ItemCarrito itemPropio(Carrito carrito, Long itemId) {
         return carrito.getItems().stream()
                 .filter(item -> item.getId().equals(itemId))
@@ -178,17 +201,22 @@ public class CarritoService {
                         "Producto del carrito no encontrado"));
     }
 
+    /** Bloquea la prenda si está publicada; 404 en otro caso. */
     private Prenda bloquearPrendaActiva(Long prendaId) {
         return prendaRepository.bloquearPorIdYEstado(prendaId, EstadoPrenda.ACTIVA)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
     }
 
+    /** Talla de la prenda con ese nombre; 400 si la prenda no la ofrece. */
     private TallaPrenda talla(Prenda prenda, String nombre) {
         return prenda.buscarTalla(nombre.trim())
                 .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
                         "La talla no está disponible para esta prenda", "talla"));
     }
 
+    /**
+     * Arma la respuesta con el precio actual de cada prenda, la disponibilidad de cada línea y el subtotal.
+     */
     private CarritoResponse respuesta(List<ItemCarrito> items) {
         Map<Long, Prenda> prendas = new HashMap<>();
         prendaRepository.findAllById(items.stream().map(ItemCarrito::getPrendaId).distinct().toList())
@@ -220,6 +248,7 @@ public class CarritoService {
         return new CarritoResponse(lineas, cantidad, subtotal, costoEnvio, total);
     }
 
+    /** Valida que la prenda, la talla, la cantidad y el perfil (si llega) sean válidos. */
     private void validarAgregar(AgregarItemCarritoRequest request) {
         if (request == null || request.prendaId() == null || request.prendaId() <= 0
                 || request.talla() == null || request.talla().isBlank()
@@ -247,26 +276,31 @@ public class CarritoService {
         }
     }
 
+    /** Rechaza la prenda si contiene un material excluido por las alergias graves del perfil. */
     private void validarExcluida(PerfilResponse perfil, Prenda prenda) {
         validadorAlergiaCompra.validarExcluida(
                 ValidadorAlergiaCompra.alergiasEvaluables(perfil), prenda, perfil.id());
     }
 
+    /** Talla sugerida en mayúsculas, o nula si no se envió. */
     private static String normalizarSugerida(String tallaSugerida) {
         if (tallaSugerida == null || tallaSugerida.isBlank()) return null;
         return tallaSugerida.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
+    /** Id del cliente autenticado; 401 si no hay sesión. */
     private Long clienteActualId() {
         return SecurityUtils.usuarioActual()
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"))
                 .id();
     }
 
+    /** Talla sin espacios y en mayúsculas, para comparar líneas. */
     private static String normalizarTalla(String talla) {
         return talla.trim().toUpperCase(Locale.ROOT);
     }
 
+    /** Identifica una línea por prenda y talla. */
     private record ClavePrendaTalla(Long prendaId, String talla) {
     }
 }

@@ -12,9 +12,11 @@ import java.util.Optional;
  */
 public final class SecurityUtils {
 
+    /** Clase de utilidades; no se instancia. */
     private SecurityUtils() {
     }
 
+    /** Usuario autenticado en la petición actual, o vacío si es anónima. */
     public static Optional<AuthenticatedUser> usuarioActual() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof AuthenticatedUser user) {

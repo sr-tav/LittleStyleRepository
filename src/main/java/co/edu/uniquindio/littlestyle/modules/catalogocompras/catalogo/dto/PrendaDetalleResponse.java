@@ -38,13 +38,16 @@ public record PrendaDetalleResponse(
         LocalDateTime fechaActualizacion
 ) {
 
+    /** Material y porcentaje de la composición. */
     public record Componente(MaterialTextil material, int porcentaje) {
     }
 
+    /** Talla con sus rangos de estatura, peso y edad y las unidades disponibles. */
     public record TallaDisponible(String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
                                   BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses,
                                   Integer edadMaxMeses, int stockDisponible,
                                   boolean disponible) {
+        /** Construye la talla a partir de la entidad. */
         static TallaDisponible from(TallaPrenda t) {
             return new TallaDisponible(t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
                     t.getPesoMinKg(), t.getPesoMaxKg(), t.getEdadMinMeses(), t.getEdadMaxMeses(),
@@ -52,6 +55,7 @@ public record PrendaDetalleResponse(
         }
     }
 
+    /** Construye la ficha con todas las imágenes, la composición y las tallas. */
     public static PrendaDetalleResponse from(Prenda p) {
         return new PrendaDetalleResponse(
                 p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getDescripcion(), p.getInstruccionesCuidado(), p.getMarca(), p.getPrecio(),

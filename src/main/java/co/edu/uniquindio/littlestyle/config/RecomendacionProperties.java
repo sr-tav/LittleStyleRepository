@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import java.util.Map;
 
+/** Parámetros del motor de recomendación de tallas ({@code app.recomendacion}). */
 @ConfigurationProperties(prefix = "app.recomendacion")
 public record RecomendacionProperties (
 

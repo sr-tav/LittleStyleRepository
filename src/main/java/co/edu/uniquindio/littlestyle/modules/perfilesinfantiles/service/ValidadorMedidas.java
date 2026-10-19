@@ -8,9 +8,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Period;
 
+/** Valida que una medición sea posible y coherente con la edad del niño. */
 @Component
 public class ValidadorMedidas {
 
+    /**
+     * Exige una fecha de medición entre el nacimiento y hoy, estatura entre 40 y 200 cm, peso entre 2 y 120
+     * kg, y valores dentro del rango esperado para la edad en la fecha de la medición.
+     */
     public void validar(LocalDate fechaNacimiento, LocalDate fechaMedicion,
                         BigDecimal estaturaCm, BigDecimal pesoKg) {
         LocalDate hoy = LocalDate.now();
@@ -35,6 +40,7 @@ public class ValidadorMedidas {
                 "El peso no es coherente con la edad del perfil", "pesoKg");
     }
 
+    /** Lanza 400 sobre el campo si el valor falta o queda fuera del rango. */
     private static void validarRango(BigDecimal valor, BigDecimal minimo, BigDecimal maximo,
                                      String mensaje, String campo) {
         if (valor == null || valor.compareTo(minimo) < 0 || valor.compareTo(maximo) > 0) {
@@ -42,6 +48,7 @@ public class ValidadorMedidas {
         }
     }
 
+    /** Rangos amplios de estatura y peso por grupo de edad. */
     private static RangoMedidas rangoParaEdad(int edad) {
         if (edad < 2) {
             return new RangoMedidas("40", "100", "2", "20");
@@ -58,8 +65,10 @@ public class ValidadorMedidas {
         return new RangoMedidas("120", "200", "25", "120");
     }
 
+    /** Estatura y peso mínimos y máximos aceptados. */
     private record RangoMedidas(BigDecimal estaturaMinima, BigDecimal estaturaMaxima,
                                 BigDecimal pesoMinimo, BigDecimal pesoMaximo) {
+        /** Crea el rango a partir de textos decimales. */
         private RangoMedidas(String estaturaMinima, String estaturaMaxima,
                              String pesoMinimo, String pesoMaximo) {
             this(new BigDecimal(estaturaMinima), new BigDecimal(estaturaMaxima),

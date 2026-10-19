@@ -47,6 +47,11 @@ public class SecurityConfig {
     @Value("${spring.h2.console.enabled:false}")
     private boolean h2ConsoleEnabled;
 
+    /**
+     * Define la cadena de seguridad: sin sesión ni CSRF, rutas públicas (login, registro, webhook de Wompi,
+     * imágenes locales y consola H2 si está activa), acceso por rol a {@code /api/admin}, {@code
+     * /api/vendedor} y {@code /api/cliente}, y el filtro JWT antes del filtro de usuario y contraseña.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtService jwtService,
@@ -87,11 +92,13 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /** Cifrador BCrypt para las contraseñas de los usuarios. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /** Gestor de autenticación que valida correo y contraseña contra los usuarios de la base de datos. */
     @Bean
     public AuthenticationManager authenticationManager(UserDetailsService userDetailsService,
                                                        PasswordEncoder passwordEncoder) {
@@ -100,6 +107,10 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
+    /**
+     * Permite al frontend de los orígenes configurados llamar a {@code /api/**} con los métodos y cabeceras
+     * necesarios.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

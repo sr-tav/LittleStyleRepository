@@ -14,6 +14,11 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Migración única que cifra con el formato actual los datos de perfiles y mediciones guardados por versiones
+ * anteriores. Se activa con {@code app.perfiles.cifrado.migrar-datos} y deja constancia en {@code
+ * perfil_datos_cifrado_version} para no repetirse.
+ */
 @Component
 public class PerfilDatosCifradoMigracion implements ApplicationRunner {
 
@@ -23,10 +28,12 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
     @Value("${app.perfiles.cifrado.migrar-datos:false}")
     private boolean migracionHabilitada;
 
+    /** Recibe el acceso JDBC con el que se leen y reescriben las filas. */
     public PerfilDatosCifradoMigracion(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /** Si está habilitada y no se ha completado antes, migra todos los datos y registra la versión. */
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
@@ -46,11 +53,13 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
                 """, VERSION_MIGRACION);
     }
 
+    /** Migra los datos asumiendo que los nombres ya no están en claro. */
     @Transactional
     public void migrarDatosAnteriores() {
         migrarDatosAnteriores(false);
     }
 
+    /** Migra perfiles, colores, estampados y mediciones. */
     private void migrarDatosAnteriores(boolean nombresAnterioresEnClaro) {
         migrarPerfiles(nombresAnterioresEnClaro);
         migrarOpciones("perfil_colores_preferidos", "color");
@@ -58,6 +67,7 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         migrarMediciones();
     }
 
+    /** Cifra los campos de cada perfil que todavía no estén en el formato actual. */
     private void migrarPerfiles(boolean nombresAnterioresEnClaro) {
         List<PerfilAnterior> perfiles = jdbcTemplate.query("""
                 SELECT id, nombre, fecha_nacimiento, contextura, holgura, alergias_cifradas,
@@ -89,6 +99,7 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         }
     }
 
+    /** Cifra los valores de una tabla de preferencias (colores o estampados). */
     private void migrarOpciones(String tabla, String columna) {
         List<OpcionAnterior> opciones = jdbcTemplate.query(
                 "SELECT perfil_id, " + columna + " FROM " + tabla,
@@ -105,6 +116,7 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         }
     }
 
+    /** Cifra fecha, estatura y peso de las mediciones que no estén en el formato actual. */
     private void migrarMediciones() {
         List<MedicionAnterior> mediciones = jdbcTemplate.query("""
                 SELECT id, fecha_medicion, estatura_cifrada, peso_cifrado
@@ -127,6 +139,7 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         }
     }
 
+    /** Cifra una fecha guardada en claro o con el cifrado antiguo. */
     private String cifrarFecha(String valor) {
         if (valor == null || CifradoPerfil.estaCifradoEnFormatoActual(valor)) {
             return valor;
@@ -140,15 +153,18 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         return CifradoPerfil.cifrar(fecha);
     }
 
+    /** Cifra un texto en claro; deja igual el que ya está en el formato actual. */
     private String cifrarTextoClaro(String valor) {
         return valor == null || CifradoPerfil.estaCifradoEnFormatoActual(valor)
                 ? valor : CifradoPerfil.cifrar(valor);
     }
 
+    /** Cifra el nombre tal como está guardado. */
     private String cifrarNombreAnterior(String valor) {
         return valor == null ? null : CifradoPerfil.cifrar(valor);
     }
 
+    /** Normaliza el indicador heredado (1/0, true/false, t/f, yes/no) y lo cifra. */
     private String cifrarBooleano(String valor) {
         if (valor == null || CifradoPerfil.estaCifradoEnFormatoActual(valor)) {
             return valor;
@@ -162,6 +178,7 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         return CifradoPerfil.cifrar(normalizado);
     }
 
+    /** Descifra un valor con el cifrado antiguo y lo vuelve a cifrar con el formato actual. */
     private String cifrarTextoCifradoLegado(String valor) {
         if (valor == null || CifradoPerfil.estaCifradoEnFormatoActual(valor)) {
             return valor;
@@ -169,6 +186,7 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         return CifradoPerfil.cifrar(CifradoPerfil.descifrar(valor));
     }
 
+    /** Lee una fila de perfil tal como está guardada. */
     private PerfilAnterior perfilAnterior(ResultSet rs, int row) throws SQLException {
         return new PerfilAnterior(rs.getLong("id"), rs.getString("nombre"),
                 rs.getString("fecha_nacimiento"), rs.getString("contextura"),
@@ -177,15 +195,18 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
                 rs.getString("otro_color_cifrado"), rs.getString("otro_estampado_cifrado"));
     }
 
+    /** Falla si la actualización no afectó exactamente una fila, para revertir la migración. */
     private void exigirUnaFila(int filas, String entidad) {
         if (filas != 1) {
             throw new IllegalStateException("No se pudo migrar un registro de " + entidad);
         }
     }
 
+    /** Fila de perfil sin convertir. */
     private record PerfilAnterior(Long id, String nombre, String fechaNacimiento, String contextura,
                                   String holgura, String alergias, String otraAlergia,
                                   String sinAlergias, String otroColor, String otroEstampado) {
+        /** Indica si todos los campos del perfil ya están en el formato actual. */
         private boolean yaCifrado() {
             return java.util.stream.Stream.of(nombre, fechaNacimiento, contextura, holgura, alergias,
                             otraAlergia, sinAlergias, otroColor, otroEstampado)
@@ -193,10 +214,13 @@ public class PerfilDatosCifradoMigracion implements ApplicationRunner {
         }
     }
 
+    /** Fila de una tabla de preferencias sin convertir. */
     private record OpcionAnterior(Long perfilId, String valor) {
     }
 
+    /** Fila de medición sin convertir. */
     private record MedicionAnterior(Long id, String fecha, String estatura, String peso) {
+        /** Indica si todos los campos de la medición ya están en el formato actual. */
         private boolean yaCifrado() {
             return java.util.stream.Stream.of(fecha, estatura, peso)
                     .allMatch(campo -> campo == null || CifradoPerfil.estaCifradoEnFormatoActual(campo));

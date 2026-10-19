@@ -42,6 +42,11 @@ public class CheckoutFacade {
     private final DisponibilidadStockService disponibilidadStockService;
     private final TarifaEnvioService tarifaEnvioService;
 
+    /**
+     * Calcula el resumen de compra para el perfil y la dirección dados: valida que cada prenda esté
+     * publicada, que no choque con las alergias graves del perfil y que haya stock para la cantidad total
+     * pedida por talla; luego suma subtotales y el envío según el destino.
+     */
     @Transactional(readOnly = true)
     public ResumenCheckoutResponse calcularResumen(ResumenCheckoutRequest request,
                                                     List<ItemResumenCheckoutRequest> items) {
@@ -84,6 +89,7 @@ public class CheckoutFacade {
                 subtotal.add(costoEnvio));
     }
 
+    /** Exige un perfil infantil válido y la dirección de entrega. */
     private void validarPerfil(ResumenCheckoutRequest request) {
         if (request == null || request.perfilInfantilId() == null || request.perfilInfantilId() <= 0) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
@@ -95,6 +101,7 @@ public class CheckoutFacade {
         }
     }
 
+    /** Rechaza el carrito vacío (409) o con líneas incompletas (400). */
     private void validarItems(List<ItemResumenCheckoutRequest> items) {
         if (items == null || items.isEmpty()) {
             throw new BusinessException(HttpStatus.CONFLICT, "El carrito está vacío", "items");
@@ -108,10 +115,12 @@ public class CheckoutFacade {
         }
     }
 
+    /** Rechaza la prenda si contiene un material excluido por las alergias del perfil. */
     private void validarCompatibilidad(Long perfilId, Set<AlergiaTextil> alergias, Prenda prenda) {
         validadorAlergiaCompra.validarExcluida(alergias, prenda, perfilId);
     }
 
+    /** Valida el stock de cada talla contra la suma de lo pedido en todas sus líneas. */
     private void validarStockDisponible(Map<Long, Prenda> prendas,
                                         Map<ClaveTalla, Long> cantidadesSolicitadas) {
         cantidadesSolicitadas.forEach((clave, cantidad) -> {
@@ -122,10 +131,12 @@ public class CheckoutFacade {
         });
     }
 
+    /** Talla sin espacios y en mayúsculas. */
     private String normalizarTalla(String talla) {
         return talla.trim().toUpperCase(Locale.ROOT);
     }
 
+    /** Identifica una talla de una prenda. */
     private record ClaveTalla(Long prendaId, String talla) {
     }
 }
