@@ -42,6 +42,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/**
+ * Pruebas unitarias del servicio de autenticación con todos los mocks:
+ * cubre el registro (cliente y vendedor, validaciones y duplicados),
+ * el login con el AuthenticationManager y el bloqueo por intentos,
+ * además del perfil y la desactivación anonimizada de la cuenta.
+ */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
@@ -61,11 +67,13 @@ class AuthServiceTest {
     @InjectMocks
     private AuthService authService;
 
+    // Datos de registro con el correo a propósito con espacios y mayúsculas
     private static RegistroRequest registro(Rol rol, String password, String confirmar, String tienda) {
         return new RegistroRequest("María", "González", "  Maria@Correo.COM ", "3001234567",
                 password, confirmar, rol, tienda, true);
     }
 
+    // Builder rápido de usuarios para los casos de login y perfil
     private static Usuario usuario(Long id, String email, Rol rol, EstadoUsuario estado) {
         return Usuario.builder()
                 .id(id).nombre("María").apellido("González").email(email)
@@ -73,10 +81,12 @@ class AuthServiceTest {
                 .build();
     }
 
+    // Casos del registro de cuentas
     @Nested
     @DisplayName("registrar")
     class Registrar {
 
+        // El camino feliz del registro: los datos se guardan normalizados y el token viaja en la respuesta
         @Test
         @DisplayName("registra un cliente, cifra la contraseña, normaliza el correo y devuelve un token")
         void registraCliente() {
@@ -110,6 +120,7 @@ class AuthServiceTest {
             assertThat(response.usuario().rol()).isEqualTo(Rol.CLIENTE);
         }
 
+        // Comprueba que el nombre de la tienda se recorta de espacios y viaja en la respuesta
         @Test
         @DisplayName("registra un vendedor guardando el nombre de la tienda")
         void registraVendedor() {
@@ -126,6 +137,7 @@ class AuthServiceTest {
             assertThat(response.usuario().nombreTienda()).isEqualTo("Mundo Peque");
         }
 
+        // ADMIN solo existe por semillas internas: el registro público lo bloquea antes de tocar la BD
         @Test
         @DisplayName("rechaza el auto-registro como administrador")
         void rechazaAdministrador() {
@@ -140,6 +152,7 @@ class AuthServiceTest {
             verifyNoInteractions(usuarioRepository, passwordEncoder, jwtService);
         }
 
+        // Guarda la confirmación para que el usuario no se guarde con contraseñas que no se corresponden
         @Test
         @DisplayName("rechaza contraseñas que no coinciden")
         void rechazaPasswordsDistintas() {
@@ -151,6 +164,7 @@ class AuthServiceTest {
             verify(usuarioRepository, never()).save(any());
         }
 
+        // El nombre de la tienda es obligatorio para los vendedores: ni con espacios pasa
         @Test
         @DisplayName("exige nombre de tienda a los vendedores")
         void vendedorSinTienda() {
@@ -161,6 +175,7 @@ class AuthServiceTest {
             verify(usuarioRepository, never()).save(any());
         }
 
+        // El duplicado corta antes de hashear la clave ni de intentar guardar nada
         @Test
         @DisplayName("rechaza un correo ya registrado con 409")
         void emailDuplicado() {
@@ -175,12 +190,14 @@ class AuthServiceTest {
         }
     }
 
+    // Casos de inicio de sesión, con el bloqueo por intentos fallidos de por medio
     @Nested
     @DisplayName("login")
     class Login {
 
         private static final String IP = "10.0.0.1";
 
+        // Delega en el AuthenticationManager, emite el token y registra el éxito
         @Test
         @DisplayName("autentica con el AuthenticationManager y devuelve el token")
         void loginExitoso() {
@@ -203,6 +220,7 @@ class AuthServiceTest {
             verify(intentosLoginService).registrarExito("maria@correo.com", IP);
         }
 
+        // Clave mala: la excepción sube tal cual y se cuenta como intento fallido
         @Test
         @DisplayName("propaga BadCredentialsException con credenciales incorrectas y no emite token")
         void credencialesIncorrectas() {
@@ -215,6 +233,7 @@ class AuthServiceTest {
             verifyNoInteractions(jwtService);
         }
 
+        // Es un caso de seguridad distinto al de clave mala: no cuenta como fallo de credenciales
         @Test
         @DisplayName("propaga DisabledException si la cuenta está suspendida")
         void cuentaSuspendida() {
@@ -227,6 +246,7 @@ class AuthServiceTest {
             verifyNoInteractions(jwtService);
         }
 
+        // El bloqueo se resuelve antes de tocar el AuthenticationManager, así no se fuerza la clave
         @Test
         @DisplayName("rechaza con 429 sin verificar credenciales si el correo + IP está bloqueado")
         void bloqueadoPorIntentos() {

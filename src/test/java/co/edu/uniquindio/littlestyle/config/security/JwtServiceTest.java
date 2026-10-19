@@ -12,6 +12,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * Pruebas unitarias del servicio de JWT sin mocks: emite tokens reales con
+ * un secreto de prueba y comprueba sus claims, su expiración y que se
+ * rechacen tokens expirados, firmados con otra clave, alterados o corruptos.
+ */
 class JwtServiceTest {
 
     private static final String SECRET =
@@ -22,6 +27,7 @@ class JwtServiceTest {
     private JwtService jwtService;
     private Usuario usuario;
 
+    // Crea el servicio real con un secreto fijo y un usuario vendedor de base
     @BeforeEach
     void setUp() {
         jwtService = new JwtService(new JwtProperties(SECRET, 60_000));
@@ -31,6 +37,8 @@ class JwtServiceTest {
                 .build();
     }
 
+    // El token firmado debe teletransportar los datos del usuario y expirar
+    // cerca del TTL configurado (60 s con margen)
     @Test
     void generaTokenConClaimsDelUsuario() {
         long antes = System.currentTimeMillis();
@@ -45,6 +53,7 @@ class JwtServiceTest {
         assertThat(claims.get("nombre", String.class)).isEqualTo("Tomás");
     }
 
+    // El que valida el token después debe poder reconstruir el usuario desde los claims
     @Test
     void convierteClaimsEnAuthenticatedUser() {
         Claims claims = jwtService.validarToken(jwtService.generarToken(usuario).token());
@@ -54,6 +63,7 @@ class JwtServiceTest {
         assertThat(user).isEqualTo(new AuthenticatedUser(10L, "tomas@correo.com", "Tomás", Rol.VENDEDOR));
     }
 
+    // Truco: se emite el token con TTL negativo para que ya nazca expirado
     @Test
     void rechazaTokenExpirado() {
         JwtService expiraYa = new JwtService(new JwtProperties(SECRET, -1_000));
@@ -62,6 +72,7 @@ class JwtServiceTest {
         assertThatThrownBy(() -> jwtService.validarToken(token)).isInstanceOf(ExpiredJwtException.class);
     }
 
+    // Un token firmado con un secreto distinto no pasa la validación
     @Test
     void rechazaTokenFirmadoConOtraClave() {
         String token = new JwtService(new JwtProperties(OTRO_SECRET, 60_000)).generarToken(usuario).token();
@@ -69,6 +80,7 @@ class JwtServiceTest {
         assertThatThrownBy(() -> jwtService.validarToken(token)).isInstanceOf(JwtException.class);
     }
 
+    // Si alguien toca el payload la firma deja de coincidir
     @Test
     void rechazaTokenAlterado() {
         String token = jwtService.generarToken(usuario).token();
@@ -79,11 +91,13 @@ class JwtServiceTest {
         assertThatThrownBy(() -> jwtService.validarToken(alterado)).isInstanceOf(JwtException.class);
     }
 
+    // Cualquier texto que no parezca un JWT también debe rechazarse
     @Test
     void rechazaTokenMalformado() {
         assertThatThrownBy(() -> jwtService.validarToken("esto-no-es-un-jwt")).isInstanceOf(JwtException.class);
     }
 
+    // Un secreto vacío o en blanco deja al servicio tirado: no se puede emitir nada
     @Test
     void fallaSiNoHaySecretConfigurado() {
         assertThatThrownBy(() -> new JwtService(new JwtProperties(" ", 60_000)))

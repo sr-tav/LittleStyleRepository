@@ -23,6 +23,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Pruebas del endpoint de administración de pedidos con MockMvc standalone:
+ * verifica los códigos HTTP al avanzar el estado y cómo el handler global
+ * traduce las transiciones inválidas en 409.
+ */
 @ExtendWith(MockitoExtension.class)
 class PedidoAdminControllerTest {
 
@@ -34,12 +39,14 @@ class PedidoAdminControllerTest {
 
     private MockMvc mockMvc;
 
+    // Monta el MockMvc solo con el controlador y el handler global de errores
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 
+    // CANCELADO es un estado válido para un admin: la transición responde 200
     @Test
     void avanzarDevuelve200AlCancelar() throws Exception {
         Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.CANCELADO).build();
@@ -52,6 +59,7 @@ class PedidoAdminControllerTest {
                 .andExpect(jsonPath("$.estado").value("CANCELADO"));
     }
 
+    // Si el servicio rechaza la transición, el conflicto de negocio sube como 409
     @Test
     void transicionInvalidaDevuelve409() throws Exception {
         when(estados.avanzar(any(), any(), any())).thenThrow(new BusinessException(
@@ -63,6 +71,7 @@ class PedidoAdminControllerTest {
                 .andExpect(status().isConflict());
     }
 
+    // PAGADO solo se marca al confirmar el pago: no es un estado manual, así que intentarlo da 409
     @Test
     void marcarPagadoAManoDevuelve409() throws Exception {
         when(estados.avanzar(eq(7L), eq(EstadoPedido.PAGADO), any())).thenThrow(new BusinessException(

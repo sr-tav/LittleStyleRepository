@@ -34,6 +34,7 @@ class AuthSecurityIntegrationTest {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    // Registra un usuario de prueba con ese rol y devuelve su token Bearer
     private String registrar(String email, String rol, String tienda) throws Exception {
         String body = """
                 {"nombre":"Laura","apellido":"Pérez","email":"%s","telefono":"3001234567",
@@ -46,6 +47,7 @@ class AuthSecurityIntegrationTest {
         return JsonPath.read(json, "$.token");
     }
 
+    // El camino feliz: se registra, inicia sesión y con el token consulta su perfil
     @Test
     void registroLoginYAccesoConToken() throws Exception {
         registrar("laura@correo.com", "CLIENTE", null);
@@ -62,6 +64,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(jsonPath("$.email").value("laura@correo.com"));
     }
 
+    // El registro debe dejar rastro de qué versión de términos aceptó el usuario
     @Test
     void registroGuardaLaAceptacionDeTerminos() throws Exception {
         registrar("terminos@correo.com", "CLIENTE", null);
@@ -71,6 +74,8 @@ class AuthSecurityIntegrationTest {
         assertThat(usuario.getFechaAceptacionTerminos()).isNotNull();
     }
 
+    // Suspender la cuenta debe invalidar el token ya emitido de inmediato,
+    // porque el filtro valida el estado en cada request
     @Test
     void tokenDeCuentaSuspendidaDejaDeSerValidoDeInmediato() throws Exception {
         String token = registrar("suspendido@correo.com", "CLIENTE", null);
@@ -86,6 +91,8 @@ class AuthSecurityIntegrationTest {
                 .andExpect(jsonPath("$.mensaje").value("La cuenta no está activa"));
     }
 
+    // Al actualizar la cuenta (y cambiar clave) se renueva la sesión y el
+    // login con los datos nuevos funciona
     @Test
     void usuarioActualizaSuCuentaYConservaAccesoConSesionRenovada() throws Exception {
         String token = registrar("cuenta-us06@correo.com", "CLIENTE", null);
@@ -113,6 +120,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    // Una clave incorrecta no da pista de si el correo existe o no: siempre 401
     @Test
     void loginConPasswordIncorrectaDevuelve401() throws Exception {
         registrar("pedro@correo.com", "CLIENTE", null);
@@ -122,6 +130,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    // Cinco fallos seguidos bloquean el login por correo + IP, incluso con la clave correcta
     @Test
     void loginSeBloqueaTrasCincoIntentosFallidos() throws Exception {
         registrar("bloqueo@correo.com", "CLIENTE", null);
@@ -138,6 +147,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(jsonPath("$.mensaje").exists());
     }
 
+    // Los endpoints protegidos exigen token, no se acepta invocarlos "en seco"
     @Test
     void endpointProtegidoSinTokenDevuelve401() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
@@ -145,6 +155,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(jsonPath("$.mensaje").exists());
     }
 
+    // Un token trucado también responde 401, pero con un mensaje claro
     @Test
     void tokenInvalidoDevuelve401ConMensaje() throws Exception {
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer token.falso.123"))
@@ -152,6 +163,8 @@ class AuthSecurityIntegrationTest {
                 .andExpect(jsonPath("$.mensaje").value("Token de autenticación inválido"));
     }
 
+    // Rutas por rol: un cliente no ve lo de vendedor, un vendedor no ve lo de cliente,
+    // y los de administración se quedan solo para el ADMIN
     @Test
     void rolSinPermisoDevuelve403() throws Exception {
         String tokenCliente = registrar("cliente403@correo.com", "CLIENTE", null);
@@ -165,6 +178,7 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    // Registrar el mismo correo dos veces no amarra: responde conflicto, no 500
     @Test
     void correoDuplicadoDevuelve409() throws Exception {
         registrar("repetido@correo.com", "CLIENTE", null);

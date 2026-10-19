@@ -29,6 +29,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests del servicio de despachos: valida la transición de estados que
+ * maneja el vendedor y el recálculo del estado general del pedido.
+ * Todos los repositorios y el publicador de eventos se mockean con Mockito.
+ */
 @ExtendWith(MockitoExtension.class)
 class DespachoServiceTest {
 
@@ -48,6 +53,7 @@ class DespachoServiceTest {
     @InjectMocks
     private DespachoService service;
 
+    // Helper que arma un despacho de prueba con su pedido, vendedor y estado indicados.
     private static Despacho despacho(Long id, Long pedidoId, Long vendedorId, EstadoPedido estado) {
         Pedido pedido = Pedido.builder().id(pedidoId).estado(EstadoPedido.REGISTRADO).build();
         Despacho despacho = new Despacho();
@@ -59,6 +65,7 @@ class DespachoServiceTest {
         return despacho;
     }
 
+    // Si el vendedor intenta pasar el pedido a ENVIADO sin número de guía, la operación se rechaza con 400.
     @Test
     void avanzarAEnviadoSinGuiaDevuelve400() {
         Despacho despacho = despacho(5L, 7L, 31L, EstadoPedido.EN_PREPARACION);
@@ -71,6 +78,8 @@ class DespachoServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // Con un despacho enviado y otro aún registrado, el pedido queda como PARCIALMENTE_ENVIADO
+    // y el cambio debe quedar registrado en el historial de estados.
     @Test
     void recalcularConUnoEnviadoDaParcialmenteEnviado() {
         Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.REGISTRADO).build();

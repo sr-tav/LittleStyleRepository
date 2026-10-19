@@ -24,6 +24,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/**
+ * Pruebas unitarias del filtro de autenticación JWT con mocks: cubre la
+ * creación del SecurityContext, la verificación de cuenta activa y los
+ * errores de token (ausente, inválido o expirado) que se reportan
+ * al frontend vía atributo de la request.
+ */
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
@@ -38,6 +44,7 @@ class JwtAuthenticationFilterTest {
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
 
+    // Prepara el filtro con los mocks y deja el SecurityContext limpio
     @BeforeEach
     void setUp() {
         filter = new JwtAuthenticationFilter(jwtService, estadoCuentaService);
@@ -46,11 +53,13 @@ class JwtAuthenticationFilterTest {
         SecurityContextHolder.clearContext();
     }
 
+    // Evita que la autenticación simulada se filtre a otros tests
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
     }
 
+    // Sin header Authorization la cadena sigue normal y nada se autentica
     @Test
     void sinHeaderContinuaSinAutenticar() throws Exception {
         filter.doFilter(request, response, chain);
@@ -60,6 +69,7 @@ class JwtAuthenticationFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
+    // Solo se acepta el esquema Bearer: cualquier otro header se ignora
     @Test
     void headerSinBearerSeIgnora() throws Exception {
         request.addHeader("Authorization", "Basic dXNlcjpwYXNz");
@@ -70,6 +80,7 @@ class JwtAuthenticationFilterTest {
         verifyNoInteractions(jwtService);
     }
 
+    // Token válido y cuenta activa: se guarda el usuario con su rol del token
     @Test
     void tokenValidoAutenticaConElRolDelToken() throws Exception {
         Claims claims = mock(Claims.class);
@@ -89,6 +100,8 @@ class JwtAuthenticationFilterTest {
         verify(chain).doFilter(request, response);
     }
 
+    // El token puede ser válido, pero si la cuenta ya no está activa no se
+    // autentica y se marca la causa por si el frontend necesita mostrarla
     @Test
     void tokenValidoDeCuentaSuspendidaNoAutentica() throws Exception {
         Claims claims = mock(Claims.class);
@@ -106,6 +119,8 @@ class JwtAuthenticationFilterTest {
         verify(chain).doFilter(request, response);
     }
 
+    // Un token expirado bloquea la autenticación pero dejo pasar la cadena,
+    // con el motivo en un atributo para que sepa cuál fue el problema
     @Test
     void tokenExpiradoNoAutenticaYMarcaLaCausa() throws Exception {
         request.addHeader("Authorization", "Bearer token-expirado");
@@ -120,6 +135,7 @@ class JwtAuthenticationFilterTest {
         verify(chain).doFilter(request, response);
     }
 
+    // Token mal formado o inyectado: tampoco se autentica y se marca el error
     @Test
     void tokenInvalidoNoAutenticaYMarcaLaCausa() throws Exception {
         request.addHeader("Authorization", "Bearer basura");

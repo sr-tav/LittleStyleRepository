@@ -40,12 +40,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test unitario de la gestión de imágenes: repositorio y almacenamiento mockeados.
+ * Cubre detección de tipo real por contenido, límites de carga, y la sincronización
+ * con la transacción (borrar de S3 solo cuando la BD se confirma, no antes).
+ */
 @ExtendWith(MockitoExtension.class)
 class ImagenPrendaServiceTest {
 
+    // Banderas "magic bytes" para simular archivos reales sin leer imágenes de disco
     static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3};
     static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2};
 
+    // Repositorio y almacenamiento mockeados: el test nunca toca S3 ni la BD real
     @Mock
     private PrendaRepository prendaRepository;
     @Mock
@@ -54,6 +61,8 @@ class ImagenPrendaServiceTest {
     private ImagenPrendaService service;
     private Prenda prenda;
 
+    // Cargo los límites bajos del storage (1 KB por archivo, 2 por carga, 3 por prenda),
+    // monto la sesión de vendedor y activo la sincronización de transacción que usa el servicio
     @BeforeEach
     void setUp() {
         autenticarVendedor();
@@ -66,20 +75,25 @@ class ImagenPrendaServiceTest {
         prenda = prenda(10L, 5, 1, 1);
     }
 
+    // Limpieza: apaga la sincronización de transacción y quita la autenticación de seguridad
     @AfterEach
     void limpiar() {
         TransactionSynchronizationManager.clearSynchronization();
         SecurityContextHolder.clearContext();
     }
 
+    // Helper: arma un MockMultipartFile como si viniera de un formulario
     private static MultipartFile archivo(String nombre, byte[] datos) {
         return new MockMultipartFile("archivos", nombre, "image/png", datos);
     }
 
+    // Helper: dispara los callbacks afterCompletion como si la transacción terminara allí
     private void finalizarTransaccion(int estado) {
         TransactionSynchronizationManager.getSynchronizations().forEach(s -> s.afterCompletion(estado));
     }
 
+    // La subida detecta el tipo por los bytes reales, no por la extensión del nombre,
+    // y asigna claves y órdenes secuenciales a cada imagen
     @Test
     void subeVariasImagenesDetectandoElTipoPorSuContenido() {
         when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
@@ -100,6 +114,7 @@ class ImagenPrendaServiceTest {
         assertThat(prenda.getImagenes()).hasSize(2);
     }
 
+    // Validación atómica: si cualquier archivo de la tanda no es imagen, nada se sube al storage
     @Test
     void siUnArchivoNoEsImagenNoSeSubeNinguno() {
         when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
@@ -111,6 +126,7 @@ class ImagenPrendaServiceTest {
         verifyNoInteractions(almacenamiento);
     }
 
+    // Un archivo más pesado que el límite configurado se rechaza sin llegar a subir nada
     @Test
     void rechazaArchivosQueSuperanElTamanoMaximo() {
         when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
@@ -122,6 +138,7 @@ class ImagenPrendaServiceTest {
         verifyNoInteractions(almacenamiento);
     }
 
+    // Doble tope de imágenes: máximo por cada carga y máximo acumulado por prenda
     @Test
     void respetaLosLimitesPorCargaYPorPrenda() {
         assertThatThrownBy(() -> service.subir(10L,
@@ -136,6 +153,8 @@ class ImagenPrendaServiceTest {
         verifyNoInteractions(almacenamiento);
     }
 
+    // Si la subida falla a mitad de camino y la transacción se reversa, todo lo ya
+    // subido al storage se elimina para no dejar basura huérfana
     @Test
     void siLaTransaccionNoSeConfirmaBorraLoQueYaSeSubio() {
         when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
@@ -152,6 +171,8 @@ class ImagenPrendaServiceTest {
         verify(almacenamiento).eliminar(subida.getAllValues().getFirst());
     }
 
+    // La imagen se quita de la prenda en BD al instante, pero el objeto del storage solo
+    // se borra cuando la transacción se confirma de verdad
     @Test
     void alEliminarBorraElObjetoSoloDespuesDeConfirmar() {
         prenda.getImagenes().add(ImagenPrenda.builder().id(5L).orden(0).url("u").clave("prendas/10/a.png")
@@ -166,6 +187,7 @@ class ImagenPrendaServiceTest {
         verify(almacenamiento).eliminar(eq("prendas/10/a.png"));
     }
 
+    // Marcar una imagen como principal la reordena al frente y reasigna los órdenes
     @Test
     void marcarPrincipalMueveLaImagenAlInicio() {
         prenda.getImagenes().add(ImagenPrenda.builder().id(1L).orden(0).url("a").clave("a").build());

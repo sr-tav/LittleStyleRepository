@@ -30,6 +30,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests de consulta de pedidos del cliente: listado propio y detalle completo
+ * con items, historial de estados e imágenes de las prendas.
+ * Los repositorios se mockean y la sesión se simula con el SecurityContext.
+ */
 @ExtendWith(MockitoExtension.class)
 class PedidoConsultaServiceTest {
 
@@ -47,17 +52,20 @@ class PedidoConsultaServiceTest {
     @InjectMocks
     private PedidoConsultaService service;
 
+    // Antes de cada test se autentica un cliente ficticio; así el servicio sabe de quién consultar los pedidos.
     @BeforeEach
     void autenticar() {
         SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
                 new AuthenticatedUser(CLIENTE_ID, "cliente@test.com", "Ana", Rol.CLIENTE), null, List.of()));
     }
 
+    // Limpia el contexto de seguridad para no arrastrar la sesión a otros tests.
     @AfterEach
     void limpiar() {
         SecurityContextHolder.clearContext();
     }
 
+    // Arma un pedido con montos, guía y una línea de "Pantalón" para las consultas.
     private static Pedido pedido(Long id) {
         Pedido pedido = Pedido.builder().id(id).estado(EstadoPedido.ENVIADO)
                 .subtotal(new BigDecimal("100000")).costoEnvio(new BigDecimal("7000"))
@@ -68,6 +76,7 @@ class PedidoConsultaServiceTest {
         return pedido;
     }
 
+    // El listado debe traer solo los pedidos del cliente autenticado, del más reciente al más viejo.
     @Test
     void listaMisPedidosEnOrden() {
         when(pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(CLIENTE_ID))
@@ -79,6 +88,7 @@ class PedidoConsultaServiceTest {
         assertThat(resumen.getFirst().numeroGuia()).isEqualTo("COL123");
     }
 
+    // El detalle del pedido debe mostrar cada item y el historial completo de cambios de estado.
     @Test
     void detalleIncluyeItemsEHistorial() {
         when(pedidoRepository.findByIdAndClienteId(7L, CLIENTE_ID)).thenReturn(Optional.of(pedido(7L)));
@@ -97,6 +107,7 @@ class PedidoConsultaServiceTest {
                 .containsExactly(EstadoPedido.PENDIENTE_PAGO, EstadoPedido.ENVIADO);
     }
 
+    // Cada item del detalle resuelve su foto a partir de la prenda; si tiene imagen, aparece en la respuesta.
     @Test
     void detalleIncluyeMiniaturaDelProducto() {
         when(pedidoRepository.findByIdAndClienteId(7L, CLIENTE_ID)).thenReturn(Optional.of(pedido(7L)));
@@ -114,6 +125,7 @@ class PedidoConsultaServiceTest {
         assertThat(detalle.items().getFirst().imagenUrl()).isEqualTo("/media/a.png");
     }
 
+    // Pedido que no le pertenece al cliente se trata como inexistente: responde 404 para no filtrar información.
     @Test
     void pedidoAjenoDevuelve404() {
         when(pedidoRepository.findByIdAndClienteId(99L, CLIENTE_ID)).thenReturn(Optional.empty());

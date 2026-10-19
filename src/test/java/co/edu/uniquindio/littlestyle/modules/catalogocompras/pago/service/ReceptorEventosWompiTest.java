@@ -24,12 +24,20 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+/**
+ * Suite para el receptor de eventos de Wompi: cubre la respuesta asíncrona,
+ * el procesamiento en paralelo, el rechazo de la cola llena, la validación
+ * de firmas y la política de reintentos. Se mockea PagoService para controlar
+ * cada escenario con CountDownLatch.
+ */
 class ReceptorEventosWompiTest {
 
     private final PagoService pagoService = mock(PagoService.class);
+    // Latch que permite pausar la aplicación del evento y coordinar los hilos
     private final CountDownLatch liberar = new CountDownLatch(1);
     private ReceptorEventosWompi receptor;
 
+    // Libera los hilos detenidos y apaga el receptor para no dejar hilos vivos
     @AfterEach
     void cerrar() {
         liberar.countDown();
@@ -38,6 +46,8 @@ class ReceptorEventosWompiTest {
         }
     }
 
+    // La respuesta al webhook debe ser inmediata: el evento se aplica por fuera
+    // de la petición, sin bloquear el HTTP más de un segundo
     @Test
     void respondeSinEsperarAQueSeApliqueElEvento() throws Exception {
         receptor = new ReceptorEventosWompi(pagoService, propiedades(2, 10));
@@ -58,6 +68,8 @@ class ReceptorEventosWompiTest {
         assertThat(aplicado.await(5, TimeUnit.SECONDS)).isTrue();
     }
 
+    // Varios webhooks llegan a la vez y todos deben ejecutarse concurrentemente
+    // gracias al pool de hilos, sin procesarse uno detrás de otro
     @Test
     void variosAvisosSimultaneosSeAplicanEnParaleloYNoEnFila() throws Exception {
         receptor = new ReceptorEventosWompi(pagoService, propiedades(3, 10));
@@ -76,6 +88,8 @@ class ReceptorEventosWompiTest {
         assertThat(enCurso.await(5, TimeUnit.SECONDS)).isTrue();
     }
 
+    // Wompi reintenta cuando recibe 503: si la cola está llena, el receptor
+    // responde SERVICE_UNAVAILABLE en lugar de descartar el evento
     @Test
     void siLaColaSeLlenaRespondeServicioNoDisponibleParaQueWompiReintente() {
         receptor = new ReceptorEventosWompi(pagoService, propiedades(1, 1));
@@ -93,6 +107,7 @@ class ReceptorEventosWompiTest {
                         e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
     }
 
+    // Un evento con firma inválida se rechaza con 401 y nunca se llega a aplicar
     @Test
     void unAvisoInvalidoSeRechazaSinAplicarse() {
         receptor = new ReceptorEventosWompi(pagoService, propiedades(1, 1));
@@ -105,6 +120,8 @@ class ReceptorEventosWompiTest {
         verify(pagoService, never()).aplicarEvento(any());
     }
 
+    // Si aplicar el evento falla por algo transitorio, se reintenta hasta que
+    // una pasada tiene éxito
     @Test
     void reintentaAplicarElEventoAnteFallosTemporales() {
         receptor = new ReceptorEventosWompi(pagoService, propiedades(1, 1));
@@ -117,6 +134,8 @@ class ReceptorEventosWompiTest {
         verify(pagoService, timeout(3000).times(2)).aplicarEvento(any());
     }
 
+    // Los reintentos tienen tope: se verifica que se ejecute exactamente
+    // MAX_REINTENTOS veces y que después no siga intentando
     @Test
     void noReintentaMasDeLoPermitido() throws Exception {
         receptor = new ReceptorEventosWompi(pagoService, propiedades(1, 1));
@@ -129,6 +148,7 @@ class ReceptorEventosWompiTest {
         verify(pagoService, times(ReceptorEventosWompi.MAX_REINTENTOS)).aplicarEvento(any());
     }
 
+    // Configura las propiedades de Wompi con los hilos o la cola que pida el test
     private static PagoProperties propiedades(int hilos, int cola) {
         PagoProperties base = PagoProperties.porDefecto();
         return new PagoProperties(base.vigenciaEvento(), base.toleranciaReloj(), base.timeoutConexion(),
@@ -136,6 +156,7 @@ class ReceptorEventosWompiTest {
                 base.expiracionTransaccion());
     }
 
+    // Evento genérico de transacción con firma de ejemplo, listo para usar
     private static EventoWompiRequest evento() {
         return new EventoWompiRequest("transaction.updated", Map.of("transaction", Map.of("id", "1")), "test",
                 new EventoWompiRequest.FirmaEvento(List.of("transaction.id"), "checksum"), 1L);

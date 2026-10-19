@@ -19,6 +19,11 @@ import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixt
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+/**
+ * Suite del adaptador entre el catálogo y el motor de recomendación:
+ * valida la conversión de Prenda a PrendaRecomendable usando fixtures
+ * reales y el mock del repositorio para el listado de activas.
+ */
 @ExtendWith(MockitoExtension.class)
 class CatalogoRecomendacionAdapterTest {
 
@@ -27,6 +32,8 @@ class CatalogoRecomendacionAdapterTest {
     @InjectMocks
     private CatalogoRecomendacionAdapter adapter;
 
+    // Revisa que la conversión pendiente los datos que importan al motor:
+    // tabla de tallas, composición, níquel, imagen y stock por talla
     @Test
     void convierteLaPrendaConTablaDeTallasComposicionYStockPorTalla() {
         Prenda p = prenda(10L, 5, 3, 0);
@@ -47,6 +54,8 @@ class CatalogoRecomendacionAdapterTest {
         assertThat(r.tieneStock("6")).isFalse();
     }
 
+    // Una prenda con rango inválido (mínimo > máximo) no rompe el listado:
+    // simplemente se salta y las demás siguen apareciendo
     @Test
     void omiteUnaPrendaConDatosInvalidosSinAfectarALasDemas() {
         Prenda rota = prenda(11L, 5, 1, 1);

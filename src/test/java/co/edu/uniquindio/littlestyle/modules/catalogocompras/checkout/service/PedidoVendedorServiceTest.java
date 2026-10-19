@@ -33,6 +33,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests del panel del vendedor: listar y consultar sus despachos y avanzar
+ * el estado de cada uno, siempre validando que el despacho sea suyo.
+ * La sesión se simula con el SecurityContext y los repositorios se mockean.
+ */
 @ExtendWith(MockitoExtension.class)
 class PedidoVendedorServiceTest {
 
@@ -50,21 +55,25 @@ class PedidoVendedorServiceTest {
     @InjectMocks
     private PedidoVendedorService service;
 
+    // Antes de cada test se inicia sesión como un vendedor ficticio.
     @BeforeEach
     void autenticar() {
         SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
                 new AuthenticatedUser(VENDEDOR_ID, "tienda@test.com", "Tienda", Rol.VENDEDOR), null, List.of()));
     }
 
+    // Limpia la sesión para que no se filtre al resto de la suite.
     @AfterEach
     void limpiar() {
         SecurityContextHolder.clearContext();
     }
 
+    // Crea un usuario de prueba con el id indicado.
     private Usuario vendedor(long id) {
         return Usuario.builder().id(id).nombre("Tienda " + id).nombreTienda("Tienda " + id).build();
     }
 
+    // Arma un pedido completo con montos y su despacho vinculado al vendedor autenticado.
     private Pedido pedidoConDespacho(long pedidoId, long despachoId, EstadoPedido estadoDespacho) {
         Pedido pedido = Pedido.builder().id(pedidoId).estado(EstadoPedido.REGISTRADO)
                 .subtotal(new BigDecimal("150000")).costoEnvio(new BigDecimal("7000"))
@@ -83,6 +92,7 @@ class PedidoVendedorServiceTest {
         return pedido;
     }
 
+    // Despacho simple propiedad del vendedor autenticado, con el estado pedido.
     private Despacho despachoPropio(long despachoId, long pedidoId, EstadoPedido estado) {
         Pedido pedido = Pedido.builder().id(pedidoId).estado(EstadoPedido.REGISTRADO).build();
         Despacho despacho = new Despacho();
@@ -94,6 +104,7 @@ class PedidoVendedorServiceTest {
         return despacho;
     }
 
+    // En el panel del vendedor solo se ven sus propios despachos, con los items de cada pedido.
     @Test
     void listaSoloSusDespachos() {
         Despacho d = despachoPropio(5L, 7L, EstadoPedido.REGISTRADO);
@@ -110,6 +121,7 @@ class PedidoVendedorServiceTest {
         assertThat(resumen.getFirst().items()).hasSize(1);
     }
 
+    // Ver el detalle de un despacho de otro vendedor se rechaza con 403.
     @Test
     void detalleDeDespachoAjenoDevuelve403() {
         Despacho ajeno = despachoPropio(9L, 8L, EstadoPedido.REGISTRADO);
@@ -121,6 +133,7 @@ class PedidoVendedorServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
+    // Si el despacho no existe, la respuesta es 404.
     @Test
     void detalleInexistenteDevuelve404() {
         when(despachoRepository.findById(99L)).thenReturn(Optional.empty());
@@ -130,6 +143,8 @@ class PedidoVendedorServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    // Avanzar un despacho propio funciona: primero se valida la propiedad y
+    // luego la lógica de avance se delega en DespachoService.
     @Test
     void avanzarDespachoPropioDelegaAlServicioDeDespachos() {
         Despacho d = despachoPropio(5L, 7L, EstadoPedido.REGISTRADO);
@@ -147,6 +162,7 @@ class PedidoVendedorServiceTest {
         verify(despachos).avanzarComoVendedor(5L, VENDEDOR_ID, EstadoPedido.EN_PREPARACION, null);
     }
 
+    // Un vendedor no puede avanzar el estado de un despacho que no le pertenece: se rechaza con 403.
     @Test
     void avanzarDespachoAjenoDevuelve403() {
         Despacho ajeno = despachoPropio(9L, 8L, EstadoPedido.REGISTRADO);

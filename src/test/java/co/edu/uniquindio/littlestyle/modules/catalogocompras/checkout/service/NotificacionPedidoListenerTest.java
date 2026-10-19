@@ -27,6 +27,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests del listener que envía correos al cambiar el ciclo de vida de un pedido:
+ * creación, pago, rechazo, cambios de estado y despacho.
+ * Se mockean los repositorios y el servicio de correo para verificar qué se envía y cuándo.
+ */
 @ExtendWith(MockitoExtension.class)
 class NotificacionPedidoListenerTest {
 
@@ -44,6 +49,7 @@ class NotificacionPedidoListenerTest {
     @InjectMocks
     private NotificacionPedidoListener listener;
 
+    // Pedido de ejemplo con un cliente y una línea de "Pantalón", para reusar en varios tests.
     private Pedido pedido() {
         Pedido pedido = Pedido.builder()
                 .id(7L)
@@ -57,6 +63,8 @@ class NotificacionPedidoListenerTest {
         return pedido;
     }
 
+    // Para estados como ENVIADO el cliente ya recibe el correo con la guía desde el despacho,
+    // así que el listener no debe mandar otro correo de cambio de estado (evita duplicados).
     @Test
     void cambioAEnviadoNoDuplicaElCorreoConGuia() {
         listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.ENVIADO));
@@ -65,6 +73,7 @@ class NotificacionPedidoListenerTest {
         verify(correo, never()).enviarCambioEstado(anyString(), anyString(), anyLong(), anyString(), anyString());
     }
 
+    // Cuando el pedido pasa a preparación el cliente debe recibir su correo con el estado y el total.
     @Test
     void cambioAPreparacionAvisaAlCliente() {
         when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
@@ -74,6 +83,7 @@ class NotificacionPedidoListenerTest {
         verify(correo).enviarCambioEstado(eq("a@b.com"), eq("Ana"), eq(7L), eq("En preparación"), eq("107000"));
     }
 
+    // Si por algún motivo llega un evento con un pedido que ya no existe, no se intenta enviar nada.
     @Test
     void pedidoInexistenteNoAvisa() {
         when(pedidoRepository.findById(99L)).thenReturn(Optional.empty());
@@ -83,6 +93,7 @@ class NotificacionPedidoListenerTest {
         verify(correo, never()).enviarCambioEstado(anyString(), anyString(), anyLong(), anyString(), anyString());
     }
 
+    // La creación y la confirmación de pago disparan cada una su correo al cliente.
     @Test
     void creacionYPagoAvisanAlCliente() {
         when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
@@ -94,6 +105,8 @@ class NotificacionPedidoListenerTest {
         verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), anyList());
     }
 
+    // Al pagar, además del correo al cliente, el vendedor dueño de la prenda
+    // debe recibir su propio aviso con la venta nueva.
     @Test
     void pagoAvisaAlVendedorConSusLineas() {
         when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
@@ -109,6 +122,8 @@ class NotificacionPedidoListenerTest {
         verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(7L), eq("Ana"), anyList());
     }
 
+    // Si Wompi rechaza el pago, el cliente se entera; aquí el listener trabaja con la
+    // transacción directamente, sin necesidad de que exista el pedido.
     @Test
     void rechazoAvisaAlClienteSinPedido() {
         var cliente = Usuario.builder().id(1L).nombre("Ana").email("a@b.com").build();
@@ -123,6 +138,7 @@ class NotificacionPedidoListenerTest {
         verify(correo).enviarPagoRechazado(eq("a@b.com"), eq("Ana"), eq("LS-55-X"), eq("7280000"));
     }
 
+    // Cuando sale un despacho, el cliente recibe el correo de envío con la guía del paquete.
     @Test
     void alEnviarDespachoAvisaConGuiaDelPaquete() {
         Pedido pedido = pedido();
@@ -143,6 +159,7 @@ class NotificacionPedidoListenerTest {
         verify(correo).enviarPedidoEnviado(eq("a@b.com"), eq("Ana"), eq(7L), eq("GUIA-5"), eq("107000"), anyList());
     }
 
+    // Si la prenda tiene fotos, el correo debe incluir la imagen (miniatura) y el precio por unidad.
     @Test
     void lineaConFotoIncluyeMiniimagenYPrecios() {
         when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
@@ -163,6 +180,7 @@ class NotificacionPedidoListenerTest {
         assertThat(items.getFirst().precioUnitario()).isEqualTo("107000");
     }
 
+    // Igual que con ENVIADO, PARCIALMENTE_ENVIADO no genera un correo extra de cambio de estado.
     @Test
     void cambioAParcialmenteEnviadoNoDuplicaElCorreo() {
         listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.PARCIALMENTE_ENVIADO));
@@ -171,6 +189,8 @@ class NotificacionPedidoListenerTest {
         verify(correo, never()).enviarCambioEstado(anyString(), anyString(), anyLong(), anyString(), anyString());
     }
 
+    // Este test no prueba el listener directo sino el notificador de alertas de stock:
+    // al emitirse una alerta, el vendedor dueño de la prenda debe recibir el aviso.
     @Test
     void alertaStockAvisaAlVendedor() {
         co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository usuarios =
