@@ -29,9 +29,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Test unitario del controller con MockMvc standalone: se mockea CatalogoClienteService
+ * y se valida el contrato HTTP de la vitrina (paginación, filtros y errores 400).
+ */
 @ExtendWith(MockitoExtension.class)
 class CatalogoClienteControllerTest {
 
+    // Mock del servicio: el controller nunca toca base de datos real
     @Mock
     private CatalogoClienteService catalogo;
 
@@ -40,12 +45,14 @@ class CatalogoClienteControllerTest {
 
     private MockMvc mockMvc;
 
+    // Levanta el controller solo, con el handler de errores global para probar los códigos HTTP
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 
+    // La vitrina pagina bien y responde con datos públicos: sin stockMinimo ni stockTotal internos
     @Test
     void explorarDevuelvePaginaSinDatosInternos() throws Exception {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
@@ -65,6 +72,7 @@ class CatalogoClienteControllerTest {
                 .andExpect(jsonPath("$.contenido[0].tallasDisponibles[1]").value("6"));
     }
 
+    // Cuando el servicio rechaza un filtro, la excepción de negocio se traduce en un 400 limpio
     @Test
     void filtroInvalidoDevuelve400() throws Exception {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
@@ -75,6 +83,7 @@ class CatalogoClienteControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // El parámetro "ids" de los productos recomendados se parsea en la lista y llega al servicio intacto
     @Test
     void idsDeRecomendadosLleganAlServicio() throws Exception {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), eq(List.of(10L, 20L)),
@@ -85,6 +94,7 @@ class CatalogoClienteControllerTest {
                 .andExpect(status().isOk());
     }
 
+    // perfilId + soloMiTalla se mapean a los parámetros correctos sin necesitar ids en la URL
     @Test
     void filtroMiTallaViajaComoPerfilIdSinIdsEnLaUrl() throws Exception {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(),
@@ -95,6 +105,7 @@ class CatalogoClienteControllerTest {
                 .andExpect(status().isOk());
     }
 
+    // Una página no numérica no debe tirar 500: cae en el manejo de error de negocio con 400
     @Test
     void paginaNoNumericaDevuelve400EnVezDe500() throws Exception {
         mockMvc.perform(get("/api/cliente/catalogo").param("pagina", "abc"))
@@ -102,6 +113,7 @@ class CatalogoClienteControllerTest {
                 .andExpect(jsonPath("$.errores.pagina").value("Revisa el valor enviado"));
     }
 
+    // Ídem con el id del detalle: "abc" en la ruta se responde como 400 y no como error interno
     @Test
     void idNoNumericoDevuelve400EnVezDe500() throws Exception {
         mockMvc.perform(get("/api/cliente/catalogo/abc"))

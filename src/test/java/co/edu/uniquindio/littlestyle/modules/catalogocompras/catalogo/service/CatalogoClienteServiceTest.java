@@ -30,11 +30,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test unitario del servicio de vitrina con el repositorio mockeado (mockeamos las consultas
+ * de Spring Data). Cubre filtros en BD, paginación, validaciones 400 y el detalle sin datos internos.
+ */
 @ExtendWith(MockitoExtension.class)
 class CatalogoClienteServiceTest {
 
+    // Repositorio mockeado: devolvemos ids y prendas de fixture según la consulta que recibe
     @Mock
     private PrendaRepository prendaRepository;
+    // Puerto y motor de recomendación mockeados, para el caso "solo mi talla"
     @Mock
     private co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.PerfilBiometricoPort perfiles;
     @Mock
@@ -43,6 +49,8 @@ class CatalogoClienteServiceTest {
     @InjectMocks
     private CatalogoClienteService service;
 
+    // Búsqueda general de vitrina: solo activas, con los filtros que viajan a la consulta en BD,
+    // orden anexado (precio + desempate por id) y paginación respetada
     @Test
     void exploraSoloPublicadasConPaginacionYOrden() {
         var p = prenda(10L, 5, 3, 0);
@@ -68,6 +76,8 @@ class CatalogoClienteServiceTest {
         assertThat(paginable.getValue().getSort().getOrderFor("id")).isNotNull();
     }
 
+    // Si el cliente pide 500 elementos de golpe, el servicio lo recorta al máximo permitido
+    // antes de tocar la base de datos
     @Test
     void limitaElTamanoDePaginaParaProtegerLaBaseDeDatos() {
         when(prendaRepository.buscarIdsVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
@@ -82,6 +92,7 @@ class CatalogoClienteServiceTest {
         assertThat(paginable.getValue().getPageSize()).isEqualTo(CatalogoClienteService.TAMANO_MAXIMO);
     }
 
+    // Con ids de recomendados se usa la consulta por ids; la búsqueda general ni se toca
     @Test
     void idsDeRecomendadosFiltraEnBaseDeDatos() {
         var p = prenda(10L, 5, 3, 0);
@@ -98,6 +109,7 @@ class CatalogoClienteServiceTest {
                 any(), any(), any());
     }
 
+    // Lista de ids vacía = corto circuito: se devuelve la página vacía sin ir a la base de datos
     @Test
     void idsVaciosDevuelvenPaginaVaciaSinConsultar() {
         var pagina = service.explorar(null, null, null, null, null, null, null, null, List.of(), 0, 12,
@@ -107,6 +119,7 @@ class CatalogoClienteServiceTest {
         verifyNoInteractions(prendaRepository);
     }
 
+    // La edad válida filtra dentro del rango de la prenda; la negativa rompe con 400
     @Test
     void edadFiltraPorRangoDeclaradoYNegativaEs400() {
         var p = prenda(10L, 5, 3, 0);
@@ -125,6 +138,7 @@ class CatalogoClienteServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // Varias categorías de material llegan juntas al repositorio: busca prendas con alguna de ellas
     @Test
     void materialesMultiplesFiltranPorAlgunComponente() {
         when(prendaRepository.buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(),
@@ -138,6 +152,7 @@ class CatalogoClienteServiceTest {
                 eq(List.of(MaterialTextil.ALGODON, MaterialTextil.POLIESTER)), any(), any(), any());
     }
 
+    // Cada filtro malformado (categoría, rango de precios, orden, página negativa) debe reventar en 400
     @Test
     void rechazaFiltrosInvalidosCon400() {
         assertThatThrownBy(() -> service.explorar(null, "ROPA", null, null, null, null, null, null, 0, 12, "novedades"))
@@ -151,6 +166,7 @@ class CatalogoClienteServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
+    // El detalle público muestra el stock por talla (disponible o no) pero nunca el stock mínimo del vendedor
     @Test
     void detalleMuestraExistenciasPorTallaPeroOcultaElMinimo() {
         when(prendaRepository.findByIdAndEstado(10L, EstadoPrenda.ACTIVA))
@@ -166,6 +182,7 @@ class CatalogoClienteServiceTest {
                 .containsExactly(3, 0);
     }
 
+    // Si la prenda no existe o está inactiva, para el cliente es un 404
     @Test
     void detalleDePrendaInexistenteOInactivaDevuelve404() {
         when(prendaRepository.findByIdAndEstado(99L, EstadoPrenda.ACTIVA)).thenReturn(Optional.empty());
@@ -175,6 +192,7 @@ class CatalogoClienteServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    // Enum de material desconocido (ej. "TELA") se rechaza con 400 antes de consultar
     @Test
     void materialInvalidoDevuelve400() {
         assertThatThrownBy(() -> service.explorar(null, null, null, null, null, null, "TELA", null, 0, 12, "novedades"))
@@ -182,6 +200,7 @@ class CatalogoClienteServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // Igual con el género: un valor fuera del enum se rechaza con 400
     @Test
     void generoInvalidoDevuelve400() {
         assertThatThrownBy(() -> service.explorar(null, null, "ADULTO", null, null, null, null, null, 0, 12, "novedades"))
@@ -189,6 +208,8 @@ class CatalogoClienteServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // Con "solo mi talla", el perfil biométrico y el motor de recomendación resuelven los ids
+    // dentro del servidor y luego se filtra por ellos en base de datos
     @Test
     void soloMiTallaResuelveIdsDentroDelServidor() {
         var p = prenda(10L, 5, 3, 0);
@@ -207,6 +228,7 @@ class CatalogoClienteServiceTest {
         assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
     }
 
+    // Pedir "solo mi talla" sin perfil asociado no tiene sentido: error 400 directo
     @Test
     void soloMiTallaSinPerfilDevuelve400() {
         assertThatThrownBy(() -> service.explorar(null, null, null, null, null, null, null, null, null,
@@ -215,6 +237,7 @@ class CatalogoClienteServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // Precio y disponibilidad se aplican en la consulta de BD (no en memoria) según los valores de la URL
     @Test
     void precioYDisponibilidadFiltranEnBaseDeDatos() {
         var p = prenda(10L, 5, 3, 0);
@@ -230,6 +253,7 @@ class CatalogoClienteServiceTest {
         assertThat(pagina.contenido()).extracting(PrendaVitrinaResponse::id).containsExactly(10L);
     }
 
+    // Un valor booleano raro como "si" en disponibilidad también cae en 400
     @Test
     void disponibilidadInvalidaDevuelve400() {
         assertThatThrownBy(() -> service.explorar(null, null, null, null, null, "si", null, null,

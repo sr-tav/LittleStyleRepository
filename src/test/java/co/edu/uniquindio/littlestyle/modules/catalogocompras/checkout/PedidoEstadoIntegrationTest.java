@@ -53,6 +53,7 @@ class PedidoEstadoIntegrationTest {
     @Autowired
     private co.edu.uniquindio.littlestyle.config.security.JwtService jwtService;
 
+    // Helper: crea un admin directamente en BD y genera su token JWT sin pasar por registro
     private String tokenAdmin(String email) {
         var administrador = usuarioRepository.save(
                 co.edu.uniquindio.littlestyle.modules.auth.model.Usuario.builder()
@@ -64,6 +65,7 @@ class PedidoEstadoIntegrationTest {
         return "Bearer " + jwtService.generarToken(administrador).token();
     }
 
+    // Helper: registra un usuario por API real y devuelve su token Bearer
     private String registrar(String email, String rol) throws Exception {
         String tienda = "VENDEDOR".equals(rol) ? "\"Tienda Sol\"" : "null";
         String body = """
@@ -75,6 +77,7 @@ class PedidoEstadoIntegrationTest {
         return "Bearer " + JsonPath.read(json, "$.token");
     }
 
+    // Helper: crea la prenda de prueba como vendedor y devuelve su id
     private int crearPrenda(String token) throws Exception {
         String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
@@ -83,6 +86,8 @@ class PedidoEstadoIntegrationTest {
         return JsonPath.read(json, "$.id");
     }
 
+    // Helper: inserta un pedido con una línea (vía repositorio) en el estado indicado;
+    // si es REGISTRADO, crea los despachos como pasó el pago
     private long crearPedido(String clienteEmail, int prendaId,
                              co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido estado) {
         var cliente = usuarioRepository.findByEmail(clienteEmail).orElseThrow();
@@ -102,6 +107,7 @@ class PedidoEstadoIntegrationTest {
         return id;
     }
 
+    // Helper: pedido con líneas de dos vendedores distintos para escenarios multi-vendedor
     private long crearPedidoDosVendedores(String clienteEmail, int prendaA, int prendaB) {
         var cliente = usuarioRepository.findByEmail(clienteEmail).orElseThrow();
         var pedido = co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido.builder()

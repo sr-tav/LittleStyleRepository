@@ -58,6 +58,7 @@ class AuthControllerTest {
     private static final AuthResponse RESPUESTA = AuthResponse.bearer("jwt-token", 123L,
             new UsuarioResponse(1L, "María", "González", "maria@correo.com", "3001234567", null, Rol.CLIENTE));
 
+    // Monta el MockMvc con el handler global para verificar también los errores
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(authController)
@@ -65,6 +66,7 @@ class AuthControllerTest {
                 .build();
     }
 
+    // Registro exitoso por HTTP: 201 con token Bearer y los datos del usuario
     @Test
     void registroValidoDevuelve201ConToken() throws Exception {
         when(authService.registrar(any(RegistroRequest.class))).thenReturn(RESPUESTA);
@@ -76,6 +78,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.usuario.rol").value("CLIENTE"));
     }
 
+    // Las validaciones de bean validation llegan antes del servicio, con un error por campo
     @Test
     void registroConInputsInvalidosDevuelve400ConErroresPorCampo() throws Exception {
         String invalido = """
@@ -97,6 +100,7 @@ class AuthControllerTest {
         verifyNoInteractions(authService);
     }
 
+    // No se puede autoregistrar como ADMIN y el servicio ni se entera
     @Test
     void registroConRolDesconocidoDevuelve400() throws Exception {
         String rolInvalido = REGISTRO_VALIDO.replace("\"CLIENTE\"", "\"SUPERUSUARIO\"");
@@ -106,6 +110,7 @@ class AuthControllerTest {
         verifyNoInteractions(authService);
     }
 
+    // Duplicar el correo se traduce en 409 con el error sobre el campo email
     @Test
     void registroConCorreoDuplicadoDevuelve409() throws Exception {
         when(authService.registrar(any(RegistroRequest.class)))
@@ -116,6 +121,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.errores.email").exists());
     }
 
+    // Login por HTTP correcto: 200 con el token de acceso
     @Test
     void loginValidoDevuelve200() throws Exception {
         when(authService.login(any(LoginRequest.class), anyString())).thenReturn(RESPUESTA);
@@ -126,6 +132,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value("jwt-token"));
     }
 
+    // BadCredentials se traduce en 401 con un mensaje que no revela el detalle
     @Test
     void loginConCredencialesIncorrectasDevuelve401() throws Exception {
         when(authService.login(any(LoginRequest.class), anyString())).thenThrow(new BadCredentialsException("bad"));
@@ -136,6 +143,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("Correo o contraseña incorrectos"));
     }
 
+    // El bloqueo por intentos fallidos responde 429 e informa cuánto esperar
     @Test
     void loginBloqueadoPorIntentosDevuelve429ConRetryAfter() throws Exception {
         when(authService.login(any(LoginRequest.class), anyString()))
@@ -149,6 +157,7 @@ class AuthControllerTest {
                         "Demasiados intentos fallidos de inicio de sesión. Intente de nuevo en 2 minutos"));
     }
 
+    // Cuenta deshabilitada (suspendida) no autentica: se responde 403, no 401
     @Test
     void loginDeCuentaSuspendidaDevuelve403() throws Exception {
         when(authService.login(any(LoginRequest.class), anyString())).thenThrow(new DisabledException("disabled"));
@@ -158,6 +167,7 @@ class AuthControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    // Sin email ni password el servicio nunca es invocado: falla la validación
     @Test
     void loginSinCamposDevuelve400() throws Exception {
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)

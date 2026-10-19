@@ -40,9 +40,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test unitario del CRUD de prendas del vendedor: repositorio y alertas mockeados,
+ * el validador se espiado para dejar correr su lógica real. Cubre creación, edición
+ * de tallas, reglas de propiedad y la reevaluación de alertas de inventario.
+ */
 @ExtendWith(MockitoExtension.class)
 class PrendaServiceTest {
 
+    // Repositorios mockeados y alertas también; el validador real se envuelve con un Spy
     @Mock
     private PrendaRepository prendaRepository;
     @Mock
@@ -54,18 +60,23 @@ class PrendaServiceTest {
     @InjectMocks
     private PrendaService service;
 
+    // Composición simplificada (100 % algodón) que usan varios test casos
     private static final List<ComponenteRequest> ALGODON = List.of(new ComponenteRequest(MaterialTextil.ALGODON, 100));
 
+    // Monta la sesión de vendedor autenticado antes de cada test
     @BeforeEach
     void setUp() {
         autenticarVendedor();
     }
 
+    // Limpieza: suelta el contexto de seguridad para no contaminar el siguiente test
     @AfterEach
     void limpiar() {
         SecurityContextHolder.clearContext();
     }
 
+    // La prenda se crea a nombre del vendedor del token, las tallas se normalizan y
+    // al final se evalúan las alertas de stock bajo
     @Test
     void creaLaPrendaDelVendedorAutenticadoConTallasNormalizadasYEvaluaAlertas() {
         when(usuarioRepository.getReferenceById(VENDEDOR_ID)).thenReturn(Usuario.builder().id(VENDEDOR_ID).build());
@@ -86,6 +97,7 @@ class PrendaServiceTest {
         verify(alertas).evaluar(p);
     }
 
+    // Si la composición no suma lo debido, la creación aborta sin guardar ni alertar nada
     @Test
     void noGuardaNadaSiLaComposicionEsInvalida() {
         var request = prendaRequest(List.of(new ComponenteRequest(MaterialTextil.ALGODON, 60)),
@@ -95,6 +107,8 @@ class PrendaServiceTest {
         verifyNoInteractions(prendaRepository, alertas);
     }
 
+    // En la edición, el stock ya guardado manda sobre el que llega del formulario,
+    // las tallas sin existencias se retiran y las nuevas se agregan limpias
     @Test
     void editarConservaElStockDeTallasExistentesAgregaNuevasYQuitaLasVacias() {
         Prenda p = prenda(10L, 5, 8, 0);
@@ -115,6 +129,7 @@ class PrendaServiceTest {
         verify(alertas).evaluar(p);
     }
 
+    //regla de negocio: no se puede retirar una talla que todavía tiene unidades, es un 409
     @Test
     void noPermiteQuitarUnaTallaConExistencias() {
         Prenda p = prenda(10L, 5, 8, 4);
@@ -128,6 +143,7 @@ class PrendaServiceTest {
         verify(alertas, never()).evaluar(any());
     }
 
+    // Una prenda que existe pero es de otro vendedor responde 404, no filtramos por rol
     @Test
     void unaPrendaDeOtroVendedorSeTrataComoInexistente() {
         when(prendaRepository.findByIdAndVendedorId(77L, VENDEDOR_ID)).thenReturn(Optional.empty());
@@ -136,6 +152,7 @@ class PrendaServiceTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
     }
 
+    // Dejar la prenda inactiva también dispara la reevaluación de alertas de inventario
     @Test
     void desactivarReevaluaLasAlertas() {
         Prenda p = prenda(10L, 5, 0, 0);
@@ -147,6 +164,7 @@ class PrendaServiceTest {
         verify(alertas).evaluar(p);
     }
 
+    // La búsqueda interna del vendedor ignora tildes y mayúsculas; texto en blanco lista todo
     @Test
     void buscaSinDistinguirTildesNiMayusculas() {
         Prenda pantalon = prenda(10L, 5, 1, 1);

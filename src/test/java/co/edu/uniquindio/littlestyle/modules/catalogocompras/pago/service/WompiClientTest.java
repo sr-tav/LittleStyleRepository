@@ -28,6 +28,7 @@ class WompiClientTest {
 
     private HttpServer servidor;
 
+    // Apaga el servidor simulado para no dejar puertos ocupados
     @AfterEach
     void detener() {
         if (servidor != null) {
@@ -35,6 +36,8 @@ class WompiClientTest {
         }
     }
 
+    // Wompi tarda más que el timeout configurado: el cliente corta rápido
+    // y devuelve 504 sugiriendo reintentar luego, sin esperar los 2 segundos
     @Test
     void siWompiNoRespondeATiempoAvisaQueSeIntenteMasTarde() throws IOException {
         iniciarServidor(2000);
@@ -49,6 +52,7 @@ class WompiClientTest {
         assertThat(Duration.ofNanos(System.nanoTime() - inicio)).isLessThan(Duration.ofMillis(1500));
     }
 
+    // Camino feliz: la consulta se resuelve y se mapean estado y referencia
     @Test
     void consultaLaTransaccionCuandoWompiRespondeDentroDelPlazo() throws IOException {
         iniciarServidor(0);
@@ -59,6 +63,8 @@ class WompiClientTest {
         assertThat(transaccion.referencia()).isEqualTo("LS-1-A");
     }
 
+    // Conexión rechazada (no hay nadie escuchando): el error se traduce a
+    // 503 en vez de propagar la excepción cruda de red
     @Test
     void siWompiNoEstaDisponibleAvisaQueSeIntenteMasTarde() throws IOException {
         int puertoLibre;
@@ -75,6 +81,8 @@ class WompiClientTest {
                 });
     }
 
+    // Levanta un servidor HTTP local que responde la transacción simulada,
+    // opcionalmente tras una demora para probar los timeouts
     private void iniciarServidor(long demoraMs) throws IOException {
         servidor = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         servidor.createContext("/v1/transactions/", intercambio -> {
@@ -95,15 +103,18 @@ class WompiClientTest {
         servidor.start();
     }
 
+    // Crea un cliente apuntando al servidor local con el timeout indicado
     private WompiClient cliente(Duration timeoutLectura) {
         String url = "http://127.0.0.1:" + servidor.getAddress().getPort() + "/v1";
         return new WompiClient(propiedadesWompi(url), propiedadesPago(timeoutLectura));
     }
 
+    // Credenciales de prueba, la URL depende de cada test
     private static WompiProperties propiedadesWompi(String url) {
         return new WompiProperties(url, "pub_test", "integridad", "eventos", "", "COP");
     }
 
+    // Configuración de pago base, solo cambia el timeout de lectura
     private static PagoProperties propiedadesPago(Duration timeoutLectura) {
         PagoProperties base = PagoProperties.porDefecto();
         return new PagoProperties(base.vigenciaEvento(), base.toleranciaReloj(), Duration.ofSeconds(1),

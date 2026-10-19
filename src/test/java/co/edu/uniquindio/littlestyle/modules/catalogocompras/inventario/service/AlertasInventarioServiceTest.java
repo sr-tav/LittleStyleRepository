@@ -28,6 +28,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests del servicio que emite y resuelve alertas de reabastecimiento al
+ * evaluar el stock de una prenda talla por talla.
+ * Se mockean el repositorio de alertas y el publicador de eventos.
+ */
 @ExtendWith(MockitoExtension.class)
 class AlertasInventarioServiceTest {
 
@@ -38,6 +43,8 @@ class AlertasInventarioServiceTest {
     @InjectMocks
     private AlertasInventarioService service;
 
+    // Stub global para todos los tests: al guardar una alerta le asigna un id fijo
+    // y por defecto no hay alertas previas sin talla.
     @BeforeEach
     void guardarAsignaId() {
         lenient().when(alertaRepository.save(any())).thenAnswer(inv -> {
@@ -49,11 +56,14 @@ class AlertasInventarioServiceTest {
                 .thenReturn(List.of());
     }
 
+    // Alerta activa de ejemplo, emitida el día anterior con la talla y el nivel dados.
     private static AlertaReabastecimiento activa(Prenda prenda, String talla, NivelStock nivel) {
         return AlertaReabastecimiento.builder().id(1L).prenda(prenda).talla(talla).nivel(nivel)
                 .stockAlEmitir(2).stockMinimoAlEmitir(5).fechaEmision(LocalDateTime.now().minusDays(1)).build();
     }
 
+    // Cuando una talla toca su mínimo, se emite la alerta de stock bajo y se publica
+    // el evento para avisar al vendedor.
     @Test
     void emiteAlertaDeStockBajoPorTallaAlAlcanzarElMinimo() {
         Prenda p = prenda(10L, 5, 5, 8);
@@ -78,6 +88,7 @@ class AlertasInventarioServiceTest {
         assertThat(evento.getValue().alertaId()).isEqualTo(900L);
     }
 
+    // Una talla sin stock mínimo configurado no genera alertas aunque se agote.
     @Test
     void tallaSinMinimoNuncaAlerta() {
         Prenda p = prenda(10L, 5, 0, 8);
@@ -92,6 +103,7 @@ class AlertasInventarioServiceTest {
         assertThat(emitidas).extracting(AlertaReabastecimiento::getTalla).containsExactly("4");
     }
 
+    // Si ya hay una alerta activa con el mismo nivel, no se emite otra ni se notifica de nuevo.
     @Test
     void noRepiteLaAlertaMientrasElNivelNoCambie() {
         Prenda p = prenda(10L, 5, 1, 8);
@@ -105,6 +117,8 @@ class AlertasInventarioServiceTest {
         verify(eventos, never()).publishEvent(any());
     }
 
+    // Si el stock baja más (de stock bajo a agotado), la alerta previa se resuelve
+    // y se emite una nueva de mayor severidad con su notificación.
     @Test
     void escalaAAgotadoResolviendoLaAlertaAnteriorYNotificando() {
         Prenda p = prenda(10L, 5, 0, 8);
@@ -122,6 +136,8 @@ class AlertasInventarioServiceTest {
         verify(eventos).publishEvent(any(AlertaReabastecimientoEmitida.class));
     }
 
+    // Con un reabastecimiento parcial, la alerta de agotado cambia a stock bajo:
+    // se crea una nueva sin volver a notificar al vendedor.
     @Test
     void reabastecerParcialmenteReemplazaLaAlertaSinVolverANotificar() {
         Prenda p = prenda(10L, 5, 2, 8);
@@ -141,6 +157,7 @@ class AlertasInventarioServiceTest {
         verify(eventos, never()).publishEvent(any());
     }
 
+    // Cuando el stock vuelve a estar por encima del mínimo, la alerta activa simplemente se resuelve.
     @Test
     void superarElMinimoResuelveLaAlertaActiva() {
         Prenda p = prenda(10L, 5, 9, 9);
@@ -156,6 +173,7 @@ class AlertasInventarioServiceTest {
         verify(alertaRepository, never()).save(any());
     }
 
+    // Una prenda desactivada no emite alertas nuevas, pero sí resuelve la que tuviera activa.
     @Test
     void unaPrendaInactivaNoGeneraAlertasYResuelveLaActiva() {
         Prenda p = prenda(10L, 5, 0, 0);

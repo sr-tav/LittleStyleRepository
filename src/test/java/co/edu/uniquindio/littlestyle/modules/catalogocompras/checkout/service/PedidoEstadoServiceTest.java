@@ -30,6 +30,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests de la máquina de estados del pedido: cancelación manual, transiciones
+ * válidas e inválidas, repuesta de stock al cancelar y reglas del cliente.
+ * Se mockean repositorios, el servicio de alertas y el publicador de eventos.
+ */
 @ExtendWith(MockitoExtension.class)
 class PedidoEstadoServiceTest {
 
@@ -49,10 +54,12 @@ class PedidoEstadoServiceTest {
     @InjectMocks
     private PedidoEstadoService service;
 
+    // Helper mínimo: un pedido con el id fijo 7 y el estado que haga falta.
     private static Pedido pedido(EstadoPedido estado) {
         return Pedido.builder().id(7L).estado(estado).build();
     }
 
+    // Cancelar un pedido debe actualizar su estado, guardar el paso en el historial y publicar el evento.
     @Test
     void cancelarGuardaHistorialYPublicaEvento() {
         Pedido pedido = pedido(EstadoPedido.REGISTRADO);
@@ -69,6 +76,8 @@ class PedidoEstadoServiceTest {
         verify(eventos).publishEvent(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.CANCELADO));
     }
 
+    // La llamada manual solo acepta CANCELAR; cualquier otro estado objetivo se rechaza con 409
+    // antes de tocar la base de datos.
     @Test
     void avanceManualDistintoDeCancelarDevuelve409() {
         assertThatThrownBy(() -> service.avanzar(7L, EstadoPedido.EN_PREPARACION, null))
@@ -80,6 +89,7 @@ class PedidoEstadoServiceTest {
         verify(pedidoRepository, never()).bloquearPorId(any());
     }
 
+    // Hay estados desde los que no se puede cancelar (por ejemplo pendiente de pago): eso da un 400.
     @Test
     void transicionInvalidaDevuelve409() {
         when(pedidoRepository.bloquearPorId(7L)).thenReturn(Optional.of(pedido(EstadoPedido.PENDIENTE_PAGO)));
@@ -90,6 +100,7 @@ class PedidoEstadoServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    // Si el pedido no existe, la operación responde 404.
     @Test
     void pedidoInexistenteDevuelve404() {
         when(pedidoRepository.bloquearPorId(99L)).thenReturn(Optional.empty());
@@ -99,6 +110,7 @@ class PedidoEstadoServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    // Intentar marcar PAGADO a mano también se rechaza con 409: ese estado lo fija el flujo de pago.
     @Test
     void marcarPagadoAManoDevuelve409() {
         // PAGADO solo lo pone el pago con descuento de stock; a mano sería
@@ -109,6 +121,7 @@ class PedidoEstadoServiceTest {
         verify(pedidoRepository, never()).bloquearPorId(any());
     }
 
+    // Una vez algo salió despachado (PARCIALMENTE_ENVIADO), ya no se permite cancelar el pedido.
     @Test
     void noSePuedeCancelarPedidoParcialmenteEnviado() {
         Pedido pedido = pedido(EstadoPedido.PARCIALMENTE_ENVIADO);
@@ -119,6 +132,7 @@ class PedidoEstadoServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.CONFLICT);
     }
 
+    // Si el pedido ya estaba pagado, cancelarlo debe devolver al stock las unidades reservadas.
     @Test
     void cancelarConPagoPrevioReponeStock() {
         Pedido pedido = pedido(EstadoPedido.EN_PREPARACION);
@@ -139,6 +153,8 @@ class PedidoEstadoServiceTest {
         assertThat(talla.getStock()).isEqualTo(7);
     }
 
+    // Si al reponer el stock la prenda ya no existe, la cancelación se aborta con error
+    // para no dejar la tienda en un estado inconsistente.
     @Test
     void reponerStockFallaLaTransaccionSiFaltaLaPrenda() {
         Pedido pedido = pedido(EstadoPedido.EN_PREPARACION);
@@ -154,6 +170,8 @@ class PedidoEstadoServiceTest {
         assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.CANCELADO);
     }
 
+    // El cliente solo puede cancelar sus propios pedidos; uno ajeno responde 404
+    // y el propio sí se cancela.
     @Test
     void clienteSoloCancelaAntesDelPago() {
         Pedido pendiente = pedido(EstadoPedido.PENDIENTE_PAGO);
@@ -169,6 +187,7 @@ class PedidoEstadoServiceTest {
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    // Un pedido ya pagado no se puede cancelar desde la vista del cliente: eso da un 409.
     @Test
     void clienteNoCancelaPedidoPagado() {
         Pedido pagado = pedido(EstadoPedido.PAGADO);

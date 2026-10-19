@@ -10,8 +10,16 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Tests del migrador de esquema que agrega la columna fecha_actualizacion a pedidos.
+ * Se corre contra una base H2 en memoria con datos previos para comprobar
+ * que la migración es idempotente y no pierde la información existente.
+ */
 class PedidoFechaActualizacionSchemaMigratorTest {
 
+    // Simula la tabla vieja sin fecha_actualizacion, inserta un registro,
+    // ejecuta el migrador dos veces y verifica que la columna apareció
+    // inicializada con la fecha de creación y que repetirla no causa error.
     @Test
     void agregaFechaActualizacionALaTablaPedidosExistenteSinPerderDatos() throws Exception {
         JdbcDataSource dataSource = new JdbcDataSource();

@@ -34,6 +34,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests de la confirmación de pago del pedido: descuento de stock, registro del
+ * historial de estados y eventos publicados (incluyendo por qué se publica
+ * REGISTRADO y no PAGADO para el correo).
+ * Repositorios, alertas y publicador de eventos se mockean; el reloj es fijo.
+ */
 @ExtendWith(MockitoExtension.class)
 class PedidoPagoServiceTest {
 
@@ -50,16 +56,19 @@ class PedidoPagoServiceTest {
     @Mock
     private DespachoService despachoService;
 
+    // Reloj congelado en una fecha fija para poder comparar fechas sin sorpresas.
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-10T10:00:00Z"), ZoneId.of("UTC"));
 
     private PedidoPagoService service;
 
+    // Se arma el servicio a mano porque el Clock no es un mock, así no se puede usar @InjectMocks directo.
     @org.junit.jupiter.api.BeforeEach
     void armar() {
         service = new PedidoPagoService(pedidoRepository, historialRepository, prendaRepository,
                 alertasInventarioService, clock, eventos, despachoService);
     }
 
+    // Pedido en estado PENDIENTE_PAGO con dos unidades de "Pantalón", listo para confirmar el pago.
     private Pedido pedidoPendiente() {
         Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.PENDIENTE_PAGO)
                 .fechaCreacion(LocalDateTime.now(clock)).build();
@@ -68,6 +77,7 @@ class PedidoPagoServiceTest {
         return pedido;
     }
 
+    // Prenda con una única talla "4" y el stock inicial que se le pase.
     private Prenda prendaConStock(int stock) {
         Prenda prenda = Prenda.builder().id(20L).build();
         TallaPrenda talla = TallaPrenda.builder().talla("4").stock(stock).prenda(prenda).build();
@@ -75,6 +85,8 @@ class PedidoPagoServiceTest {
         return prenda;
     }
 
+    // Confirma el pago de un pedido pendiente: pasa a PAGADO (descuenta stock) y luego queda REGISTRADO,
+    // con dos entradas de historial, el evento de pago y un solo correo de cambio de estado.
     @Test
     void confirmaPagoRegistraYPublicaUnSoloCorreoDePago() {
         Pedido pedido = pedidoPendiente();
@@ -101,6 +113,8 @@ class PedidoPagoServiceTest {
         verify(eventos).publishEvent(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.REGISTRADO));
     }
 
+    // Verifica explícitamente que al cliente le llega el correo por el estado REGISTRADO
+    // (que es el que tiene su propio correo de pago confirmado) y no por el PAGADO transitorio.
     @Test
     void confirmaPagoPublicaRegistradoParaElCorreoDeEstado() {
         Pedido pedido = pedidoPendiente();

@@ -20,6 +20,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Suite del controlador de recomendaciones con MockMvc standalone.
+ * Se mockean el puerto de perfiles biometricos y el motor, y se prueba
+ * el contrato HTTP (200/400/404/422) junto con el manejo de errores.
+ */
 @ExtendWith(MockitoExtension.class)
 class RecomendacionControllerTest {
 
@@ -28,10 +33,12 @@ class RecomendacionControllerTest {
     @InjectMocks RecomendacionController controller;
     private MockMvc mockMvc;
 
+    // Monta el controlador con el advice global para validar los códigos de error
     @BeforeEach void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
+    // Perfil de niña con medición reciente y alergia al níquel, listo para usar
     private PerfilBiometrico pb() {
         return new PerfilBiometrico(
                 new DatosBiometricos(new BigDecimal("105"), new BigDecimal("18"),
@@ -39,6 +46,7 @@ class RecomendacionControllerTest {
                 Set.of(AlergiaTextil.NIQUEL), null, Set.of(), Set.of());
     }
 
+    // Camino feliz del listado: 200 con el header de tiempo delegado, la talla y el puntaje en el cuerpo
     @Test void listarDevuelve200ConHeaderTiempo() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.recomendar(any())).thenReturn(List.of(
@@ -52,6 +60,7 @@ class RecomendacionControllerTest {
                 .andExpect(jsonPath("$[0].afinidad").value(8));
     }
 
+    // Si el perfil nunca fue medido no hay nada que recomendar: 422 con el mensaje del negocio
     @Test void listarSinMedicionDevuelve422() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenThrow(new BusinessException(
                 HttpStatus.UNPROCESSABLE_ENTITY, "El perfil no tiene mediciones"));
@@ -61,6 +70,7 @@ class RecomendacionControllerTest {
                 .andExpect(jsonPath("$.mensaje").value("El perfil no tiene mediciones"));
     }
 
+    // La medición vieja también es 422, pero además viaja el código de error para que el frontend reaccione
     @Test void listarConMedicionDesactualizadaDevuelve422ConCodigo() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenThrow(new BusinessException(
                 HttpStatus.UNPROCESSABLE_ENTITY, "Medición desactualizada, registra una nueva",
@@ -71,6 +81,7 @@ class RecomendacionControllerTest {
                 .andExpect(jsonPath("$.codigo").value("MEDICION_DESACTUALIZADA"));
     }
 
+    // Recomendación para una prenda puntual: respuesta 200 con la talla sugerida
     @Test void porPrendaDevuelve200() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.recomendarParaPrenda(any(), eq(1L))).thenReturn(
@@ -81,6 +92,7 @@ class RecomendacionControllerTest {
                 .andExpect(jsonPath("$.tallaSugerida").value("4"));
     }
 
+    // Si la prenda choca con una alergia activa, el motor la rechaza con 422
     @Test void porPrendaExcluidaDevuelve422() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.recomendarParaPrenda(any(), eq(1L))).thenThrow(new BusinessException(
@@ -90,6 +102,7 @@ class RecomendacionControllerTest {
                 .andExpect(status().isUnprocessableEntity());
     }
 
+    // Consultar una prenda que no existe se traduce en 404, no en un 500 genérico
     @Test void porPrendaInexistenteDevuelve404() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.recomendarParaPrenda(any(), eq(99L))).thenThrow(new BusinessException(
@@ -99,6 +112,7 @@ class RecomendacionControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // Endpoint liviano de ids para el frontend: devuelve la lista tal cual, sin cortarla por tope
     @Test void idsDevuelveSoloIdentificadoresSinTope() throws Exception {
         when(perfiles.obtenerActivos(1L)).thenReturn(pb());
         when(motor.idsRecomendados(any())).thenReturn(List.of(3L, 1L));
@@ -109,12 +123,14 @@ class RecomendacionControllerTest {
                 .andExpect(jsonPath("$[1]").value(1));
     }
 
+    // Omitir el parámetro obligatorio es un error de petición (400), con el detalle por campo
     @Test void sinPerfilIdDevuelve400EnVezDe500() throws Exception {
         mockMvc.perform(get("/api/cliente/recomendaciones"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errores.perfilId").value("Este parámetro es obligatorio"));
     }
 
+    // Un texto no numérico en perfilId también cae en 400 y no en un error interno
     @Test void perfilIdNoNumericoDevuelve400EnVezDe500() throws Exception {
         mockMvc.perform(get("/api/cliente/recomendaciones").param("perfilId", "abc"))
                 .andExpect(status().isBadRequest());

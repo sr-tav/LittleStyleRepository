@@ -37,6 +37,7 @@ class CatalogoClienteIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    // Helper: registra un usuario por API real y devuelve el token Bearer para las llamadas del test
     private String registrar(String email, String rol) throws Exception {
         String tienda = "VENDEDOR".equals(rol) ? "\"Tienda Sol\"" : "null";
         String body = """
@@ -48,6 +49,7 @@ class CatalogoClienteIntegrationTest {
         return "Bearer " + JsonPath.read(json, "$.token");
     }
 
+    // Helper: crea la prenda de prueba como vendedor y devuelve su id
     private int crearPrenda(String token) throws Exception {
         String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
@@ -56,6 +58,8 @@ class CatalogoClienteIntegrationTest {
         return JsonPath.read(json, "$.id");
     }
 
+    // Recorrido completo de la vitrina: solo publicadas, y cada filtro (material, talla,
+    // edad, género, categoría) se valida contra base de datos, incluidos los casos inválidos
     @Test
     void exploraSoloPublicadasConFiltrosEnBaseDeDatos() throws Exception {
         String vendedor = registrar("vendedor-vit-" + System.nanoTime() + "@correo.com", "VENDEDOR");
@@ -120,6 +124,8 @@ class CatalogoClienteIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // La ficha del producto expone stock por talla y rangos de edad, pero jamás el stock mínimo
+    // del vendedor; además, al ocultar la prenda esta deja de verse para el cliente
     @Test
     void detalleMuestraExistenciasPorTallaSinExponerElMinimoYOcultaInactivas() throws Exception {
         String vendedor = registrar("vendedor-det-" + System.nanoTime() + "@correo.com", "VENDEDOR");
@@ -145,6 +151,7 @@ class CatalogoClienteIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    // La vitrina es exclusiva del rol CLIENTE: un vendedor logueado recibe 403 y sin token 401
     @Test
     void vitrinaExigeRolCliente() throws Exception {
         String vendedor = registrar("vendedor-rol-" + System.nanoTime() + "@correo.com", "VENDEDOR");

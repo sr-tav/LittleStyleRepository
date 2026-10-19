@@ -25,11 +25,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Suite del servicio que expira transacciones de pago sin resolver.
+ * Se mockea el repositorio; el reloj es fijo para que los tiempos
+ * de vencimiento sean deterministas. Incluye la carrera con el webhook.
+ */
 @ExtendWith(MockitoExtension.class)
 class TransaccionExpiracionServiceTest {
 
     private static final Long TRANSACCION_ID = 7L;
     private static final String REFERENCIA = "LS-C42-VENCIDA001";
+    // Reloj congelado: la hora "actual" del test siempre es la misma
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-13T15:00:00Z"), ZoneOffset.UTC);
 
     @Mock
@@ -37,12 +43,15 @@ class TransaccionExpiracionServiceTest {
 
     private TransaccionExpiracionService servicio;
 
+    // Arma el servicio con propiedades por defecto y el reloj fijo
     @BeforeEach
     void setUp() {
         PagoProperties properties = PagoProperties.porDefecto();
         servicio = new TransaccionExpiracionService(transaccionPagoRepository, properties, CLOCK);
     }
 
+    // Una compra quedó en CREADA y Wompi nunca confirmó nada: al vencer el
+    // plazo se anula y se actualiza la fecha con el reloj fijo
     @Test
     void expiraUnaCompraACreadaQueWompiNuncaResolvio() {
         TransaccionPago transaccion = transaccion(EstadoTransaccionPago.CREADA,
@@ -58,6 +67,8 @@ class TransaccionExpiracionServiceTest {
         assertThat(transaccion.getFechaActualizacion()).isEqualTo(LocalDateTime.now(CLOCK));
     }
 
+    // PENDIENTE también cuenta como sin resolver: si quedó ahí por un estado
+    // no mapeado, no debe quedarse pegada para siempre
     @Test
     void expiraTambienUnPagoQueQuedoPendientePorUnEstadoNoMapeado() {
         TransaccionPago transaccion = transaccion(EstadoTransaccionPago.PENDIENTE,
@@ -72,6 +83,7 @@ class TransaccionExpiracionServiceTest {
         assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.ANULADA);
     }
 
+    // Si no hay nada vencido, no se toca ninguna transacción
     @Test
     void noExpiraUnaCompraQueElClienteTodaviaEstaCompletando() {
         when(transaccionPagoRepository.buscarIdsVencidos(anyList(), any())).thenReturn(List.of());
@@ -82,6 +94,8 @@ class TransaccionExpiracionServiceTest {
         verify(transaccionPagoRepository, never()).bloquearPorId(any());
     }
 
+    // El estado cambió después de la consulta, la expiración respeta el
+    // que tiene al momento de bloquear
     @Test
     void noExpiraUnPagoQueElWebhookResolvioMientrasBuscaba() {
         // Carrera real: la búsqueda lo listó como CREADA, pero entre esa consulta y el bloqueo
@@ -98,6 +112,7 @@ class TransaccionExpiracionServiceTest {
         assertThat(yaAprobada.getEstado()).isEqualTo(EstadoTransaccionPago.APROBADA);
     }
 
+    // Si al bloquear la transacción ya no existe, se ignora sin fallar
     @Test
     void noExpiraUnaTransaccionQueYaNoExiste() {
         when(transaccionPagoRepository.buscarIdsVencidos(anyList(), any()))
@@ -107,6 +122,7 @@ class TransaccionExpiracionServiceTest {
         assertThat(servicio.expirarTransaccionesVencidas()).isZero();
     }
 
+    // Builder de transacción con datos válidos, solo cambia estado y fecha
     private TransaccionPago transaccion(EstadoTransaccionPago estado, LocalDateTime fechaCreacion) {
         return TransaccionPago.builder()
                 .id(TRANSACCION_ID)
