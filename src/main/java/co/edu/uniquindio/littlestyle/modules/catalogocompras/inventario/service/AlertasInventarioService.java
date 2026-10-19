@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Reglas de emisión de alertas de reabastecimiento POR TALLA: cada talla con
@@ -30,7 +32,8 @@ import java.util.Optional;
  *   <li>Solo hay una alerta activa por (prenda, talla); no se repite mientras el nivel no cambie.</li>
  *   <li>Pasar de stock bajo a agotado emite una nueva alerta; reabastecer parcialmente (agotado → bajo)
  *       la reemplaza sin volver a notificar.</li>
- *   <li>Superar el mínimo, quitar el mínimo o desactivar la prenda resuelve la alerta activa.</li>
+ *   <li>Superar el mínimo, quitar el mínimo, quitar la talla o desactivar la prenda resuelve la alerta
+ *       activa.</li>
  * </ul>
  */
 @Service
@@ -46,6 +49,7 @@ public class AlertasInventarioService {
         List<AlertaReabastecimiento> emitidas = new ArrayList<>();
         LocalDateTime ahora = LocalDateTime.now();
         resolverHeradadas(prenda.getId(), ahora);
+        resolverDeTallasQuitadas(prenda, ahora);
         boolean publicada = prenda.getEstado() == EstadoPrenda.ACTIVA;
         for (TallaPrenda talla : prenda.getTallas()) {
             evaluarTalla(prenda, talla, publicada, ahora).ifPresent(emitidas::add);
@@ -92,6 +96,17 @@ public class AlertasInventarioService {
                 prenda.getVendedor().getId(), prenda.getNombre(), talla.getTalla(), nivel,
                 talla.getStock(), minimo));
         return Optional.of(nueva);
+    }
+
+    /**
+     * Alertas de tallas que ya no existen en la prenda (se quitaron al editarla): nadie las volvería a
+     * evaluar y quedarían activas apuntando a una talla inexistente.
+     */
+    private void resolverDeTallasQuitadas(Prenda prenda, LocalDateTime ahora) {
+        Set<String> vigentes = prenda.getTallas().stream().map(TallaPrenda::getTalla).collect(Collectors.toSet());
+        alertaRepository.findAllByPrendaIdAndFechaResolucionIsNull(prenda.getId()).stream()
+                .filter(alerta -> alerta.getTalla() != null && !vigentes.contains(alerta.getTalla()))
+                .forEach(alerta -> alerta.setFechaResolucion(ahora));
     }
 
     /**

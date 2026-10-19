@@ -23,6 +23,17 @@
             type="button" class="galeria-flecha galeria-flecha-siguiente"
             aria-label="Imagen siguiente" (click)="siguienteSlide()"
           >›</button>
+          <div class="hero-puntos" role="tablist" aria-label="Elegir imagen">
+            @for (d of destacadas(); track d.id; let i = $index) {
+              <button
+                type="button" role="tab"
+                class="hero-punto" [class.is-activo]="slide() === i"
+                [attr.aria-selected]="slide() === i"
+                [attr.aria-label]="'Imagen ' + (i + 1)"
+                (click)="slide.set(i)"
+              ></button>
+            }
+          </div>
         }
       </div>
     }
@@ -40,19 +51,6 @@
         >
       </div>
     </div>
-    @if (destacadas().length > 1) {
-      <div class="hero-puntos" role="tablist" aria-label="Elegir imagen">
-        @for (d of destacadas(); track d.id; let i = $index) {
-          <button
-            type="button" role="tab"
-            class="hero-punto" [class.is-activo]="slide() === i"
-            [attr.aria-selected]="slide() === i"
-            [attr.aria-label]="'Imagen ' + (i + 1)"
-            (click)="slide.set(i)"
-          ></button>
-        }
-      </div>
-    }
   </section>
 
   @if (cargando()) {

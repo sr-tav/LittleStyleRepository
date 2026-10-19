@@ -191,6 +191,22 @@ class AlertasInventarioServiceTest {
         verify(eventos, never()).publishEvent(any());
     }
 
+    // Si al editar la prenda se quita una talla que estaba en alerta, la alerta se resuelve.
+    @Test
+    void resuelveLaAlertaDeUnaTallaQuitada() {
+        Prenda p = prenda(10L, 5, 9, 9);
+        AlertaReabastecimiento huerfana = activa(p, "8", NivelStock.AGOTADO);
+        when(alertaRepository.findAllByPrendaIdAndFechaResolucionIsNull(10L)).thenReturn(List.of(huerfana));
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+                .thenReturn(Optional.empty());
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+                .thenReturn(Optional.empty());
+
+        service.evaluar(p);
+
+        assertThat(huerfana.estaActiva()).isFalse();
+    }
+
     @Test
     void resuelveAlertasHeradadasSinTalla() {
         Prenda p = prenda(10L, 5, 9, 9);
