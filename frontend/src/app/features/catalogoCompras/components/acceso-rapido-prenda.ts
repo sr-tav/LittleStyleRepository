@@ -4,6 +4,12 @@ import { procesarErrorApi } from '../../auth/auth.validators';
 import { CarritoService } from '../services/carrito.service';
 import { VitrinaService } from '../../vitrina/services/vitrina.service';
 
+/**
+ * Permite consultar tallas y agregar una prenda disponible al carrito desde una vista compacta.
+ * @see US-10
+ * @see UI-6
+ * @see UI-8
+ */
 @Component({
   selector: 'app-acceso-rapido-prenda',
   host: {
@@ -67,6 +73,10 @@ export class AccesoRapidoPrenda {
   protected readonly agregando = signal(false);
   private cargado = false;
 
+  /**
+   * Abre el selector y carga las tallas una sola vez, salvo que ya se hayan proporcionado.
+   * @returns No devuelve un valor.
+   */
   protected mostrarTallas(): void {
     this.abierto.set(true);
     if (!this.disponible() || this.cargado || this.cargando()) return;
@@ -96,12 +106,22 @@ export class AccesoRapidoPrenda {
     this.abierto.set(false);
   }
 
+  /**
+   * Selecciona una talla y solicita agregarla al carrito.
+   * @param talla Talla elegida.
+   * @returns No devuelve un valor.
+   */
   protected seleccionarTalla(talla: string): void {
     this.tallaSeleccionada.set(talla);
     this.error.set(null);
     this.agregar(talla);
   }
 
+  /**
+   * Cierra el selector solo si el foco salió del contenedor.
+   * @param event Evento de cambio de foco.
+   * @returns No devuelve un valor.
+   */
   protected alPerderFoco(event: FocusEvent): void {
     const contenedor = event.currentTarget;
     if (contenedor instanceof HTMLElement && event.relatedTarget instanceof Node
@@ -109,6 +129,10 @@ export class AccesoRapidoPrenda {
     this.ocultar();
   }
 
+  /**
+   * Valida que exista una talla elegida antes de agregar la prenda.
+   * @returns No devuelve un valor.
+   */
   protected agregarSeleccionada(): void {
     const talla = this.tallaSeleccionada();
     if (!talla) {
@@ -119,6 +143,11 @@ export class AccesoRapidoPrenda {
     this.agregar(talla);
   }
 
+  /**
+   * Agrega una unidad de la talla indicada si la prenda está disponible.
+   * @param talla Talla que se agregará.
+   * @returns No devuelve un valor.
+   */
   private agregar(talla: string): void {
     if (this.agregando() || !this.disponible()) return;
     this.agregando.set(true);

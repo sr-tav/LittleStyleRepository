@@ -8,7 +8,10 @@ import { formatearPrecio } from '../models/prenda-opciones';
 import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 
-/** Detalle del despacho del vendedor: su paquete, su estado y sus productos. */
+/**
+ * Detalle del despacho del vendedor: su paquete, su estado y sus productos.
+ * @see US-12
+ */
 @Component({
   selector: 'app-pedido-vendedor-detalle',
   imports: [Navbar, RouterLink],
@@ -36,10 +39,20 @@ export class PedidoVendedorDetallePage implements OnInit {
       : new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  /**
+   * Carga el despacho identificado en los parámetros de la ruta.
+   * @returns No devuelve un valor.
+   * @see US-12
+   */
   ngOnInit(): void {
     this.cargar();
   }
 
+  /**
+   * Consulta el despacho actual y actualiza los estados de carga y error.
+   * @returns No devuelve un valor.
+   * @see US-12
+   */
   protected cargar(): void {
     const id = Number(this.ruta.snapshot.paramMap.get('id'));
     this.cargando.set(true);
@@ -56,14 +69,28 @@ export class PedidoVendedorDetallePage implements OnInit {
     });
   }
 
+  /**
+   * Comprueba si el despacho está en estado registrado y puede pasar a preparación.
+   * @returns `true` cuando el estado actual es `REGISTRADO`.
+   */
   protected puedePreparar(): boolean {
     return this.despacho()?.estado === 'REGISTRADO';
   }
 
+  /**
+   * Comprueba si el despacho está en preparación y puede marcarse como enviado.
+   * @returns `true` cuando el estado actual es `EN_PREPARACION`.
+   */
   protected puedeEnviar(): boolean {
     return this.despacho()?.estado === 'EN_PREPARACION';
   }
 
+  /**
+   * Avanza el estado del despacho; exige número de guía al marcarlo como enviado.
+   * @param nuevo Estado siguiente permitido para el despacho.
+   * @returns No devuelve un valor.
+   * @see US-12
+   */
   protected avanzar(nuevo: 'EN_PREPARACION' | 'ENVIADO'): void {
     const p = this.despacho();
     if (!p || this.avanzando()) return;

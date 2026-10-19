@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 
-/** UI-19 y UI-20: catálogo del vendedor, montado en /vendedor/productos. */
+/**
+ * UI-19 y UI-20: catálogo del vendedor, montado en /vendedor/productos.
+ * @see UI-19
+ * @see UI-20
+ */
 export const PRODUCTOS_ROUTES: Routes = [
   {
     path: '',
@@ -19,7 +23,11 @@ export const PRODUCTOS_ROUTES: Routes = [
   },
 ];
 
-/** UI-21 y UI-22: inventario y alertas, montado en /vendedor/inventario. */
+/**
+ * UI-21 y UI-22: inventario y alertas, montado en /vendedor/inventario.
+ * @see UI-21
+ * @see UI-22
+ */
 export const INVENTARIO_ROUTES: Routes = [
   {
     path: '',
@@ -33,7 +41,11 @@ export const INVENTARIO_ROUTES: Routes = [
   },
 ];
 
-/** Pedidos con productos del vendedor, montado en /vendedor/pedidos. */
+/**
+ * Pedidos con productos del vendedor, montado en /vendedor/pedidos.
+ * @see UI-23
+ * @see US-12
+ */
 export const PEDIDOS_VENDEDOR_ROUTES: Routes = [
   {
     path: '',

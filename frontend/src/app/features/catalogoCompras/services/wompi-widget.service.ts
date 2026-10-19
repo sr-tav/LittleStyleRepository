@@ -38,7 +38,14 @@ export type WidgetCheckoutConstructor = new (config: ConfiguracionWidget) => {
 
 type VentanaConWompi = Window & { WidgetCheckout?: WidgetCheckoutConstructor };
 
-/** Carga bajo demanda el Widget de Wompi y lo abre con los datos firmados por el backend. */
+/**
+ * Carga bajo demanda el Widget de Wompi y lo abre con los datos firmados por el backend.
+ * @see US-11
+ * @see UI-13
+ * @see UI-14
+ * @see RNF-18
+ * @see RNF-28
+ */
 @Injectable({ providedIn: 'root' })
 export class WompiWidgetService {
   private readonly document = inject(DOCUMENT);
@@ -48,6 +55,9 @@ export class WompiWidgetService {
    * Abre el widget y emite una sola vez cómo terminó: el id de la transacción si el cliente pagó, o
    * `cerrado` si cerró la ventana sin pagar. Wompi no invoca el callback al cerrar el modal, por eso
    * se observa el atributo `hidden` que agrega a su modal.
+   * @param inicio Datos de pago proporcionados por el backend.
+   * @param alAbrir Acción opcional que se ejecuta después de abrir el widget.
+   * @returns Flujo que emite una vez la transacción creada o el cierre del widget.
    */
   abrir(inicio: InicioPago, alAbrir?: () => void): Observable<ResultadoWidgetWompi> {
     return from(this.cargar()).pipe(
@@ -86,6 +96,11 @@ export class WompiWidgetService {
     );
   }
 
+  /**
+   * Observa el modal del widget y detecta cuándo Wompi lo marca como cerrado.
+   * @param alCerrar Acción que se ejecuta al detectar el cierre.
+   * @returns Observador del DOM o `null` si `MutationObserver` no está disponible.
+   */
   private observarCierre(alCerrar: () => void): MutationObserver | null {
     if (typeof MutationObserver === 'undefined') return null;
     const observador = new MutationObserver((cambios) => {
@@ -98,6 +113,10 @@ export class WompiWidgetService {
     return observador;
   }
 
+  /**
+   * Carga el script del widget una sola vez y reutiliza su constructor cuando ya está disponible.
+   * @returns Promesa con el constructor del widget.
+   */
   private cargar(): Promise<WidgetCheckoutConstructor> {
     const ventana = this.document.defaultView as VentanaConWompi | null;
     if (ventana?.WidgetCheckout) return Promise.resolve(ventana.WidgetCheckout);

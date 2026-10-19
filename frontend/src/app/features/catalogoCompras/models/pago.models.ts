@@ -1,5 +1,6 @@
 import { CrearPedidoRequest } from './checkout.models';
 
+/** Datos requeridos para iniciar el widget de pago. */
 export interface InicioPago {
   pedidoId: number | null;
   referencia: string;
@@ -13,6 +14,7 @@ export interface InicioPago {
   telefonoCliente: string | null;
 }
 
+/** Estados de transacción reconocidos por la interfaz. */
 export type EstadoTransaccionPago =
   | 'CREADA'
   | 'PENDIENTE'
@@ -22,11 +24,13 @@ export type EstadoTransaccionPago =
   | 'ERROR'
   | 'REEMBOLSO_PENDIENTE';
 
+/** Códigos de motivo de reembolso manejados por la interfaz. */
 export type MotivoReembolso =
   | 'STOCK_INSUFICIENTE'
   | 'PEDIDO_NO_PAGABLE'
   | 'PAGO_ANULADO';
 
+/** Prenda cuya disponibilidad de stock afecta el resultado del pago. */
 export interface PrendaAgotadaPago {
   prendaId: number;
   nombre: string;
@@ -35,6 +39,7 @@ export interface PrendaAgotadaPago {
   stockDisponible: number;
 }
 
+/** Línea disponible para iniciar una recompra. */
 export interface LineaRecompra {
   prendaId: number;
   nombre: string;
@@ -42,6 +47,7 @@ export interface LineaRecompra {
   cantidad: number;
 }
 
+/** Resultado del pago y estado asociado del pedido. */
 export interface ResultadoPago {
   pedidoId: number | null;
   referencia: string;
@@ -54,4 +60,5 @@ export interface ResultadoPago {
   lineasDisponibles: LineaRecompra[];
 }
 
+/** Solicitud de pago basada en los datos de creación del pedido. */
 export type SolicitudPago = CrearPedidoRequest;

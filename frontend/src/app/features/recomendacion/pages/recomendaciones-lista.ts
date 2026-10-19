@@ -12,6 +12,12 @@ import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatu
 import { AccesoRapidoPrenda } from '../../catalogoCompras/components/acceso-rapido-prenda';
 import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
 
+/**
+ * Presenta los productos recomendados para el perfil infantil seleccionado.
+ * @see RNF-11
+ * @see US-07
+ * @see UI-6
+ */
 @Component({
   selector: 'app-recomendaciones-lista',
   imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura, AccesoRapidoPrenda],
@@ -88,10 +94,19 @@ export class RecomendacionesLista implements OnInit {
   protected readonly perfilId = signal<number | null>(null);
   protected readonly esMedicionDesactualizada = signal(false);
 
+  /**
+   * Formatea el precio disponible para una recomendación.
+   * @param r Recomendación cuyo precio se presenta.
+   * @returns Precio localizado o `null` si no está informado.
+   */
   protected precioDe(r: RecomendacionItem): string | null {
     return r.precio === null ? null : formatearPrecio(r.precio);
   }
 
+  /**
+   * Resuelve el perfil desde la ruta o el perfil activo y carga sus recomendaciones.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     const qp = Number(this.route.snapshot.queryParamMap.get('perfilId'));
     const id = Number.isFinite(qp) && qp > 0 ? qp : this.activo.perfil()?.id ?? null;
@@ -112,6 +127,11 @@ export class RecomendacionesLista implements OnInit {
     this.cargar(id);
   }
 
+  /**
+   * Consulta recomendaciones y señala si el servidor rechaza la medición desactualizada.
+   * @param id Identificador del perfil infantil.
+   * @returns No devuelve un valor.
+   */
   private cargar(id: number): void {
     this.cargando.set(true);
     this.error.set(null);

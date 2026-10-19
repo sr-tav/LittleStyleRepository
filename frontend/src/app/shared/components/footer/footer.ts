@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-/** Pie del e-commerce: contacto, accesos y aviso legal. */
+/**
+ * Pie del e-commerce: contacto, accesos y aviso legal.
+ */
 @Component({
   selector: 'app-footer',
   imports: [RouterLink],

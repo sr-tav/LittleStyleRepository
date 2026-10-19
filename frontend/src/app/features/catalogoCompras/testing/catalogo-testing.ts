@@ -1,5 +1,10 @@
 import { AlertaInventario, InventarioItem, Prenda } from '../models/prenda.models';
 
+/**
+ * Construye una prenda de prueba combinando valores base con cambios opcionales.
+ * @param cambios Propiedades que sustituyen los valores base.
+ * @returns Prenda de prueba completa.
+ */
 export function crearPrenda(cambios: Partial<Prenda> = {}): Prenda {
   return {
     id: 7,
@@ -34,6 +39,11 @@ export function crearPrenda(cambios: Partial<Prenda> = {}): Prenda {
   };
 }
 
+/**
+ * Construye una línea de inventario de prueba.
+ * @param cambios Propiedades que sustituyen los valores base.
+ * @returns Elemento de inventario de prueba.
+ */
 export function crearItemInventario(cambios: Partial<InventarioItem> = {}): InventarioItem {
   return {
     prendaId: 7,
@@ -51,6 +61,11 @@ export function crearItemInventario(cambios: Partial<InventarioItem> = {}): Inve
   };
 }
 
+/**
+ * Construye una alerta de inventario de prueba.
+ * @param cambios Propiedades que sustituyen los valores base.
+ * @returns Alerta de inventario de prueba.
+ */
 export function crearAlerta(cambios: Partial<AlertaInventario> = {}): AlertaInventario {
   return {
     id: 1,

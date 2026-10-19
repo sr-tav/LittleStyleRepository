@@ -7,7 +7,11 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
 import { ETIQUETAS_ESTADO, ORDEN_ESTADOS, PedidoDetalle } from '../models/pedido.models';
 import { PedidosService } from '../services/pedidos.service';
 
-/** US-12 / UI-16: detalle del pedido con línea de tiempo y guía de envío. */
+/**
+ * US-12 / UI-16: detalle del pedido con línea de tiempo y guía de envío.
+ * @see US-12
+ * @see UI-16
+ */
 @Component({
   selector: 'app-pedido-detalle',
   imports: [Navbar, RouterLink],
@@ -36,22 +40,38 @@ export class PedidoDetallePage implements OnInit {
           minute: '2-digit',
         });
 
+  /**
+   * Determina si un estado ya se alcanzó en la línea de tiempo; los pedidos cancelados no muestran pasos.
+   * @param paso Estado de la línea de tiempo que se consulta.
+   * @returns `true` si el estado fue alcanzado por el pedido vigente.
+   */
   protected pasoAlcanzado(paso: PedidoDetalle['estado']): boolean {
     const p = this.pedido();
     if (!p || p.estado === 'CANCELADO') return false;
     return ORDEN_ESTADOS.indexOf(paso) <= ORDEN_ESTADOS.indexOf(p.estado);
   }
 
+  /**
+   * Carga el detalle identificado en los parámetros de ruta.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.cargar();
   }
 
-  /** Recarga el detalle para ver el estado actual ("tiempo real" manual). */
+  /**
+   * Recarga el detalle para ver el estado actual ("tiempo real" manual).
+   * @returns No devuelve un valor.
+   */
   protected recargar(): void {
     this.cargar();
   }
 
-  /** Retracto del cliente antes del pago. */
+  /**
+   * Solicita el retracto solo si el pedido está pendiente de pago y tras confirmar la acción.
+   * @returns No devuelve un valor.
+   * @see UI-16
+   */
   protected cancelar(): void {
     const p = this.pedido();
     if (!p || p.estado !== 'PENDIENTE_PAGO' || this.cancelando()) return;
@@ -69,6 +89,10 @@ export class PedidoDetallePage implements OnInit {
     });
   }
 
+  /**
+   * Consulta el pedido indicado por la ruta y actualiza la vista.
+   * @returns No devuelve un valor.
+   */
   private cargar(): void {
     const id = Number(this.ruta.snapshot.paramMap.get('id'));
     this.cargando.set(true);

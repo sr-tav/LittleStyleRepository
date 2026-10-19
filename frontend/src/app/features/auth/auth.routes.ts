@@ -1,5 +1,11 @@
 import { Routes } from '@angular/router';
 
+/**
+ * Rutas de autenticación con carga diferida de las páginas de acceso y registro.
+ * @see US-05
+ * @see UI-1
+ * @see UI-2
+ */
 export const AUTH_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   {

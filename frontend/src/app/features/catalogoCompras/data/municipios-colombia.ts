@@ -1,4 +1,5 @@
 // Datos derivados del cat?logo DANE de RafaelRamosR/dane-codigos-municipios (MIT); ver LICENSE-municipios-colombia.txt.
+/** Registro de un municipio y sus códigos DANE de departamento y municipio. */
 export interface MunicipioColombia {
   readonly departamento: string;
   readonly municipio: string;
@@ -6,6 +7,7 @@ export interface MunicipioColombia {
   readonly municipioDane: string;
 }
 
+/** Catálogo de municipios colombianos con sus códigos DANE. */
 export const MUNICIPIOS_COLOMBIA: readonly MunicipioColombia[] = [
   {
     "departamento": "Amazonas",
@@ -6747,10 +6749,18 @@ export const MUNICIPIOS_COLOMBIA: readonly MunicipioColombia[] = [
   }
 ];
 
+/** Nombres únicos de departamentos, ordenados según la configuración regional colombiana. */
 export const DEPARTAMENTOS_COLOMBIA: readonly string[] = [...new Set(
   MUNICIPIOS_COLOMBIA.map(({ departamento }) => departamento),
 )].sort((a, b) => a.localeCompare(b, 'es-CO'));
 
+/**
+ * Obtiene los nombres de los municipios pertenecientes al departamento indicado.
+ * @param departamento Nombre exacto del departamento.
+ * @returns Lista de municipios asociados, o una lista vacía si no hay coincidencias.
+ * @see US-10
+ * @see UI-11
+ */
 export function municipiosDe(departamento: string): readonly string[] {
   return MUNICIPIOS_COLOMBIA
     .filter((registro) => registro.departamento === departamento)

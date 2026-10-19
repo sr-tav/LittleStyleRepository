@@ -1,6 +1,10 @@
 import { Component, input } from '@angular/core';
 import { RecomendacionItem} from '../models/recomendacion.models';
 
+/**
+ * Presenta la talla sugerida, las advertencias de seguridad y la disponibilidad de la talla.
+ * @see RNF-11
+ */
 @Component({
   selector: 'app-talla-sugerida',
   standalone: true,

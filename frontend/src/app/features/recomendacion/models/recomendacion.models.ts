@@ -1,4 +1,10 @@
+/** Resultado de la evaluación de seguridad de una recomendación. */
 export type NivelRiesgo = 'APTA' | 'ADVERTENCIA' | 'EXCLUIDA';
+
+/**
+ * Prenda, talla, compatibilidad, afinidad y advertencias devueltas por la recomendación.
+ * @see RNF-11
+ */
 export interface RecomendacionItem {
   prendaId: number; nombre: string; precio: number | null; tallaSugerida: string;
   /** Compatibilidad 0-100: solo talla y seguridad (lo que mide RNF-11). */

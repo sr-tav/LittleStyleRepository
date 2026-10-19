@@ -1,3 +1,4 @@
+/** Resumen de producto presentado en los resultados del catálogo cliente. */
 export interface VitrinaItem {
   id: number;
   nombre: string;
@@ -10,6 +11,7 @@ export interface VitrinaItem {
   tallasDisponibles: string[];
 }
 
+/** Talla con medidas declaradas y existencia disponible en la vitrina. */
 export interface VitrinaTalla {
   talla: string;
   estaturaMinCm: number;
@@ -22,6 +24,7 @@ export interface VitrinaTalla {
   disponible: boolean;
 }
 
+/** Ficha pública de un producto con composición, imágenes y tallas. */
 export interface VitrinaDetalle {
   id: number;
   nombre: string;
@@ -40,6 +43,7 @@ export interface VitrinaDetalle {
   fechaActualizacion: string;
 }
 
+/** Página de resultados con contenido y metadatos de paginación. */
 export interface Pagina<T> {
   contenido: T[];
   pagina: number;
@@ -48,6 +52,11 @@ export interface Pagina<T> {
   totalPaginas: number;
 }
 
+/** Filtros opcionales que se envían al explorar el catálogo cliente.
+ * @see US-09
+ * @see US-07
+ * @see UI-8
+ */
 export interface FiltrosVitrina {
   q?: string;
   categoria?: string;

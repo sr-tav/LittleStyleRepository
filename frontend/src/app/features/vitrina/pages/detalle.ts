@@ -21,7 +21,11 @@ import { RecomendacionService } from '../../recomendacion/services/recomendacion
 import { VitrinaDetalle, VitrinaTalla } from '../models/vitrina.models';
 import { VitrinaService } from '../services/vitrina.service';
 
-/** US-09: ficha del producto con ficha técnica textil y tabla de medidas. */
+/**
+ * US-09: ficha del producto con ficha técnica textil y tabla de medidas.
+ * @see US-09
+ * @see RNF-11
+ */
 @Component({
   selector: 'app-detalle-producto',
   imports: [Navbar, RouterLink, PrendaMiniatura, TallaSugerida],
@@ -57,16 +61,29 @@ export class DetalleProducto implements OnInit {
     return !Number.isNaN(millis) && Date.now() - millis < 30 * 24 * 60 * 60 * 1000;
   });
 
+  /**
+   * Muestra la fotografía anterior en orden circular.
+   * @returns No devuelve un valor.
+   */
   protected anteriorFoto(): void {
     const total = this.prenda()?.imagenes.length ?? 0;
     if (total > 1) this.fotoActual.update((i) => (i - 1 + total) % total);
   }
 
+  /**
+   * Muestra la fotografía siguiente en orden circular.
+   * @returns No devuelve un valor.
+   */
   protected siguienteFoto(): void {
     const total = this.prenda()?.imagenes.length ?? 0;
     if (total > 1) this.fotoActual.update((i) => (i + 1) % total);
   }
 
+  /**
+   * Alterna el modo de pantalla completa del visor cuando el navegador lo permite.
+   * @param visor Elemento que se amplía.
+   * @returns No devuelve un valor.
+   */
   protected ampliar(visor: HTMLElement): void {
     if (document.fullscreenElement) {
       void document.exitFullscreen().catch(() => undefined);
@@ -75,6 +92,10 @@ export class DetalleProducto implements OnInit {
     }
   }
 
+  /**
+   * Agrega la talla y cantidad seleccionadas si no exceden el stock disponible.
+   * @returns No devuelve un valor.
+   */
   protected agregarAlCarrito(): void {
     const prenda = this.prenda();
     const talla = this.tallaSeleccionada();
@@ -124,6 +145,11 @@ export class DetalleProducto implements OnInit {
       : `${t.edadMinMeses ?? '…'} – ${t.edadMaxMeses ?? '…'} m`;  protected readonly estampadoDe = (e: string | null) =>
     e === null ? '—' : (ETIQUETAS_ESTAMPADOS[e as keyof typeof ETIQUETAS_ESTAMPADOS] ?? e);
 
+  /**
+   * Carga la ficha del producto y, si se dispone de perfil, su sugerencia de talla.
+   * @returns No devuelve un valor.
+   * @see US-09
+   */
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     const perfilId =
@@ -143,6 +169,11 @@ export class DetalleProducto implements OnInit {
     });
   }
 
+  /**
+   * Actualiza la talla seleccionada y reinicia cantidad y mensajes del carrito.
+   * @param event Evento del selector de tallas.
+   * @returns No devuelve un valor.
+   */
   protected seleccionarTalla(event: Event): void {
     if (event.target instanceof HTMLSelectElement) {
       this.tallaSeleccionada.set(event.target.value);
@@ -152,12 +183,24 @@ export class DetalleProducto implements OnInit {
     }
   }
 
+  /**
+   * Ajusta la cantidad al intervalo entre una unidad y el stock de la talla seleccionada.
+   * @param delta Cambio de cantidad solicitado.
+   * @returns No devuelve un valor.
+   */
   protected cambiarCantidad(delta: number): void {
     this.cantidadSeleccionada.update((cantidad) =>
       Math.min(this.stockTallaSeleccionada(), Math.max(1, cantidad + delta)),
     );
   }
 
+  /**
+   * Consulta la sugerencia y representa como excluida la respuesta con código de alergia conocido.
+   * @param prendaId Identificador del producto.
+   * @param perfilId Identificador del perfil infantil.
+   * @returns No devuelve un valor.
+   * @see RNF-11
+   */
   private cargarSugerida(prendaId: number, perfilId: number): void {
     this.recomendaciones.porPrenda(prendaId, perfilId).subscribe({
       next: (r) => this.sugerida.set(r),

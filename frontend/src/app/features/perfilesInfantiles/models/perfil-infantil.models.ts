@@ -1,3 +1,4 @@
+/** Tipos de alergia textil registrados en las preferencias del perfil infantil. */
 export type AlergiaTextil =
   | 'FIBRAS_SINTETICAS'
   | 'LANA'
@@ -9,6 +10,7 @@ export type AlergiaTextil =
   | 'CUERO'
   | 'FORMALDEHIDO'
   | 'OTRA';
+/** Colores que pueden seleccionarse como preferidos. */
 export type ColorPreferido =
   | 'ROSA'
   | 'LILA'
@@ -24,6 +26,7 @@ export type ColorPreferido =
   | 'GRIS'
   | 'BEIGE'
   | 'CAFE';
+/** Estampados que pueden seleccionarse como preferidos. */
 export type Estampado =
   | 'LISO'
   | 'FLORES'
@@ -35,9 +38,12 @@ export type Estampado =
   | 'DIBUJOS_ANIMADOS'
   | 'GEOMETRICO'
   | 'MARINERO';
+/** Opciones de contextura utilizadas en el perfil infantil. */
 export type Contextura = 'DELGADA' | 'MEDIA' | 'ROBUSTA';
+/** Opciones de ajuste de la prenda utilizadas en las recomendaciones. */
 export type Holgura = 'AJUSTADA' | 'REGULAR' | 'HOLGADA';
 
+/** Medición corporal registrada para un perfil infantil. */
 export interface Medicion {
   id: number;
   fechaMedicion: string;
@@ -45,6 +51,7 @@ export interface Medicion {
   pesoKg: number;
 }
 
+/** Datos personales, preferencias y mediciones asociados a un perfil infantil. */
 export interface PerfilInfantil {
   id: number;
   nombre: string;
@@ -67,6 +74,7 @@ export interface PerfilInfantil {
   camposPendientes: string[];
 }
 
+/** Datos editables enviados al crear o actualizar un perfil infantil. */
 export interface PerfilRequest {
   nombre: string;
   fechaNacimiento: string;
@@ -81,12 +89,14 @@ export interface PerfilRequest {
   otroEstampado: string | null;
 }
 
+/** Valores de estatura y peso asociados a una fecha de medición. */
 export interface MedicionRequest {
   fechaMedicion: string;
   estaturaCm: number;
   pesoKg: number;
 }
 
+/** Solicitud que crea un perfil junto con su medición inicial. */
 export interface CrearPerfilConMedicionRequest {
   perfil: PerfilRequest;
   medicionInicial: MedicionRequest;

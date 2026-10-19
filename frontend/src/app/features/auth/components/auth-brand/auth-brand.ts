@@ -1,6 +1,10 @@
 import { Component } from '@angular/core';
 
-/** Panel lateral con la marca LittleStyle, compartido por las vistas de inicio de sesión y registro. */
+/**
+ * Panel lateral con la marca LittleStyle, compartido por las vistas de inicio de sesión y registro.
+ * @see UI-1
+ * @see UI-2
+ */
 @Component({
   selector: 'app-auth-brand',
   template: `

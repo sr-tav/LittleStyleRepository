@@ -14,7 +14,10 @@ import {
 import { Prenda } from '../models/prenda.models';
 import { PrendasService } from '../services/prendas.service';
 
-/** UI-19: Mis productos (catálogo del vendedor). */
+/**
+ * UI-19: Mis productos (catálogo del vendedor).
+ * @see UI-19
+ */
 @Component({
   selector: 'app-productos-lista',
   imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura],
@@ -48,6 +51,10 @@ export class ProductosLista implements OnInit, OnDestroy {
   protected readonly precio = (p: Prenda) => formatearPrecio(p.precio);
   protected readonly imagen = (p: Prenda) => p.imagenes[0]?.url ?? null;
 
+  /**
+   * Carga la lista inicial y configura la búsqueda que sustituye peticiones anteriores.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.cargar();
     // Búsqueda en el servidor: cada texto cancela la petición anterior
@@ -63,16 +70,30 @@ export class ProductosLista implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Completa el flujo usado para cancelar la búsqueda al destruir la vista.
+   * @returns No devuelve un valor.
+   */
   ngOnDestroy(): void {
     this.destruir$.next();
     this.destruir$.complete();
   }
 
+  /**
+   * Actualiza el texto de búsqueda y solicita el filtrado en el servidor.
+   * @param valor Texto introducido por el vendedor.
+   * @returns No devuelve un valor.
+   */
   protected alBuscar(valor: string): void {
     this.busqueda.set(valor);
     this.busquedaServidor$.next(valor);
   }
 
+  /**
+   * Solicita todas las prendas y actualiza la lista o el estado de error.
+   * @returns No devuelve un valor.
+   * @see UI-19
+   */
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);
@@ -88,7 +109,12 @@ export class ProductosLista implements OnInit, OnDestroy {
     });
   }
 
-  /** Publica u oculta la prenda del catálogo de clientes y del motor de recomendaciones. */
+  /**
+   * Publica u oculta la prenda del catálogo de clientes y del motor de recomendaciones.
+   * @param prenda Producto cuyo estado de publicación se alterna.
+   * @returns No devuelve un valor.
+   * @see UI-19
+   */
   protected alternarEstado(prenda: Prenda): void {
     if (this.cambiandoEstado() !== null) return;
     this.cambiandoEstado.set(prenda.id);
@@ -107,6 +133,11 @@ export class ProductosLista implements OnInit, OnDestroy {
   }
 }
 
+/**
+ * Normaliza texto para una búsqueda que no distinga acentos ni mayúsculas.
+ * @param valor Texto que se normaliza.
+ * @returns Texto recortado, sin diacríticos y en minúsculas.
+ */
 function normalizar(valor: string): string {
   return valor
     .trim()

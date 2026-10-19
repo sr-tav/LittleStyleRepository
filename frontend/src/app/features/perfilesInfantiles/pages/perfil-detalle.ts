@@ -40,6 +40,12 @@ const HOY = `${FECHA_LOCAL.getFullYear()}-${String(FECHA_LOCAL.getMonth() + 1).p
 const AYER_LOCAL = new Date(FECHA_LOCAL.getFullYear(), FECHA_LOCAL.getMonth(), FECHA_LOCAL.getDate() - 1);
 const MAX_FECHA_NACIMIENTO = `${AYER_LOCAL.getFullYear()}-${String(AYER_LOCAL.getMonth() + 1).padStart(2, '0')}-${String(AYER_LOCAL.getDate()).padStart(2, '0')}`;
 
+/**
+ * Calcula los años cumplidos entre una fecha de nacimiento y una fecha de referencia.
+ * @param fechaNacimiento Fecha de nacimiento en formato ISO de fecha.
+ * @param fechaReferencia Fecha de comparación en formato ISO de fecha.
+ * @returns Años cumplidos, descontando el año si aún no se alcanzó el aniversario.
+ */
 function edadEnAnios(fechaNacimiento: string, fechaReferencia: string): number {
   const nacimiento = new Date(`${fechaNacimiento}T00:00:00`);
   const referencia = new Date(`${fechaReferencia}T00:00:00`);
@@ -53,6 +59,11 @@ function edadEnAnios(fechaNacimiento: string, fechaReferencia: string): number {
   return anios;
 }
 
+/**
+ * Permite crear, consultar y actualizar perfiles infantiles y sus mediciones corporales.
+ * @see US-06
+ * @see UI-5
+ */
 @Component({
   selector: 'app-perfil-detalle',
   imports: [Navbar, ReactiveFormsModule, RouterLink],
@@ -96,6 +107,12 @@ export class PerfilDetalle implements OnInit {
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly errorMedicion = signal<string | null>(null);
 
+  /**
+   * Valida nombre, nacimiento, preferencias y alergias; la fecha debe ser anterior a hoy y
+   * el perfil debe corresponder a una persona menor de 18 años.
+   * @see US-06
+   * @see UI-5
+   */
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(60), this.nombreNoVacio()]],
     fechaNacimiento: ['', [Validators.required, this.fechaNacimientoValida()]],
@@ -110,6 +127,12 @@ export class PerfilDetalle implements OnInit {
     otroEstampado: ['', [this.validarPreferenciaLibre()]],
   });
 
+  /**
+   * Valida mediciones dentro de los límites generales de 40–200 cm y 2–120 kg, además de
+   * la fecha y el rango biométrico aplicable a la edad del perfil.
+   * @see US-06
+   * @see RNF-16
+   */
   protected readonly medicionForm = this.fb.nonNullable.group({
     fechaMedicion: [HOY, [Validators.required, this.fechaMedicionValida()]],
     estaturaCm: [
@@ -127,6 +150,10 @@ export class PerfilDetalle implements OnInit {
     ],
   });
 
+  /**
+   * Configura la revalidación dependiente de fechas y carga el perfil y su historial de mediciones.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.form.controls.fechaNacimiento.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -186,6 +213,11 @@ export class PerfilDetalle implements OnInit {
     });
   }
 
+  /**
+   * Determina si se debe mostrar el error de un control del perfil.
+   * @param control Control que se evalúa.
+   * @returns `true` si es inválido y fue tocado o ya se intentó guardar.
+   */
   protected esInvalido(control: AbstractControl): boolean {
     return control.invalid && (control.touched || this.enviado());
   }
@@ -198,6 +230,10 @@ export class PerfilDetalle implements OnInit {
     return formatearEdadPerfil(perfil);
   }
 
+  /**
+   * Calcula la fecha mínima permitida para una medición nueva.
+   * @returns Fecha de nacimiento o la fecha de la última medición, la más reciente.
+   */
   protected fechaMinimaMedicion(): string {
     const nacimiento = this.form.controls.fechaNacimiento.value;
     if (this.medicionEditandoId() !== null) return nacimiento;
@@ -225,6 +261,11 @@ export class PerfilDetalle implements OnInit {
     return ETIQUETAS_ESTAMPADOS[estampado];
   }
 
+  /**
+   * Alterna un color preferido y limita el total junto con la opción libre a diez.
+   * @param color Color que se agrega o quita.
+   * @returns No devuelve un valor.
+   */
   protected alternarColor(color: ColorPreferido): void {
     const seleccionados = this.form.controls.coloresPreferidos.value;
     const nuevos = seleccionados.includes(color)
@@ -237,6 +278,11 @@ export class PerfilDetalle implements OnInit {
     this.form.controls.otroColor.updateValueAndValidity();
   }
 
+  /**
+   * Alterna un estampado preferido y limita el total junto con la opción libre a diez.
+   * @param estampado Estampado que se agrega o quita.
+   * @returns No devuelve un valor.
+   */
   protected alternarEstampado(estampado: Estampado): void {
     const seleccionados = this.form.controls.estampadosPreferidos.value;
     const nuevos = seleccionados.includes(estampado)
@@ -271,6 +317,12 @@ export class PerfilDetalle implements OnInit {
     return !this.form.controls.otroEstampado.value.trim() && this.mostrarLimiteEstampados();
   }
 
+  /**
+   * Actualiza la lista de alergias y la descripción cuando se selecciona «Otra».
+   * @param alergia Alergia cuya selección cambia.
+   * @param event Evento que proporciona el estado del control.
+   * @returns No devuelve un valor.
+   */
   protected alternarAlergia(alergia: AlergiaTextil, event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     const alergias = this.form.controls.alergias.value.filter((actual) => actual !== alergia);
@@ -281,6 +333,11 @@ export class PerfilDetalle implements OnInit {
     this.form.controls.otraAlergia.updateValueAndValidity();
   }
 
+  /**
+   * Al activar «sin alergias», limpia las alergias declaradas y su descripción libre.
+   * @param event Evento que proporciona el estado del control.
+   * @returns No devuelve un valor.
+   */
   protected cambiarSinAlergias(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     if (checked) {
@@ -291,6 +348,12 @@ export class PerfilDetalle implements OnInit {
     this.form.controls.otraAlergia.updateValueAndValidity();
   }
 
+  /**
+   * Valida y guarda el perfil; al crear uno nuevo también exige la medición inicial.
+   * @returns No devuelve un valor.
+   * @see US-06
+   * @see UI-5
+   */
   protected guardarPerfil(): void {
     if (this.guardando()) return;
     this.limpiarErroresServidor(this.form);
@@ -341,6 +404,10 @@ export class PerfilDetalle implements OnInit {
     });
   }
 
+  /**
+   * Crea o corrige una medición y recarga el perfil junto con su historial.
+   * @returns No devuelve un valor.
+   */
   protected guardarMedicion(): void {
     if (this.guardandoMedicion()) return;
     this.limpiarErroresServidor(this.medicionForm);
@@ -382,6 +449,10 @@ export class PerfilDetalle implements OnInit {
       });
   }
 
+  /**
+   * Prepara el formulario para una medición nueva con la fecha actual.
+   * @returns No devuelve un valor.
+   */
   protected iniciarNuevaMedicion(): void {
       this.errorMedicion.set(null);
       this.medicionForm.reset({ fechaMedicion: HOY, estaturaCm: 0, pesoKg: 0 });
@@ -389,12 +460,21 @@ export class PerfilDetalle implements OnInit {
       this.agregandoMedicion.set(true);
   }
 
+  /**
+   * Restablece el formulario y cancela la operación de medición en curso.
+   * @returns No devuelve un valor.
+   */
   protected cancelarNuevaMedicion(): void {
       this.restablecerFormularioMedicion();
       this.errorMedicion.set(null);
       this.agregandoMedicion.set(false);
   }
 
+  /**
+   * Carga una medición existente para corregirla.
+   * @param medicion Medición que se edita.
+   * @returns No devuelve un valor.
+   */
   protected editarMedicion(medicion: Medicion): void {
     this.medicionEditandoId.set(medicion.id);
     this.medicionForm.reset({
@@ -411,6 +491,10 @@ export class PerfilDetalle implements OnInit {
     this.medicionEditandoId.set(null);
   }
 
+  /**
+   * Elimina el perfil actual y vuelve a la lista al completarse la operación.
+   * @returns No devuelve un valor.
+   */
   protected eliminarPerfil(): void {
     const perfil = this.perfil();
     if (!perfil) return;
@@ -426,6 +510,11 @@ export class PerfilDetalle implements OnInit {
     });
   }
 
+  /**
+   * Traduce el primer error de validación del control a un mensaje para la interfaz.
+   * @param control Control cuyos errores se presentan.
+   * @returns Mensaje de validación o `null` si no hay errores.
+   */
   protected mensaje(control: AbstractControl): string | null {
     const errors = control.errors;
     if (!errors) return null;
@@ -483,11 +572,20 @@ export class PerfilDetalle implements OnInit {
     return 'Revisa este campo.';
   }
 
+  /**
+   * Convierte un texto opcional vacío en `null` y recorta los espacios externos.
+   * @param valor Texto introducido en el formulario.
+   * @returns Texto recortado o `null` si queda vacío.
+   */
   private valorOpcional(valor: string): string | null {
     const limpio = valor.trim();
     return limpio ? limpio : null;
   }
 
+  /**
+   * Cuenta colores predefinidos y evita duplicar una preferencia libre coincidente.
+   * @returns Cantidad efectiva de colores, incluida la preferencia libre si es distinta.
+   */
   private cantidadColores(): number {
     const colores = new Set(this.form.controls.coloresPreferidos.value);
     const otro = this.form.controls.otroColor.value.trim();
@@ -503,6 +601,10 @@ export class PerfilDetalle implements OnInit {
     return colores.size;
   }
 
+  /**
+   * Cuenta estampados predefinidos y evita duplicar una preferencia libre coincidente.
+   * @returns Cantidad efectiva de estampados, incluida la preferencia libre si es distinta.
+   */
   private cantidadEstampados(): number {
     const estampados = new Set(this.form.controls.estampadosPreferidos.value);
     const otro = this.form.controls.otroEstampado.value.trim();
@@ -518,22 +620,46 @@ export class PerfilDetalle implements OnInit {
     return estampados.size;
   }
 
+  /**
+   * Normaliza una preferencia para compararla con las opciones predefinidas.
+   * @param valor Texto de preferencia.
+   * @returns Clave en mayúsculas sin diacríticos, espacios ni guiones bajos.
+   */
   private clavePreferencia(valor: string): string {
     return valor.normalize('NFD').replace(/\p{M}/gu, '').replace(/[_ ]/g, '').toUpperCase();
   }
 
+  /**
+   * Ordena las mediciones de la más reciente a la más antigua.
+   * @param mediciones Mediciones que se ordenan.
+   * @returns Nueva lista ordenada por fecha descendente.
+   */
   private ordenarMediciones(mediciones: Medicion[]): Medicion[] {
     return [...mediciones].sort((a, b) => b.fechaMedicion.localeCompare(a.fechaMedicion));
   }
 
+  /**
+   * Obtiene los valores actuales para enviarlos como solicitud de medición.
+   * @returns Fecha, estatura y peso del formulario.
+   */
   private requestMedicion(): MedicionRequest {
     return this.medicionForm.getRawValue();
   }
 
+  /**
+   * Vuelve a la lista y comunica si el perfil se creó o actualizó.
+   * @param resultado Resultado de la operación de perfil.
+   * @returns No devuelve un valor.
+   */
   private volverAlListado(resultado: 'creado' | 'actualizado'): void {
     void this.router.navigate(['/cliente/hijos'], { queryParams: { resultado } });
   }
 
+  /**
+   * Retira errores de servidor de los controles sin borrar otros errores de validación.
+   * @param form Formulario cuyos controles se limpian.
+   * @returns No devuelve un valor.
+   */
   private limpiarErroresServidor(form: FormGroup): void {
     for (const control of Object.values(form.controls)) {
       if (!control.errors?.['servidor']) continue;
@@ -544,10 +670,19 @@ export class PerfilDetalle implements OnInit {
     }
   }
 
+  /**
+   * Crea un validador que rechaza nombres vacíos o compuestos solo por espacios.
+   * @returns Validador de nombre con el error `nombreVacio`.
+   */
   private nombreNoVacio(): ValidatorFn {
     return (control) => (String(control.value ?? '').trim() ? null : { nombreVacio: true });
   }
 
+  /**
+   * Crea un validador que rechaza fechas futuras, el día actual y edades de 18 años o más.
+   * @returns Validador de fecha de nacimiento.
+   * @see US-06
+   */
   private fechaNacimientoValida(): ValidatorFn {
     return (control) => {
       const fecha = String(control.value ?? '');
@@ -558,6 +693,10 @@ export class PerfilDetalle implements OnInit {
     };
   }
 
+  /**
+   * Exige una lista coherente con «sin alergias» y limita la selección a diez.
+   * @returns Validador con errores `maxAlergias` o `rangoAlergias`.
+   */
   private validarAlergias(): ValidatorFn {
     return (control) => {
       const padre = control.parent;
@@ -571,6 +710,10 @@ export class PerfilDetalle implements OnInit {
     };
   }
 
+  /**
+   * Exige una descripción de hasta 60 caracteres cuando se selecciona «Otra».
+   * @returns Validador del campo de alergia libre.
+   */
   private validarOtraAlergia(): ValidatorFn {
     return (control) => {
       const alergias = control.parent?.get('alergias')?.value as AlergiaTextil[] | undefined;
@@ -581,6 +724,10 @@ export class PerfilDetalle implements OnInit {
     };
   }
 
+  /**
+   * Valida una preferencia libre de 2 a 30 letras y espacios.
+   * @returns Validador con error `otroPreferenciaFormato` si no cumple la regla.
+   */
   private validarPreferenciaLibre(): ValidatorFn {
     return (control) => {
       const valor = String(control.value ?? '').trim();
@@ -591,6 +738,10 @@ export class PerfilDetalle implements OnInit {
     };
   }
 
+  /**
+   * Rechaza fechas futuras, anteriores al nacimiento o anteriores a la última medición nueva.
+   * @returns Validador de fecha de medición.
+   */
   private fechaMedicionValida(): ValidatorFn {
     return (control) => {
       const fecha = String(control.value ?? '');
@@ -606,6 +757,14 @@ export class PerfilDetalle implements OnInit {
     };
   }
 
+  /**
+   * Crea un validador con rangos de estatura o peso dependientes de la edad en la fecha medida.
+   * Al registrar una medición nueva, impide que la estatura sea menor que la última registrada.
+   * @param tipo Medida que se valida: estatura o peso.
+   * @returns Validador que produce `rangoEdad` o `estaturaMenorUltimaMedicion`.
+   * @see US-06
+   * @see RNF-16
+   */
   private rangoEdadMedida(tipo: 'estatura' | 'peso'): ValidatorFn {
     return (control) => {
       const nacimiento = this.form.controls.fechaNacimiento.value;

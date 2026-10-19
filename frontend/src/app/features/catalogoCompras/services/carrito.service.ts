@@ -10,6 +10,11 @@ import { AgregarItemCarritoRequest, Carrito } from '../models/carrito.models';
 
 const CARRITO_CACHE_PREFIX = 'ls_carrito_usuario_';
 
+/**
+ * Gestiona el carrito del cliente, su caché local y la sincronización con el servidor.
+ * @see US-10
+ * @see US-07
+ */
 @Injectable({ providedIn: 'root' })
 export class CarritoService {
   private readonly http = inject(HttpClient);
@@ -42,6 +47,9 @@ export class CarritoService {
     this.panelAbierto.update((abierto) => !abierto);
   }
 
+  /**
+   * Restablece el estado cuando cambia el usuario y carga el carrito de los clientes autenticados.
+   */
   constructor() {
     effect(() => {
       const usuario = this.auth.usuario();
@@ -64,6 +72,10 @@ export class CarritoService {
     });
   }
 
+  /**
+   * Consulta el carrito del usuario y actualiza el estado local.
+   * @returns Flujo con el carrito recibido del servidor.
+   */
   cargar(): Observable<Carrito> {
     const userId = this.requerirUsuarioId();
     this.cargando.set(true);
@@ -74,6 +86,13 @@ export class CarritoService {
     );
   }
 
+  /**
+   * Añade una prenda y asocia el perfil infantil activo, si existe.
+   * @param request Datos de la prenda, talla y cantidad que se desea agregar.
+   * @returns Flujo con el carrito actualizado.
+   * @see US-10
+   * @see US-07
+   */
   agregar(request: AgregarItemCarritoRequest): Observable<Carrito> {
     const userId = this.requerirUsuarioId();
     // El backend bloquea con 422 si la prenda choca con una alergia grave del
@@ -88,6 +107,12 @@ export class CarritoService {
     );
   }
 
+  /**
+   * Cambia la cantidad de una línea del carrito.
+   * @param itemId Identificador de la línea.
+   * @param cantidad Nueva cantidad solicitada.
+   * @returns Flujo con el carrito actualizado.
+   */
   cambiarCantidad(itemId: number, cantidad: number): Observable<Carrito> {
     const userId = this.requerirUsuarioId();
     return this.http.put<Carrito>(`${this.baseUrl}/items/${itemId}`, { cantidad }).pipe(
@@ -95,6 +120,11 @@ export class CarritoService {
     );
   }
 
+  /**
+   * Elimina una línea del carrito.
+   * @param itemId Identificador de la línea que se elimina.
+   * @returns Flujo con el carrito actualizado.
+   */
   quitar(itemId: number): Observable<Carrito> {
     const userId = this.requerirUsuarioId();
     return this.http.delete<Carrito>(`${this.baseUrl}/items/${itemId}`).pipe(
@@ -102,6 +132,10 @@ export class CarritoService {
     );
   }
 
+  /**
+   * Elimina todas las líneas del carrito.
+   * @returns Flujo con el carrito vacío actualizado.
+   */
   vaciar(): Observable<Carrito> {
     const userId = this.requerirUsuarioId();
     return this.http.delete<Carrito>(this.baseUrl).pipe(
@@ -109,6 +143,11 @@ export class CarritoService {
     );
   }
 
+  /**
+   * Restaura la caché del usuario solo cuando su contenido tiene estructura válida.
+   * @param userId Identificador del usuario propietario de la caché.
+   * @returns No devuelve un valor.
+   */
   private restaurarCache(userId: number): void {
     const cache = localStorage.getItem(this.clave(userId));
     if (cache === null) return;
@@ -126,12 +165,23 @@ export class CarritoService {
     }
   }
 
+  /**
+   * Ignora respuestas de sesiones anteriores y persiste las del usuario actual.
+   * @param carrito Estado recibido del servidor.
+   * @param userId Identificador del usuario para quien se solicitó la operación.
+   * @returns No devuelve un valor.
+   */
   private actualizar(carrito: Carrito, userId: number): void {
     if (this.auth.usuario()?.id !== userId || this.usuarioId() !== userId) return;
     this.estado.set(carrito);
     localStorage.setItem(this.clave(userId), JSON.stringify(carrito));
   }
 
+  /**
+   * Obtiene el identificador del usuario autenticado para operaciones del carrito.
+   * @returns Identificador de usuario vigente.
+   * @throws Error si no hay una sesión con usuario autenticado.
+   */
   private requerirUsuarioId(): number {
     const userId = this.auth.usuario()?.id;
     if (userId === undefined || userId === null) {
@@ -145,6 +195,11 @@ export class CarritoService {
   }
 }
 
+/**
+ * Comprueba que un valor tenga la estructura necesaria para restaurar un carrito.
+ * @param valor Valor leído de la caché local.
+ * @returns `true` si el valor cumple la forma de `Carrito`.
+ */
 function esCarrito(valor: unknown): valor is Carrito {
   if (typeof valor !== 'object' || valor === null) return false;
   const carrito = valor as Partial<Carrito>;

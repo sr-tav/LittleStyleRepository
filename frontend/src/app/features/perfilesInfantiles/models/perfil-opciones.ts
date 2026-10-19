@@ -1,5 +1,6 @@
 import { AlergiaTextil, ColorPreferido, Estampado } from './perfil-infantil.models';
 
+/** Etiquetas legibles para los tipos de alergia textil. */
 export const ETIQUETAS_ALERGIAS: Record<AlergiaTextil, string> = {
   FIBRAS_SINTETICAS: 'Fibras sintéticas',
   LANA: 'Lana',
@@ -13,11 +14,13 @@ export const ETIQUETAS_ALERGIAS: Record<AlergiaTextil, string> = {
   OTRA: 'Otra alergia',
 };
 
+/** Opciones de alergia que se presentan en los controles del perfil. */
 export const OPCIONES_ALERGIAS = Object.entries(ETIQUETAS_ALERGIAS).map(([valor, etiqueta]) => ({
   valor: valor as AlergiaTextil,
   etiqueta,
 }));
 
+/** Etiquetas legibles para los colores preferidos. */
 export const ETIQUETAS_COLORES: Record<ColorPreferido, string> = {
   ROSA: 'Rosa',
   LILA: 'Lila',
@@ -35,6 +38,7 @@ export const ETIQUETAS_COLORES: Record<ColorPreferido, string> = {
   CAFE: 'Café',
 };
 
+/** Opciones de color con su etiqueta y muestra visual. */
 export const OPCIONES_COLORES: { valor: ColorPreferido; etiqueta: string; muestra: string }[] = [
   { valor: 'ROSA', etiqueta: ETIQUETAS_COLORES.ROSA, muestra: '#e85d9e' },
   { valor: 'LILA', etiqueta: ETIQUETAS_COLORES.LILA, muestra: '#9b72cf' },
@@ -52,6 +56,7 @@ export const OPCIONES_COLORES: { valor: ColorPreferido; etiqueta: string; muestr
   { valor: 'CAFE', etiqueta: ETIQUETAS_COLORES.CAFE, muestra: '#80553b' },
 ];
 
+/** Etiquetas legibles para los estampados preferidos. */
 export const ETIQUETAS_ESTAMPADOS: Record<Estampado, string> = {
   LISO: 'Liso',
   FLORES: 'Flores',
@@ -65,6 +70,7 @@ export const ETIQUETAS_ESTAMPADOS: Record<Estampado, string> = {
   MARINERO: 'Marinero',
 };
 
+/** Opciones de estampado que se presentan en los controles del perfil. */
 export const OPCIONES_ESTAMPADOS = Object.entries(ETIQUETAS_ESTAMPADOS).map(
   ([valor, etiqueta]) => ({ valor: valor as Estampado, etiqueta }),
 );

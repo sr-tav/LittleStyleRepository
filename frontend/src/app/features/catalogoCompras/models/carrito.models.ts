@@ -1,3 +1,4 @@
+/** Línea individual con cantidad, precio y disponibilidad en el carrito. */
 export interface ItemCarrito {
   id: number;
   prendaId: number;
@@ -11,6 +12,7 @@ export interface ItemCarrito {
   tallaSugerida?: string | null;
 }
 
+/** Contenido y totales calculados del carrito de compras. */
 export interface Carrito {
   items: ItemCarrito[];
   cantidad: number;
@@ -19,6 +21,13 @@ export interface Carrito {
   total: number | null;
 }
 
+/**
+ * Datos para agregar una prenda y talla al carrito.
+ * @see RNF-11
+ * @see US-10
+ * @see US-07
+ * @see RNF-11
+ */
 export interface AgregarItemCarritoRequest {
   prendaId: number;
   talla: string;
@@ -33,6 +42,7 @@ export interface AgregarItemCarritoRequest {
   perfilInfantilId?: number | null;
 }
 
+/** Cambio de cantidad solicitado para una línea del carrito. */
 export interface CambiarCantidadCarritoRequest {
   cantidad: number;
 }

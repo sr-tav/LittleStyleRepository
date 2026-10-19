@@ -28,7 +28,10 @@ const ORDENES = [
   { valor: 'nombre', etiqueta: 'Nombre' },
 ];
 
-/** US-09: exploración del catálogo con filtros laterales y paginado. */
+/**
+ * US-09: exploración del catálogo con filtros laterales y paginado.
+ * @see US-09
+ */
 @Component({
   selector: 'app-explorar',
   imports: [Navbar, RouterLink, PrendaMiniatura, AccesoRapidoPrenda],
@@ -70,6 +73,9 @@ export class Explorar {
   protected readonly visibles = computed(() => this.items());
   protected readonly precio = (item: VitrinaItem) => formatearPrecio(item.precio);
 
+  /**
+   * Conecta cambios de filtro con búsquedas cancelables y sincroniza la navegación por parámetros.
+   */
   constructor() {
     // switchMap: si el usuario cambia filtros antes de que responda la
     // anterior, la petición vieja se cancela y nunca pinta resultados viejos.
@@ -107,10 +113,19 @@ export class Explorar {
       .subscribe(() => this.buscarDesdePrimera());
   }
 
+  /**
+   * Reinicia la paginación y busca con los filtros actuales.
+   * @returns No devuelve un valor.
+   * @see US-09
+   */
   protected alCambiarFiltro(): void {
     this.buscarDesdePrimera();
   }
 
+  /**
+   * Restablece todos los filtros y las sugerencias antes de consultar el catálogo.
+   * @returns No devuelve un valor.
+   */
   protected limpiar(): void {
     this.q.set('');
     this.categoria.set('');
@@ -127,6 +142,10 @@ export class Explorar {
     this.buscarDesdePrimera();
   }
 
+  /**
+   * Retrocede una página si existe una página anterior.
+   * @returns No devuelve un valor.
+   */
   protected anterior(): void {
     if (this.pagina() > 0) {
       this.pagina.update((p) => p - 1);
@@ -134,6 +153,10 @@ export class Explorar {
     }
   }
 
+  /**
+   * Avanza una página si quedan resultados por consultar.
+   * @returns No devuelve un valor.
+   */
   protected siguiente(): void {
     if (this.pagina() < this.totalPaginas() - 1) {
       this.pagina.update((p) => p + 1);
@@ -141,6 +164,13 @@ export class Explorar {
     }
   }
 
+  /**
+   * Activa el filtro por talla sugerida si existe un perfil activo; al desactivarlo limpia badges.
+   * @returns No devuelve un valor.
+   * @see US-09
+   * @see US-07
+   * @see UI-8
+   */
   protected alternarMiTalla(): void {
     if (this.soloMiTalla()) {
       this.soloMiTalla.set(false);
@@ -162,18 +192,30 @@ export class Explorar {
     this.cargarBadges(perfilId);
   }
 
+  /**
+   * Reinicia el índice de página y dispara una nueva búsqueda.
+   * @returns No devuelve un valor.
+   */
   private buscarDesdePrimera(): void {
     this.pagina.set(0);
     this.buscar();
   }
 
+  /**
+   * Actualiza los estados de consulta y emite una señal al flujo de búsqueda.
+   * @returns No devuelve un valor.
+   */
   private buscar(): void {
     this.cargando.set(true);
     this.error.set(null);
     this.recargar.next();
   }
 
-  /** Badges por tarjeta (mejor esfuerzo): el filtro exacto ya lo da /ids. */
+  /**
+   * Badges por tarjeta (mejor esfuerzo): el filtro exacto ya lo da /ids.
+   * @param perfilId Identificador del perfil cuyas sugerencias se muestran.
+   * @returns No devuelve un valor.
+   */
   private cargarBadges(perfilId: number): void {
     this.recomendaciones.listar(perfilId).subscribe({
       next: (res) => this.sugerencias.set(new Map(res.map((r) => [r.prendaId, r]))),
@@ -183,6 +225,10 @@ export class Explorar {
 
   private readonly recargar = new Subject<void>();
 
+  /**
+   * Construye los filtros efectivos y convierte la edad ingresada en años a meses enteros.
+   * @returns Filtros listos para consultar la vitrina.
+   */
   private filtrosActuales(): FiltrosVitrina {
     const edad = this.edadAnos().trim() === '' ? NaN : Number(this.edadAnos());
     return {

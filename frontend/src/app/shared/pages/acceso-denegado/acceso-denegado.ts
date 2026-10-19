@@ -3,6 +3,11 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 
+/**
+ * Página 403 para usuarios sin permiso, con retorno al inicio del rol autenticado.
+ * @see US-05
+ * @see RNF-10
+ */
 @Component({
   selector: 'app-acceso-denegado',
   imports: [RouterLink],

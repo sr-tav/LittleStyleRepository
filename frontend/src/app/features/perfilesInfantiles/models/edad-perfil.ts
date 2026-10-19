@@ -2,6 +2,12 @@ import { PerfilInfantil } from './perfil-infantil.models';
 
 type DatosEdadPerfil = Pick<PerfilInfantil, 'fechaNacimiento' | 'edadAnios' | 'mesesRestantes'>;
 
+/**
+ * Presenta la edad usando días, meses o años según los datos calculados del perfil.
+ * @param perfil Datos de nacimiento y edad del perfil infantil.
+ * @param fechaReferencia Fecha local usada para calcular los días cuando la edad es menor de un mes.
+ * @returns Edad con unidades y singular/plural en español.
+ */
 export function formatearEdadPerfil(
   perfil: DatosEdadPerfil,
   fechaReferencia = new Date(),

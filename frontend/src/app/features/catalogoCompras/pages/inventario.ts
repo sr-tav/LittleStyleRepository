@@ -14,7 +14,10 @@ interface Edicion {
   tallas: { talla: string; stock: number | null; stockMinimo: number | null }[];
 }
 
-/** UI-21: Inventario del vendedor con actualización de stock por talla en línea. */
+/**
+ * UI-21: Inventario del vendedor con actualización de stock por talla en línea.
+ * @see UI-21
+ */
 @Component({
   selector: 'app-inventario',
   imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura],
@@ -40,10 +43,20 @@ export class Inventario implements OnInit {
     return valores.length === 0 ? '—' : valores.join(' · ');
   };
 
+  /**
+   * Carga el inventario inicial.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.cargar();
   }
 
+  /**
+   * Recarga inventario y alertas; atiende el parámetro `prenda` para abrir una edición directa.
+   * @returns No devuelve un valor.
+   * @see UI-21
+   * @see UI-22
+   */
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);
@@ -64,6 +77,10 @@ export class Inventario implements OnInit {
     this.contarAlertas();
   }
 
+  /**
+   * Actualiza el contador de alertas y muestra un aviso si la consulta falla.
+   * @returns No devuelve un valor.
+   */
   private contarAlertas(): void {
     this.inventarioService.alertas().subscribe({
       next: (alertas) => this.alertasActivas.set(alertas.length),
@@ -74,6 +91,11 @@ export class Inventario implements OnInit {
     });
   }
 
+  /**
+   * Copia las tallas del producto al estado temporal de edición.
+   * @param item Elemento de inventario que se editará.
+   * @returns No devuelve un valor.
+   */
   protected editar(item: InventarioItem): void {
     this.errorEdicion.set(null);
     this.edicion.set({
@@ -87,12 +109,24 @@ export class Inventario implements OnInit {
     this.errorEdicion.set(null);
   }
 
+  /**
+   * Convierte la entrada de stock a entero o `null` y actualiza la talla indicada.
+   * @param indice Índice de la talla editada.
+   * @param valor Texto introducido en el control.
+   * @returns No devuelve un valor.
+   */
   protected cambiarStock(indice: number, valor: string): void {
     this.edicion.update((e) =>
       e ? { ...e, tallas: e.tallas.map((t, i) => (i === indice ? { ...t, stock: entero(valor) } : t)) } : e,
     );
   }
 
+  /**
+   * Actualiza el mínimo de alerta; una entrada vacía representa ausencia de mínimo.
+   * @param indice Índice de la talla editada.
+   * @param valor Texto introducido en el control.
+   * @returns No devuelve un valor.
+   */
   protected cambiarMinimo(indice: number, valor: string): void {
     const minimo = valor.trim() === '' ? null : entero(valor);
     this.edicion.update((e) =>
@@ -100,10 +134,20 @@ export class Inventario implements OnInit {
     );
   }
 
+  /**
+   * Suma las existencias de todas las tallas en edición.
+   * @returns Total de unidades, o cero si no hay edición activa.
+   */
   protected totalEdicion(): number {
     return this.edicion()?.tallas.reduce((total, t) => total + (t.stock ?? 0), 0) ?? 0;
   }
 
+  /**
+   * Valida los rangos de stock y mínimos antes de persistir la edición.
+   * El stock admite de 0 a 100000; el mínimo, de 0 a 10000 o vacío.
+   * @returns No devuelve un valor.
+   * @see UI-21
+   */
   protected guardar(): void {
     const e = this.edicion();
     if (!e || this.guardando()) return;
@@ -136,7 +180,12 @@ export class Inventario implements OnInit {
       });
   }
 
-  /** Mensaje según lo que pasó con el nivel de stock tras guardar. */
+  /**
+   * Mensaje según lo que pasó con el nivel de stock tras guardar.
+   * @param nivelAnterior Nivel de stock antes de guardar, si se conoce.
+   * @param actualizado Elemento de inventario recibido tras guardar.
+   * @returns Aviso que comunica un cambio de nivel o la actualización realizada.
+   */
   private avisoAlertas(
     nivelAnterior: InventarioItem['nivel'] | null,
     actualizado: InventarioItem,
@@ -154,6 +203,11 @@ export class Inventario implements OnInit {
   }
 }
 
+/**
+ * Convierte una cadena de dígitos a número entero.
+ * @param valor Texto que se valida y convierte.
+ * @returns Número convertido o `null` si contiene caracteres no numéricos.
+ */
 function entero(valor: string): number | null {
   return /^\d+$/.test(valor.trim()) ? Number(valor) : null;
 }

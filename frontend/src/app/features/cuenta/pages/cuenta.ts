@@ -10,6 +10,11 @@ import { DireccionEnvio } from '../../catalogoCompras/models/checkout.models';
 import { DEPARTAMENTOS_COLOMBIA, municipiosDe } from '../../catalogoCompras/data/municipios-colombia';
 import { CheckoutService } from '../../catalogoCompras/services/checkout.service';
 
+/**
+ * Permite consultar y actualizar los datos de cuenta, dirección de envío y contraseña.
+ * @see US-06
+ * @see UI-7
+ */
 @Component({
   selector: 'app-cuenta',
   imports: [Navbar, ReactiveFormsModule],
@@ -40,6 +45,10 @@ export class Cuenta implements OnInit {
   protected readonly mensaje = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
 
+  /**
+   * Valida nombre y apellido de 2 a 60 letras, correo de hasta 120 caracteres y celular opcional
+   * vacío o de diez dígitos iniciado en 3; la tienda se exige a vendedores.
+   */
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(60), Validators.pattern(/^[\p{L} ]+$/u)]],
     apellido: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(60), Validators.pattern(/^[\p{L} ]+$/u)]],
@@ -48,6 +57,9 @@ export class Cuenta implements OnInit {
     nombreTienda: ['', [Validators.maxLength(100)]],
   });
 
+  /**
+   * Valida destinatario, dirección, código postal de seis dígitos, ubicación y celular colombiano.
+   */
   protected readonly direccionForm = this.fb.nonNullable.group({
     destinatario: ['', [Validators.required, Validators.maxLength(120)]],
     direccion: ['', [Validators.required, Validators.maxLength(200)]],
@@ -60,12 +72,20 @@ export class Cuenta implements OnInit {
 
   protected readonly municipios = () => municipiosDe(this.departamentoSeleccionado());
 
+  /**
+   * Valida una contraseña nueva de 8 a 64 caracteres con letras y números; la confirmación
+   * debe coincidir al guardar.
+   */
   protected readonly passwordForm = this.fb.nonNullable.group({
     passwordActual: [''],
     nuevaPassword: ['', [Validators.minLength(8), Validators.maxLength(64), Validators.pattern(/^(?=.*[A-Za-z])(?=.*\d).+$/)]],
     confirmarNuevaPassword: [''],
   });
 
+  /**
+   * Carga los datos del usuario y, para clientes, consulta también la dirección guardada.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.auth.perfil().pipe(take(1)).subscribe({
       next: (usuario) => {
@@ -127,6 +147,11 @@ export class Cuenta implements OnInit {
     this.error.set(null);
   }
 
+  /**
+   * Cambia el departamento y limpia el municipio para exigir una selección correspondiente.
+   * @param event Evento del selector de departamento.
+   * @returns No devuelve un valor.
+   */
   protected cambioDepartamento(event: Event): void {
     const departamento = (event.currentTarget as HTMLSelectElement).value;
     this.direccionForm.controls.departamento.setValue(departamento);
@@ -135,6 +160,10 @@ export class Cuenta implements OnInit {
     this.direccionForm.controls.municipio.markAsUntouched();
   }
 
+  /**
+   * Valida, normaliza y guarda la dirección de envío del cliente.
+   * @returns No devuelve un valor.
+   */
   protected guardarDireccion(): void {
     if (this.guardandoDireccion()) return;
     this.error.set(null);
@@ -178,6 +207,10 @@ export class Cuenta implements OnInit {
     });
   }
 
+  /**
+   * Valida y guarda los datos de cuenta, incluyendo el nombre de tienda para vendedores.
+   * @returns No devuelve un valor.
+   */
   protected guardar(): void {
     if (this.guardando()) return;
     this.error.set(null);
@@ -215,6 +248,10 @@ export class Cuenta implements OnInit {
     });
   }
 
+  /**
+   * Comprueba la contraseña actual, la política de la nueva clave y su confirmación antes de guardar.
+   * @returns No devuelve un valor.
+   */
   protected guardarPassword(): void {
     if (this.guardandoPassword()) return;
     this.error.set(null);
@@ -265,6 +302,10 @@ export class Cuenta implements OnInit {
     });
   }
 
+  /**
+   * Solicita la desactivación de la cuenta y cierra la sesión al completarse.
+   * @returns No devuelve un valor.
+   */
   protected desactivar(): void {
     if (this.desactivando()) return;
     this.error.set(null);
@@ -279,14 +320,29 @@ export class Cuenta implements OnInit {
     });
   }
 
+  /**
+   * Determina si un campo de cuenta o contraseña debe mostrarse como inválido.
+   * @param control Control que se evalúa.
+   * @param esPassword Indica si se consulta el estado de envío del formulario de contraseña.
+   * @returns `true` si el control es inválido y fue tocado o se intentó enviar su formulario.
+   */
   protected invalido(control: AbstractControl, esPassword = false): boolean {
     return control.invalid && (control.touched || (esPassword ? this.passwordEnviado() : this.enviado()));
   }
 
+  /**
+   * Determina si un campo de dirección debe mostrarse como inválido.
+   * @param control Control del formulario de dirección.
+   * @returns `true` si es inválido y fue tocado o se intentó guardar la dirección.
+   */
   protected invalidoDireccion(control: AbstractControl): boolean {
     return control.invalid && (control.touched || this.direccionEnviada());
   }
 
+  /**
+   * Consulta y establece la dirección de envío guardada.
+   * @returns No devuelve un valor.
+   */
   private cargarDireccion(): void {
     this.checkoutService.obtenerDireccion().subscribe({
       next: (respuesta) => {
@@ -302,6 +358,11 @@ export class Cuenta implements OnInit {
     });
   }
 
+  /**
+   * Carga una dirección en el formulario y resuelve sus opciones geográficas del catálogo.
+   * @param direccion Dirección que se restaura.
+   * @returns No devuelve un valor.
+   */
   private cargarDireccionEnFormulario(direccion: DireccionEnvio): void {
     const departamento = this.departamentos.find(
       (opcion) => this.normalizarUbicacion(opcion) === this.normalizarUbicacion(direccion.departamento ?? ''),
@@ -326,10 +387,20 @@ export class Cuenta implements OnInit {
     this.departamentoSeleccionado.set('');
   }
 
+  /**
+   * Normaliza tildes, espacios y mayúsculas para comparar nombres de ubicación.
+   * @param valor Texto geográfico que se normaliza.
+   * @returns Texto normalizado para comparación.
+   */
   private normalizarUbicacion(valor: string): string {
     return valor.normalize('NFD').replace(/\p{M}/gu, '').trim().toLocaleUpperCase('es-CO');
   }
 
+  /**
+   * Restaura los datos de cuenta de un usuario en el formulario.
+   * @param usuario Datos de cuenta que se copian.
+   * @returns No devuelve un valor.
+   */
   private cargarDatosFormulario(usuario: Usuario): void {
     this.form.patchValue({
       nombre: usuario.nombre,

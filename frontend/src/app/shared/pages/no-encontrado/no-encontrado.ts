@@ -3,6 +3,10 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 
+/**
+ * Página 404 para rutas inexistentes, con retorno al inicio del usuario.
+ * @see US-05
+ */
 @Component({
   selector: 'app-no-encontrado',
   imports: [RouterLink],
