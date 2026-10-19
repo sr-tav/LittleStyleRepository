@@ -26,6 +26,7 @@ public class IntentosLoginService {
     private final Clock clock;
     private final Map<String, Registro> registros = new ConcurrentHashMap<>();
 
+    /** Crea el servicio con los límites configurados y el reloj UTC del sistema. */
     @Autowired
     public IntentosLoginService(@Value("${app.security.login.max-intentos:5}") int maxIntentos,
                                 @Value("${app.security.login.ventana-minutos:15}") long ventanaMinutos,
@@ -33,6 +34,7 @@ public class IntentosLoginService {
         this(maxIntentos, Duration.ofMinutes(ventanaMinutos), Duration.ofMinutes(bloqueoMinutos), Clock.systemUTC());
     }
 
+    /** Constructor con reloj inyectable, usado en las pruebas. */
     IntentosLoginService(int maxIntentos, Duration ventana, Duration bloqueo, Clock clock) {
         this.maxIntentos = maxIntentos;
         this.ventana = ventana;
@@ -66,6 +68,7 @@ public class IntentosLoginService {
         return actualizado.bloqueadoHasta() != null;
     }
 
+    /** Limpia el historial de fallos de la combinación tras un login exitoso. */
     public void registrarExito(String email, String ip) {
         registros.remove(clave(email, ip));
     }
@@ -76,10 +79,12 @@ public class IntentosLoginService {
                 && (r.bloqueadoHasta() == null || !ahora.isBefore(r.bloqueadoHasta())));
     }
 
+    /** Llave del registro: correo e IP. */
     private static String clave(String email, String ip) {
         return email + "|" + ip;
     }
 
+    /** Fallos acumulados, inicio de la ventana y fin del bloqueo (nulo si no está bloqueada). */
     private record Registro(int fallos, Instant inicioVentana, Instant bloqueadoHasta) {
     }
 }

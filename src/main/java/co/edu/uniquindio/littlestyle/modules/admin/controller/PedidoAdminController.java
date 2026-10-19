@@ -26,6 +26,7 @@ public class PedidoAdminController {
 
     private final PedidoEstadoService estados;
 
+    /** Avanza el estado global de un pedido (con número de guía opcional) si la transición es válida. */
     @PutMapping("/{id}/estado")
     public ResponseEntity<PedidoEstadoResponse> avanzarEstado(
             @PathVariable Long id, @Valid @RequestBody AvanzarEstadoRequest request) {

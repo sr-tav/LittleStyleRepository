@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Convierte un checkout aprobado por Wompi en un pedido pagado. */
 @Service
 @RequiredArgsConstructor
 public class ProcesadorCheckoutPagadoService {
@@ -21,6 +22,11 @@ public class ProcesadorCheckoutPagadoService {
     private final PedidoCheckoutService pedidoCheckoutService;
     private final PedidoPagoService pedidoPagoService;
 
+    /**
+     * Lee el snapshot de la transacción, crea el pedido, confirma el pago (descontando stock) y, si se
+     * confirmó, retira del carrito lo comprado. El carrito se bloquea primero para mantener el orden de
+     * bloqueos.
+     */
     @Transactional
     public ResultadoConfirmacionPago confirmar(TransaccionPago transaccion) {
         if (transaccion.getCliente() == null || transaccion.getSnapshotCheckout() == null) {

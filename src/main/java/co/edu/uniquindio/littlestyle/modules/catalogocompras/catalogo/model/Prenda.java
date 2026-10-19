@@ -41,6 +41,10 @@ import java.util.Set;
  */
 @Entity
 @Table(name = "prendas", indexes = {
+/**
+ * Prenda del catálogo de un vendedor, con su composición textil, atributos para alergias, colores, tallas con
+ * stock e imágenes. Solo las {@code ACTIVA} se muestran a los clientes.
+ */
         @Index(name = "idx_prendas_vendedor", columnList = "vendedor_id"),
         @Index(name = "idx_prendas_estado", columnList = "estado"),
         @Index(name = "idx_prendas_genero", columnList = "genero"),
@@ -139,14 +143,17 @@ public class Prenda {
     @Column(name = "fecha_actualizacion", nullable = false)
     private LocalDateTime fechaActualizacion;
 
+    /** Suma del stock de todas las tallas. */
     public int stockTotal() {
         return tallas.stream().mapToInt(TallaPrenda::getStock).sum();
     }
 
+    /** Talla con ese nombre, sin distinguir mayúsculas. */
     public Optional<TallaPrenda> buscarTalla(String talla) {
         return tallas.stream().filter(t -> t.getTalla().equalsIgnoreCase(talla)).findFirst();
     }
 
+    /** Primera imagen según su orden, que es la principal. */
     public Optional<ImagenPrenda> imagenPrincipal() {
         return imagenes.stream().findFirst();
     }

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/** Confirma el pago de un pedido descontando el stock de forma atómica. */
 @Service
 @RequiredArgsConstructor
 public class PedidoPagoService {
@@ -40,6 +41,11 @@ public class PedidoPagoService {
     private final ApplicationEventPublisher eventos;
     private final DespachoService despachoService;
 
+    /**
+     * Bloquea el pedido y sus prendas y verifica el stock de cada talla. Si alcanza, lo descuenta, deja el
+     * pedido {@code REGISTRADO}, crea un despacho por vendedor y evalúa alertas; si no, cancela el pedido y
+     * devuelve las prendas agotadas.
+     */
     @Transactional
     public ResultadoConfirmacionPago confirmarPago(Long pedidoId) {
         Pedido pedido = pedidoRepository.bloquearPorId(pedidoId)
@@ -87,6 +93,10 @@ public class PedidoPagoService {
         return new ResultadoConfirmacionPago(ResultadoConfirmacionPago.Estado.CONFIRMADO, List.of());
     }
 
+    /**
+     * Cambia el estado, lo registra en el historial y publica el evento correspondiente (el pago tiene evento
+     * propio).
+     */
     private void transicionarConHistorial(Pedido pedido, EstadoPedido nuevo) {
         EstadoPedido anterior = pedido.getEstado();
         pedido.transicionarA(nuevo);
@@ -104,6 +114,7 @@ public class PedidoPagoService {
         eventos.publishEvent(new PedidoEstadoCambiadoEvent(pedido.getId(), nuevo));
     }
 
+    /** Suma las cantidades del pedido por prenda y talla. */
     private Map<ClaveStock, Integer> agruparItems(Pedido pedido) {
         Map<ClaveStock, Integer> cantidades = new HashMap<>();
         for (LineaPedido item : pedido.getItems()) {
@@ -114,6 +125,9 @@ public class PedidoPagoService {
         return cantidades;
     }
 
+    /**
+     * Bloquea las prendas del pedido en orden de id, para evitar bloqueos cruzados entre pagos simultáneos.
+     */
     private Map<Long, Prenda> bloquearPrendas(Long pedidoId, Map<ClaveStock, Integer> cantidades) {
         Map<Long, Prenda> prendas = new HashMap<>();
         cantidades.keySet().stream().map(ClaveStock::prendaId).distinct().sorted()
@@ -123,6 +137,7 @@ public class PedidoPagoService {
         return prendas;
     }
 
+    /** Identifica una talla de una prenda. */
     private record ClaveStock(Long prendaId, String talla) {
     }
 }

@@ -67,6 +67,7 @@ public class AlertaReabastecimiento {
     @Column(name = "fecha_resolucion")
     private LocalDateTime fechaResolucion;
 
+    /** Indica si la alerta sigue sin resolver. */
     public boolean estaActiva() {
         return fechaResolucion == null;
     }

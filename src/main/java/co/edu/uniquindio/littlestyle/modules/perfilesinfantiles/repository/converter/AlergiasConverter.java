@@ -9,9 +9,11 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+/** Guarda el conjunto de alergias como una lista separada por comas y cifrada. */
 @Converter
 public class AlergiasConverter implements AttributeConverter<Set<AlergiaTextil>, String> {
 
+    /** Ordena las alergias, las une con comas y cifra el resultado. */
     @Override
     public String convertToDatabaseColumn(Set<AlergiaTextil> alergias) {
         if (alergias == null) {
@@ -23,6 +25,7 @@ public class AlergiasConverter implements AttributeConverter<Set<AlergiaTextil>,
         return CifradoPerfil.cifrar(serializado);
     }
 
+    /** Descifra y separa la lista; un valor nulo o vacío da un conjunto vacío. */
     @Override
     public Set<AlergiaTextil> convertToEntityAttribute(String valor) {
         if (valor == null) {

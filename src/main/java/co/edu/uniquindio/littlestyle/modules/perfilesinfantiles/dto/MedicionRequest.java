@@ -8,6 +8,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/** Medición de crecimiento: fecha, estatura en centímetros y peso en kilogramos. */
 public record MedicionRequest(
         @NotNull(message = "La fecha de medición es obligatoria")
         @PastOrPresent(message = "La fecha de medición no puede ser futura")

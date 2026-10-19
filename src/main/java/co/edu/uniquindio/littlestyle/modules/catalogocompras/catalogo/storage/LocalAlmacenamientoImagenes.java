@@ -18,15 +18,18 @@ public class LocalAlmacenamientoImagenes implements AlmacenamientoImagenes {
     private final Path raiz;
     private final String urlBase;
 
+    /** Usa el directorio configurado como raíz y la URL base sin barra final. */
     public LocalAlmacenamientoImagenes(AlmacenamientoProperties.Local config) {
         this.raiz = Path.of(config.directorio()).toAbsolutePath().normalize();
         this.urlBase = config.urlBase().replaceAll("/+$", "");
     }
 
+    /** Directorio absoluto donde se guardan las imágenes. */
     public Path raiz() {
         return raiz;
     }
 
+    /** Escribe el archivo bajo la raíz, creando las carpetas necesarias, y devuelve su URL local. */
     @Override
     public String subir(String clave, byte[] contenido, String contentType) {
         Path destino = resolver(clave);
@@ -39,6 +42,7 @@ public class LocalAlmacenamientoImagenes implements AlmacenamientoImagenes {
         return urlBase + "/" + clave;
     }
 
+    /** Borra el archivo si existe. */
     @Override
     public void eliminar(String clave) {
         try {

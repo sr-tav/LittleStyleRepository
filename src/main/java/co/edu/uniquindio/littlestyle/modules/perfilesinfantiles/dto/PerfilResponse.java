@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Perfil infantil con su edad calculada, última medición, porcentaje de completitud y campos que faltan por
+ * llenar.
+ */
 public record PerfilResponse(
         Long id,
         String nombre,

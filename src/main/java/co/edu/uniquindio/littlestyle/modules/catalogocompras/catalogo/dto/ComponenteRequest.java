@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+/** Material y porcentaje de la composición textil de una prenda. */
 public record ComponenteRequest(
         @NotNull(message = "El material es obligatorio")
         MaterialTextil material,

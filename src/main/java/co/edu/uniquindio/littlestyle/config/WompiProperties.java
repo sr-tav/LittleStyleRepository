@@ -18,6 +18,7 @@ public record WompiProperties(
         String urlRedireccion,
         @DefaultValue("COP") String moneda
 ) {
+    /** Quita espacios de llaves, secretos y URL; los valores ausentes quedan como texto vacío. */
     public WompiProperties {
         llavePublica = limpiar(llavePublica);
         secretoIntegridad = limpiar(secretoIntegridad);
@@ -46,14 +47,17 @@ public record WompiProperties(
         }
     }
 
+    /** Indica si hay llave pública y secreto de integridad, necesarios para iniciar pagos. */
     public boolean pagosConfigurados() {
         return !llavePublica.isEmpty() && !secretoIntegridad.isEmpty();
     }
 
+    /** Indica si hay secreto de eventos para validar la firma de los webhooks. */
     public boolean eventosConfigurados() {
         return !secretoEventos.isEmpty();
     }
 
+    /** Convierte {@code null} en texto vacío y recorta espacios. */
     private static String limpiar(String valor) {
         return valor == null ? "" : valor.trim();
     }

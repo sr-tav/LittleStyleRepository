@@ -122,6 +122,7 @@ public class FirmaWompiService {
         }
     }
 
+    /** Valor simple en una ruta con puntos dentro de {@code data}, o {@code null} si no existe. */
     private Object valorEnRuta(Map<String, Object> data, String ruta) {
         if (ruta == null || ruta.isBlank()) {
             return null;
@@ -136,6 +137,7 @@ public class FirmaWompiService {
         return actual instanceof Map<?, ?> || actual instanceof List<?> ? null : actual;
     }
 
+    /** Hash SHA-256 del texto en hexadecimal minúscula. */
     static String sha256(String texto) {
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(texto.getBytes(StandardCharsets.UTF_8));

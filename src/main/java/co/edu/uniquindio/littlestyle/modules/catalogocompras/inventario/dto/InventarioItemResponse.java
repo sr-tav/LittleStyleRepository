@@ -8,6 +8,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.Ni
 
 import java.util.List;
 
+/** Fila del inventario del vendedor: prenda, stock total, nivel y stock por talla. */
 public record InventarioItemResponse(
         Long prendaId,
         String nombre,
@@ -19,9 +20,11 @@ public record InventarioItemResponse(
         List<StockTalla> tallas
 ) {
 
+    /** Stock y mínimo (nulo si no se definió) de una talla. */
     public record StockTalla(String talla, int stock, Integer stockMinimo) {
     }
 
+    /** Construye la fila a partir de la prenda y sus tallas. */
     public static InventarioItemResponse from(Prenda p) {
         return new InventarioItemResponse(
                 p.getId(), p.getNombre(), p.getCategoria(),

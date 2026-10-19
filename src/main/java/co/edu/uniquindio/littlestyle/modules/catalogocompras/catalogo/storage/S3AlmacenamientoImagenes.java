@@ -22,6 +22,7 @@ public class S3AlmacenamientoImagenes implements AlmacenamientoImagenes {
     private final S3Client s3;
     private final AlmacenamientoProperties.S3 config;
 
+    /** Crea el almacenamiento; falla al arrancar si no se configuró el bucket. */
     public S3AlmacenamientoImagenes(S3Client s3, AlmacenamientoProperties.S3 config) {
         if (config.bucket() == null || config.bucket().isBlank()) {
             throw new IllegalStateException("app.storage.s3.bucket es obligatorio cuando app.storage.tipo=s3");
@@ -30,6 +31,7 @@ public class S3AlmacenamientoImagenes implements AlmacenamientoImagenes {
         this.config = config;
     }
 
+    /** Sube el objeto con caché inmutable y devuelve su URL pública; 502 si S3 falla. */
     @Override
     public String subir(String clave, byte[] contenido, String contentType) {
         String objeto = claveObjeto(clave);
@@ -49,6 +51,7 @@ public class S3AlmacenamientoImagenes implements AlmacenamientoImagenes {
         return urlPublica(objeto);
     }
 
+    /** Borra el objeto del bucket; 502 si S3 falla. */
     @Override
     public void eliminar(String clave) {
         String objeto = claveObjeto(clave);
@@ -60,11 +63,13 @@ public class S3AlmacenamientoImagenes implements AlmacenamientoImagenes {
         }
     }
 
+    /** Llave del objeto con el prefijo configurado. */
     private String claveObjeto(String clave) {
         String prefijo = config.prefijo() == null ? "" : config.prefijo().replaceAll("^/+|/+$", "");
         return prefijo.isEmpty() ? clave : prefijo + "/" + clave;
     }
 
+    /** URL pública del objeto: la base configurada (p. ej. CloudFront) o la URL estándar del bucket. */
     private String urlPublica(String objeto) {
         String base = config.urlPublicaBase();
         if (base == null || base.isBlank()) {

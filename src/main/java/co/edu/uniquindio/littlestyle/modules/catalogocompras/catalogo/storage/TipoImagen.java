@@ -15,23 +15,28 @@ public enum TipoImagen {
     private final String contentType;
     private final String extension;
 
+    /** Asocia el tipo MIME y la extensión del formato. */
     TipoImagen(String contentType, String extension) {
         this.contentType = contentType;
         this.extension = extension;
     }
 
+    /** Tipo MIME con el que se guarda el archivo. */
     public String contentType() {
         return contentType;
     }
 
+    /** Extensión del archivo guardado. */
     public String extension() {
         return extension;
     }
 
+    /** Formato según los primeros bytes del archivo, o vacío si no es uno aceptado. */
     public static Optional<TipoImagen> detectar(byte[] datos) {
         return Arrays.stream(values()).filter(tipo -> tipo.coincide(datos)).findFirst();
     }
 
+    /** Indica si los bytes empiezan con la firma de este formato. */
     private boolean coincide(byte[] d) {
         return switch (this) {
             case JPEG -> d.length >= 3 && (d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xD8 && (d[2] & 0xFF) == 0xFF;

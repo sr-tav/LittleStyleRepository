@@ -26,6 +26,7 @@ public final class DistanciaBiometrica {
      */
     public static final double DISTANCIA_MAXIMA = 6.0;
 
+    /** Clase de utilidades; no se instancia. */
     private DistanciaBiometrica() {
     }
 
@@ -52,6 +53,7 @@ public final class DistanciaBiometrica {
         return Math.sqrt(de * de + dp * dp);
     }
 
+    /** Punto medio del rango. */
     private static BigDecimal centro(BigDecimal min, BigDecimal max) {
         return min.add(max).divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
     }

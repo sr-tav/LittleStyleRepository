@@ -9,6 +9,10 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 
+/**
+ * Cifrado AES-256-GCM de los datos de los perfiles infantiles. Cada valor lleva un IV aleatorio y el prefijo
+ * de versión {@code v1:}; la clave se configura una vez al arrancar.
+ */
 final class CifradoPerfil {
 
     private static final String ALGORITMO = "AES/GCM/NoPadding";
@@ -18,9 +22,11 @@ final class CifradoPerfil {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static volatile SecretKeySpec clave;
 
+    /** Clase de utilidades; no se instancia. */
     private CifradoPerfil() {
     }
 
+    /** Configura la clave a partir de 32 bytes en Base64; falla al arrancar si no es válida. */
     static void configurarClave(String claveBase64) {
         byte[] bytes;
         try {
@@ -35,6 +41,7 @@ final class CifradoPerfil {
         Arrays.fill(bytes, (byte) 0);
     }
 
+    /** Cifra el texto y devuelve {@code v1:} seguido del IV y el texto cifrado en Base64. */
     static String cifrar(String valor) {
         byte[] iv = new byte[TAMANO_IV];
         RANDOM.nextBytes(iv);
@@ -51,6 +58,7 @@ final class CifradoPerfil {
         }
     }
 
+    /** Descifra un valor con o sin el prefijo de versión; falla si está incompleto o fue alterado. */
     static String descifrar(String valor) {
         String contenido = valor.startsWith(PREFIJO_VERSION)
                 ? valor.substring(PREFIJO_VERSION.length()) : valor;
@@ -69,10 +77,12 @@ final class CifradoPerfil {
         }
     }
 
+    /** Indica si el valor ya tiene el prefijo de la versión actual. */
     static boolean estaCifradoEnFormatoActual(String valor) {
         return valor != null && valor.startsWith(PREFIJO_VERSION);
     }
 
+    /** Clave configurada; falla si aún no se configuró. */
     private static SecretKeySpec claveRequerida() {
         SecretKeySpec configurada = clave;
         if (configurada == null) {

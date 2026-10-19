@@ -8,6 +8,7 @@ public enum Rol {
     VENDEDOR,
     ADMINISTRADOR;
 
+    /** Nombre de la authority de Spring Security para el rol ({@code ROLE_<rol>}). */
     public String authority() {
         return "ROLE_" + name();
     }

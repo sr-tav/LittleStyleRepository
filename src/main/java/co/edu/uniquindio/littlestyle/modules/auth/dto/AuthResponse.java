@@ -14,6 +14,7 @@ public record AuthResponse(
         long expiraEn,
         UsuarioResponse usuario
 ) {
+    /** Crea la respuesta con tipo de token {@code Bearer}. */
     public static AuthResponse bearer(String token, long expiraEn, UsuarioResponse usuario) {
         return new AuthResponse(token, "Bearer", expiraEn, usuario);
     }

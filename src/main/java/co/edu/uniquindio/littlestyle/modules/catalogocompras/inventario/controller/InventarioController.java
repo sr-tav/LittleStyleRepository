@@ -24,17 +24,20 @@ public class InventarioController {
 
     private final InventarioService inventarioService;
 
+    /** Lista las prendas del vendedor con su stock por talla y su nivel de disponibilidad. */
     @GetMapping
     public ResponseEntity<List<InventarioItemResponse>> listar() {
         return ResponseEntity.ok(inventarioService.listar());
     }
 
+    /** Fija el stock y el mínimo de las tallas indicadas de una prenda propia y evalúa sus alertas. */
     @PutMapping("/{prendaId}")
     public ResponseEntity<InventarioItemResponse> actualizarStock(@PathVariable Long prendaId,
                                                                   @Valid @RequestBody ActualizarStockRequest request) {
         return ResponseEntity.ok(inventarioService.actualizarStock(prendaId, request));
     }
 
+    /** Lista las alertas de reabastecimiento activas del vendedor, de la más reciente a la más antigua. */
     @GetMapping("/alertas")
     public ResponseEntity<List<AlertaResponse>> alertas() {
         return ResponseEntity.ok(inventarioService.alertasActivas());

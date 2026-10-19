@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
+/**
+ * Estrategia por defecto: busca la talla exacta (o la más próxima) y, si fue exacta, la ajusta una talla
+ * arriba o abajo según la holgura preferida, sin salirse de la tabla.
+ */
 @Component
 @Primary
 @RequiredArgsConstructor
@@ -17,6 +21,7 @@ public class EstrategiaConHolgura implements  EstrategiaTalla {
     private final EstrategiaExacta exacta;
     private final EstrategiaProximidad proximidad;
 
+    /** Talla exacta o próxima, desplazada según la holgura cuando la coincidencia fue exacta. */
     @Override
     public Optional<RangoTalla> sugerir(DatosBiometricos bio, TablaTallas tabla) {
         if (bio == null || tabla == null || tabla.estaVacia()) return Optional.empty();
@@ -39,6 +44,7 @@ public class EstrategiaConHolgura implements  EstrategiaTalla {
         return base;
     }
 
+    /** Nombre de configuración: {@code HOLGURA}. */
     @Override
     public String nombre(){
         return "HOLGURA";

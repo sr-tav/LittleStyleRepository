@@ -23,10 +23,15 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final JsonMapper jsonMapper;
 
+    /** Recibe el mapeador JSON con el que se escribe la respuesta de error. */
     public RestAuthenticationEntryPoint(JsonMapper jsonMapper) {
         this.jsonMapper = jsonMapper;
     }
 
+    /**
+     * Escribe un {@link ErrorResponse} 401 con la causa que dejó el filtro JWT (sesión expirada, token
+     * inválido o cuenta inactiva) o un mensaje genérico si no hubo token.
+     */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {

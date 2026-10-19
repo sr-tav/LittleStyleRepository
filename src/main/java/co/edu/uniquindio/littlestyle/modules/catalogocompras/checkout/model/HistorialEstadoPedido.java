@@ -5,6 +5,10 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * Registro de un cambio de estado del pedido o de uno de sus despachos ({@code despacho} nulo si fue del
+ * pedido).
+ */
 @Entity
 @Table(name = "pedido_estados", indexes = @Index(name = "idx_historial_pedido", columnList = "pedido_id"))
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

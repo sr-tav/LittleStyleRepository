@@ -3,6 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.auth.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+/** Credenciales para iniciar sesión. */
 public record LoginRequest(
 
         @NotBlank(message = "El correo es obligatorio")

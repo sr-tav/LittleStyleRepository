@@ -15,6 +15,7 @@ public record PaginaResponse<T>(
         int totalPaginas
 ) {
 
+    /** Copia el contenido y los datos de paginación de una {@link Page}. */
     public static <T> PaginaResponse<T> from(Page<T> pagina) {
         return new PaginaResponse<>(
                 pagina.getContent(), pagina.getNumber(), pagina.getSize(),

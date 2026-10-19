@@ -20,6 +20,10 @@ public class UsuarioDetailsService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
 
+    /**
+     * Devuelve el usuario con su contraseña cifrada y su rol; las cuentas que no están activas quedan
+     * deshabilitadas.
+     */
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {

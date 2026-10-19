@@ -8,6 +8,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Datos del formulario público de registro. El nombre de la tienda solo es obligatorio para vendedores y se
+ * debe aceptar la política de tratamiento de datos.
+ */
 public record RegistroRequest(
 
         @NotBlank(message = "El nombre es obligatorio")

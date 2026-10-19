@@ -27,6 +27,11 @@ public class CatalogoClienteController {
 
     private final CatalogoClienteService catalogo;
 
+    /**
+     * Busca prendas publicadas con filtros opcionales (texto, categoría, género, precio, disponibilidad,
+     * material, talla, edad o solo la talla sugerida para un perfil), paginación y orden. La cabecera {@code
+     * X-Catalogo-Ms} informa el tiempo de la consulta.
+     */
     @GetMapping
     public ResponseEntity<PaginaResponse<PrendaVitrinaResponse>> explorar(
             @RequestParam(name = "q", required = false) String texto,
@@ -51,6 +56,7 @@ public class CatalogoClienteController {
         return ResponseEntity.ok().header("X-Catalogo-Ms", String.valueOf(ms)).body(res);
     }
 
+    /** Devuelve la ficha de una prenda publicada. */
     @GetMapping("/{id}")
     public ResponseEntity<PrendaDetalleResponse> detalle(@PathVariable Long id) {
         return ResponseEntity.ok(catalogo.detalle(id));

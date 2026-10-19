@@ -4,6 +4,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Esta
 
 import java.time.LocalDateTime;
 
+/** Estado de un pedido tras cambiarlo. */
 public record PedidoEstadoResponse(Long id, EstadoPedido estado, String numeroGuia,
                                    LocalDateTime fechaActualizacion) {
 }

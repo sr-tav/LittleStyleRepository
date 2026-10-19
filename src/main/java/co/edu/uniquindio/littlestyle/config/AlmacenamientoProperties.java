@@ -17,6 +17,7 @@ public record AlmacenamientoProperties(
         @DefaultValue Local local
 ) {
 
+    /** Límites de las imágenes: tamaño máximo por archivo, máximo por prenda y máximo por carga. */
     public record Imagenes(
             @DefaultValue("5MB") DataSize maxTamano,
             @DefaultValue("8") int maxPorPrenda,
@@ -24,6 +25,7 @@ public record AlmacenamientoProperties(
     ) {
     }
 
+    /** Datos del bucket de S3: nombre, región, URL pública opcional y prefijo de las llaves. */
     public record S3(
             String bucket,
             @DefaultValue("us-east-1") String region,
@@ -33,6 +35,7 @@ public record AlmacenamientoProperties(
     ) {
     }
 
+    /** Directorio en disco y URL base con la que se publican las imágenes locales. */
     public record Local(
             @DefaultValue("./data/uploads") String directorio,
             @DefaultValue("/media") String urlBase

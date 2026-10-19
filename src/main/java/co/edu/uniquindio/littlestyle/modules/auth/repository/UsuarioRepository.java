@@ -10,12 +10,19 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
+/** Acceso a los usuarios de la plataforma. */
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
+    /** Busca un usuario por su correo (ya normalizado en minúsculas). */
     Optional<Usuario> findByEmail(String email);
 
+    /** Indica si el correo ya está registrado. */
     boolean existsByEmail(String email);
 
+    /**
+     * Carga el usuario con bloqueo de escritura para que dos cambios simultáneos a la misma cuenta no se
+     * pisen.
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from Usuario u where u.id = :id")
     Optional<Usuario> findByIdForUpdate(@Param("id") Long id);

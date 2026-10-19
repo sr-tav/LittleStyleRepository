@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/** Dirección de entrega en Colombia con celular de contacto. */
 public record DireccionEnvioRequest(
         @NotBlank(message = "El nombre del destinatario es obligatorio")
         @Size(max = 120, message = "El destinatario no puede superar 120 caracteres")

@@ -33,6 +33,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/** Prepara la compra para el pago y crea el pedido cuando Wompi aprueba el cobro. */
 @Service
 @RequiredArgsConstructor
 public class PedidoCheckoutService {
@@ -46,6 +47,10 @@ public class PedidoCheckoutService {
     private final Clock clock;
     private final ApplicationEventPublisher eventos;
 
+    /**
+     * Bloquea el carrito y sus prendas, verifica que todo siga disponible y calcula el resumen. Devuelve el
+     * snapshot que se guarda en la transacción de pago.
+     */
     @Transactional
     public PedidoPagoSnapshot prepararPago(CrearPedidoRequest request) {
         if (request == null || request.perfilInfantilId() == null || request.perfilInfantilId() <= 0
@@ -78,6 +83,10 @@ public class PedidoCheckoutService {
                 resumen.subtotal(), resumen.costoEnvio(), resumen.total());
     }
 
+    /**
+     * Crea el pedido en {@code PENDIENTE_PAGO} con los datos del snapshot, registra el primer movimiento del
+     * historial y publica {@link PedidoCreadoEvent}.
+     */
     @Transactional
     public Pedido crearPedidoDesdePago(Long clienteId, PedidoPagoSnapshot snapshot) {
         if (snapshot == null || snapshot.direccion() == null || snapshot.items().isEmpty()) {
@@ -122,6 +131,7 @@ public class PedidoCheckoutService {
         return pedido;
     }
 
+    /** Copia la dirección sin espacios sobrantes; el complemento vacío queda nulo. */
     private static DireccionEnvioRequest normalizarDireccion(DireccionEnvioRequest direccion) {
         return new DireccionEnvioRequest(
                 direccion.destinatario().trim(),

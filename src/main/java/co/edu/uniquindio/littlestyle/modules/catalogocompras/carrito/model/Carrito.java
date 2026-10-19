@@ -22,6 +22,7 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Carrito de un cliente; cada cliente tiene a lo sumo uno. */
 @Entity
 @Table(name = "carritos", uniqueConstraints = @UniqueConstraint(columnNames = "cliente_id"))
 @Getter
@@ -44,11 +45,13 @@ public class Carrito {
     @Builder.Default
     private List<ItemCarrito> items = new ArrayList<>();
 
+    /** Agrega la línea y la asocia a este carrito. */
     public void agregar(ItemCarrito item) {
         items.add(item);
         item.setCarrito(this);
     }
 
+    /** Quita la línea; se borra de la base de datos por {@code orphanRemoval}. */
     public void quitar(ItemCarrito item) {
         items.remove(item);
     }

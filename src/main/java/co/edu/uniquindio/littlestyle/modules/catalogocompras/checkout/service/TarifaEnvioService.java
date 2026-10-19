@@ -8,12 +8,17 @@ import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.Locale;
 
+/** Calcula el costo de envío según el destino. */
 @Service
 @RequiredArgsConstructor
 public class TarifaEnvioService {
 
     private final CheckoutProperties properties;
 
+    /**
+     * Tarifa de Armenia, del resto de municipios del Quindío configurados o de otras ciudades. Compara sin
+     * tildes ni mayúsculas.
+     */
     public BigDecimal calcular(String departamento, String municipio) {
         String departamentoNormalizado = normalizar(departamento);
         String municipioNormalizado = normalizar(municipio);
@@ -28,6 +33,7 @@ public class TarifaEnvioService {
         return properties.costoEnvioOtrasCiudades();
     }
 
+    /** Texto sin tildes, sin espacios sobrantes y en mayúsculas. */
     private static String normalizar(String valor) {
         return Normalizer.normalize(valor == null ? "" : valor.trim(), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")

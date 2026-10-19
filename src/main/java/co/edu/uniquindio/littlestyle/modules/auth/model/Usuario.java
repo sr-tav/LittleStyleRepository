@@ -17,6 +17,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/** Cuenta de la plataforma: cliente, vendedor o administrador. */
 @Entity
 @Table(name = "usuarios")
 @Getter
@@ -71,6 +72,7 @@ public class Usuario {
     @Column(name = "fecha_aceptacion_terminos")
     private LocalDateTime fechaAceptacionTerminos;
 
+    /** Asigna la fecha de registro y el estado {@code ACTIVO} si no se definieron al crear la cuenta. */
     @PrePersist
     void prePersist() {
         if (fechaRegistro == null) {

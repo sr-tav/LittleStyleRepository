@@ -24,6 +24,7 @@ public record PrendaVitrinaResponse(
         List<String> tallasDisponibles
 ) {
 
+    /** Construye la tarjeta con la imagen principal y las tallas que tienen stock. */
     public static PrendaVitrinaResponse from(Prenda p) {
         return new PrendaVitrinaResponse(
                 p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getMarca(), p.getPrecio(),

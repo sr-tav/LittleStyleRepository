@@ -33,6 +33,10 @@ public class AdminInitializer implements CommandLineRunner {
     @Value("${app.admin.password}")
     private String password;
 
+    /**
+     * Al iniciar la aplicación crea el administrador con el correo normalizado y la contraseña cifrada, salvo
+     * que ya exista una cuenta con ese correo.
+     */
     @Override
     public void run(String... args) {
         String normalizado = email.trim().toLowerCase(Locale.ROOT);

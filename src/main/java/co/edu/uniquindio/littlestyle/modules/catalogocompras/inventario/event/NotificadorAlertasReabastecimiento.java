@@ -25,6 +25,10 @@ public class NotificadorAlertasReabastecimiento {
     private final UsuarioRepository usuarios;
     private final CorreoService correo;
 
+    /**
+     * Tras confirmar la transacción, registra la alerta y envía el correo al vendedor (con el nombre de la
+     * tienda si lo tiene).
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void alEmitirAlerta(AlertaReabastecimientoEmitida evento) {

@@ -11,6 +11,7 @@ public record TransaccionWompi(
         String moneda,
         String metodoPago
 ) {
+    /** Construye la vista desde el objeto {@code transaction} de Wompi; falla si no es un mapa. */
     public static TransaccionWompi desdeMapa(Object valor) {
         if (!(valor instanceof Map<?, ?> mapa)) {
             throw new IllegalArgumentException("La transacción de Wompi no tiene el formato esperado");
@@ -25,6 +26,7 @@ public record TransaccionWompi(
                 texto(mapa.get("payment_method_type")));
     }
 
+    /** Texto del valor, o {@code null}. */
     private static String texto(Object valor) {
         return valor == null ? null : valor.toString();
     }

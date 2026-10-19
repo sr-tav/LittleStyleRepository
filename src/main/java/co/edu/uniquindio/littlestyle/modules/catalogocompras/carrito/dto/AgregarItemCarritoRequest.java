@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+/** Prenda, talla y cantidad que se agregan al carrito. */
 public record AgregarItemCarritoRequest(
         @NotNull(message = "La prenda es obligatoria")
         @Positive(message = "El identificador de la prenda debe ser positivo")

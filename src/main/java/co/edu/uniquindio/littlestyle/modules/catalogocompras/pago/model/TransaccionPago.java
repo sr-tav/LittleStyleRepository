@@ -31,6 +31,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "transacciones_pago", indexes = {
+/**
+ * Intento de pago con Wompi. Antes de aprobarse guarda la compra como snapshot cifrado; el pedido se crea
+ * solo cuando Wompi aprueba el cobro.
+ */
         @Index(name = "idx_transaccion_pago_pedido", columnList = "pedido_id"),
         @Index(name = "idx_transaccion_pago_wompi", columnList = "wompi_transaccion_id"),
         @Index(name = "idx_transaccion_pago_cliente", columnList = "cliente_id"),

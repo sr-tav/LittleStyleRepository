@@ -32,6 +32,7 @@ import java.util.UUID;
 import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.LOG;
 import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.enmascararEmail;
 
+/** Registro, inicio de sesión y gestión de la cuenta propia de los usuarios. */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -122,6 +123,7 @@ public class AuthService {
         return construirRespuesta(usuario);
     }
 
+    /** Devuelve los datos del usuario con ese correo o 404 si no existe. */
     @Transactional(readOnly = true)
     public UsuarioResponse obtenerPerfil(String email) {
         return usuarioRepository.findByEmail(email)
@@ -129,6 +131,11 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 
+    /**
+     * Aplica los cambios enviados a la cuenta activa del usuario: valida que el nuevo correo no esté en uso,
+     * exige la contraseña actual y la confirmación para cambiar la contraseña, y solo permite cambiar el
+     * nombre de la tienda a vendedores. Devuelve un token nuevo con los datos actualizados.
+     */
     @Transactional
     public AuthResponse actualizarCuenta(Long id, ActualizarCuentaRequest request) {
         Usuario usuario = usuarioRepository.findByIdForUpdate(id)
@@ -186,6 +193,11 @@ public class AuthService {
         return construirRespuesta(usuarioRepository.save(usuario));
     }
 
+    /**
+     * Elimina la cuenta del usuario: publica {@link CuentaEliminadaEvent} para que los demás módulos borren
+     * sus datos, anonimiza nombre, correo, teléfono y contraseña, y la marca como {@code ELIMINADO}. La
+     * cuenta administradora no se puede eliminar.
+     */
     @Transactional
     public void desactivarCuenta(Long id) {
         Usuario usuario = usuarioRepository.findByIdForUpdate(id)
@@ -208,11 +220,13 @@ public class AuthService {
         usuarioRepository.save(usuario);
     }
 
+    /** Emite el JWT del usuario y arma la respuesta de autenticación. */
     private AuthResponse construirRespuesta(Usuario usuario) {
         JwtService.TokenEmitido token = jwtService.generarToken(usuario);
         return AuthResponse.bearer(token.token(), token.expiraEn(), UsuarioResponse.from(usuario));
     }
 
+    /** Recorta espacios y pasa el correo a minúsculas. */
     private static String normalizarEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
     }

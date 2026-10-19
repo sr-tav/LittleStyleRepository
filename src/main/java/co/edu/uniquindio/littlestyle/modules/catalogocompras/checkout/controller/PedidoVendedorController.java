@@ -29,16 +29,21 @@ public class PedidoVendedorController {
 
     private final PedidoVendedorService pedidos;
 
+    /** Lista los despachos del vendedor, del actualizado más recientemente al más antiguo. */
     @GetMapping
     public ResponseEntity<List<DespachoResponse>> misPedidos() {
         return ResponseEntity.ok(pedidos.misDespachos());
     }
 
+    /** Devuelve un despacho propio con sus productos. */
     @GetMapping("/{id}")
     public ResponseEntity<DespachoResponse> detalle(@PathVariable Long id) {
         return ResponseEntity.ok(pedidos.detalle(id));
     }
 
+    /**
+     * Avanza un despacho propio al siguiente estado (con guía al enviar) y recalcula el estado del pedido.
+     */
     @PutMapping("/{id}/estado")
     public ResponseEntity<DespachoResponse> avanzarEstado(
             @PathVariable Long id, @Valid @RequestBody AvanzarEstadoRequest request) {

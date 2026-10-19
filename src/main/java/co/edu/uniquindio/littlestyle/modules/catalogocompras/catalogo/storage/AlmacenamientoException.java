@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 /** Fallo del servicio externo de almacenamiento; se responde 502 sin exponer el detalle técnico. */
 public class AlmacenamientoException extends BusinessException {
 
+    /** Crea el error con un mensaje para el usuario y conserva la causa técnica para el log. */
     public AlmacenamientoException(String mensaje, Throwable causa) {
         super(HttpStatus.BAD_GATEWAY, mensaje);
         initCause(causa);

@@ -39,6 +39,7 @@ public class PrendaService {
     private final ValidadorPrenda validador;
     private final AlertasInventarioService alertas;
 
+    /** Prendas del vendedor; la búsqueda compara nombre y categoría sin tildes ni mayúsculas. */
     @Transactional(readOnly = true)
     public List<PrendaResponse> listar(String busqueda) {
         String filtro = normalizarTexto(busqueda);
@@ -50,11 +51,13 @@ public class PrendaService {
                 .toList();
     }
 
+    /** Prenda propia; 404 si no existe o es de otro vendedor. */
     @Transactional(readOnly = true)
     public PrendaResponse obtener(Long id) {
         return PrendaResponse.from(propia(id));
     }
 
+    /** Crea una prenda publicada para el vendedor autenticado y evalúa sus alertas de stock. */
     @Transactional
     public PrendaResponse crear(PrendaRequest request) {
         validador.validar(request);
@@ -87,6 +90,7 @@ public class PrendaService {
         return PrendaResponse.from(prenda);
     }
 
+    /** Cambia el estado de publicación y reevalúa las alertas (retirarla resuelve las activas). */
     @Transactional
     public PrendaResponse cambiarEstado(Long id, EstadoPrenda estado) {
         Prenda prenda = propiaBloqueada(id);
@@ -96,6 +100,7 @@ public class PrendaService {
         return PrendaResponse.from(prenda);
     }
 
+    /** Copia a la prenda los datos del formulario; sin género queda unisex. */
     private void aplicarDatos(Prenda prenda, PrendaRequest r) {
         prenda.setNombre(r.nombre().trim());
         prenda.setCategoria(r.categoria());
@@ -118,6 +123,10 @@ public class PrendaService {
         r.composicion().forEach(c -> prenda.getComposicion().add(new ComponenteComposicion(c.material(), c.porcentaje())));
     }
 
+    /**
+     * Actualiza los rangos de las tallas que siguen, agrega las nuevas y quita las que ya no vienen; no
+     * permite quitar una talla que todavía tiene stock.
+     */
     private void sincronizarTallas(Prenda prenda, List<TallaRequest> solicitadas) {
         Map<String, TallaRequest> porNombre = new LinkedHashMap<>();
         solicitadas.forEach(t -> porNombre.put(ValidadorPrenda.normalizarTalla(t.talla()), t));
@@ -139,6 +148,7 @@ public class PrendaService {
         porNombre.values().forEach(t -> prenda.getTallas().add(nuevaTalla(prenda, t)));
     }
 
+    /** Crea una talla con su stock inicial (0 si no se indica) y sus rangos. */
     private static TallaPrenda nuevaTalla(Prenda prenda, TallaRequest t) {
         TallaPrenda talla = TallaPrenda.builder()
                 .prenda(prenda)
@@ -149,6 +159,7 @@ public class PrendaService {
         return talla;
     }
 
+    /** Copia a la talla los rangos de estatura, peso y edad y el stock mínimo. */
     private static void aplicarRangos(TallaPrenda talla, TallaRequest t) {
         talla.setEstaturaMinCm(t.estaturaMinCm());
         talla.setEstaturaMaxCm(t.estaturaMaxCm());
@@ -159,24 +170,29 @@ public class PrendaService {
         talla.setStockMinimo(t.stockMinimo());
     }
 
+    /** Prenda del vendedor actual; 404 en otro caso. */
     private Prenda propia(Long id) {
         return prendaRepository.findByIdAndVendedorId(id, vendedorActual()).orElseThrow(PrendaService::noEncontrada);
     }
 
+    /** Prenda del vendedor actual con bloqueo de escritura; 404 en otro caso. */
     private Prenda propiaBloqueada(Long id) {
         return prendaRepository.bloquearPropia(id, vendedorActual()).orElseThrow(PrendaService::noEncontrada);
     }
 
+    /** Error 404 de prenda no encontrada. */
     static BusinessException noEncontrada() {
         return new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada");
     }
 
+    /** Id del vendedor autenticado; 401 si no hay sesión. */
     static Long vendedorActual() {
         return SecurityUtils.usuarioActual()
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"))
                 .id();
     }
 
+    /** Texto sin espacios sobrantes, o {@code null} si viene vacío. */
     private static String textoOpcional(String valor) {
         return valor == null || valor.isBlank() ? null : valor.trim();
     }

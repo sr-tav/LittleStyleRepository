@@ -32,6 +32,10 @@ public class ValidadorAlergiaCompra {
 
     private final FiltroAlergia filtroAlergia;
 
+    /**
+     * Lanza 422 con el código {@code PRENDA_EXCLUIDA_ALERGIA} si la prenda queda excluida por las alergias
+     * dadas.
+     */
     public void validarExcluida(Set<AlergiaTextil> alergias, Prenda prenda, Long perfilId) {
         EvaluacionAlergia evaluacion = filtroAlergia.evaluar(alergias, aEvaluable(prenda));
         if (!evaluacion.excluye()) {

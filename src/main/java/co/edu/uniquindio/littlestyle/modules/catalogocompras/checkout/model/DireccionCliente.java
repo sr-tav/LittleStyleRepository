@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/** Dirección de envío guardada por el cliente (una por cliente), con los datos personales cifrados. */
 @Entity
 @Table(name = "direcciones_cliente")
 @Getter

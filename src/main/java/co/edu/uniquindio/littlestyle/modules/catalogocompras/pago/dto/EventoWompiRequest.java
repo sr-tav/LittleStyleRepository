@@ -17,6 +17,7 @@ public record EventoWompiRequest(
         FirmaEvento signature,
         Object timestamp
 ) {
+    /** Rutas de {@code data} que entran en el checksum y el checksum enviado por Wompi. */
     public record FirmaEvento(List<String> properties, String checksum) {
     }
 

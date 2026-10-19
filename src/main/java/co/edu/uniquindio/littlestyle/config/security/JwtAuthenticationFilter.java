@@ -34,11 +34,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final EstadoCuentaService estadoCuentaService;
 
+    /** Crea el filtro con el servicio de tokens y la verificación del estado de la cuenta. */
     public JwtAuthenticationFilter(JwtService jwtService, EstadoCuentaService estadoCuentaService) {
         this.jwtService = jwtService;
         this.estadoCuentaService = estadoCuentaService;
     }
 
+    /**
+     * Autentica la petición si trae un JWT válido de una cuenta activa. Si el token expiró, es inválido o la
+     * cuenta no está activa, deja la causa en {@link #JWT_ERROR_ATTRIBUTE} y continúa sin autenticar.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

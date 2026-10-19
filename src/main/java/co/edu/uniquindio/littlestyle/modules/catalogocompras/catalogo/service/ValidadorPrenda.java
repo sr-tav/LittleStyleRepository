@@ -20,6 +20,7 @@ import java.util.Set;
 @Component
 public class ValidadorPrenda {
 
+    /** Valida la composición y la tabla de tallas; lanza 400 con el campo del error. */
     public void validar(PrendaRequest request) {
         validarComposicion(request);
         validarTallas(request);
@@ -30,6 +31,7 @@ public class ValidadorPrenda {
         return talla.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
     }
 
+    /** Exige materiales sin repetir que sumen exactamente 100 %. */
     private void validarComposicion(PrendaRequest request) {
         Set<MaterialTextil> materiales = EnumSet.noneOf(MaterialTextil.class);
         int suma = 0;
@@ -44,6 +46,7 @@ public class ValidadorPrenda {
         }
     }
 
+    /** Exige tallas sin repetir y rangos de estatura, peso y edad con el mínimo menor o igual al máximo. */
     private void validarTallas(PrendaRequest request) {
         Set<String> nombres = new HashSet<>();
         for (TallaRequest talla : request.tallas()) {
@@ -64,6 +67,7 @@ public class ValidadorPrenda {
         }
     }
 
+    /** Error 400 asociado a un campo. */
     private static BusinessException error(String mensaje, String campo) {
         return new BusinessException(HttpStatus.BAD_REQUEST, mensaje, campo);
     }

@@ -10,7 +10,9 @@ import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 
 import java.util.Set;
 
+/** Cálculo del puntaje de compatibilidad y de la afinidad de estilo. */
 public final class PuntajeRecomendacion {
+    /** Clase de utilidades; no se instancia. */
     private PuntajeRecomendacion(){}
 
     /** Orden de prioridad US-07: alergias y talla son filtros duros (van
@@ -22,6 +24,7 @@ public final class PuntajeRecomendacion {
     public static final int AFINIDAD_ESTAMPADO = 5;
     public static final int AFINIDAD_MAXIMA = 10;
 
+    /** Puntos de penalización por la distancia de las medidas al centro de la talla. */
     public static int distancia(DatosBiometricos bio, RangoTalla rango) {
         // Distancia normalizada (5 cm = 1 kg) reescalada a puntos: conserva la
         // sensibilidad histórica (~1 punto por cm de desvío en estatura).

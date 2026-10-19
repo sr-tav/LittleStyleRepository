@@ -43,6 +43,7 @@ public class CatalogoClienteService {
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.PerfilBiometricoPort perfiles;
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.MotorRecomendacionService motor;
 
+    /** Búsqueda sin lista de ids, perfil ni edad. */
     @Transactional(readOnly = true)
     public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
                                                           String precioMin, String precioMax, String disponible,
@@ -52,6 +53,7 @@ public class CatalogoClienteService {
                 pagina, tamano, orden);
     }
 
+    /** Búsqueda restringida a una lista de ids, sin perfil ni edad. */
     @Transactional(readOnly = true)
     public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
                                                           String precioMin, String precioMax, String disponible,
@@ -61,6 +63,7 @@ public class CatalogoClienteService {
                 pagina, tamano, orden);
     }
 
+    /** Búsqueda con lista de ids y edad, sin perfil. */
     @Transactional(readOnly = true)
     public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
                                                           String precioMin, String precioMax, String disponible,
@@ -136,6 +139,7 @@ public class CatalogoClienteService {
         return PaginaResponse.from(new PageImpl<>(contenido, paginable, paginaIds.getTotalElements()));
     }
 
+    /** Ficha de una prenda publicada; 404 si no existe o no está publicada. */
     @Transactional(readOnly = true)
     public PrendaDetalleResponse detalle(Long id) {
         Prenda prenda = prendaRepository.findByIdAndEstado(id, EstadoPrenda.ACTIVA)
@@ -143,6 +147,7 @@ public class CatalogoClienteService {
         return PrendaDetalleResponse.from(prenda);
     }
 
+    /** Convierte el filtro de categoría; nulo si no se envió y 400 si no es válido. */
     private static CategoriaPrenda categoria(String valor) {
         if (valor == null || valor.isBlank()) {
             return null;
@@ -154,6 +159,9 @@ public class CatalogoClienteService {
         }
     }
 
+    /**
+     * Convierte la lista de materiales separados por coma; nula si no se envió y 400 si alguno no es válido.
+     */
     private static List<MaterialTextil> materiales(String valor) {
         if (valor == null || valor.isBlank()) return null;
         List<MaterialTextil> lista = new ArrayList<>();
@@ -168,6 +176,7 @@ public class CatalogoClienteService {
         return lista.isEmpty() ? null : lista;
     }
 
+    /** Convierte el filtro de género; nulo si no se envió y 400 si no es válido. */
     private static GeneroPrenda genero(String valor) {
         if (valor == null || valor.isBlank()) {
             return null;
@@ -179,6 +188,7 @@ public class CatalogoClienteService {
         }
     }
 
+    /** Convierte un filtro de precio; nulo si no se envió y 400 si no es un número positivo. */
     private static BigDecimal numero(String valor, String campo) {
         if (valor == null || valor.isBlank()) {
             return null;
@@ -194,6 +204,7 @@ public class CatalogoClienteService {
         }
     }
 
+    /** Convierte el filtro de disponibilidad ({@code true}/{@code false}); nulo si no se envió. */
     private static Boolean disponibilidad(String valor) {
         if (valor == null || valor.isBlank()) {
             return null;
@@ -208,6 +219,10 @@ public class CatalogoClienteService {
                 "disponible");
     }
 
+    /**
+     * Orden de la vitrina: novedades (por defecto), precio ascendente o descendente, o nombre; siempre
+     * desempata por id.
+     */
     private static Sort orden(String valor) {
         // Desempate por id: sin orden total la paginación devuelve filas
         // repetidas o saltadas entre páginas.

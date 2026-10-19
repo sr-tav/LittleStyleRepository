@@ -34,6 +34,7 @@ public class CatalogoRecomendacionAdapter implements CatalogoRecomendacionPort {
 
     private final PrendaRepository prendaRepository;
 
+    /** Prendas publicadas convertidas al modelo del motor; omite las que tienen datos inválidos. */
     @Override
     @Transactional(readOnly = true)
     public List<PrendaRecomendable> listarPrendasPublicadas() {
@@ -43,12 +44,14 @@ public class CatalogoRecomendacionAdapter implements CatalogoRecomendacionPort {
                 .toList();
     }
 
+    /** Prenda publicada convertida al modelo del motor, o vacío si no existe o no se pudo convertir. */
     @Override
     @Transactional(readOnly = true)
     public Optional<PrendaRecomendable> buscarPrendaPublicada(Long prendaId) {
         return prendaRepository.findByIdAndEstado(prendaId, EstadoPrenda.ACTIVA).map(this::convertirSeguro);
     }
 
+    /** Convierte la prenda; si falla, la registra en el log y devuelve {@code null}. */
     private PrendaRecomendable convertirSeguro(Prenda prenda) {
         try {
             return convertir(prenda);
@@ -58,6 +61,10 @@ public class CatalogoRecomendacionAdapter implements CatalogoRecomendacionPort {
         }
     }
 
+    /**
+     * Convierte una prenda del catálogo con su tabla de tallas, composición, atributos de alergia y stock por
+     * talla. Sin marca usa el nombre de la tienda o "Sin marca".
+     */
     static PrendaRecomendable convertir(Prenda p) {
         List<RangoTalla> rangos = p.getTallas().stream()
                 .map(t -> new RangoTalla(t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),

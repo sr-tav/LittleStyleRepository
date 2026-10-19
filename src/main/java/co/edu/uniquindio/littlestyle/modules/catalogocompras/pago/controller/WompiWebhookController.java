@@ -23,6 +23,7 @@ public class WompiWebhookController {
 
     private final ReceptorEventosWompi receptorEventos;
 
+    /** Valida el evento y lo encola para aplicarlo; responde 200 si fue aceptado. */
     @PostMapping
     public ResponseEntity<Void> recibirEvento(@RequestBody EventoWompiRequest evento) {
         receptorEventos.recibir(evento);

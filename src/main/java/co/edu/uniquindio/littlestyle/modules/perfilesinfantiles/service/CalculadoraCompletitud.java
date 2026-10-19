@@ -7,16 +7,22 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Mide qué tan completo está un perfil para obtener buenas recomendaciones. */
 @Component
 public class CalculadoraCompletitud {
 
     private static final int TOTAL_CAMPOS = 8;
 
+    /** Porcentaje de los 8 campos evaluados que ya están completos. */
     public int calcular(PerfilInfantil perfil, MedicionCrecimiento ultimaMedicion) {
         return (int) Math.round((TOTAL_CAMPOS - camposPendientes(perfil, ultimaMedicion).size())
                 * 100.0 / TOTAL_CAMPOS);
     }
 
+    /**
+     * Nombres de los datos que faltan: identificación, contextura, holgura, estatura y peso de la última
+     * medición, alergias (o su ausencia) y al menos una preferencia de color o estampado.
+     */
     public List<String> camposPendientes(PerfilInfantil perfil, MedicionCrecimiento ultimaMedicion) {
         List<String> pendientes = new ArrayList<>();
         if (perfil.getNombre() == null || perfil.getNombre().isBlank()) pendientes.add("Nombre");

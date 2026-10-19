@@ -37,6 +37,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Perfil de un niño asociado a un cliente. Los datos personales y de salud se guardan cifrados; por eso
+ * contextura, holgura, el indicador de alergias y las preferencias se almacenan como texto y se exponen con
+ * getters y setters tipados.
+ */
 @Entity
 @Table(name = "perfiles_infantiles")
 @Getter
@@ -122,54 +127,65 @@ public class PerfilInfantil {
     @Column(name = "fecha_actualizacion", nullable = false)
     private LocalDateTime fechaActualizacion;
 
+    /** Contextura guardada, o {@code null}. */
     public Contextura getContextura() {
         return contexturaCifrada == null ? null : Contextura.valueOf(contexturaCifrada);
     }
 
+    /** Guarda la contextura como texto para cifrarla. */
     public void setContextura(Contextura contextura) {
         contexturaCifrada = contextura == null ? null : contextura.name();
     }
 
+    /** Holgura guardada, o {@code null}. */
     public Holgura getHolgura() {
         return holguraCifrada == null ? null : Holgura.valueOf(holguraCifrada);
     }
 
+    /** Guarda la holgura como texto para cifrarla. */
     public void setHolgura(Holgura holgura) {
         holguraCifrada = holgura == null ? null : holgura.name();
     }
 
+    /** Indica si el cliente declaró que el niño no tiene alergias. */
     public boolean isSinAlergias() {
         return Boolean.parseBoolean(sinAlergiasCifrada);
     }
 
+    /** Guarda el indicador como texto para cifrarlo. */
     public void setSinAlergias(boolean sinAlergias) {
         sinAlergiasCifrada = Boolean.toString(sinAlergias);
     }
 
+    /** Colores preferidos como un conjunto nuevo (los cambios no afectan la entidad). */
     public Set<ColorPreferido> getColoresPreferidos() {
         return coloresPreferidosCifrados.stream().map(ColorPreferido::valueOf)
                 .collect(java.util.stream.Collectors.toCollection(
                         () -> EnumSet.noneOf(ColorPreferido.class)));
     }
 
+    /** Reemplaza los colores preferidos; {@code null} los deja vacíos. */
     public void setColoresPreferidos(Set<ColorPreferido> coloresPreferidos) {
         coloresPreferidosCifrados = coloresPreferidos == null ? new HashSet<>()
                 : coloresPreferidos.stream().map(Enum::name)
                         .collect(java.util.stream.Collectors.toCollection(HashSet::new));
     }
 
+    /** Estampados preferidos como un conjunto nuevo (los cambios no afectan la entidad). */
     public Set<Estampado> getEstampadosPreferidos() {
         return estampadosPreferidosCifrados.stream().map(Estampado::valueOf)
                 .collect(java.util.stream.Collectors.toCollection(
                         () -> EnumSet.noneOf(Estampado.class)));
     }
 
+    /** Reemplaza los estampados preferidos; {@code null} los deja vacíos. */
     public void setEstampadosPreferidos(Set<Estampado> estampadosPreferidos) {
         estampadosPreferidosCifrados = estampadosPreferidos == null ? new HashSet<>()
                 : estampadosPreferidos.stream().map(Enum::name)
                         .collect(java.util.stream.Collectors.toCollection(HashSet::new));
     }
 
+    /** Asigna las fechas de creación y actualización al crear el perfil. */
     @PrePersist
     void prePersist() {
         LocalDateTime ahora = LocalDateTime.now();
@@ -177,6 +193,7 @@ public class PerfilInfantil {
         fechaActualizacion = ahora;
     }
 
+    /** Actualiza la fecha de modificación en cada cambio. */
     @PreUpdate
     void preUpdate() {
         fechaActualizacion = LocalDateTime.now();

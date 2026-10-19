@@ -14,6 +14,7 @@ public record DespachoResponse(Long despachoId, Long pedidoId, Long vendedorId, 
                                EstadoPedido estado, String numeroGuia, LocalDateTime fechaActualizacion,
                                List<PedidoDetalleResponse.Item> items) {
 
+    /** Construye la respuesta con el nombre de la tienda (o del vendedor si no tiene tienda). */
     public static DespachoResponse from(Despacho despacho, List<PedidoDetalleResponse.Item> items) {
         String tienda = despacho.getVendedor().getNombreTienda() != null
                 ? despacho.getVendedor().getNombreTienda()

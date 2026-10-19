@@ -2,5 +2,6 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repositor
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
 import org.springframework.data.jpa.repository.JpaRepository;
+/** Acceso a las líneas de los pedidos. */
 public interface LineaPedidoRepository extends JpaRepository<LineaPedido, Long> {
 }

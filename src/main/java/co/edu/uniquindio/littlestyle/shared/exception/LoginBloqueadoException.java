@@ -11,11 +11,13 @@ public class LoginBloqueadoException extends BusinessException {
 
     private final long segundosRestantes;
 
+    /** Crea el error con el tiempo de bloqueo restante, redondeado hacia arriba a segundos. */
     public LoginBloqueadoException(Duration restante) {
         super(HttpStatus.TOO_MANY_REQUESTS, mensaje(restante));
         this.segundosRestantes = Math.max(1, (restante.toMillis() + 999) / 1000);
     }
 
+    /** Mensaje para el usuario con los minutos restantes redondeados hacia arriba. */
     private static String mensaje(Duration restante) {
         long minutos = Math.max(1, (restante.toSeconds() + 59) / 60);
         return "Demasiados intentos fallidos de inicio de sesión. Intente de nuevo en "

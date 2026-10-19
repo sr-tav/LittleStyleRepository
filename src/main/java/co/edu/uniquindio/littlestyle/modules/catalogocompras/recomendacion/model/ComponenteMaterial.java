@@ -2,7 +2,9 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.mode
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 
+/** Material y porcentaje de la composición de una prenda. */
 public record ComponenteMaterial(MaterialTextil material, int porcentaje) {
+    /** Exige el material y un porcentaje entre 1 y 100. */
     public ComponenteMaterial {
         if (material == null) {
             throw new IllegalArgumentException("El material es obligatorio");
