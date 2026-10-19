@@ -107,6 +107,6 @@ class WompiClientTest {
     private static PagoProperties propiedadesPago(Duration timeoutLectura) {
         PagoProperties base = PagoProperties.porDefecto();
         return new PagoProperties(base.vigenciaEvento(), base.toleranciaReloj(), Duration.ofSeconds(1),
-                timeoutLectura, base.maxIntentosPorPedido(), true, 1, 1);
+                timeoutLectura, base.maxIntentosPorPedido(), true, 1, 1, base.expiracionTransaccion());
     }
 }

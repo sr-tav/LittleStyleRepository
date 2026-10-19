@@ -132,7 +132,8 @@ class ReceptorEventosWompiTest {
     private static PagoProperties propiedades(int hilos, int cola) {
         PagoProperties base = PagoProperties.porDefecto();
         return new PagoProperties(base.vigenciaEvento(), base.toleranciaReloj(), base.timeoutConexion(),
-                base.timeoutLectura(), base.maxIntentosPorPedido(), true, hilos, cola);
+                base.timeoutLectura(), base.maxIntentosPorPedido(), true, hilos, cola,
+                base.expiracionTransaccion());
     }
 
     private static EventoWompiRequest evento() {

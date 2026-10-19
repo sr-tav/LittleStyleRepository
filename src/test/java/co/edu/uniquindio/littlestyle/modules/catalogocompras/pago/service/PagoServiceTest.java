@@ -120,14 +120,29 @@ class PagoServiceTest {
     }
 
     @Test
-    void noCancelaUnPagoQueYaNoEstaEnCreada() {
+    void cancelaUnPagoPendienteParaQueElClienteNoQuedaBloqueado() {
         TransaccionPago transaccion = transaccion(EstadoTransaccionPago.PENDIENTE);
+        when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
+
+        ResultadoPagoResponse respuesta = pagoService.cancelar(REFERENCIA);
+
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.ANULADA);
+        assertThat(transaccion.getFechaActualizacion()).isEqualTo(LocalDateTime.now(CLOCK));
+        assertThat(respuesta.estadoPago()).isEqualTo(EstadoTransaccionPago.ANULADA);
+    }
+
+    @Test
+    void noCancelaUnPagoQueYaSeResolvio() {
+        TransaccionPago transaccion = transaccion(EstadoTransaccionPago.APROBADA);
         when(transaccionPagoRepository.bloquearPorReferencia(REFERENCIA)).thenReturn(Optional.of(transaccion));
 
         assertThatThrownBy(() -> pagoService.cancelar(REFERENCIA))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT));
-        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.PENDIENTE);
+                        e -> {
+                            assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                            assertThat(e.getMessage()).isEqualTo("Este pago ya no se puede cancelar");
+                        });
+        assertThat(transaccion.getEstado()).isEqualTo(EstadoTransaccionPago.APROBADA);
     }
 
     @Test

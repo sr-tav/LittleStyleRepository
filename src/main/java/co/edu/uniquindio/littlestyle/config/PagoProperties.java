@@ -17,6 +17,7 @@ import java.time.Duration;
  * @param eventosAsincronos    si el webhook responde de inmediato y aplica el evento en segundo plano.
  * @param hilosEventos         hilos que aplican eventos del webhook en paralelo.
  * @param colaEventos          eventos que pueden esperar turno; si se llena, el webhook responde 503 y Wompi reintenta.
+ * @param expiracionTransaccion antigüedad máxima de una compra a medio hacer antes de anularse sola.
  */
 @ConfigurationProperties(prefix = "app.pagos")
 public record PagoProperties(
@@ -27,11 +28,12 @@ public record PagoProperties(
         @DefaultValue("5") int maxIntentosPorPedido,
         @DefaultValue("true") boolean eventosAsincronos,
         @DefaultValue("4") int hilosEventos,
-        @DefaultValue("100") int colaEventos
+        @DefaultValue("100") int colaEventos,
+        @DefaultValue("PT30M") Duration expiracionTransaccion
 ) {
     /** Valores por defecto, útiles en pruebas unitarias. */
     public static PagoProperties porDefecto() {
         return new PagoProperties(Duration.ofMinutes(10), Duration.ofMinutes(1), Duration.ofSeconds(3),
-                Duration.ofSeconds(8), 5, true, 4, 100);
+                Duration.ofSeconds(8), 5, true, 4, 100, Duration.ofMinutes(30));
     }
 }
