@@ -143,4 +143,21 @@ class InventarioServiceTest {
         assertThat(respuesta.stockMinimo()).isEqualTo(5);
         assertThat(respuesta.diferencia()).isEqualTo(-3);
     }
+
+    // Una alerta activa de una talla que ya no existe no debe tumbar el listado completo.
+    @Test
+    void unaAlertaDeTallaQuitadaUsaLosValoresAlEmitir() {
+        Prenda p = prenda(10L, 5, 2, 1);
+        AlertaReabastecimiento alerta = AlertaReabastecimiento.builder().id(4L).prenda(p).talla("8")
+                .nivel(NivelStock.AGOTADO)
+                .stockAlEmitir(0).stockMinimoAlEmitir(3).fechaEmision(LocalDateTime.now()).build();
+        when(alertaRepository.findAllByPrendaVendedorIdAndFechaResolucionIsNullOrderByFechaEmisionDesc(VENDEDOR_ID))
+                .thenReturn(List.of(alerta));
+
+        AlertaResponse respuesta = service.alertasActivas().getFirst();
+
+        assertThat(respuesta.talla()).isEqualTo("8");
+        assertThat(respuesta.stockActual()).isZero();
+        assertThat(respuesta.diferencia()).isEqualTo(-3);
+    }
 }

@@ -400,6 +400,10 @@
   margin-bottom: 2rem;
 }
 
+.hero-slide {
+  position: relative;
+}
+
 .hero-slide img {
   display: block;
   width: 100%;
@@ -413,10 +417,11 @@
   background: linear-gradient(75deg, rgba(35, 49, 39, 0.72) 0%, rgba(35, 49, 39, 0.25) 55%, transparent 80%);
 }
 
+/* Deja libre el carril de las flechas (1rem + 44px + 1rem) para que el texto no las tape. */
 .hero-copy {
   position: absolute;
-  left: 2rem;
-  right: 2rem;
+  left: 4.5rem;
+  right: 4.5rem;
   top: 50%;
   bottom: auto;
   display: grid;
@@ -458,6 +463,10 @@
   }
 }
 
+.hero .galeria-flecha {
+  z-index: 2;
+}
+
 .hero .galeria-flecha-atras {
   left: 1rem;
 }
@@ -468,6 +477,7 @@
 
 .hero-puntos {
   position: absolute;
+  z-index: 2;
   bottom: 1rem;
   left: 50%;
   display: flex;
@@ -518,17 +528,71 @@
   margin-top: 1.25rem;
 }
 
+/* Sin prendas destacadas no hay imagen sobre la que superponer el texto. */
+.hero:not(:has(.hero-slide)) .hero-copy {
+  position: static;
+  max-width: none;
+  padding: 2rem;
+  transform: none;
+}
+
+/* En pantallas angostas el texto va debajo de la imagen en vez de encima. */
 @media (max-width: 760px) {
   .hero-copy {
-    left: 1.25rem;
-    right: 1.25rem;
-    top: auto;
-    bottom: 2.75rem;
+    position: static;
+    max-width: none;
+    padding: 1.25rem 1.25rem 1.5rem;
     transform: none;
   }
 
+  .hero:not(:has(.hero-slide)) .hero-copy {
+    padding: 1.5rem 1.25rem;
+  }
+
   .hero-slide img {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 10;
+  }
+
+  .hero-veil {
+    background: linear-gradient(0deg, rgba(35, 49, 39, 0.45) 0%, transparent 45%);
+  }
+
+  .hero .galeria-flecha {
+    width: 38px;
+    height: 38px;
+    font-size: 1.4rem;
+  }
+
+  .hero .galeria-flecha-atras {
+    left: 0.75rem;
+  }
+
+  .hero .galeria-flecha-siguiente {
+    right: 0.75rem;
+  }
+
+  .hero-puntos {
+    bottom: 0.75rem;
+  }
+
+  .hero-titulo {
+    font-size: 1.5rem;
+  }
+
+  .hero-acciones {
+    flex-direction: column;
+    margin-top: 0.75rem;
+
+    .btn-inline {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      padding-block: 0.75rem;
+    }
   }
 }
 

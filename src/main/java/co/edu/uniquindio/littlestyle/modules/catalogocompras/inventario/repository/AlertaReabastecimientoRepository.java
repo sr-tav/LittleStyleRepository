@@ -16,6 +16,9 @@ public interface AlertaReabastecimientoRepository extends JpaRepository<AlertaRe
     /** Alerta activa de una talla de la prenda. */
     Optional<AlertaReabastecimiento> findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(Long prendaId, String talla);
 
+    /** Todas las alertas activas de la prenda. */
+    List<AlertaReabastecimiento> findAllByPrendaIdAndFechaResolucionIsNull(Long prendaId);
+
     /** Alertas activas heredadas de antes del mínimo por talla. */
     List<AlertaReabastecimiento> findAllByPrendaIdAndTallaIsNullAndFechaResolucionIsNull(Long prendaId);
 
