@@ -19,6 +19,12 @@ import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
 import { PagoWompi } from '../components/pago-wompi';
 
+/**
+ * Gestiona la dirección de entrega, el perfil infantil y el resumen previo al pago.
+ * @see US-10
+ * @see UI-11
+ * @see UI-12
+ */
 @Component({
   selector: 'app-checkout',
   imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi],
@@ -51,6 +57,10 @@ export class CheckoutPage implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly precio = formatearPrecio;
 
+  /**
+   * Valida los datos de entrega; requiere código postal de seis dígitos y celular colombiano
+   * que inicia en 3 y contiene diez dígitos.
+   */
   protected readonly form = this.fb.nonNullable.group({
     destinatario: ['', [Validators.required, Validators.maxLength(120)]],
     direccion: ['', [Validators.required, Validators.maxLength(200)]],
@@ -61,6 +71,10 @@ export class CheckoutPage implements OnInit {
     telefono: ['', [Validators.required, Validators.pattern(/^3\d{9}$/)]],
   });
 
+  /**
+   * Carga en paralelo los perfiles infantiles y la dirección de entrega guardada.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     forkJoin({
       perfiles: this.perfilesService.listar(),
@@ -84,6 +98,11 @@ export class CheckoutPage implements OnInit {
     });
   }
 
+  /**
+   * Valida dirección, perfil y disponibilidad del carrito antes de solicitar el resumen.
+   * Guarda la dirección editada antes de continuar.
+   * @returns No devuelve un valor.
+   */
   protected continuarAResumen(): void {
     this.error.set(null);
     if (this.form.invalid) {
@@ -126,6 +145,10 @@ export class CheckoutPage implements OnInit {
     this.solicitarResumen(perfilInfantilId);
   }
 
+  /**
+   * Restaura la dirección guardada e intenta avanzar con ella al resumen.
+   * @returns No devuelve un valor.
+   */
   protected usarDireccionGuardada(): void {
     const direccion = this.direccionGuardada();
     if (!direccion) return;
@@ -139,6 +162,11 @@ export class CheckoutPage implements OnInit {
     this.editandoDireccion.set(true);
   }
 
+  /**
+   * Actualiza el departamento y reinicia el municipio para mantener la selección consistente.
+   * @param event Evento del selector de departamento.
+   * @returns No devuelve un valor.
+   */
   protected cambioDepartamento(event: Event): void {
     const departamento = (event.currentTarget as HTMLSelectElement).value;
     this.form.controls.departamento.setValue(departamento);
@@ -155,6 +183,11 @@ export class CheckoutPage implements OnInit {
     this.error.set(null);
   }
 
+  /**
+   * Solicita el cálculo del resumen y avanza al paso de pago al recibirlo.
+   * @param perfilInfantilId Identificador del perfil infantil seleccionado.
+   * @returns No devuelve un valor.
+   */
   private solicitarResumen(perfilInfantilId: number): void {
     this.procesando.set(true);
     this.checkoutService.calcularResumen({
@@ -174,6 +207,11 @@ export class CheckoutPage implements OnInit {
     });
   }
 
+  /**
+   * Carga una dirección en el formulario y reconcilia departamento/municipio sin depender de tildes.
+   * @param direccion Dirección que se copia al formulario.
+   * @returns No devuelve un valor.
+   */
   private cargarDireccionEnFormulario(direccion: DireccionEnvio): void {
     const departamento = this.departamentos.find(
       (opcion) => this.normalizarUbicacion(opcion) === this.normalizarUbicacion(direccion.departamento ?? ''),
@@ -193,6 +231,10 @@ export class CheckoutPage implements OnInit {
     });
   }
 
+  /**
+   * Normaliza espacios y convierte campos opcionales vacíos a `null`.
+   * @returns Dirección preparada para las operaciones de checkout.
+   */
   private direccionFormulario(): DireccionEnvio {
     const direccion = this.form.getRawValue();
     return {
@@ -207,6 +249,11 @@ export class CheckoutPage implements OnInit {
     };
   }
 
+  /**
+   * Verifica que el código postal y la combinación de departamento/municipio estén completos.
+   * @param direccion Dirección que se comprueba.
+   * @returns `true` si los datos geográficos coinciden con el catálogo local.
+   */
   private direccionCompleta(direccion: DireccionEnvio): boolean {
     const departamento = this.departamentos.find(
       (opcion) => this.normalizarUbicacion(opcion) === this.normalizarUbicacion(direccion.departamento ?? ''),
@@ -217,6 +264,11 @@ export class CheckoutPage implements OnInit {
     return Boolean(direccion.codigoPostal && departamento && municipio);
   }
 
+  /**
+   * Quita diacríticos y normaliza espacios y mayúsculas para comparar ubicaciones.
+   * @param valor Texto de ubicación que se normaliza.
+   * @returns Texto normalizado para comparación.
+   */
   private normalizarUbicacion(valor: string): string {
     return valor.normalize('NFD').replace(/\p{M}/gu, '').trim().toLocaleUpperCase('es-CO');
   }
@@ -226,6 +278,10 @@ export class CheckoutPage implements OnInit {
     this.resumen.set(null);
   }
 
+  /**
+   * Comprueba que el carrito no esté vacío y todas sus líneas estén disponibles.
+   * @returns `true` cuando cada producto puede incluirse en la compra.
+   */
   protected stockDisponible(): boolean {
     const items = this.carrito.items();
     return items.length > 0 && items.every((item) => item.disponible);

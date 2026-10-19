@@ -17,6 +17,11 @@ const RECARGA_KEY = 'ls_recarga_version';
  * la navegación falla sin aviso (los botones "no hacen nada"). Se recarga hacia la URL de
  * destino para tomar la versión nueva. Si la misma URL ya se recargó hace menos de 30 s, el
  * problema no es la versión y no se insiste, para no entrar en un ciclo de recargas.
+ *
+ * @param evento Error de navegación emitido por Angular Router.
+ * @param recargar Acción que navega a la URL de destino; puede sustituirse en pruebas.
+ * @param ahora Marca temporal usada para limitar recargas repetidas.
+ * @returns No devuelve un valor; recarga solo ante errores de carga de módulos y evita ciclos.
  */
 export function recargarSiCambioLaVersion(
   evento: NavigationError,
@@ -39,6 +44,10 @@ export function recargarSiCambioLaVersion(
   recargar(evento.url);
 }
 
+/**
+ * Configuración global de proveedores de la aplicación Angular.
+ * @see ADR-01
+ */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),

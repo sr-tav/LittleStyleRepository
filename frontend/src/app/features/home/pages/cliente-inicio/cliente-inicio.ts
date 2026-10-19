@@ -17,7 +17,11 @@ import { VitrinaService } from '../../../vitrina/services/vitrina.service';
 
 const TAMANO_NOVEDADES = 8;
 
-/** Inicio del cliente con estilo e-commerce: carrusel, novedades y accesos. */
+/**
+ * Inicio del cliente con estilo e-commerce: carrusel, novedades y accesos.
+ * @see US-06
+ * @see UI-3
+ */
 @Component({
   selector: 'app-cliente-inicio',
   imports: [Navbar, RouterLink, PrendaMiniatura, AccesoRapidoPrenda, Footer],
@@ -45,6 +49,10 @@ export class ClienteInicio implements OnInit, OnDestroy {
 
   private intervalo: ReturnType<typeof setInterval> | null = null;
 
+  /**
+   * Carga perfiles y productos iniciales e inicia la rotación automática del carrusel.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.perfilesService.listar().subscribe({
       next: (perfiles) => {
@@ -61,20 +69,36 @@ export class ClienteInicio implements OnInit, OnDestroy {
     this.intervalo = setInterval(() => this.siguienteSlide(), 6000);
   }
 
+  /**
+   * Detiene el temporizador de rotación del carrusel al destruir la página.
+   * @returns No devuelve un valor.
+   */
   ngOnDestroy(): void {
     if (this.intervalo !== null) clearInterval(this.intervalo);
   }
 
+  /**
+   * Selecciona la diapositiva anterior de forma circular.
+   * @returns No devuelve un valor.
+   */
   protected anteriorSlide(): void {
     const total = this.destacadas().length;
     if (total > 1) this.slide.update((i) => (i - 1 + total) % total);
   }
 
+  /**
+   * Selecciona la siguiente diapositiva de forma circular.
+   * @returns No devuelve un valor.
+   */
   protected siguienteSlide(): void {
     const total = this.destacadas().length;
     if (total > 1) this.slide.update((i) => (i + 1) % total);
   }
 
+  /**
+   * Agrega la página siguiente de novedades si hay más resultados y no existe otra carga activa.
+   * @returns No devuelve un valor.
+   */
   protected cargarMas(): void {
     if (this.cargandoMas() || this.paginaNovedades() >= this.totalPaginasNovedades() - 1) return;
     this.cargandoMas.set(true);
@@ -90,6 +114,10 @@ export class ClienteInicio implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Carga productos recientes con fotografía y limita las destacadas a cinco.
+   * @returns No devuelve un valor.
+   */
   private cargarHero(): void {
     this.vitrina.explorar({ pagina: 0, tamano: 10, orden: 'novedades' }).subscribe({
       next: (res: Pagina<VitrinaItem>) => {
@@ -100,6 +128,10 @@ export class ClienteInicio implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Carga la primera página de novedades y registra el total de páginas disponible.
+   * @returns No devuelve un valor.
+   */
   private cargarNovedades(): void {
     this.vitrina.explorar({ pagina: 0, tamano: TAMANO_NOVEDADES, orden: 'novedades' }).subscribe({
       next: (res: Pagina<VitrinaItem>) => {
@@ -111,6 +143,11 @@ export class ClienteInicio implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Presenta la edad en meses para menores de un año y en años para los demás perfiles.
+   * @param perfil Perfil infantil cuya edad se muestra.
+   * @returns Edad con singular o plural según el valor.
+   */
   protected edad(perfil: PerfilInfantil): string {
     if (perfil.edadAnios === 0) {
       return `${perfil.mesesRestantes} ${perfil.mesesRestantes === 1 ? 'mes' : 'meses'}`;

@@ -8,7 +8,10 @@ import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
 import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 
-/** Paquetes del vendedor (US-12 multi-vendedor): solo su despacho por pedido. */
+/**
+ * Paquetes del vendedor (US-12 multi-vendedor): solo su despacho por pedido.
+ * @see US-12
+ */
 @Component({
   selector: 'app-pedidos-vendedor',
   imports: [Navbar, RouterLink],
@@ -33,10 +36,20 @@ export class PedidosVendedor implements OnInit {
   protected readonly unidades = (p: DespachoVendedor) =>
     p.items.reduce((t, i) => t + i.cantidad, 0);
 
+  /**
+   * Carga los despachos cuando se inicializa la vista.
+   * @returns No devuelve un valor.
+   * @see US-12
+   */
   ngOnInit(): void {
     this.cargar();
   }
 
+  /**
+   * Consulta los despachos del vendedor y actualiza la vista.
+   * @returns No devuelve un valor.
+   * @see US-12
+   */
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);

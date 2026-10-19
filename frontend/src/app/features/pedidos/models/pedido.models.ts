@@ -1,3 +1,4 @@
+/** Estados utilizados para representar el ciclo de vida de un pedido. */
 export type EstadoPedido =
   | 'PENDIENTE_PAGO'
   | 'PAGADO'
@@ -7,6 +8,7 @@ export type EstadoPedido =
   | 'ENVIADO'
   | 'CANCELADO';
 
+/** Etiquetas en español para los estados del pedido. */
 export const ETIQUETAS_ESTADO: Record<EstadoPedido, string> = {
   PENDIENTE_PAGO: 'Pendiente de pago',
   PAGADO: 'Pagado',
@@ -27,6 +29,7 @@ export const ORDEN_ESTADOS: EstadoPedido[] = [
   'ENVIADO',
 ];
 
+/** Resumen de un pedido mostrado en el historial del cliente. */
 export interface PedidoResumen {
   id: number;
   estado: EstadoPedido;
@@ -36,6 +39,7 @@ export interface PedidoResumen {
   numeroGuia: string | null;
 }
 
+/** Producto y cantidades incluidos en un pedido. */
 export interface PedidoItem {
   prendaId: number;
   nombre: string;
@@ -46,6 +50,7 @@ export interface PedidoItem {
   imagenUrl?: string | null;
 }
 
+/** Cambio de estado registrado en el historial de un pedido. */
 export interface MovimientoPedido {
   anterior: EstadoPedido | null;
   nuevo: EstadoPedido;
@@ -53,6 +58,10 @@ export interface MovimientoPedido {
   numeroGuia?: string | null;
 }
 
+/**
+ * Bloque de productos y seguimiento perteneciente a un vendedor dentro del pedido.
+ * @see US-12
+ */
 export interface DespachoBloque {
   despachoId: number;
   pedidoId: number;
@@ -64,6 +73,7 @@ export interface DespachoBloque {
   items: PedidoItem[];
 }
 
+/** Datos completos de un pedido, incluidos sus despachos e historial de estados. */
 export interface PedidoDetalle {
   id: number;
   estado: EstadoPedido;

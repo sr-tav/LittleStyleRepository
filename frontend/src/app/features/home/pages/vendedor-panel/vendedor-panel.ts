@@ -10,6 +10,8 @@ import { InventarioService } from '../../../catalogoCompras/services/inventario.
 /**
  * UI-18: Panel del vendedor. Productos e inventario son reales (US-08); ventas, pedidos y reportes
  * se activan con sus historias.
+ * @see UI-18
+ * @see US-08
  */
 @Component({
   selector: 'app-vendedor-panel',
@@ -89,6 +91,10 @@ export class VendedorPanel implements OnInit {
     () => this.inventario().filter((i) => i.estado === 'ACTIVA').length,
   );
 
+  /**
+   * Carga el inventario y las alertas que alimentan los indicadores del panel.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.inventarioService.listar().subscribe({
       next: (items) => {

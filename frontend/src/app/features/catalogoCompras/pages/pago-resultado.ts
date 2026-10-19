@@ -21,10 +21,19 @@ export const MAX_CONSULTAS = 15;
  * así que no detienen la verificación: se omite esa consulta y se reintenta en la siguiente.
  */
 const ESTADOS_TRANSITORIOS = new Set([0, 502, 503, 504]);
+/**
+ * Identifica errores de red y estados temporales del servicio de pago.
+ * @param error Error recibido durante la consulta.
+ * @returns `true` si corresponde reintentar la consulta.
+ * @see RNF-28
+ */
 const esTransitorio = (error: unknown) =>
   error instanceof HttpErrorResponse && ESTADOS_TRANSITORIOS.has(error.status);
 
-/** UI-15: confirmación del pago tras volver del Widget o de la redirección de Wompi. */
+/**
+ * UI-15: confirmación del pago tras volver del Widget o de la redirección de Wompi.
+ * @see UI-15
+ */
 @Component({
   selector: 'app-pago-resultado',
   imports: [Navbar, RouterLink],
@@ -42,6 +51,7 @@ export class PagoResultadoPage implements OnInit {
   protected readonly cancelando = signal(false);
   protected readonly precio = formatearPrecio;
 
+  /** Traduce el estado recibido a la vista de aprobación, pendiente, rechazo o reembolso. */
   protected readonly vista = computed(() => {
     const resultado = this.resultado();
     if (!resultado) return null;
@@ -62,6 +72,8 @@ export class PagoResultadoPage implements OnInit {
   /**
    * Anula el pago mientras la compra no se completó (CREADA o PENDIENTE): con ANULADA el carrito
    * queda libre para un nuevo intento. Los estados finales no se pueden anular.
+   * @returns No devuelve un valor.
+   * @see UI-15
    */
   protected cancelarPago(): void {
     const pago = this.resultado();
@@ -80,6 +92,13 @@ export class PagoResultadoPage implements OnInit {
     });
   }
 
+  /**
+   * Consulta periódicamente la transacción, reintenta errores transitorios y detiene el ciclo
+   * cuando el pago deja de estar en proceso.
+   * @returns No devuelve un valor.
+   * @see UI-15
+   * @see RNF-28
+   */
   ngOnInit(): void {
     const transaccionId = this.route.snapshot.queryParamMap.get('id');
     if (!transaccionId) {

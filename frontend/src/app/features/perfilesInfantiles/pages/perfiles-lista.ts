@@ -18,6 +18,11 @@ import {
 import { PerfilActivoService } from '../services/perfil-activo.service';
 import { PerfilesService } from '../services/perfiles.service';
 
+/**
+ * Lista los perfiles infantiles, presenta sus preferencias y permite elegir el perfil activo.
+ * @see US-06
+ * @see UI-4
+ */
 @Component({
   selector: 'app-perfiles-lista',
   imports: [Navbar, RouterLink],
@@ -35,6 +40,10 @@ export class PerfilesLista implements OnInit {
   protected readonly confirmacion = signal<string | null>(null);
   protected readonly modoSeleccion = signal(false);
 
+  /**
+   * Lee el modo de selección y carga los perfiles, sincronizando el perfil activo.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     this.modoSeleccion.set(
       this.route.snapshot.queryParamMap.get('modo') === 'seleccionar',
@@ -59,18 +68,38 @@ export class PerfilesLista implements OnInit {
     });
   }
 
+  /**
+   * Formatea la edad calculada del perfil para su presentación.
+   * @param perfil Perfil cuya edad se muestra.
+   * @returns Edad con unidades localizadas.
+   */
   protected edad(perfil: PerfilInfantil): string {
     return formatearEdadPerfil(perfil);
   }
 
+  /**
+   * Comprueba si el perfil coincide con el perfil activo.
+   * @param perfil Perfil que se consulta.
+   * @returns `true` si el identificador coincide con el activo.
+   */
   protected esActivo(perfil: PerfilInfantil): boolean {
     return this.perfilActivoService.perfil()?.id === perfil.id;
   }
 
+  /**
+   * Establece como activo el perfil seleccionado.
+   * @param perfil Perfil que se activa.
+   * @returns No devuelve un valor.
+   */
   protected seleccionar(perfil: PerfilInfantil): void {
     this.perfilActivoService.seleccionar(perfil.id);
   }
 
+  /**
+   * Activa el perfil y vuelve al inicio del cliente.
+   * @param perfil Perfil que se activa.
+   * @returns No devuelve un valor.
+   */
   protected seleccionarYVolver(perfil: PerfilInfantil): void {
     this.seleccionar(perfil);
     void this.router.navigateByUrl('/cliente');
@@ -80,6 +109,11 @@ export class PerfilesLista implements OnInit {
     return { DELGADA: 'Delgada', MEDIA: 'Media', ROBUSTA: 'Robusta' }[perfil.contextura];
   }
 
+  /**
+   * Convierte las alergias seleccionadas a etiquetas, incluyendo el texto de la opción «Otra».
+   * @param perfil Perfil con las alergias registradas.
+   * @returns Etiquetas separadas por coma.
+   */
   protected alergias(perfil: PerfilInfantil): string {
     const etiquetas = perfil.alergias.map((alergia: AlergiaTextil) =>
       alergia === 'OTRA' && perfil.otraAlergia
@@ -89,6 +123,11 @@ export class PerfilesLista implements OnInit {
     return etiquetas.join(', ');
   }
 
+  /**
+   * Combina los colores predefinidos con la preferencia libre del perfil.
+   * @param perfil Perfil cuyas preferencias se presentan.
+   * @returns Colores legibles separados por coma.
+   */
   protected colores(perfil: PerfilInfantil): string {
     return [
       ...perfil.coloresPreferidos.map((color: ColorPreferido) => ETIQUETAS_COLORES[color]),
@@ -98,6 +137,11 @@ export class PerfilesLista implements OnInit {
       .join(', ');
   }
 
+  /**
+   * Combina los estampados predefinidos con la preferencia libre del perfil.
+   * @param perfil Perfil cuyas preferencias se presentan.
+   * @returns Estampados legibles separados por coma.
+   */
   protected estampados(perfil: PerfilInfantil): string {
     return [
       ...perfil.estampadosPreferidos.map((estampado: Estampado) => ETIQUETAS_ESTAMPADOS[estampado]),

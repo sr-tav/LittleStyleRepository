@@ -6,7 +6,10 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { AuthBrand } from '../../components/auth-brand/auth-brand';
 import { PATRON_EMAIL, procesarErrorApi } from '../../auth.validators';
 
-/** UI-1: Inicio de sesión. */
+/**
+ * UI-1: Inicio de sesión.
+ * @see UI-1
+ */
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink, AuthBrand],
@@ -25,16 +28,27 @@ export class Login {
   protected readonly enviado = signal(false);
   protected readonly sesionExpirada = this.route.snapshot.queryParamMap.get('sesion') === 'expirada';
 
+  /** Formulario con correo y contraseña obligatorios; el correo debe ajustarse al patrón compartido. */
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.pattern(PATRON_EMAIL)]],
     password: ['', [Validators.required]],
   });
 
+  /**
+   * Determina si el campo debe mostrarse como inválido según su interacción o el envío.
+   * @param campo Campo del formulario que se consulta.
+   * @returns `true` si es inválido y fue tocado o ya se intentó enviar.
+   */
   protected invalido(campo: 'email' | 'password'): boolean {
     const control = this.form.controls[campo];
     return control.invalid && (control.touched || this.enviado());
   }
 
+  /**
+   * Valida el formulario, inicia sesión y navega a la URL de retorno admitida o al inicio del rol.
+   * @returns No devuelve un valor.
+   * @see UI-1
+   */
   protected onSubmit(): void {
     this.enviado.set(true);
     this.errorGeneral.set(null);

@@ -3,10 +3,15 @@ import { AfterViewInit, Component, ElementRef, HostListener, output, viewChild }
 /**
  * Versión del texto mostrado. Debe coincidir con AuthService.VERSION_TERMINOS_VIGENTE en el backend,
  * que es la versión que queda registrada como aceptada por el usuario.
+ * @see US-05
+ * @see RNF-06
  */
 export const VERSION_TERMINOS = '1.1';
 
-/** Términos y condiciones de uso y política de tratamiento de datos personales (Ley 1581 de 2012). */
+/**
+ * Términos y condiciones de uso y política de tratamiento de datos personales (Ley 1581 de 2012).
+ * @see UI-2
+ */
 @Component({
   selector: 'app-terminos-modal',
   template: `
@@ -130,10 +135,18 @@ export class TerminosModal implements AfterViewInit {
   protected readonly version = VERSION_TERMINOS;
   private readonly dialogo = viewChild.required<ElementRef<HTMLElement>>('dialogo');
 
+  /**
+   * Sitúa el foco en el diálogo cuando Angular termina de inicializar la vista.
+   * @returns No devuelve un valor.
+   */
   ngAfterViewInit(): void {
     this.dialogo().nativeElement.focus();
   }
 
+  /**
+   * Cierra el modal cuando se pulsa Escape.
+   * @returns No devuelve un valor.
+   */
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     this.cerrar.emit();

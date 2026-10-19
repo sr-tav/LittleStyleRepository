@@ -10,6 +10,8 @@ import { WompiWidgetService } from '../services/wompi-widget.service';
 
 /**
  * Inicia el pago del checkout actual con el Widget de Wompi (UI-13/UI-14).
+ * @see UI-13
+ * @see UI-14
  */
 @Component({
   selector: 'app-pago-wompi',
@@ -56,6 +58,12 @@ export class PagoWompi {
   protected readonly pagoNoCompletado = signal(false);
   protected readonly etiquetaBoton = computed(() => this.pagoNoCompletado() ? 'Reintentar pago' : this.etiqueta());
 
+  /**
+   * Inicia el pago, abre el widget y presenta el resultado o el error correspondiente.
+   * @returns No devuelve un valor.
+   * @see UI-13
+   * @see UI-14
+   */
   protected pagar(): void {
     if (this.procesando()) return;
     this.procesando.set(true);

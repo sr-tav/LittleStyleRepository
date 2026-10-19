@@ -5,6 +5,11 @@ import { guestGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 import { AuthService } from './core/services/auth.service';
 
+/**
+ * Define las rutas de la SPA, la carga diferida de funcionalidades y las restricciones por rol.
+ * @see US-05
+ * @see RNF-10
+ */
 export const routes: Routes = [
   // La raíz envía a cada usuario al inicio de su rol (o al login si no hay sesión)
   { path: '', pathMatch: 'full', redirectTo: () => inject(AuthService).rutaInicio() },

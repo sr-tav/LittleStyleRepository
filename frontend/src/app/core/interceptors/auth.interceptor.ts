@@ -12,6 +12,12 @@ const RUTAS_PUBLICAS = ['/auth/login', '/auth/register'];
 /**
  * AuthInterceptor: adjunta "Authorization: Bearer <jwt>" a las peticiones hacia la API
  * y reacciona a 401 (sesión expirada/inválida) y 403 (rol sin permiso).
+ *
+ * @param req Solicitud HTTP que se evalúa y, cuando corresponde, se clona con el token.
+ * @param next Siguiente manejador de la cadena de interceptores.
+ * @returns Flujo de eventos HTTP de la solicitud; propaga los errores recibidos.
+ * @see US-05
+ * @see RNF-10
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);

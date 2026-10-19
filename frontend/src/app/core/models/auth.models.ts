@@ -1,8 +1,14 @@
+/** Roles admitidos por la aplicación para las cuentas de usuario. */
 export type Rol = 'CLIENTE' | 'VENDEDOR' | 'ADMINISTRADOR';
 
-/** Roles que pueden crearse desde el formulario público de registro. */
+/**
+ * Roles que pueden crearse desde el formulario público de registro.
+ * @see US-05
+ * @see UI-2
+ */
 export type RolRegistro = Exclude<Rol, 'ADMINISTRADOR'>;
 
+/** Datos de identidad y contacto de la cuenta autenticada. */
 export interface Usuario {
   id: number;
   nombre: string;
@@ -13,6 +19,7 @@ export interface Usuario {
   rol: Rol;
 }
 
+/** Resultado de autenticación con token, vencimiento y usuario asociado. */
 export interface AuthResponse {
   token: string;
   tipo: 'Bearer';
@@ -21,11 +28,18 @@ export interface AuthResponse {
   usuario: Usuario;
 }
 
+/** Credenciales enviadas para iniciar sesión. */
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
+/**
+ * Datos y aceptación de términos enviados para crear una cuenta.
+ * @see US-05
+ * @see UI-2
+ * @see RNF-06
+ */
 export interface RegistroRequest {
   nombre: string;
   apellido: string;
@@ -38,6 +52,7 @@ export interface RegistroRequest {
   aceptaTerminos: boolean;
 }
 
+/** Campos opcionales para actualizar los datos de una cuenta. */
 export interface ActualizarCuentaRequest {
   nombre?: string;
   apellido?: string;
@@ -61,7 +76,11 @@ export interface ApiError {
   errores?: Record<string, string>;
 }
 
-/** Extrae el código de error estable del backend, si existe. */
+/**
+ * Extrae el código de error estable del backend, si existe.
+ * @param error Valor recibido cuyo cuerpo puede contener el error de API.
+ * @returns Código estable del error o `null` si no está presente.
+ */
 export function codigoErrorApi(error: unknown): string | null {
   if (error instanceof Object && 'error' in (error as Record<string, unknown>)) {
     const body = (error as { error: Partial<ApiError> | null }).error;

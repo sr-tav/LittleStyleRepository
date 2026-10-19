@@ -9,7 +9,10 @@ import { ETIQUETAS_CATEGORIAS } from '../models/prenda-opciones';
 import { AlertaInventario } from '../models/prenda.models';
 import { InventarioService } from '../services/inventario.service';
 
-/** UI-22: Alertas de inventario (productos que requieren reabastecimiento). */
+/**
+ * UI-22: Alertas de inventario (productos que requieren reabastecimiento).
+ * @see UI-22
+ */
 @Component({
   selector: 'app-alertas-stock',
   imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura],
@@ -77,6 +80,11 @@ export class AlertasStock implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly categoria = (a: AlertaInventario) => ETIQUETAS_CATEGORIAS[a.categoria];
 
+  /**
+   * Formatea la fecha de emisión para mostrarla en la tarjeta de alerta.
+   * @param a Alerta cuya fecha se presenta.
+   * @returns Fecha localizada o su valor original si no puede interpretarse.
+   */
   protected fechaEmision(a: AlertaInventario): string {
     const fecha = new Date(a.fechaEmision);
     return Number.isNaN(fecha.getTime())
@@ -84,6 +92,11 @@ export class AlertasStock implements OnInit {
       : fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  /**
+   * Describe la diferencia de stock respecto del mínimo configurado.
+   * @param a Alerta de inventario que se presenta.
+   * @returns Texto que indica si el stock está en el mínimo o cuánto falta.
+   */
   protected textoDiferencia(a: AlertaInventario): string {
     if (a.diferencia === 0) return 'en el mínimo permitido';
     return `te faltan ${-a.diferencia} para el mínimo`;
@@ -93,6 +106,11 @@ export class AlertasStock implements OnInit {
     this.cargar();
   }
 
+  /**
+   * Consulta de nuevo las alertas y actualiza los estados de carga y error.
+   * @returns No devuelve un valor.
+   * @see UI-22
+   */
   protected cargar(): void {
     this.cargando.set(true);
     this.error.set(null);

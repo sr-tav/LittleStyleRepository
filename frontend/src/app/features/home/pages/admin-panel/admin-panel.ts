@@ -2,7 +2,10 @@ import { Component } from '@angular/core';
 
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 
-/** UI-25: Panel inicial del administrador (solo rol ADMINISTRADOR). Contenido real pendiente del Proceso 3. */
+/**
+ * UI-25: Panel inicial del administrador (solo rol ADMINISTRADOR). Contenido real pendiente del Proceso 3.
+ * @see UI-25
+ */
 @Component({
   selector: 'app-admin-panel',
   imports: [Navbar],

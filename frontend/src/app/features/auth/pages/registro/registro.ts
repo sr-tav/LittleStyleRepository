@@ -29,7 +29,10 @@ type Campo =
 
 const NIVELES = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Excelente'];
 
-/** UI-2: Registro de usuarios (clientes y vendedores). */
+/**
+ * UI-2: Registro de usuarios (clientes y vendedores).
+ * @see UI-2
+ */
 @Component({
   selector: 'app-registro',
   imports: [ReactiveFormsModule, RouterLink, AuthBrand, TerminosModal],
@@ -46,6 +49,11 @@ export class Registro {
   protected readonly mostrarPassword = signal(false);
   protected readonly mostrarTerminos = signal(false);
 
+  /**
+   * Formulario que valida nombres, email, celular, contraseña, confirmación y términos;
+   * exige nombre de tienda solo al seleccionar el rol vendedor.
+   * @see UI-2
+   */
   protected readonly form = this.fb.nonNullable.group(
     {
       rol: this.fb.nonNullable.control<RolRegistro>('CLIENTE'),
@@ -68,6 +76,10 @@ export class Registro {
   protected readonly fortaleza = computed(() => fortalezaPassword(this.passwordValor()));
   protected readonly nivelTexto = computed(() => NIVELES[this.fortaleza()]);
 
+  /**
+   * Actualiza la obligatoriedad del nombre de tienda según el rol elegido.
+   * @see UI-2
+   */
   constructor() {
     // El nombre de la tienda solo es obligatorio para vendedores
     this.form.controls.rol.valueChanges.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((rol) => {
@@ -82,16 +94,33 @@ export class Registro {
     });
   }
 
+  /**
+   * Selecciona el rol permitido en el formulario.
+   * @param rol Rol de registro seleccionado.
+   * @returns No devuelve un valor.
+   * @see UI-2
+   */
   protected seleccionarRol(rol: RolRegistro): void {
     this.form.controls.rol.setValue(rol);
   }
 
+  /**
+   * Abre los términos sin activar accidentalmente el checkbox contenedor.
+   * @param evento Evento de clic del enlace.
+   * @returns No devuelve un valor.
+   * @see UI-2
+   */
   protected abrirTerminos(evento: Event): void {
     // El enlace está dentro del <label>: evita que el clic marque el checkbox sin haber leído
     evento.preventDefault();
     this.mostrarTerminos.set(true);
   }
 
+  /**
+   * Registra la aceptación explícita de los términos y cierra el modal.
+   * @returns No devuelve un valor.
+   * @see UI-2
+   */
   protected aceptarTerminos(): void {
     const control = this.form.controls.aceptaTerminos;
     control.setValue(true);
@@ -99,12 +128,22 @@ export class Registro {
     this.mostrarTerminos.set(false);
   }
 
+  /**
+   * Determina si se muestra un campo inválido o el error de confirmación de contraseña.
+   * @param campo Campo cuyo estado se consulta.
+   * @returns `true` si el error debe presentarse al usuario.
+   */
   protected invalido(campo: Campo): boolean {
     const control = this.form.controls[campo];
     const errorGrupo = campo === 'confirmarPassword' && this.form.hasError('noCoincide');
     return (control.invalid || errorGrupo) && (control.touched || this.enviado());
   }
 
+  /**
+   * Obtiene el mensaje aplicable al primer error detectado del campo.
+   * @param campo Campo cuyo mensaje se requiere.
+   * @returns Mensaje de validación o cadena vacía si no hay error reconocido.
+   */
   protected error(campo: Campo): string {
     const c = this.form.controls[campo];
     const e = c.errors ?? {};
@@ -119,6 +158,11 @@ export class Registro {
     return '';
   }
 
+  /**
+   * Valida y envía el registro; al completar, navega al inicio del rol creado.
+   * @returns No devuelve un valor.
+   * @see UI-2
+   */
   protected onSubmit(): void {
     this.enviado.set(true);
     this.errorGeneral.set(null);

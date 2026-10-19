@@ -1,6 +1,13 @@
 import { Component, input, signal } from '@angular/core';
 
-/** Foto principal de la prenda; si no tiene o no carga, muestra un icono de prenda. */
+/**
+ * Foto principal de la prenda; si no tiene o no carga, muestra un icono de prenda.
+ * @see US-08
+ * @see US-09
+ * @see UI-8
+ * @see UI-9
+ * @see UI-19
+ */
 @Component({
   selector: 'app-prenda-miniatura',
   template: `

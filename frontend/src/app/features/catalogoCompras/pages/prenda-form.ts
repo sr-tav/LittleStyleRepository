@@ -35,7 +35,11 @@ interface FotoPendiente {
 
 const ENTERO = Validators.pattern(/^\d+$/);
 
-/** Composición: materiales sin repetir y suma exacta de 100 %. */
+/**
+ * Valida que los materiales de la composición no se repitan y sumen exactamente 100 %.
+ * @param control FormArray de componentes textiles.
+ * @returns Error `materialRepetido` o `suma` cuando la composición no es válida; si no, `null`.
+ */
 export const composicionValida: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   const filas = (control as FormArray).getRawValue() as { material: MaterialTextil; porcentaje: number | null }[];
   const materiales = filas.map((f) => f.material);
@@ -44,7 +48,11 @@ export const composicionValida: ValidatorFn = (control: AbstractControl): Valida
   return suma === 100 ? null : { suma };
 };
 
-/** Tabla de tallas sin nombres repetidos (sin distinguir mayúsculas ni espacios). */
+/**
+ * Valida que la tabla no contenga nombres de talla repetidos tras normalizarlos.
+ * @param control FormArray de tallas del producto.
+ * @returns Error `tallaRepetida` si hay un duplicado; si no, `null`.
+ */
 export const tallasValidas: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   const nombres = ((control as FormArray).getRawValue() as { talla: string }[])
     .map((t) => normalizarTalla(t.talla))
@@ -53,7 +61,11 @@ export const tallasValidas: ValidatorFn = (control: AbstractControl): Validation
   return repetida ? { tallaRepetida: repetida } : null;
 };
 
-/** Mínimos que no superan a los máximos dentro de una fila de talla. */
+/**
+ * Comprueba que los mínimos no superen a los máximos en una fila de talla.
+ * @param grupo Grupo con rangos de estatura, peso y edad.
+ * @returns Errores de rango detectados o `null` si los intervalos son válidos.
+ */
 const rangoValido: ValidatorFn = (grupo: AbstractControl): ValidationErrors | null => {
   const v = (grupo as FormGroup).getRawValue();
   const errores: ValidationErrors = {};
@@ -69,11 +81,19 @@ const rangoValido: ValidatorFn = (grupo: AbstractControl): ValidationErrors | nu
   return Object.keys(errores).length ? errores : null;
 };
 
+/**
+ * Normaliza una talla para mostrarla o compararla sin diferencias de espacios y mayúsculas.
+ * @param valor Texto original de la talla.
+ * @returns Talla recortada, con espacios internos compactados y en mayúsculas.
+ */
 export function normalizarTalla(valor: string | null | undefined): string {
   return (valor ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
 }
 
-/** UI-20: Crear / editar producto (prenda), con tabla de tallas, composición y fotos. */
+/**
+ * UI-20: Crear / editar producto (prenda), con tabla de tallas, composición y fotos.
+ * @see UI-20
+ */
 @Component({
   selector: 'app-prenda-form',
   imports: [Navbar, RouterLink, ReactiveFormsModule],
@@ -107,6 +127,11 @@ export class PrendaForm implements OnInit, OnDestroy {
   protected readonly procesandoImagen = signal(false);
   protected readonly totalFotos = computed(() => this.imagenes().length + this.pendientes().length);
 
+  /**
+   * Formulario con límites de nombre, cuidado y precio; la composición debe sumar 100 %
+   * sin materiales repetidos y las tallas deben tener rangos coherentes.
+   * @see UI-20
+   */
   protected readonly form = this.fb.group({
     nombre: this.fb.nonNullable.control('', [
       Validators.required,
@@ -149,6 +174,10 @@ export class PrendaForm implements OnInit, OnDestroy {
     return this.composicion.getRawValue().reduce((t, f) => t + (Number(f['porcentaje']) || 0), 0);
   }
 
+  /**
+   * Detecta el identificador de la ruta y carga la prenda si se está editando.
+   * @returns No devuelve un valor.
+   */
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (Number.isSafeInteger(id) && id > 0) {
@@ -157,10 +186,19 @@ export class PrendaForm implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Libera las URL temporales creadas para las vistas previas de fotos pendientes.
+   * @returns No devuelve un valor.
+   */
   ngOnDestroy(): void {
     this.pendientes().forEach((p) => URL.revokeObjectURL(p.vistaPrevia));
   }
 
+  /**
+   * Consulta la prenda que se va a editar y carga sus datos en el formulario.
+   * @param id Identificador de la prenda.
+   * @returns No devuelve un valor.
+   */
   private cargar(id: number): void {
     this.cargando.set(true);
     this.prendasService.obtener(id).subscribe({
@@ -175,6 +213,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Copia los atributos, composición, tallas, colores e imágenes al estado de edición.
+   * @param prenda Datos de producto recibidos.
+   * @returns No devuelve un valor.
+   */
   private aplicarPrenda(prenda: Prenda): void {
     this.form.patchValue({
       nombre: prenda.nombre,
@@ -198,6 +241,12 @@ export class PrendaForm implements OnInit, OnDestroy {
     this.imagenes.set(prenda.imagenes);
   }
 
+  /**
+   * Crea el grupo de formulario de un componente textil.
+   * @param material Material seleccionado.
+   * @param porcentaje Proporción porcentual del material.
+   * @returns Grupo con validaciones para material y porcentaje.
+   */
   private componente(material: MaterialTextil, porcentaje: number | null): FormGroup {
     return this.fb.group({
       material: this.fb.nonNullable.control<MaterialTextil>(material, Validators.required),
@@ -210,7 +259,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
-  /** Las tallas ya guardadas muestran su stock sin editarlo: se gestiona en el inventario. */
+  /**
+   * Las tallas ya guardadas muestran su stock sin editarlo: se gestiona en el inventario.
+   * @param existente Datos de la talla guardada; si se omite, crea una nueva.
+   * @returns Grupo de formulario con rangos y validaciones de stock.
+   */
   private talla(existente?: Talla): FormGroup {
     const medida = (min: number, max: number) => [Validators.required, Validators.min(min), Validators.max(max)];
     const grupo = this.fb.group(
@@ -256,6 +309,10 @@ export class PrendaForm implements OnInit, OnDestroy {
     return grupo;
   }
 
+  /**
+   * Agrega un material libre sin superar el máximo configurado.
+   * @returns No devuelve un valor.
+   */
   protected agregarComponente(): void {
     if (this.composicion.length >= this.limites.maxMateriales) return;
     const usados = new Set(this.composicion.getRawValue().map((f) => f['material']));
@@ -263,14 +320,28 @@ export class PrendaForm implements OnInit, OnDestroy {
     this.composicion.push(this.componente(libre, Math.max(0, 100 - this.sumaComposicion()) || null));
   }
 
+  /**
+   * Quita un material solo cuando queda al menos otro componente en la composición.
+   * @param indice Índice del material que se quitará.
+   * @returns No devuelve un valor.
+   */
   protected quitarComponente(indice: number): void {
     if (this.composicion.length > 1) this.composicion.removeAt(indice);
   }
 
+  /**
+   * Agrega una fila de talla si no se ha alcanzado el máximo permitido.
+   * @returns No devuelve un valor.
+   */
   protected agregarTalla(): void {
     if (this.tallas.length < this.limites.maxTallas) this.tallas.push(this.talla());
   }
 
+  /**
+   * Quita una talla; una talla ya guardada con stock requiere dejar primero su stock en cero.
+   * @param indice Índice de la talla que se quitará.
+   * @returns No devuelve un valor.
+   */
   protected quitarTalla(indice: number): void {
     const fila = this.tallas.at(indice);
     if (this.tallas.length <= 1) return;
@@ -283,6 +354,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     this.tallas.removeAt(indice);
   }
 
+  /**
+   * Alterna un color y limita la selección a diez valores.
+   * @param color Color que se activa o desactiva.
+   * @returns No devuelve un valor.
+   */
   protected alternarColor(color: ColorPreferido): void {
     this.coloresSeleccionados.update((actuales) =>
       actuales.includes(color)
@@ -293,6 +369,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Valida y prepara fotos JPG, PNG o WEBP según el tamaño y los máximos configurados.
+   * @param evento Evento de selección del control de archivos.
+   * @returns No devuelve un valor.
+   */
   protected seleccionarFotos(evento: Event): void {
     const entrada = evento.target as HTMLInputElement;
     const archivos = Array.from(entrada.files ?? []);
@@ -323,12 +404,22 @@ export class PrendaForm implements OnInit, OnDestroy {
     this.pendientes.update((actuales) => [...actuales, ...nuevas]);
   }
 
+  /**
+   * Descarta una foto pendiente y libera su URL de vista previa.
+   * @param indice Índice de la foto pendiente.
+   * @returns No devuelve un valor.
+   */
   protected quitarPendiente(indice: number): void {
     const foto = this.pendientes()[indice];
     URL.revokeObjectURL(foto.vistaPrevia);
     this.pendientes.update((actuales) => actuales.filter((_, i) => i !== indice));
   }
 
+  /**
+   * Solicita establecer como principal una imagen ya guardada.
+   * @param imagen Imagen que se marcará como principal.
+   * @returns No devuelve un valor.
+   */
   protected marcarPrincipal(imagen: ImagenPrenda): void {
     const id = this.prendaId();
     if (id === null || this.procesandoImagen()) return;
@@ -345,6 +436,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Elimina una imagen guardada y actualiza la lista local al completarse.
+   * @param imagen Imagen que se eliminará.
+   * @returns No devuelve un valor.
+   */
   protected eliminarImagen(imagen: ImagenPrenda): void {
     const id = this.prendaId();
     if (id === null || this.procesandoImagen()) return;
@@ -362,10 +458,20 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Determina si el control debe presentarse como inválido tras interacción o envío.
+   * @param control Control que se evalúa.
+   * @returns `true` si es inválido y fue tocado o ya se intentó guardar.
+   */
   protected invalido(control: AbstractControl | null): boolean {
     return !!control && control.invalid && (control.touched || this.enviado());
   }
 
+  /**
+   * Valida y guarda la prenda; después carga las fotos pendientes si existen.
+   * @returns No devuelve un valor.
+   * @see UI-20
+   */
   protected guardar(): void {
     this.enviado.set(true);
     this.errorGeneral.set(null);
@@ -395,7 +501,10 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
-  /** Reintenta solo la carga de fotos cuando la prenda ya quedó guardada. */
+  /**
+   * Reintenta solo la carga de fotos cuando la prenda ya quedó guardada.
+   * @returns No devuelve un valor.
+   */
   protected reintentarFotos(): void {
     const id = this.prendaId();
     if (id === null || this.guardando() || !this.pendientes().length) return;
@@ -409,6 +518,12 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Carga las fotos pendientes y conserva el producto en modo edición si falla la carga.
+   * @param prenda Producto al que se asociarán las fotos.
+   * @param eraNueva Indica si el producto se creó en la operación actual.
+   * @returns No devuelve un valor.
+   */
   private subirPendientes(prenda: Prenda, eraNueva: boolean): void {
     const archivos = this.pendientes().map((p) => p.archivo);
     this.prendasService.subirImagenes(prenda.id, archivos).subscribe({
@@ -430,7 +545,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
-  /** Mensaje de subida según el fallo: tamaño, servicio caído u otro error. */
+  /**
+   * Mensaje de subida según el fallo: tamaño, servicio caído u otro error.
+   * @param err Error recibido durante la carga.
+   * @returns Mensaje que explica el fallo al usuario.
+   */
   private mensajeErrorSubida(err: unknown): string {
     const base = 'La prenda se guardó, pero las fotos no se pudieron subir';
     const estado = (err as { status?: number } | null)?.status;
@@ -443,6 +562,11 @@ export class PrendaForm implements OnInit, OnDestroy {
     return `${base}: ${procesarErrorApi(err)}`;
   }
 
+  /**
+   * Restablece el estado de guardado y vuelve al listado con un mensaje de resultado.
+   * @param eraNueva Indica si se creó un producto o se actualizaron sus datos.
+   * @returns No devuelve un valor.
+   */
   private finalizar(eraNueva: boolean): void {
     this.guardando.set(false);
     this.router.navigate(['/vendedor/productos'], {
@@ -450,6 +574,10 @@ export class PrendaForm implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Convierte los valores del formulario a la estructura enviada al servicio de prendas.
+   * @returns Solicitud con valores normalizados y números convertidos.
+   */
   private construirRequest(): PrendaRequest {
     const v = this.form.getRawValue();
     const texto = (valor: string) => (valor.trim() ? valor.trim() : null);

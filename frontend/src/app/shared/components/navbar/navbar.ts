@@ -10,6 +10,15 @@ import {
   OPCIONES_CATEGORIAS,
 } from '../../../features/catalogoCompras/models/prenda-opciones';
 
+/**
+ * Navegación principal por rol y panel de acceso rápido al carrito del cliente.
+ * @see US-05
+ * @see US-10
+ * @see UI-3
+ * @see UI-7
+ * @see UI-10
+ * @see UI-18
+ */
 @Component({
   selector: 'app-navbar',
   imports: [RouterLink],
@@ -241,15 +250,30 @@ export class Navbar {
   protected readonly cambioPendiente = signal<number | null>(null);
   protected readonly errorCambio = signal<string | null>(null);
 
+  /**
+   * Alterna la apertura del grupo de menú indicado.
+   * @param grupo Identificador del grupo que se despliega o contrae.
+   * @returns No devuelve un valor.
+   */
   protected alternarGrupo(grupo: string): void {
     this.grupoAbierto.update((actual) => (actual === grupo ? null : grupo));
   }
 
+  /**
+   * Cierra el menú lateral y cualquier subgrupo abierto.
+   * @returns No devuelve un valor.
+   */
   protected cerrarMenu(): void {
     this.menuAbierto.set(false);
     this.grupoAbierto.set(null);
   }
 
+  /**
+   * Cambia la cantidad si es positiva y no hay otra actualización pendiente.
+   * @param item Línea del carrito que se modifica.
+   * @param cantidad Nueva cantidad solicitada.
+   * @returns No devuelve un valor.
+   */
   protected cambiarCantidad(item: ItemCarrito, cantidad: number): void {
     if (cantidad < 1 || this.cambioPendiente() !== null) return;
     this.cambioPendiente.set(item.id);
@@ -263,6 +287,11 @@ export class Navbar {
     });
   }
 
+  /**
+   * Pide confirmación antes de quitar una línea del carrito.
+   * @param item Línea que se eliminará.
+   * @returns No devuelve un valor.
+   */
   protected quitar(item: ItemCarrito): void {
     if (this.cambioPendiente() !== null || !window.confirm(
       '¿Deseas eliminar esta prenda del carrito?',
