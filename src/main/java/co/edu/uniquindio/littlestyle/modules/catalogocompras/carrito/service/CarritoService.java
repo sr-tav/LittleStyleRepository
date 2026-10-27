@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.service;
 
+import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.AgregarItemCarritoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.CarritoResponse;
@@ -8,6 +9,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.ItemCar
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.Carrito;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.ItemCarrito;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.repository.CarritoRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
@@ -232,7 +234,12 @@ public class CarritoService {
                         "Una prenda del carrito ya no se encuentra disponible");
             }
             TallaPrenda tallaActual = prenda.buscarTalla(item.getTalla()).orElse(null);
-            boolean disponible = prenda.getEstado() == EstadoPrenda.ACTIVA
+            // Una prenda SIN_REVISAR sigue publicada: solo la desactivacion administrativa la oculta.
+            boolean publicable = prenda.getEstado() == EstadoPrenda.ACTIVA
+                    && prenda.getEstadoModeracion() != EstadoModeracion.DESACTIVADA
+                    && prenda.getVendedor() != null
+                    && prenda.getVendedor().getEstado() == EstadoUsuario.ACTIVO;
+            boolean disponible = publicable
                     && tallaActual != null && disponibilidadStockService.hayDisponibilidad(
                     tallaActual.getStock(), item.getCantidad());
             BigDecimal subtotalLinea = prenda.getPrecio().multiply(BigDecimal.valueOf(item.getCantidad()));

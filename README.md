@@ -52,3 +52,37 @@ cd frontend && ng test   # frontend: Vitest
 - JWT HS512 sin estado (ADR-04): el filtro `JwtAuthenticationFilter` arma la autenticación desde los claims, sin consultar la base de datos.
 - Variables: `JWT_SECRET` (Base64, obligatoria en `prod`), `JWT_EXPIRATION_MS` (por defecto 8 h), `CORS_ALLOWED_ORIGINS`.
 - Frontend: `authInterceptor` adjunta el token y maneja 401/403; `roleGuard` (`data.roles`), `authGuard` y `guestGuard` protegen las rutas.
+
+## Administración y moderación (US-14)
+
+El Panel Administrativo está disponible en `/admin` para el rol `ADMINISTRADOR`.
+La revisión de prendas es **posterior** a su publicación: vendedor publica en estado
+`ACTIVA` y la prenda permanece visible mientras `SIN_REVISAR`; el administrador puede
+aprobar, desactivar con motivo o restaurar. Las cuentas administradas pueden habilitarse,
+suspenderse o bloquearse. Los cambios administrativos se registran en una auditoría
+append-only con cadena SHA-256. El flujo de incidencias permite reportes de productos,
+apelaciones de vendedor y solicitudes de soporte.
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| `GET` | `/api/admin/resumen` | Administrador | KPIs de cuentas, moderación e incidencias. |
+| `GET` | `/api/admin/usuarios` | Administrador | Listado paginado/filtros por rol, estado y texto. |
+| `GET` | `/api/admin/usuarios/{id}` | Administrador | Detalle de cuenta. |
+| `PUT` | `/api/admin/usuarios/{id}/estado` | Administrador | Habilitar/suspender/bloquear con motivo. |
+| `GET` | `/api/admin/moderacion/prendas` | Administrador | Cola post-publicación con filtros. |
+| `GET` | `/api/admin/moderacion/prendas/{id}` | Administrador | Detalle de prenda. |
+| `POST` | `/api/admin/moderacion/prendas/{id}/aprobar` | Administrador | Aprobar publicación. |
+| `POST` | `/api/admin/moderacion/prendas/{id}/desactivar` | Administrador | Ocultar del catálogo con motivo. |
+| `POST` | `/api/admin/moderacion/prendas/{id}/restaurar` | Administrador | Restaurar prenda desactivada. |
+| `GET` | `/api/admin/auditoria` | Administrador | Auditoría paginada de solo lectura. |
+| `GET` | `/api/admin/auditoria/integridad` | Administrador | Verificar cadena SHA-256. |
+| `GET` | `/api/admin/incidencias` | Administrador | Bandeja de incidencias y filtros. |
+| `POST` | `/api/admin/incidencias/{id}/tomar` | Administrador | Asignar incidencia para revisión. |
+| `POST` | `/api/admin/incidencias/{id}/resolver` | Administrador | Resolver con respuesta. |
+| `POST` | `/api/admin/incidencias/{id}/rechazar` | Administrador | Rechazar con respuesta. |
+| `GET`, `POST` | `/api/cliente/incidencias` | Cliente | Consultar propias y crear soporte/reporte. |
+| `GET`, `POST` | `/api/vendedor/incidencias` | Vendedor | Consultar propias y crear soporte/apelación. |
+
+**Documentación y guía de uso:** [US-14](docs/us-14/README.md), [descripción funcional y
+API](docs/us-14/descripcion-funcional.md), [casos de prueba](docs/us-14/casos-de-prueba.md)
+y [Guía del Panel Administrativo](docs/us-14/guia-usuario-panel-administrativo.md).

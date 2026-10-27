@@ -80,14 +80,22 @@
                   <span class="state-chip" [class.is-off]="prenda.estado === 'INACTIVA'">
                     {{ prenda.estado === 'ACTIVA' ? 'Activo' : 'Inactivo' }}
                   </span>
+                  @if (prenda.estadoModeracion === 'DESACTIVADA') {
+                    <span class="product-meta">Desactivada por moderación: {{ prenda.motivoModeracion }}</span>
+                  } @else if (prenda.estadoModeracion === 'SIN_REVISAR') {
+                    <span class="product-meta">Pendiente de revisión administrativa; permanece publicada.</span>
+                  }
                 </td>
                 <td class="celda-accion">
                   <div class="row-actions">
                     <a
                       class="icon-button icon-button-primary"
-                      [routerLink]="['/vendedor/productos', prenda.id]"
+                      [routerLink]="prenda.estadoModeracion === 'DESACTIVADA' ? null : ['/vendedor/productos', prenda.id]"
                       [attr.aria-label]="'Editar ' + prenda.nombre"
                       title="Editar"
+                      [attr.aria-disabled]="prenda.estadoModeracion === 'DESACTIVADA'"
+                      [class.is-disabled]="prenda.estadoModeracion === 'DESACTIVADA'"
+                      [tabIndex]="prenda.estadoModeracion === 'DESACTIVADA' ? -1 : 0"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                         <path d="m15 5 4 4M4 20l4-.8L19 8a2.8 2.8 0 0 0-4-4L4 15l-1 5Z" />
@@ -96,7 +104,7 @@
                     <button
                       type="button"
                       class="icon-button"
-                      [disabled]="cambiandoEstado() === prenda.id"
+                      [disabled]="cambiandoEstado() === prenda.id || prenda.estadoModeracion === 'DESACTIVADA'"
                       (click)="alternarEstado(prenda)"
                       [attr.aria-label]="(prenda.estado === 'ACTIVA' ? 'Ocultar ' : 'Publicar ') + prenda.nombre"
                       [title]="prenda.estado === 'ACTIVA' ? 'Ocultar del catálogo' : 'Publicar en el catálogo'"
@@ -111,6 +119,14 @@
                         </svg>
                       }
                     </button>
+                    @if (prenda.estadoModeracion === 'DESACTIVADA') {
+                      <a
+                        class="btn-soft"
+                        routerLink="/mis-incidencias"
+                        [queryParams]="{ tipo: 'APELACION_PRODUCTO', referenciaId: prenda.id }"
+                        [attr.aria-label]="'Apelar desactivación de ' + prenda.nombre"
+                      >Apelar</a>
+                    }
                   </div>
                 </td>
               </tr>

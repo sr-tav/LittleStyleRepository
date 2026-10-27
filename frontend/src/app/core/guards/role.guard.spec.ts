@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
 
+import { routes } from '../../app.routes';
 import { Rol } from '../models/auth.models';
 import { AuthService } from '../services/auth.service';
 import { authGuard, guestGuard } from './auth.guard';
@@ -57,6 +58,22 @@ describe('Guards de autenticación y rol', () => {
     it('sin data.roles solo exige estar autenticado', () => {
       sesion('CLIENTE');
       expect(ejecutar(roleGuard, ruta())).toBe(true);
+    });
+  });
+
+  describe('configuración de rutas del panel (US-14)', () => {
+    it('la ruta /admin exige rol ADMINISTRADOR y carga los hijos del panel', () => {
+      const rutaAdmin = routes.find((r) => r.path === 'admin');
+      expect(rutaAdmin?.canActivate).toContain(roleGuard);
+      expect(rutaAdmin?.data?.['roles']).toEqual(['ADMINISTRADOR']);
+      expect(rutaAdmin?.loadChildren).toBeDefined();
+      expect(rutaAdmin?.loadComponent).toBeUndefined();
+    });
+
+    it('la ruta /mis-incidencias usa roleGuard para CLIENTE y VENDEDOR', () => {
+      const rutaMisIncidencias = routes.find((r) => r.path === 'mis-incidencias');
+      expect(rutaMisIncidencias?.canActivate).toContain(roleGuard);
+      expect(rutaMisIncidencias?.data?.['roles']).toEqual(['CLIENTE', 'VENDEDOR']);
     });
   });
 

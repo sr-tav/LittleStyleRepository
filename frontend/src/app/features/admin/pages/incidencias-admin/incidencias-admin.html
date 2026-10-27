@@ -1,0 +1,181 @@
+<app-navbar />
+<main class="catalog-page">
+  <header class="catalog-heading">
+    <div>
+      <h1>Incidencias</h1>
+      <p class="catalog-subtitle">Atiende apelaciones y solicitudes de soporte</p>
+    </div>
+  </header>
+
+  @if (mensaje(); as aviso) {
+    <div class="alert alert-success" role="status">{{ aviso }}</div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">
+      {{ error() }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+
+  <section class="catalog-card">
+    <div class="admin-filtros">
+      <div class="field">
+        <label for="filtro-estado-incidencia">Estado</label>
+        <select id="filtro-estado-incidencia" [value]="filtroEstado()" (change)="filtroEstado.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos</option>
+          @for (estado of estados; track estado) {
+            <option [value]="estado">{{ etiquetasEstado[estado] }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-tipo-incidencia">Tipo</label>
+        <select id="filtro-tipo-incidencia" [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos</option>
+          @for (tipo of tipos; track tipo) {
+            <option [value]="tipo">{{ etiquetasTipo[tipo] }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-rol-incidencia">Rol del reportante</label>
+        <select id="filtro-rol-incidencia" [value]="filtroRol()" (change)="filtroRol.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Ambos</option>
+          @for (rol of roles; track rol) {
+            <option [value]="rol">{{ etiquetasRol[rol] }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-texto-incidencia">Búsqueda</label>
+        <input
+          type="text"
+          id="filtro-texto-incidencia"
+          name="filtro-texto-incidencia"
+          [value]="filtroTexto()"
+          (input)="filtroTexto.set($any($event.target).value)"
+          (keyup.enter)="aplicarFiltros()"
+          placeholder="Asunto o correo" />
+      </div>
+      <button type="button" class="btn-primary btn-inline btn-small" (click)="aplicarFiltros()">Filtrar</button>
+      <button type="button" class="btn-ghost" (click)="limpiarFiltros()">Limpiar</button>
+    </div>
+
+    @if (cargando()) {
+      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando incidencias…</div>
+    } @else if (items().length === 0) {
+      <div class="catalog-state"><p>Todavía no hay incidencias que coincidan con los filtros.</p></div>
+    } @else {
+      <div class="catalog-table-wrap">
+        <table class="catalog-table">
+          <caption class="visually-hidden">Bandeja de incidencias con reportante, tipo, estado y acciones</caption>
+          <thead>
+            <tr>
+              <th scope="col">Incidencia</th>
+              <th scope="col">Reportante</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (i of items(); track i.id) {
+              <tr>
+                <td>
+                  <strong>#{{ i.id }} · {{ i.asunto }}</strong>
+                  <span class="product-meta">
+                    Creada {{ i.fechaCreacion }}
+                    @if (i.fechaResolucion) {
+                      · Resuelta {{ i.fechaResolucion }}
+                    }
+                  </span>
+                  @if (i.referenciaId !== null) {
+                    <span class="product-meta">Referencia: {{ i.referenciaDetalle ?? ('#' + i.referenciaId) }}</span>
+                  }
+                </td>
+                <td>
+                  {{ i.reportanteEmail }}
+                  @if (i.respuesta) {
+                    <span class="product-meta">Respuesta: {{ i.respuesta }}</span>
+                  }
+                </td>
+                <td>{{ etiquetasTipo[i.tipo] }}</td>
+                <td>
+                  <span
+                    class="state-chip"
+                    [class.chip-ABIERTA]="i.estado === 'ABIERTA'"
+                    [class.chip-EN_REVISION]="i.estado === 'EN_REVISION'"
+                    [class.chip-RECHAZADA]="i.estado === 'RECHAZADA'"
+                    [class.is-off]="i.estado === 'RESUELTA'"
+                  >{{ etiquetasEstado[i.estado] }}</span>
+                </td>
+                <td class="celda-accion">
+                  @if (i.estado === 'ABIERTA' || i.estado === 'EN_REVISION') {
+                    <select
+                      class="acciones-select"
+                      [attr.aria-label]="'Acciones para la incidencia ' + i.id"
+                      [disabled]="enviando()"
+                      (change)="ejecutarAccion(i, $event)"
+                    >
+                      <option value="" selected>Elegir acción</option>
+                      @if (i.estado === 'ABIERTA') {
+                        <option value="TOMAR">Tomar</option>
+                        <option value="RECHAZAR">Rechazar</option>
+                      } @else {
+                        <option value="RESOLVER">Resolver</option>
+                      }
+                    </select>
+                  } @else {
+                    <span class="muted-cell" aria-label="Incidencia cerrada">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <nav class="admin-paginado" aria-label="Paginación de incidencias">
+        <button type="button" class="btn-ghost" [disabled]="pagina() === 0" (click)="anterior()">Anterior</button>
+        <span>Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }} · {{ totalElementos() }} incidencias</span>
+        <button type="button" class="btn-ghost" [disabled]="pagina() >= totalPaginas() - 1" (click)="siguiente()">Siguiente</button>
+      </nav>
+    }
+  </section>
+
+  @if (dialogo(); as incidencia) {
+    <div class="confirm-backdrop">
+      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialogo-decision-titulo">
+        <h2 id="dialogo-decision-titulo">
+          {{ decision() === 'RESOLVER' ? 'Resolver incidencia' : 'Rechazar incidencia' }}
+        </h2>
+        <p>#{{ incidencia.id }} · {{ incidencia.asunto }} — {{ incidencia.reportanteEmail }}</p>
+        <div class="field">
+          <label for="respuesta-incidencia">Respuesta para el reportante</label>
+          <textarea
+            id="respuesta-incidencia"
+            #respuestaCampo
+            rows="4"
+            [value]="respuestaTexto()"
+            (input)="respuestaTexto.set($any($event.target).value)"
+            placeholder="Explica la decisión (mínimo 10 caracteres)"
+            [attr.aria-describedby]="errorDialogo() ? 'error-respuesta' : null"></textarea>
+        </div>
+        @if (errorDialogo(); as fallo) {
+          <p class="field-error" id="error-respuesta" role="alert">{{ fallo }}</p>
+        }
+        <div class="confirm-actions">
+          <button type="button" class="btn-ghost" (click)="cerrarDialogo()">Cancelar</button>
+          <button
+            type="button"
+            class="btn-primary btn-inline"
+            [disabled]="enviando()"
+            (click)="confirmarDecision()"
+          >@if (enviando()) { <span class="spinner"></span> }
+            {{ decision() === 'RESOLVER' ? 'Resolver' : 'Rechazar' }}</button>
+        </div>
+      </div>
+    </div>
+  }
+</main>

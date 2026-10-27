@@ -1,0 +1,285 @@
+<app-navbar />
+<main class="catalog-page">
+  <header class="catalog-heading">
+    <div>
+      <h1>Moderación de prendas</h1>
+      <p class="catalog-subtitle">Revisa publicaciones activas, desactiva las que incumplan las normas y restaura cuando corresponda</p>
+    </div>
+  </header>
+
+  @if (mensaje(); as aviso) {
+    <div class="alert alert-success" role="status">{{ aviso }}</div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">
+      {{ error() }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+
+  <section class="catalog-card">
+    <div class="admin-filtros">
+      <div class="field">
+        <label for="filtro-moderacion">Estado de moderación</label>
+        <select id="filtro-moderacion" [value]="filtroModeracion()" (change)="filtroModeracion.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos</option>
+          @for (estado of estadosModeracion; track estado) {
+            <option [value]="estado">{{ etiquetasModeracion[estado] }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-prenda">Estado de la prenda</label>
+        <select id="filtro-prenda" [value]="filtroPrenda()" (change)="filtroPrenda.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos</option>
+          <option value="ACTIVA">{{ etiquetasPrenda['ACTIVA'] }}</option>
+          <option value="INACTIVA">{{ etiquetasPrenda['INACTIVA'] }}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-vendedor">Correo del vendedor</label>
+        <input
+          type="text"
+          id="filtro-vendedor"
+          name="filtro-vendedor"
+          [value]="filtroVendedor()"
+          (input)="filtroVendedor.set($any($event.target).value)"
+          (keyup.enter)="aplicarFiltros()"
+          placeholder="vendedor@correo.com" />
+      </div>
+      <div class="field">
+        <label for="filtro-texto">Búsqueda</label>
+        <input
+          type="text"
+          id="filtro-texto"
+          name="filtro-texto"
+          [value]="filtroTexto()"
+          (input)="filtroTexto.set($any($event.target).value)"
+          (keyup.enter)="aplicarFiltros()"
+          placeholder="Nombre de la prenda" />
+      </div>
+      <button type="button" class="btn-primary btn-inline btn-small" (click)="aplicarFiltros()">Filtrar</button>
+      <button type="button" class="btn-ghost" (click)="limpiarFiltros()">Limpiar</button>
+    </div>
+
+    @if (cargando()) {
+      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando cola de moderación…</div>
+    } @else if (items().length === 0) {
+      <div class="catalog-state"><p>Todavía no hay prendas en la cola de moderación.</p></div>
+    } @else {
+      <div class="catalog-table-wrap">
+        <table class="catalog-table">
+          <caption class="visually-hidden">Cola de moderación con vendedor, estado de moderación y acciones</caption>
+          <thead>
+          <tr>
+            <th scope="col">Prenda</th>
+            <th scope="col">Vendedor</th>
+            <th scope="col">Precio</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acción</th>
+          </tr>
+          </thead>
+          <tbody>
+            @for (p of items(); track p.id) {
+              <tr>
+                <td>
+                  <strong>{{ p.nombre }}</strong>
+                  <span class="product-meta">{{ etiquetasPrenda[p.estado] }}</span>
+                </td>
+                <td>
+                  {{ p.vendedorEmail }}
+                  @if (p.vendedorTienda) {
+                    <span class="product-meta">{{ p.vendedorTienda }}</span>
+                  }
+                </td>
+                <td class="price-cell">{{ precio(p.precio) }}</td>
+                <td>
+                  <span
+                    class="state-chip"
+                    [class.chip-SIN-REVISAR]="p.estadoModeracion === 'SIN_REVISAR'"
+                    [class.chip-DESACTIVADA]="p.estadoModeracion === 'DESACTIVADA'"
+                    [class.is-off]="p.estadoModeracion === 'APROBADA'"
+                  >{{ etiquetasModeracion[p.estadoModeracion] }}</span>
+                  @if (p.motivoModeracion) {
+                    <span class="product-meta" [attr.title]="p.motivoModeracion">{{ p.motivoModeracion }}</span>
+                  }
+                </td>
+                <td class="celda-accion">
+                  <button type="button" class="btn-soft" (click)="verDetalle(p)" [attr.aria-label]="'Ver detalle de la prenda ' + p.nombre">Ver detalle</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <nav class="admin-paginado" aria-label="Paginación de moderación">
+        <button type="button" class="btn-ghost" [disabled]="pagina() === 0" (click)="anterior()">Anterior</button>
+        <span>Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }} · {{ totalElementos() }} prendas</span>
+        <button type="button" class="btn-ghost" [disabled]="pagina() >= totalPaginas() - 1" (click)="siguiente()">Siguiente</button>
+      </nav>
+    }
+  </section>
+
+  <section class="catalog-card detalle-prenda" aria-labelledby="detalle-titulo">
+    @if (detalleCargando()) {
+      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando detalle…</div>
+    }  @else if (seleccionada(); as d) {
+    <header class="detalle-cabecera">
+      <div>
+        <h2 id="detalle-titulo">{{ d.nombre }}</h2>
+        <p class="detalle-vendedor">
+          Vendedor: <strong>{{ d.vendedorEmail }}</strong>@if (d.vendedorTienda) { · {{ d.vendedorTienda }} }
+        </p>
+        @if (d.motivoModeracion) {
+          <p class="detalle-motivo">Motivo: {{ d.motivoModeracion }}</p>
+        }
+      </div>
+      <div class="detalle-cabecera-lado">
+          <span
+            class="state-chip"
+            [class.chip-SIN-REVISAR]="d.estadoModeracion === 'SIN_REVISAR'"
+            [class.chip-DESACTIVADA]="d.estadoModeracion === 'DESACTIVADA'"
+            [class.is-off]="d.estadoModeracion === 'APROBADA'"
+          >{{ etiquetasModeracion[d.estadoModeracion] }}</span>
+        <button type="button" class="btn-ghost" (click)="cerrarDetalle()">Cerrar detalle</button>
+      </div>
+    </header>
+
+    <div class="detalle-grid">
+      <section class="detalle-imagenes" aria-label="Imágenes de la prenda">
+        @if (d.imagenes.length > 0 && !imagenFallo()) {
+          <img
+            class="detalle-foto"
+            [src]="d.imagenes[imagenActiva()]"
+            [alt]="'Foto ' + (imagenActiva() + 1) + ' de ' + d.nombre"
+            (error)="imagenFallo.set(true)" />
+          @if (d.imagenes.length > 1) {
+            <div class="detalle-miniaturas">
+              @for (url of d.imagenes; track url; let i = $index) {
+                <button
+                  type="button"
+                  class="miniatura"
+                  [class.activa]="i === imagenActiva()"
+                  [attr.aria-label]="'Ver foto ' + (i + 1)"
+                  (click)="imagenActiva.set(i); imagenFallo.set(false)">
+                  <img [src]="url" alt="" loading="lazy" />
+                </button>
+              }
+            </div>
+          }
+        } @else {
+          <div class="detalle-foto detalle-foto-vacia">Sin imagen disponible</div>
+        }
+      </section>
+
+      <div class="detalle-info">
+        <section class="detalle-bloque">
+          <h3>Información general</h3>
+          <dl class="detalle-datos">
+            <div><dt>Categoría</dt><dd>{{ d.categoria }}</dd></div>
+            <div><dt>Género</dt><dd>{{ d.genero ?? '—' }}</dd></div>
+            <div><dt>Marca</dt><dd>{{ d.marca ?? '—' }}</dd></div>
+            <div><dt>Estampado</dt><dd>{{ d.estampado ?? '—' }}</dd></div>
+            <div><dt>Precio</dt><dd class="dato-precio">{{ precio(d.precio) }}</dd></div>
+            <div><dt>Cuidado</dt><dd>{{ d.instruccionesCuidado ?? '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="detalle-bloque">
+          <h3>Seguridad del material</h3>
+          <ul class="detalle-flags">
+            <li [class.flag-alerta]="d.tintesSinteticos"><span>Tintes sintéticos</span><strong>{{ d.tintesSinteticos ? 'Sí' : 'No' }}</strong></li>
+            <li [class.flag-alerta]="d.brochesMetalicos"><span>Broches metálicos</span><strong>{{ d.brochesMetalicos ? 'Sí' : 'No' }}</strong></li>
+            <li [class.flag-alerta]="d.contieneNiquel"><span>Contiene níquel</span><strong>{{ d.contieneNiquel ? 'Sí' : 'No' }}</strong></li>
+            <li [class.flag-alerta]="d.tratamientoFormaldehido"><span>Formaldehído</span><strong>{{ d.tratamientoFormaldehido ? 'Sí' : 'No' }}</strong></li>
+          </ul>
+        </section>
+
+        <section class="detalle-bloque">
+          <h3>Descripción</h3>
+          <p>{{ d.descripcion && d.descripcion.trim().length > 1 ? d.descripcion : 'Sin descripción.' }}</p>
+        </section>
+
+        <section class="detalle-bloque">
+          <h3>Composición</h3>
+          <ul class="detalle-composicion">
+            @for (m of d.composicion; track m.material) {
+              <li>{{ m.material }} · {{ m.porcentaje }}%</li>
+            }
+          </ul>
+        </section>
+
+        <section class="detalle-bloque">
+          <h3>Tallas</h3>
+          <table class="detalle-tabla">
+            <thead>
+            <tr>
+              <th scope="col">Talla</th>
+              <th scope="col">Stock</th>
+              <th scope="col">Estatura</th>
+              <th scope="col">Peso</th>
+            </tr>
+            </thead>
+            <tbody>
+              @for (t of d.tallas; track t.talla) {
+                <tr>
+                  <td>{{ t.talla }}</td>
+                  <td>{{ t.stock }}</td>
+                  <td>{{ t.estaturaMinCm }}–{{ t.estaturaMaxCm }} cm</td>
+                  <td>{{ t.pesoMinKg }}–{{ t.pesoMaxKg }} kg</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+
+    <div class="detalle-acciones">
+      @if (envioPendiente()) {
+        <span class="alert alert-info" role="status">Aplicando decisión…</span>
+      } @else if (d.estadoModeracion === 'DESACTIVADA') {
+        <button type="button" class="btn-primary" (click)="restaurar()">Restaurar</button>
+      } @else {
+        @if (!desactivando()) {
+          <button type="button" class="btn-ghost accion-desactivar" (click)="abrirDesactivacion()">Desactivar</button>
+        }
+        <button type="button" class="btn-primary" (click)="aprobar()">Aprobar</button>
+      }
+    </div>
+      @if (desactivando()) {
+        <div class="confirm-backdrop">
+          <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialogo-desactivacion-titulo">
+            <h2 id="dialogo-desactivacion-titulo">Desactivar «{{ d.nombre }}»</h2>
+            <p>El vendedor verá este motivo. Mínimo 10 caracteres.</p>
+            <div class="field">
+              <label for="motivo-desactivacion-prenda">Motivo de la desactivación</label>
+              <textarea
+                id="motivo-desactivacion-prenda"
+                #motivoDesactivacionCampo
+                rows="3"
+                [value]="motivoDesactivacion()"
+                (input)="motivoDesactivacion.set($any($event.target).value)"
+                placeholder="Describe la razón de la desactivación"
+                [attr.aria-describedby]="errorDesactivacion() ? 'error-desactivacion' : null"></textarea>
+            </div>
+            @if (errorDesactivacion(); as fallo) {
+              <p class="field-error" id="error-desactivacion" role="alert">{{ fallo }}</p>
+            }
+            <div class="confirm-actions">
+              <button type="button" class="btn-ghost" (click)="cancelarDesactivacion()">Cancelar</button>
+              <button
+                type="button"
+                class="btn-primary btn-inline"
+                [disabled]="envioPendiente()"
+                (click)="confirmarDesactivacion()"
+              >@if (envioPendiente()) { <span class="spinner"></span> } Desactivar</button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </section>
+</main>

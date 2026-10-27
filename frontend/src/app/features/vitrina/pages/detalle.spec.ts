@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { signal } from '@angular/core';
 
 import { CarritoService } from '../../catalogoCompras/services/carrito.service';
+import { IncidenciasService } from '../../admin/services/incidencias.service';
 import { VitrinaDetalle } from '../models/vitrina.models';
 import { DetalleProducto } from './detalle';
 
@@ -19,6 +20,7 @@ const carritoMock = {
   alternarPanel: vi.fn(),
   cerrarPanel: vi.fn(),
 };
+const crearIncidencia = vi.fn(() => of({ id: 21 }));
 
 function detalle(cambios: Partial<VitrinaDetalle> = {}): VitrinaDetalle {
   return {
@@ -49,6 +51,7 @@ describe('DetalleProducto (US-09)', () => {
 
   beforeEach(async () => {
     perfilId = null;
+    crearIncidencia.mockClear();
     await TestBed.configureTestingModule({
       imports: [DetalleProducto],
       providers: [
@@ -56,6 +59,7 @@ describe('DetalleProducto (US-09)', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: CarritoService, useValue: carritoMock },
+        { provide: IncidenciasService, useValue: { crear: crearIncidencia } },
         {
           provide: ActivatedRoute,
           useFactory: () => ({
@@ -67,6 +71,34 @@ describe('DetalleProducto (US-09)', () => {
         },
       ],
     }).compileComponents();
+  });
+
+  it('reporta la prenda asociando la incidencia y exige descripción suficiente (US-14)', () => {
+    const { fixture, el, http } = crear(detalle());
+    http.verify();
+    el.querySelector<HTMLButtonElement>('#reportar-prenda')!.click();
+    fixture.detectChanges();
+
+    el.querySelector<HTMLButtonElement>('.confirm-actions .btn-primary')!.click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('descripción entre 20 y 4000');
+    expect(crearIncidencia).not.toHaveBeenCalled();
+
+    const descripcion = el.querySelector<HTMLTextAreaElement>('#descripcion-reporte')!;
+    descripcion.value = 'La información de composición no coincide con la etiqueta.';
+    descripcion.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('.confirm-actions .btn-primary')!.click();
+    fixture.detectChanges();
+
+    expect(crearIncidencia).toHaveBeenCalledWith({
+      tipo: 'REPORTE_PRODUCTO',
+      asunto: 'Reporte de producto: Pantalón Jogger Azul',
+      descripcion: 'La información de composición no coincide con la etiqueta.',
+      referenciaId: 10,
+      referenciaDetalle: 'Pantalón Jogger Azul',
+    });
+    expect(el.textContent).toContain('reporte quedó registrado');
   });
 
   function crear(respuesta: VitrinaDetalle) {

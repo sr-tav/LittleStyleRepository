@@ -65,13 +65,13 @@ public class PedidoCheckoutService {
         }
         if (carrito.items().stream().anyMatch(item -> !item.disponible())) {
             throw new BusinessException(HttpStatus.CONFLICT,
-                    "Lo sentimos, ya no quedan unidades disponibles para una o más prendas del carrito.",
+                    "Una o más prendas del carrito ya no están disponibles. Vuelve al carrito para retirarlas o elegir otras antes de continuar.",
                     "items");
         }
         carrito.items().stream().map(ItemCarritoResponse::prendaId).distinct().sorted()
                 .forEach(prendaId -> prendaRepository.bloquearPorIdYEstado(prendaId, EstadoPrenda.ACTIVA)
                         .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
-                                "Una prenda del carrito ya no se encuentra disponible")));
+                                "Una prenda del carrito ya no está disponible. Vuelve al carrito para retirarla o elegir otra antes de continuar.")));
         List<ItemResumenCheckoutRequest> items = carrito.items().stream()
                 .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(),
                         item.tallaSugerida()))

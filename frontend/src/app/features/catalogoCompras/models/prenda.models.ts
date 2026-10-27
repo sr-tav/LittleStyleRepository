@@ -29,6 +29,8 @@ export type MaterialTextil =
 
 /** Estados de publicación de una prenda. */
 export type EstadoPrenda = 'ACTIVA' | 'INACTIVA';
+/** Estados de moderación posterior asignados por el administrador. */
+export type EstadoModeracion = 'SIN_REVISAR' | 'APROBADA' | 'DESACTIVADA';
 /** Clasificación derivada del nivel de stock. */
 export type NivelStock = 'DISPONIBLE' | 'STOCK_BAJO' | 'AGOTADO';
 /** Opciones de género asociables a una prenda. */
@@ -73,6 +75,9 @@ export interface Prenda {
   marca: string | null;
   precio: number;
   estado: EstadoPrenda;
+  estadoModeracion?: EstadoModeracion | null;
+  motivoModeracion?: string | null;
+  fechaModeracion?: string | null;
   stockTotal: number;
   nivelStock: NivelStock;
   colores: ColorPreferido[];

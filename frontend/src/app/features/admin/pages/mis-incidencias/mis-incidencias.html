@@ -1,0 +1,139 @@
+<app-navbar />
+<main class="reco-page">
+  <header class="reco-heading">
+    <div>
+      <p class="reco-eyebrow">Soporte</p>
+      <h1>Mis incidencias</h1>
+      <p class="reco-subtitle">Apelaciones y solicitudes de soporte que has reportado</p>
+    </div>
+  </header>
+
+  @if (mensaje(); as aviso) {
+    <div class="alert alert-success" role="status">{{ aviso }}</div>
+  }
+
+  <section aria-labelledby="mis-incidencias-lista">
+    <h2 id="mis-incidencias-lista">Historial</h2>
+    <div class="catalog-card">
+      @if (cargando()) {
+        <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando incidencias…</div>
+      } @else if (error(); as fallo) {
+        <div class="alert alert-error" role="alert">
+          {{ fallo }}
+          <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+        </div>
+      } @else if (items().length === 0) {
+        <div class="catalog-state" role="status">
+          <p>Todavía no has reportado incidencias.</p>
+        </div>
+      } @else {
+        <div class="catalog-table-wrap">
+          <table class="catalog-table">
+            <caption class="visually-hidden">Incidencias propias con estado y respuesta del administrador</caption>
+            <thead>
+              <tr>
+                <th scope="col">Incidencia</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (i of items(); track i.id) {
+                <tr>
+                  <td>
+                    <strong>#{{ i.id }} · {{ i.asunto }}</strong>
+                    <span class="product-meta">{{ i.descripcion }}</span>
+                    @if (i.referenciaId !== null) {
+                      <span class="product-meta">Prenda referenciada: #{{ i.referenciaId }}</span>
+                    }
+                    @if (i.respuesta) {
+                      <span class="incidencia-respuesta">
+                        <strong>Respuesta del equipo:</strong> {{ i.respuesta }}
+                      </span>
+                    }
+                  </td>
+                  <td>{{ etiquetasTipo[i.tipo] }}</td>
+                  <td>
+                    <span
+                      class="state-chip"
+                      [class.chip-ABIERTA]="i.estado === 'ABIERTA'"
+                      [class.chip-EN_REVISION]="i.estado === 'EN_REVISION'"
+                      [class.chip-RECHAZADA]="i.estado === 'RECHAZADA'"
+                      [class.is-off]="i.estado === 'RESUELTA'"
+                    >{{ estadoDe(i) }}</span>
+                    @if (i.fechaResolucion) {
+                      <span class="product-meta">Resuelta {{ i.fechaResolucion }}</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <nav class="admin-paginado" aria-label="Paginación de incidencias">
+          <button type="button" class="btn-ghost" [disabled]="pagina() === 0" (click)="anterior()">Anterior</button>
+          <span>Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }}</span>
+          <button type="button" class="btn-ghost" [disabled]="pagina() >= totalPaginas() - 1" (click)="siguiente()">Siguiente</button>
+        </nav>
+      }
+    </div>
+  </section>
+
+  <section class="mis-incidencias-form" aria-labelledby="crear-incidencia-titulo">
+    <h2 id="crear-incidencia-titulo">Crear incidencia</h2>
+    <div class="catalog-card">
+      @for (fallo of erroresFormulario(); track fallo) {
+        <p class="alert alert-error" role="alert">{{ fallo }}</p>
+      }
+
+      <form (submit)="$event.preventDefault(); enviar()">
+        <div class="field">
+          <label for="incidencia-tipo">Tipo de incidencia</label>
+          <select
+            id="incidencia-tipo"
+            [value]="tipoFormulario()"
+            (change)="tipoFormulario.set($any($event.target).value)">
+            @for (tipo of tipos; track tipo) {
+              <option [value]="tipo">{{ etiquetasTipo[tipo] }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="incidencia-asunto">Asunto</label>
+          <input
+            type="text"
+            id="incidencia-asunto"
+            name="incidencia-asunto"
+            [value]="asunto()"
+            (input)="asunto.set($any($event.target).value)"
+            placeholder="Resumen breve del problema" />
+        </div>
+        <div class="field">
+          <label for="incidencia-descripcion">Descripción</label>
+          <textarea
+            id="incidencia-descripcion"
+            name="incidencia-descripcion"
+            rows="4"
+            [value]="descripcion()"
+            (input)="descripcion.set($any($event.target).value)"
+            placeholder="Cuenta en detalle qué ocurrió (mínimo 20 caracteres)"></textarea>
+        </div>
+        @if (tipoFormulario() === 'APELACION_PRODUCTO' || tipoFormulario() === 'REPORTE_PRODUCTO') {
+          <div class="field">
+            <label for="incidencia-referencia">Id de la prenda</label>
+            <input
+              type="number"
+              id="incidencia-referencia"
+              name="incidencia-referencia"
+              [value]="referenciaId()"
+              (input)="referenciaId.set($any($event.target).value)"
+              min="1" />
+          </div>
+        }
+        <button type="submit" class="btn-primary btn-inline">Enviar</button>
+        <button type="button" class="btn-ghost" (click)="limpiarFormulario()">Limpiar formulario</button>
+      </form>
+    </div>
+  </section>
+</main>

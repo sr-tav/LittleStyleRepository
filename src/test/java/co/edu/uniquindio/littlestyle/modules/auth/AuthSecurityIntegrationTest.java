@@ -13,6 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -128,6 +130,39 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"pedro@correo.com\",\"password\":\"Incorrecta1\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginExplicaLaSuspensionOBloqueoYLaApelacionAutomatica() throws Exception {
+        String sufijo = UUID.randomUUID().toString();
+        Usuario suspendido = usuarioDePrueba("suspendido-" + sufijo + "@correo.com");
+        Usuario bloqueado = usuarioDePrueba("bloqueado-" + sufijo + "@correo.com");
+
+        suspendido.setEstado(EstadoUsuario.SUSPENDIDO);
+        usuarioRepository.save(suspendido);
+        bloqueado.setEstado(EstadoUsuario.BLOQUEADO);
+        usuarioRepository.save(bloqueado);
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"Clave1234"}
+                                """.formatted(suspendido.getEmail())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.mensaje").value(
+                        "Su cuenta está suspendida; se abrió una apelación y recibirá la respuesta por correo."));
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"Clave1234"}
+                                """.formatted(bloqueado.getEmail())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.mensaje").value(
+                        "Su cuenta está bloqueada; se abrió una apelación y recibirá la respuesta por correo."));
+    }
+
+    private Usuario usuarioDePrueba(String email) throws Exception {
+        registrar(email, "CLIENTE", null);
+        return usuarioRepository.findByEmail(email).orElseThrow();
     }
 
     // Cinco fallos seguidos bloquean el login por correo + IP, incluso con la clave correcta

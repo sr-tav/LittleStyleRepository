@@ -19,6 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,17 +37,18 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Prenda del catálogo de un vendedor. El stock se lleva por talla ({@link TallaPrenda}) y cada
- * talla con mínimo declarado emite alertas de reabastecimiento.
+ * Prenda del catálogo de un vendedor, con su composición textil, atributos para alergias, colores,
+ * tallas con stock e imágenes. La moderación es posterior a la publicación: solo una prenda
+ * {@code DESACTIVADA} deja de ser visible (US-14).
+ *
+ * @see "US-14"
+ * @see "RNF-08"
  */
 @Entity
 @Table(name = "prendas", indexes = {
-/**
- * Prenda del catálogo de un vendedor, con su composición textil, atributos para alergias, colores, tallas con
- * stock e imágenes. Solo las {@code ACTIVA} se muestran a los clientes.
- */
         @Index(name = "idx_prendas_vendedor", columnList = "vendedor_id"),
         @Index(name = "idx_prendas_estado", columnList = "estado"),
+        @Index(name = "idx_prendas_moderacion", columnList = "estado_moderacion"),
         @Index(name = "idx_prendas_genero", columnList = "genero"),
         @Index(name = "idx_prendas_categoria", columnList = "categoria"),
         @Index(name = "idx_prendas_precio", columnList = "precio"),
@@ -94,6 +96,24 @@ public class Prenda {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private EstadoPrenda estado;
+
+    /**
+     * Moderacion del administrador (US-14). Queda SIN {@code nullable=false} a proposito: {@code ddl-auto=update}
+     * agregaria la columna NOT NULL sin default y fallaria en bases con datos; la garantia de valor va por el
+     * hook {@link #moderacionInicial()} y el backfill del {@link EstadoModeracionSchemaMigrator}.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_moderacion", length = 20)
+    private EstadoModeracion estadoModeracion;
+
+    @Column(name = "motivo_moderacion", length =  500)
+    private String motivoModeracion;
+
+    @Column(name = "fecha_moderacion")
+    private LocalDateTime fechaModeracion;
+
+    @Column(name = "admin_moderacion_id")
+    private Long adminModeracionId;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -156,5 +176,15 @@ public class Prenda {
     /** Primera imagen según su orden, que es la principal. */
     public Optional<ImagenPrenda> imagenPrincipal() {
         return imagenes.stream().findFirst();
+    }
+
+    /**
+     * La revisión es posterior a la publicación (US-14): una prenda nueva nace SIN_REVISAR.
+     */
+    @PrePersist
+    void moderacionInicial() {
+        if (estadoModeracion == null) {
+            estadoModeracion = EstadoModeracion.SIN_REVISAR;
+        }
     }
 }

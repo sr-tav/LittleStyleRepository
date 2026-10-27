@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.Prenda
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ComponenteComposicion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
@@ -29,6 +30,9 @@ import java.util.Map;
 /**
  * Alta y edición de prendas del vendedor autenticado. Una prenda de otro vendedor se trata como
  * inexistente (404) para no revelar su existencia.
+ *
+ * @see "US-14"
+ * @see "RNF-08"
  */
 @Service
 @RequiredArgsConstructor
@@ -83,6 +87,7 @@ public class PrendaService {
     public PrendaResponse actualizar(Long id, PrendaRequest request) {
         validador.validar(request);
         Prenda prenda = propiaBloqueada(id);
+        validarQueNoEsteDesactivadaPorModeracion(prenda);
         aplicarDatos(prenda, request);
         sincronizarTallas(prenda, request.tallas());
         prenda.setFechaActualizacion(LocalDateTime.now());
@@ -94,6 +99,7 @@ public class PrendaService {
     @Transactional
     public PrendaResponse cambiarEstado(Long id, EstadoPrenda estado) {
         Prenda prenda = propiaBloqueada(id);
+        validarQueNoEsteDesactivadaPorModeracion(prenda);
         prenda.setEstado(estado);
         prenda.setFechaActualizacion(LocalDateTime.now());
         alertas.evaluar(prenda);
@@ -178,6 +184,17 @@ public class PrendaService {
     /** Prenda del vendedor actual con bloqueo de escritura; 404 en otro caso. */
     private Prenda propiaBloqueada(Long id) {
         return prendaRepository.bloquearPropia(id, vendedorActual()).orElseThrow(PrendaService::noEncontrada);
+    }
+
+    /** El vendedor no puede editar ni volver a publicar una prenda retirada por moderacion. */
+    private static void validarQueNoEsteDesactivadaPorModeracion(Prenda prenda) {
+        if (prenda.getEstadoModeracion() == EstadoModeracion.DESACTIVADA) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "La prenda fue desactivada por moderación y no puede modificarse ni reactivarse. "
+                            + "Motivo: " + prenda.getMotivoModeracion()
+                            + ". Puede apelar creando una incidencia de producto.",
+                    "estadoModeracion");
+        }
     }
 
     /** Error 404 de prenda no encontrada. */

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -20,6 +20,8 @@ import { RecomendacionItem } from '../../recomendacion/models/recomendacion.mode
 import { RecomendacionService } from '../../recomendacion/services/recomendacion.service';
 import { VitrinaDetalle, VitrinaTalla } from '../models/vitrina.models';
 import { VitrinaService } from '../services/vitrina.service';
+import { CrearIncidencia } from '../../admin/models/admin.models';
+import { IncidenciasService } from '../../admin/services/incidencias.service';
 
 /**
  * US-09: ficha del producto con ficha técnica textil y tabla de medidas.
@@ -37,6 +39,7 @@ export class DetalleProducto implements OnInit {
   private readonly recomendaciones = inject(RecomendacionService);
   private readonly activo = inject(PerfilActivoService);
   private readonly carrito = inject(CarritoService);
+  private readonly incidencias = inject(IncidenciasService);
 
   protected readonly prenda = signal<VitrinaDetalle | null>(null);
   protected readonly sugerida = signal<RecomendacionItem | null>(null);
@@ -48,6 +51,13 @@ export class DetalleProducto implements OnInit {
   protected readonly agregandoAlCarrito = signal(false);
   protected readonly mensajeCarrito = signal<string | null>(null);
   protected readonly errorCarrito = signal<string | null>(null);
+  protected readonly reporteAbierto = signal(false);
+  protected readonly asuntoReporte = signal('');
+  protected readonly descripcionReporte = signal('');
+  protected readonly errorReporte = signal<string | null>(null);
+  protected readonly reporteEnviando = signal(false);
+  protected readonly reporteMensaje = signal<string | null>(null);
+  protected readonly descripcionReporteInput = viewChild<ElementRef<HTMLTextAreaElement>>('descripcionReporteCampo');
   protected readonly stockTallaSeleccionada = computed(() => {
     const talla = this.tallaSeleccionada();
     return this.prenda()?.tallas.find((item) => item.talla === talla)?.stockDisponible ?? 0;
@@ -138,6 +148,67 @@ export class DetalleProducto implements OnInit {
     );
   protected readonly colorDe = (c: string) =>
     ETIQUETAS_COLORES[c as keyof typeof ETIQUETAS_COLORES] ?? c;
+
+  /**
+   * Abre el formulario de reporte de producto y enfoca la descripción.
+   * @returns No devuelve un valor.
+   * @see US-14
+   */
+  protected abrirReporte(): void {
+    const prenda = this.prenda();
+    if (!prenda) return;
+    this.reporteMensaje.set(null);
+    this.errorReporte.set(null);
+    this.asuntoReporte.set(`Reporte de producto: ${prenda.nombre}`);
+    this.descripcionReporte.set('');
+    this.reporteAbierto.set(true);
+    setTimeout(() => this.descripcionReporteInput()?.nativeElement.focus());
+  }
+
+  /**
+   * Cierra el formulario de reporte sin registrar una incidencia.
+   * @returns No devuelve un valor.
+   */
+  protected cerrarReporte(): void {
+    this.reporteAbierto.set(false);
+    this.errorReporte.set(null);
+  }
+
+  /**
+   * Registra el reporte asociado a la prenda del detalle.
+   * @returns No devuelve un valor.
+   * @see US-14
+   */
+  protected enviarReporte(): void {
+    const prenda = this.prenda();
+    const asunto = this.asuntoReporte().trim();
+    const descripcion = this.descripcionReporte().trim();
+    if (!prenda || this.reporteEnviando()) return;
+    if (asunto.length < 5 || asunto.length > 200 || descripcion.length < 20 || descripcion.length > 4000) {
+      this.errorReporte.set('El asunto debe tener entre 5 y 200 caracteres y la descripción entre 20 y 4000.');
+      return;
+    }
+    const reporte: CrearIncidencia = {
+      tipo: 'REPORTE_PRODUCTO',
+      asunto,
+      descripcion,
+      referenciaId: prenda.id,
+      referenciaDetalle: prenda.nombre,
+    };
+    this.reporteEnviando.set(true);
+    this.errorReporte.set(null);
+    this.incidencias.crear(reporte).subscribe({
+      next: () => {
+        this.reporteEnviando.set(false);
+        this.reporteAbierto.set(false);
+        this.reporteMensaje.set('Gracias. El reporte quedó registrado para revisión administrativa.');
+      },
+      error: (err: unknown) => {
+        this.reporteEnviando.set(false);
+        this.errorReporte.set(procesarErrorApi(err));
+      },
+    });
+  }
 
   protected readonly edadDe = (t: VitrinaTalla) =>
     t.edadMinMeses == null && t.edadMaxMeses == null
