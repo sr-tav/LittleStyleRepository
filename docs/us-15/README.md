@@ -39,8 +39,33 @@ Campos de `DashboardOverviewResponse`: `totalVentas`, `totalPedidos`, `ticketPro
 
 ## 3. Métricas de comportamiento (tracking)
 
-- `TrackingAnalyticsService` (`@Async`, nunca propaga errores) guarda en `busquedas` cada búsqueda de texto de la primera página del catálogo y en `producto_vistas` cada consulta de la ficha de una prenda publicada.
-- Se invoca desde `CatalogoClienteController`.
+`TrackingAnalyticsService` (`@Async`, nunca propaga errores) guarda en `busquedas` cada búsqueda de texto de la primera página del catálogo y en `producto_vistas` cada consulta de la ficha de una prenda publicada. Se invoca desde `CatalogoClienteController`.
+
+### Qué NO cuenta como vista o búsqueda
+
+| Caso | Regla |
+|---|---|
+| Refrescos, volver atrás, abrir la ficha varias veces | Mismo cliente + misma prenda (o mismo término) dentro de la ventana de **30 min** cuenta una sola vez. La ventana arranca en el primer evento y no se renueva al insistir (`VentanaAntiRepeticion`). |
+| El vendedor viendo su propia prenda | Se descarta si el cliente autenticado es el dueño de la prenda. |
+| Rastreadores y scripts | Se descarta si el `User-Agent` se declara automatizado (bot, crawler, spider, headless, curl, wget, python-requests, etc.) o no viene. |
+| Sin cliente autenticado | No se cuenta: no hay forma de aplicar las reglas anteriores. |
+
+Límites conocidos:
+- La ventana vive **en memoria** (no se guarda quién vio qué, para no identificar al cliente). Se pierde al reiniciar y no se comparte entre instancias: tras un reinicio, o con varias instancias del backend, una repetición puede contarse de más.
+- El filtro de `User-Agent` solo detecta a quien se declara automatizado. Quien finge ser un navegador queda limitado por la ventana (una vez por prenda cada 30 min) pero no bloqueado.
+- Hoy el endpoint de la ficha exige rol `CLIENTE`, por lo que un vendedor no puede llegar a generar vistas de sus prendas; la exclusión del dueño es una defensa por si ese acceso cambia.
+
+### Retención
+
+`RetencionAnalyticsService` borra cada día a las 03:30 las búsquedas y vistas anteriores a **12 meses**, para que las tablas no crezcan sin límite (RNF-04). El borrado usa `fecha < límite`, que aprovecha los índices por fecha. Un fallo se registra en el log y no detiene la aplicación; con varias instancias es seguro (borrar dos veces lo mismo no tiene efecto).
+
+| Propiedad (variable de entorno) | Por defecto | Efecto |
+|---|---|---|
+| `app.analytics.retencion-meses` (`ANALYTICS_RETENCION_MESES`) | `12` | Meses que se conservan. Menor que 1 impide arrancar la aplicación (evita borrar todo el historial). |
+| `app.analytics.repeticion-minutos` (`ANALYTICS_REPETICION_MINUTOS`) | `30` | Ventana anti-repetición. |
+| `app.analytics.purga-cron` (`ANALYTICS_PURGA_CRON`) | `0 30 3 * * *` | Horario de la depuración (cron de Spring de 6 campos). |
+
+La primera depuración sobre tablas que ya acumularon mucho historial puede tardar; por eso corre de madrugada. Los períodos predefinidos del dashboard llegan a 6 meses; con fechas manuales se puede pedir un rango mayor (el backend no lo limita), pero las búsquedas y vistas anteriores a la retención ya no existen, así que esos rangos largos solo reflejan los últimos 12 meses en esas dos métricas. Las ventas, que salen de los pedidos, no se borran.
 
 ## 4. Base de datos
 
@@ -61,6 +86,6 @@ Campos de `DashboardOverviewResponse`: `totalVentas`, `totalPedidos`, `ticketPro
 
 - Backend: `modules/dashboard/` (`controller`, `service`, `repository`, `model`, `dto`) y `CatalogoClienteController` (tracking).
 - Frontend: `features/dashboard/pages/dashboard-analytics/` y `features/dashboard/services/`.
-- Pruebas backend: `DashboardIntegrationTest` (JWT real + H2: aislamiento entre vendedores, admin global, categoría, roles, sin demo), `DashboardAnalyticsServiceTest`, `DashboardControllerTest`, `TrackingAnalyticsServiceTest`.
+- Pruebas backend: `DashboardIntegrationTest` (JWT real + H2: aislamiento entre vendedores, admin global, categoría, roles, sin demo), `DashboardAnalyticsServiceTest`, `DashboardControllerTest`, `TrackingAnalyticsServiceTest` (bots, dueño, repetidas), `VentanaAntiRepeticionTest`, `RetencionAnalyticsServiceTest` y `RetencionAnalyticsIntegrationTest` (DELETE contra H2).
 - Pruebas frontend: `dashboard-analytics.spec.ts`, `dashboard-analytics.service.spec.ts`.
 - Pendiente (RNF-04): medir el tiempo de carga del dashboard con una prueba de carga en `pruebas-carga/` (hoy solo cubre recomendaciones).
