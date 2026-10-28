@@ -364,4 +364,21 @@ public class CorreoService {
             }
         }
     }
+
+    /** Envía un enlace para restablecer la contraseña de una cuenta. */
+    @Async
+    public void enviarRestablecerPassword(String para, String nombre, String url) {
+        if (!props.enviosHabilitados()) {
+            log.warn("Correo no configurado; se omite la recuperación de contraseña para {}", enmascarar(para));
+            return;
+        }
+        try {
+            String html = leerPlantilla("correo/restablecer-password.html")
+                    .replace("{{nombre}}", escaparHtml(nombre == null || nombre.isBlank() ? "Usuario" : nombre))
+                    .replace("{{url}}", escaparHtml(url == null ? "" : url));
+            enviarHtml(para, "Restablece tu contraseña de LittleStyle", html);
+        } catch (Exception ex) {
+            log.error("No fue posible enviar el correo de recuperación de contraseña a {}", enmascarar(para), ex);
+        }
+    }
 }

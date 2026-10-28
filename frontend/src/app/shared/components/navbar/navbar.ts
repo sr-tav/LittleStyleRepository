@@ -14,6 +14,7 @@ import {
  * Navegación principal por rol y panel de acceso rápido al carrito del cliente.
  * @see US-05
  * @see US-10
+ * @see US-15
  * @see UI-3
  * @see UI-7
  * @see UI-10
@@ -76,10 +77,6 @@ import {
               @if (cuentaAbierta()) {
                 <div class="account-menu-panel" role="menu">
                   <a routerLink="/cuenta" role="menuitem" (click)="cuentaAbierta.set(false)">Mi cuenta</a>
-                  @if (auth.rol() === 'CLIENTE') {
-                    <a routerLink="/cliente/hijos" role="menuitem" (click)="cuentaAbierta.set(false)">Mis hijos</a>
-                    <a routerLink="/cliente/pedidos" role="menuitem" (click)="cuentaAbierta.set(false)">Mis pedidos</a>
-                  }
                   <button type="button" role="menuitem" (click)="auth.logout()">Cerrar sesión</button>
                 </div>
               }
@@ -93,21 +90,23 @@ import {
       <div class="menu-backdrop" (click)="cerrarMenu()" aria-hidden="true"></div>
       <nav class="menu-lateral" aria-label="Menú principal" (keydown.escape)="cerrarMenu()">
         <div class="menu-lateral-head">
-          <strong>LittleStyle</strong>
+          <a class="menu-lateral-brand" [routerLink]="auth.rutaInicio()" (click)="cerrarMenu()">LittleStyle</a>
           <button type="button" class="icon-button" aria-label="Cerrar menú" (click)="cerrarMenu()">✕</button>
         </div>
         @if (auth.rol() === 'VENDEDOR') {
-          <a routerLink="/vendedor/productos" (click)="cerrarMenu()">Mis productos</a>
-          <a routerLink="/vendedor/inventario" (click)="cerrarMenu()">Inventario</a>
           <a routerLink="/vendedor/inventario/alertas" (click)="cerrarMenu()">Alertas</a>
-          <a routerLink="/vendedor/pedidos" (click)="cerrarMenu()">Pedidos</a>
+          <a routerLink="/vendedor/inventario" (click)="cerrarMenu()">Inventario</a>
           <a routerLink="/mis-incidencias" (click)="cerrarMenu()">Mis incidencias</a>
+          <a routerLink="/vendedor/productos" (click)="cerrarMenu()">Mis productos</a>
+          <a routerLink="/vendedor/pedidos" (click)="cerrarMenu()">Pedidos</a>
+          <a routerLink="/dashboard" (click)="cerrarMenu()">Reportes</a>
         } @else if (auth.rol() === 'ADMINISTRADOR') {
           <a routerLink="/admin" (click)="cerrarMenu()">Panel administrativo</a>
-          <a routerLink="/admin/usuarios" (click)="cerrarMenu()">Usuarios</a>
-          <a routerLink="/admin/moderacion" (click)="cerrarMenu()">Moderación</a>
           <a routerLink="/admin/auditoria" (click)="cerrarMenu()">Auditoría</a>
           <a routerLink="/admin/incidencias" (click)="cerrarMenu()">Incidencias</a>
+          <a routerLink="/admin/moderacion" (click)="cerrarMenu()">Moderación</a>
+          <a routerLink="/dashboard" (click)="cerrarMenu()">Reportes</a>
+          <a routerLink="/admin/usuarios" (click)="cerrarMenu()">Usuarios</a>
         } @else {
           <a routerLink="/mis-incidencias" (click)="cerrarMenu()">Mis incidencias</a>
           <div class="menu-grupo" [class.is-abierto]="grupoAbierto() === 'catalogo'">
@@ -259,7 +258,6 @@ export class Navbar {
   /**
    * Alterna la apertura del grupo de menú indicado.
    * @param grupo Identificador del grupo que se despliega o contrae.
-   * @returns No devuelve un valor.
    */
   protected alternarGrupo(grupo: string): void {
     this.grupoAbierto.update((actual) => (actual === grupo ? null : grupo));
@@ -267,7 +265,6 @@ export class Navbar {
 
   /**
    * Cierra el menú lateral y cualquier subgrupo abierto.
-   * @returns No devuelve un valor.
    */
   protected cerrarMenu(): void {
     this.menuAbierto.set(false);
@@ -278,7 +275,6 @@ export class Navbar {
    * Cambia la cantidad si es positiva y no hay otra actualización pendiente.
    * @param item Línea del carrito que se modifica.
    * @param cantidad Nueva cantidad solicitada.
-   * @returns No devuelve un valor.
    */
   protected cambiarCantidad(item: ItemCarrito, cantidad: number): void {
     if (cantidad < 1 || this.cambioPendiente() !== null) return;
@@ -296,7 +292,6 @@ export class Navbar {
   /**
    * Pide confirmación antes de quitar una línea del carrito.
    * @param item Línea que se eliminará.
-   * @returns No devuelve un valor.
    */
   protected quitar(item: ItemCarrito): void {
     if (this.cambioPendiente() !== null || !window.confirm(

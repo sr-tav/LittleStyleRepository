@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+
+import { AuthService } from '../../../core/services/auth.service';
 
 /**
  * Pie del e-commerce: contacto, accesos y aviso legal.
@@ -14,13 +16,15 @@ import { RouterLink } from '@angular/router';
           <p class="footer-brand">Little<strong>Style</strong></p>
           <p>Ropa infantil con la talla ideal para cada etapa.</p>
         </div>
-        <nav aria-label="Accesos del pie de página">
-          <p class="footer-titulo">Explora</p>
-          <a routerLink="/cliente/catalogo">Catálogo</a>
-          <a [routerLink]="['/cliente/catalogo']" [queryParams]="{ genero: 'NINO' }">Niños</a>
-          <a [routerLink]="['/cliente/catalogo']" [queryParams]="{ genero: 'NINA' }">Niñas</a>
-          <a routerLink="/cliente/hijos">Mis hijos</a>
-        </nav>
+        @if (auth.rol() === 'CLIENTE' || auth.rol() === null) {
+          <nav aria-label="Accesos del pie de página">
+            <p class="footer-titulo">Explora</p>
+            <a routerLink="/cliente/catalogo">Catálogo</a>
+            <a [routerLink]="['/cliente/catalogo']" [queryParams]="{ genero: 'NINO' }">Niños</a>
+            <a [routerLink]="['/cliente/catalogo']" [queryParams]="{ genero: 'NINA' }">Niñas</a>
+            <a routerLink="/cliente/hijos">Mis hijos</a>
+          </nav>
+        }
         <div>
           <p class="footer-titulo">Contacto</p>
           <p>contacto@littlestyle.com</p>
@@ -31,4 +35,6 @@ import { RouterLink } from '@angular/router';
     </footer>
   `,
 })
-export class Footer {}
+export class Footer {
+  protected readonly auth = inject(AuthService);
+}

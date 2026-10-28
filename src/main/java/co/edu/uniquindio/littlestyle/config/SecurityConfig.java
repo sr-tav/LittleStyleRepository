@@ -69,7 +69,11 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
-                    auth.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll();
+                    auth.requestMatchers(HttpMethod.POST,
+                            "/api/auth/login",
+                            "/api/auth/register",
+                            "/api/auth/password-reset/request",
+                            "/api/auth/password-reset/reset").permitAll();
                     auth.requestMatchers("/error").permitAll();
                     // Webhook de Wompi (US-11): sin JWT, se autentica verificando la firma SHA-256 del evento
                     auth.requestMatchers(HttpMethod.POST, WompiWebhookController.RUTA).permitAll();

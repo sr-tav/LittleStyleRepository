@@ -6,6 +6,8 @@ import co.edu.uniquindio.littlestyle.modules.auth.dto.AuthResponse;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.LoginRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.RegistroRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.UsuarioResponse;
+import co.edu.uniquindio.littlestyle.modules.auth.dto.PasswordResetRequest;
+import co.edu.uniquindio.littlestyle.modules.auth.dto.RestablecerPasswordRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /** Endpoints de autenticación y gestión de la cuenta propia ({@code /api/auth}). */
 @RestController
@@ -63,6 +66,33 @@ public class AuthController {
     @DeleteMapping("/me")
     public ResponseEntity<Void> desactivarCuenta(@AuthenticationPrincipal AuthenticatedUser usuario) {
         authService.desactivarCuenta(usuario.id());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Recupera la contraseña del usuario. */
+    @GetMapping("/me/reset-password")
+    public ResponseEntity<PasswordResetRequest> recuperarContraseña(@AuthenticationPrincipal AuthenticatedUser usuario) {
+        return ResponseEntity.ok(authService.recuperarContraseña(usuario.email()));
+    }
+
+    /** Restablece la contraseña del usuario. */
+    @PostMapping("/me/reset-password")
+    public ResponseEntity<AuthResponse> restablecerContraseña(@Valid @RequestBody RestablecerPasswordRequest request,
+                                                              @AuthenticationPrincipal AuthenticatedUser usuario) {
+        return ResponseEntity.ok(authService.restablecerContraseña(usuario.id(), request));
+    }
+
+    /** Solicita el envío del enlace de recuperación al correo del usuario. */
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<Void> solicitarRecuperacion(@Valid @RequestBody PasswordResetRequest request) {
+        authService.solicitarRecuperacion(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    /** Restablece la contraseña con el token recibido por correo. */
+    @PostMapping("/password-reset/reset")
+    public ResponseEntity<Void> restablecerPassword(@Valid @RequestBody RestablecerPasswordRequest request) {
+        authService.restablecerPassword(request);
         return ResponseEntity.noContent().build();
     }
 }

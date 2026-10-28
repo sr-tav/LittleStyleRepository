@@ -86,3 +86,20 @@ apelaciones de vendedor y solicitudes de soporte.
 **Documentación y guía de uso:** [US-14](docs/us-14/README.md), [descripción funcional y
 API](docs/us-14/descripcion-funcional.md), [casos de prueba](docs/us-14/casos-de-prueba.md)
 y [Guía del Panel Administrativo](docs/us-14/guia-usuario-panel-administrativo.md).
+
+## Dashboard operativo (US-15)
+
+La vista `/dashboard` está habilitada para `ADMINISTRADOR` y `VENDEDOR` con filtros por rango de fechas y categoría.
+
+- Backend: `GET /api/v1/dashboard/overview`
+- Autorización: la ruta y el endpoint usan `@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'VENDEDOR')")`
+- Payload principal: `totalVentas`, `totalPedidos`, `ticketPromedio`, `ventasPorCategoria`, `demandaPorTalla`, `productosPopulares`
+- Frontend: `frontend/src/app/features/dashboard/pages/dashboard-analytics/dashboard-analytics.ts` renderiza gráficos con Chart.js
+
+Documentación específica:
+- `docs/us-15/README.md`
+- `docs/us-15/descripcion-funcional.md`
+- `docs/us-15/casos-de-prueba.md`
+- `docs/us-15/guia-usuario-dashboard.md`
+
+**Nota:** el dashboard usa la API analítica real y mantiene cálculos con rangos temporales y segmentación por categoría para evitar datos estáticos.

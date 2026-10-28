@@ -71,4 +71,8 @@ export class Login {
       },
     });
   }
+
+  protected recuperarPassword(): void {
+    this.router.navigate(['/auth/recuperar']);
+  }
 }

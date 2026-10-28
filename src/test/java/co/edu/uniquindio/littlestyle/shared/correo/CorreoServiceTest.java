@@ -22,7 +22,8 @@ class CorreoServiceTest {
 
     private static CorreoProperties props(String usuario, String clave) {
         return new CorreoProperties("smtp.gmail.com", 587, usuario, clave, "LittleStyle",
-                10000, 3, 0, "http://localhost:8080");
+                10000, 3, 2000L, "http://localhost:8080",
+                "http://localhost:4200/auth/restablecer");
     }
 
     @Test

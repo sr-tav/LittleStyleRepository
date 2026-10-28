@@ -18,4 +18,14 @@ export const AUTH_ROUTES: Routes = [
     title: 'Crear cuenta | LittleStyle',
     loadComponent: () => import('./pages/registro/registro').then((m) => m.Registro),
   },
+  {
+    path: 'recuperar',
+    title: 'Recuperar contraseña | LittleStyle',
+    loadComponent: () => import('./pages/recuperar/recuperar').then((m) => m.RecuperarPassword),
+  },
+  {
+    path: 'restablecer',
+    title: 'Restablecer contraseña | LittleStyle',
+    loadComponent: () => import('./pages/restablecer/restablecer').then((m) => m.RestablecerPassword),
+  },
 ];

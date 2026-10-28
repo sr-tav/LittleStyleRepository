@@ -88,3 +88,13 @@ export function codigoErrorApi(error: unknown): string | null {
   }
   return null;
 }
+
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface RestablecerPasswordRequest {
+  token: string;
+  password: string;
+  confirmarPassword: string;
+}
