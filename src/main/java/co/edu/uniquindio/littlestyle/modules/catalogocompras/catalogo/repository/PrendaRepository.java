@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
@@ -40,9 +41,20 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @Query("select p.id from Prenda p where p.vendedor.id = :vendedorId")
     List<Long> findIdsByVendedorId(@Param("vendedorId") Long vendedorId);
 
-    /** Prendas en un estado, con tallas y vendedor cargados. */
+    /**
+     * Prendas en un estado o mas, con tallas y vendedor cargados. Reserva la regla de visibilidad
+     * publica (US-14): se devuelven prendas {@code ACTIVA}, con moderacion distinta de DESACTIVADA y
+     * vendedor ACTIVO. SIN_REVISAR sigue visible porque la moderacion es posterior a la publicacion.
+     */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
-    List<Prenda> findAllByEstado(EstadoPrenda estado);
+    @Query("""
+            select p from Prenda p
+            where p.estado = :estado
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+              and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
+            """)
+    List<Prenda> findAllByEstado(@Param("estado") EstadoPrenda estado);
 
     /**
      * Vitrina del cliente solo prendas publicadas, con filtros
@@ -56,6 +68,9 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @Query("""
             select p.id from Prenda p
             where p.estado = :estado
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+              and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
               and (:categoria is null or p.categoria = :categoria)
               and (:precioMin is null or p.precio >= :precioMin)
               and (:precioMax is null or p.precio <= :precioMax)
@@ -92,6 +107,9 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
             select p.id from Prenda p
             where p.estado = :estado
               and p.id in :ids
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+              and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
               and (:categoria is null or p.categoria = :categoria)
               and (:precioMin is null or p.precio >= :precioMin)
               and (:precioMax is null or p.precio <= :precioMax)
@@ -120,9 +138,17 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
                                       @Param("edadMeses") Integer edadMeses,
                                       Pageable pageable);
 
-    /** Prenda si está en el estado indicado, con tallas y vendedor cargados. */
+    /** Prenda si esta en el estado indicado y es visible (US-14: no desactivada y vendedor ACTIVO). */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
-    Optional<Prenda> findByIdAndEstado(Long id, EstadoPrenda estado);
+    @Query("""
+            select p from Prenda p
+            where p.id = :id
+              and p.estado = :estado
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+              and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
+            """)
+    Optional<Prenda> findByIdAndEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
 
     /**
      * Paso 2 de la paginación en dos pasos: trae las tallas de la página ya
@@ -130,17 +156,77 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
      * (traer varias colecciones List a la vez daría MultipleBagFetchException).
      */
     @EntityGraph(attributePaths = {"tallas"})
-    @Query("select p from Prenda p where p.id in :ids")
+    @Query("""
+            select p from Prenda p
+            where p.id in :ids
+              and p.estado = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda.ACTIVA
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+              and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
+            """)
     List<Prenda> buscarPorIds(@Param("ids") List<Long> ids);
     /** Prenda en el estado indicado con bloqueo de escritura, para validar y mover stock sin carreras. */
+    /** Prenda en el estado indicado y publicable (US-14), con bloqueo de escritura para validar stock. */
     @EntityGraph(attributePaths = "tallas")
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select p from Prenda p where p.id = :id and p.estado = :estado")
+    @Query("""
+            select p from Prenda p
+            where p.id = :id
+              and p.estado = :estado
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+              and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
+            """)
     Optional<Prenda> bloquearPorIdYEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
 
     /** Prenda con bloqueo de escritura, sin importar su estado (pagos y reposición de stock). */
+    /** Prenda con bloqueo de escritura, sin importar su estado (pagos y reposicion de stock). */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Prenda p where p.id = :id")
     Optional<Prenda> bloquearPorId(@Param("id") Long id);
+
+    /**
+     * Bandeja de moderacion del administrador (US-14): SIN_REVISAR primero, con productos reportados
+     * priorizados dentro de su estado y despues por fecha reciente. A diferencia de la vitrina, aqui NO se exige visibilidad
+     * publica: el admin debe ver tambien las RECHAZADA y las de vendedores suspendidos.
+     */
+    @Query("""
+            select p from Prenda p join fetch p.vendedor v
+            where (:vendedorEmail is null or lower(v.email) like lower(concat('%', :vendedorEmail, '%')))
+              and (:estadoPrenda is null or p.estado = :estadoPrenda)
+              and (:estadoModeracion is null or p.estadoModeracion = :estadoModeracion)
+              and (:texto is null or :texto = ''
+                   or lower(p.nombre) like lower(concat('%', :texto, '%'))
+                   or lower(coalesce(p.marca, '')) like lower(concat('%', :texto, '%')))
+            order by case when p.estadoModeracion =
+                         co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.SIN_REVISAR
+                         then 0 else 1 end,
+                     case when (select count(i) from co.edu.uniquindio.littlestyle.modules.admin.model.Incidencia i
+                                where i.referenciaId = p.id
+                                  and i.tipo = co.edu.uniquindio.littlestyle.modules.admin.model.TipoIncidencia.REPORTE_PRODUCTO
+                                  and i.estado in (co.edu.uniquindio.littlestyle.modules.admin.model.EstadoIncidencia.ABIERTA,
+                                                   co.edu.uniquindio.littlestyle.modules.admin.model.EstadoIncidencia.EN_REVISION)) > 0
+                         then 0 else 1 end,
+                     p.fechaActualizacion desc, p.id desc
+            """)
+    Page<Prenda> buscarModeracion(@Param("vendedorEmail") String vendedorEmail,
+                                  @Param("estadoPrenda") EstadoPrenda estadoPrenda,
+                                  @Param("estadoModeracion") EstadoModeracion estadoModeracion,
+                                  @Param("texto") String texto,
+                                  Pageable pageable);
+
+    /** Prenda con todas sus colecciones e info de vendedor, para el detalle de moderacion. */
+    @EntityGraph(attributePaths = {"vendedor"})
+    @Query("select p from Prenda p where p.id = :id")
+    Optional<Prenda> buscarDetalleAdmin(@Param("id") Long id);
+
+    /** Carga la prenda con el vendedor para notificaciones post-commit asincronas. */
+    @Query("select p from Prenda p join fetch p.vendedor where p.id = :id")
+    Optional<Prenda> buscarParaNotificacion(@Param("id") Long id);
+
+    /** KPIs del resumen: prendas por estado de moderacion y publicadas (ACTIVA + APROBADA). */
+    long countByEstadoModeracion(EstadoModeracion estadoModeracion);
+
+    long countByEstadoAndEstadoModeracion(EstadoPrenda estado, EstadoModeracion estadoModeracion);
 }

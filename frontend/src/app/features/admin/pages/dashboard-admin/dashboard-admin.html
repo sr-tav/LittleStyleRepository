@@ -1,0 +1,70 @@
+<app-navbar />
+<main class="home">
+  <header class="dashboard-intro">
+    <h1>Panel administrativo</h1>
+    <p>Supervisión general de la plataforma</p>
+  </header>
+
+  @if (cargando()) {
+    <div class="catalog-state" role="status"><p>Cargando resumen…</p></div>
+  } @else if (error(); as mensaje) {
+    <div class="alert alert-error" role="alert">
+      {{ mensaje }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (datos(); as res) {
+    <section class="kpi-grid" aria-label="Resumen de la plataforma">
+      <article class="kpi-card">
+        <span class="kpi-icon kpi-icon-products" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3" /><circle cx="18" cy="9" r="2.5" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M15 15a4 4 0 0 1 6 3v2" /></svg>
+        </span>
+        <span class="kpi-label">Usuarios activos</span>
+        <strong class="kpi-value">{{ res.usuariosActivos }}</strong>
+        <span class="kpi-hint">{{ res.usuariosSuspendidos }} suspendidos · {{ res.usuariosBloqueados }} bloqueados · {{ res.usuariosEliminados }} eliminados</span>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-icon kpi-icon-products" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 3 20 8l-2 2v11H6V10L4 8l4-5 4 3 4-3Z" /></svg>
+        </span>
+        <span class="kpi-label">Prendas publicadas</span>
+        <strong class="kpi-value">{{ res.prendasPublicadas }}</strong>
+        <span class="kpi-hint">{{ res.prendasSinRevisar }} pendientes de revisión · {{ res.prendasRechazadas }} desactivadas</span>
+      </article>
+      <a class="kpi-card" routerLink="/admin/incidencias">
+        <span class="kpi-icon kpi-icon-alert" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2 20h20L12 3Zm0 6v5m0 3v.01" /></svg>
+        </span>
+        <span class="kpi-label">Incidencias</span>
+        <strong class="kpi-value">{{ res.incidenciasAbiertas }}</strong>
+        <span class="kpi-hint">{{ res.incidenciasEnRevision }} en revisión · {{ res.tasaResolucionPorcentaje }}% de resolución</span>
+      </a>
+      <article class="kpi-card">
+        <span class="kpi-icon kpi-icon-alert" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V4M4 20h17M7 16l4-5 3 2 6-8M16 5h4v4" /></svg>
+        </span>
+        <span class="kpi-label">Tasa de resolución</span>
+        <strong class="kpi-value">{{ res.tasaResolucionPorcentaje }}%</strong>
+        <span class="kpi-hint">Incidencias resueltas o rechazadas</span>
+      </article>
+    </section>
+
+    <div class="home-grid">
+      <a class="home-tile" routerLink="/admin/usuarios">
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3" /><circle cx="18" cy="9" r="2.5" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M15 15a4 4 0 0 1 6 3v2" /></svg></span>
+        <h2>Usuarios</h2><p>Clientes y vendedores</p>
+      </a>
+      <a class="home-tile" routerLink="/admin/moderacion">
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z" /><path d="m9 12 2 2 4-4" /></svg></span>
+        <h2>Moderación</h2><p>{{ res.prendasSinRevisar }} pendientes de revisión · publicaciones libres mientras se revisan</p>
+      </a>
+      <a class="home-tile" routerLink="/admin/auditoria">
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m20 13-7 7-11-11V2h7l11 11Z" /><circle cx="6.5" cy="6.5" r="1" /></svg></span>
+        <h2>Auditoría</h2><p>Registro e integridad</p>
+      </a>
+      <a class="home-tile" routerLink="/admin/incidencias">
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" /></svg></span>
+        <h2>Incidencias</h2><p>Apelaciones y soporte</p>
+      </a>
+    </div>
+  }
+</main>

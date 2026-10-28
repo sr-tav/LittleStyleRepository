@@ -77,6 +77,21 @@ describe('ProductosLista (UI-19)', () => {
     expect(el.querySelector('.state-chip')?.textContent).toContain('Inactivo');
   });
 
+  it('muestra el motivo administrativo y ofrece apelar sin permitir reactivar', () => {
+    const prendaDesactivada = crearPrenda({
+      estadoModeracion: 'DESACTIVADA',
+      motivoModeracion: 'La descripción no coincide con la composición declarada.',
+    });
+    const { fixture, el } = crear();
+    http.expectOne('/api/vendedor/prendas').flush([prendaDesactivada]);
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('La descripción no coincide con la composición declarada.');
+    expect(el.querySelector<HTMLButtonElement>('button[aria-label^="Ocultar"]')?.disabled).toBe(true);
+    expect(el.querySelector<HTMLAnchorElement>('a[aria-label^="Apelar desactivación"]')).not.toBeNull();
+    expect(el.querySelector<HTMLAnchorElement>('a[aria-label^="Editar"]')?.getAttribute('aria-disabled')).toBe('true');
+  });
+
   it('invita a crear el primer producto cuando el catálogo está vacío', () => {
     const { fixture, el } = crear();
     http.expectOne('/api/vendedor/prendas').flush([]);

@@ -134,8 +134,18 @@ export const routes: Routes = [
     title: 'Panel administrativo | LittleStyle',
     canActivate: [roleGuard],
     data: { roles: ['ADMINISTRADOR'] },
+    loadChildren: () =>
+      import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+  },
+  {
+    path: 'mis-incidencias',
+    title: 'Mis incidencias | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['CLIENTE', 'VENDEDOR'] },
     loadComponent: () =>
-      import('./features/home/pages/admin-panel/admin-panel').then((m) => m.AdminPanel),
+      import('./features/admin/pages/mis-incidencias/mis-incidencias').then(
+        (m) => m.MisIncidencias,
+      ),
   },
   {
     path: 'acceso-denegado',

@@ -1,6 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 
 import { Carrito, ItemCarrito } from '../models/carrito.models';
 import { DireccionEnvio } from '../models/checkout.models';
@@ -228,6 +229,34 @@ describe('CheckoutPage', () => {
 
     expect(root.querySelector<HTMLInputElement>('#direccion')?.value).toBe('Calle 1 # 2-3');
     expect(root.querySelector<HTMLInputElement>('#complemento')?.value).toBe('Apto. 302');
+  });
+
+  it('muestra una indicación clara si una prenda dejó de estar disponible al calcular el checkout', () => {
+    const mensaje = 'Una prenda del carrito ya no está disponible. Vuelve al carrito para retirarla o elegir otra antes de continuar.';
+    checkout.calcularResumen.mockReturnValueOnce(throwError(() => new HttpErrorResponse({
+      status: 404,
+      error: { mensaje },
+    })));
+    checkout.obtenerDireccion.mockReturnValue(of({
+      guardada: true,
+      direccion: {
+        destinatario: 'Ana Ruiz',
+        direccion: 'Calle 1 # 2-3',
+        complemento: null,
+        codigoPostal: '630001',
+        departamento: 'Quindío',
+        municipio: 'Armenia',
+        telefono: '3001234567',
+      },
+    }));
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    root.querySelector<HTMLButtonElement>('.checkout-direccion-guardada button')?.click();
+    fixture.detectChanges();
+
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(mensaje);
+    expect(root.querySelector('app-pago-wompi')).toBeNull();
   });
 
   it('no inicia el pago cuando el carrito ya contiene productos agotados', () => {

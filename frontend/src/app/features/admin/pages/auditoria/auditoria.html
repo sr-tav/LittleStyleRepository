@@ -1,0 +1,143 @@
+<app-navbar />
+<main class="catalog-page">
+  <header class="catalog-heading">
+    <div>
+      <h1>Auditoría</h1>
+      <p class="catalog-subtitle">Registro de solo lectura de las acciones del administrador</p>
+    </div>
+    <button type="button" class="btn-ghost" (click)="verificarIntegridad()" [disabled]="integridadCargando()">
+      @if (integridadCargando()) { <span class="spinner spinner-dark"></span> } Verificar integridad
+    </button>
+  </header>
+
+  @if (integridad(); as verificacion) {
+    <div
+      class="alert"
+      [class.alert-success]="verificacion.integra"
+      [class.alert-error]="!verificacion.integra"
+      role="status"
+    >
+      @if (verificacion.integra) {
+        <strong>Íntegra.</strong> Se verificaron {{ verificacion.totalRegistros }} registros sin inconsistencias.
+      } @else {
+        <strong>Cadena comprometida.</strong> Primer registro inconsistente: #{{ verificacion.primerInconsistenteId }}. {{ verificacion.detalle }}
+      }
+    </div>
+  }
+
+  @if (errorIntegridad(); as fallo) {
+    <div class="alert alert-error" role="alert">{{ fallo }}</div>
+  }
+
+  <section class="catalog-card">
+    <div class="admin-filtros">
+      <div class="field">
+        <label for="f-email">Correo del administrador</label>
+        <input type="text" id="f-email" [value]="filtroEmail()"
+               (input)="filtroEmail.set($any($event.target).value)"
+               (keyup.enter)="aplicarFiltros()" placeholder="admin@littlestyle.com" />
+      </div>
+      <div class="field">
+        <label for="f-accion">Acción</label>
+        <select id="f-accion" [value]="filtroAccion()"
+                (change)="filtroAccion.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todas</option>
+          @for (a of acciones; track a) { <option [value]="a">{{ etiquetasAccion[a] }}</option> }
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-tipo">Entidad</label>
+        <select id="f-tipo" [value]="filtroTipoEntidad()"
+                (change)="filtroTipoEntidad.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todas</option>
+          @for (t of tipos; track t) { <option [value]="t">{{ etiquetasTipo[t] }}</option> }
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-id">Id de entidad</label>
+        <input type="text" inputmode="numeric" id="f-id" [value]="filtroEntidadId()"
+               (input)="filtroEntidadId.set($any($event.target).value)"
+               (keyup.enter)="aplicarFiltros()" placeholder="Ej. 12" />
+      </div>
+      <div class="field">
+        <label for="f-res">Resultado</label>
+        <select id="f-res" [value]="filtroResultado()"
+                (change)="filtroResultado.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos</option>
+          <option value="EXITO">Éxito</option>
+          <option value="FALLO">Fallo</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-desde">Desde</label>
+        <input type="datetime-local" id="f-desde" [value]="filtroDesde()"
+               (change)="filtroDesde.set($any($event.target).value)" />
+      </div>
+      <div class="field">
+        <label for="f-hasta">Hasta</label>
+        <input type="datetime-local" id="f-hasta" [value]="filtroHasta()"
+               (change)="filtroHasta.set($any($event.target).value)" />
+      </div>
+      <div class="filtros-acciones">
+        <button type="button" class="btn-primary btn-inline btn-small" (click)="aplicarFiltros()">Filtrar</button>
+        <button type="button" class="btn-ghost" (click)="limpiarFiltros()">Limpiar</button>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando auditoría…</div>
+    } @else if (error(); as fallo) {
+      <div class="alert alert-error" role="alert">{{ fallo }}</div>
+    } @else if (items().length === 0) {
+      <div class="catalog-state">
+        <p>{{ hayFiltros() ? 'Ningún registro coincide con los filtros.' : 'Todavía no hay registros de auditoría.' }}</p>
+      </div>
+    } @else {
+      <div class="catalog-table-wrap">
+        <table class="catalog-table auditoria-table">
+          <caption class="visually-hidden">Registros de auditoría</caption>
+          <thead>
+          <tr>
+            <th scope="col">Fecha y hora</th>
+            <th scope="col">Administrador</th>
+            <th scope="col">Acción</th>
+            <th scope="col">Entidad</th>
+            <th scope="col">Cambio</th>
+            <th scope="col">Resultado</th>
+            <th scope="col">Motivo</th>
+          </tr>
+          </thead>
+          <tbody>
+            @for (r of items(); track r.id) {
+              <tr>
+                <td class="muted-cell">{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
+                <td><strong>{{ r.adminEmail }}</strong></td>
+                <td>{{ etiquetaAccion(r.accion) }}</td>
+                <td class="muted-cell">
+                  {{ etiquetaTipo(r.tipoEntidad) }}
+                  @if (r.entidadId !== null) { #{{ r.entidadId }} }
+                </td>
+                <td>
+                  @if (r.valorAnterior || r.valorNuevo) {
+                    <span class="valor-cambio"><s>{{ r.valorAnterior ?? '—' }}</s> → <strong>{{ r.valorNuevo ?? '—' }}</strong></span>
+                  } @else { — }
+                </td>
+                <td>
+              <span class="state-chip" [class.chip-FALLO]="r.resultado === 'FALLO'" [class.is-off]="r.resultado === 'EXITO'">
+                {{ etiquetasResultado[r.resultado] }}
+              </span>
+                </td>
+                <td class="muted-cell">{{ r.motivo ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <nav class="admin-paginado" aria-label="Paginación de auditoría">
+        <button type="button" class="btn-ghost" [disabled]="pagina() === 0" (click)="anterior()">Anterior</button>
+        <span>Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }} · {{ totalElementos() }} registros</span>
+        <button type="button" class="btn-ghost" [disabled]="pagina() >= totalPaginas() - 1" (click)="siguiente()">Siguiente</button>
+      </nav>
+    }
+  </section>
+</main>

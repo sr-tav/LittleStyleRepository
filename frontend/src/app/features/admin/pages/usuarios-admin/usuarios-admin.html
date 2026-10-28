@@ -1,0 +1,154 @@
+<app-navbar />
+<main class="catalog-page">
+  <header class="catalog-heading">
+    <div>
+      <h1>Gestión de usuarios</h1>
+      <p class="catalog-subtitle">Suspende, bloquea o habilita cuentas con motivo</p>
+    </div>
+  </header>
+
+  @if (mensaje(); as aviso) {
+    <div class="alert alert-success" role="status">{{ aviso }}</div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">
+      {{ error() }}
+      <button type="button" class="link-button" (click)="cargar()">Reintentar</button>
+    </div>
+  }
+
+  <section class="catalog-card">
+    <div class="admin-filtros">
+      <div class="field">
+        <label for="filtro-rol">Rol</label>
+        <select id="filtro-rol" [value]="filtroRol()" (change)="filtroRol.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos los roles</option>
+          @for (rol of roles; track rol) {
+            <option [value]="rol">{{ etiquetasRol[rol] }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-estado">Estado</label>
+        <select id="filtro-estado" [value]="filtroEstado()" (change)="filtroEstado.set($any($event.target).value); aplicarFiltros()">
+          <option value="">Todos los estados</option>
+          @for (estado of estados; track estado) {
+            <option [value]="estado">{{ etiquetasEstado[estado] }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtro-texto">Búsqueda</label>
+        <input
+          type="text"
+          id="filtro-texto"
+          name="filtro-texto"
+          [value]="filtroTexto()"
+          (input)="filtroTexto.set($any($event.target).value)"
+          (keyup.enter)="aplicarFiltros()"
+          placeholder="Nombre o correo" />
+      </div>
+      <button type="button" class="btn-primary btn-inline btn-small" (click)="aplicarFiltros()">Filtrar</button>
+      <button type="button" class="btn-ghost" (click)="limpiarFiltros()">Limpiar</button>
+    </div>
+
+    @if (cargando()) {
+      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando usuarios…</div>
+    } @else if (items().length === 0) {
+      <div class="catalog-state"><p>Todavía no hay usuarios que coincidan con los filtros.</p></div>
+    } @else {
+      <div class="catalog-table-wrap">
+        <table class="catalog-table">
+          <caption class="visually-hidden">Cuentas de usuarios con rol, estado y acciones de cambio de estado</caption>
+          <thead>
+            <tr>
+              <th scope="col">Usuario</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Tienda</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of items(); track u.id) {
+              <tr>
+                <td>
+                  <strong>{{ u.nombre }} {{ u.apellido }}</strong>
+                  <span class="product-meta">{{ u.email }}</span>
+                </td>
+                <td>{{ etiquetasRol[u.rol] }}</td>
+                <td class="muted-cell">{{ u.nombreTienda ?? '—' }}</td>
+                <td><span class="state-chip" [class.chip-SUSPENDIDO]="u.estado === 'SUSPENDIDO'" [class.chip-BLOQUEADO]="u.estado === 'BLOQUEADO'" [class.chip-ELIMINADO]="u.estado === 'ELIMINADO'">{{ etiquetasEstado[u.estado] }}</span></td>
+                <td class="celda-accion">
+                  @if (admiteAcciones(u)) {
+                    <button type="button" class="btn-soft" (click)="abrirDialogo(u)">Cambiar estado</button>
+                  } @else {
+                    <span class="muted-cell" aria-label="Sin acciones disponibles">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <nav class="admin-paginado" aria-label="Paginación de usuarios">
+        <button type="button" class="btn-ghost" [disabled]="pagina() === 0" (click)="anterior()">Anterior</button>
+        <span>Página {{ pagina() + 1 }} de {{ totalPaginas() || 1 }} · {{ totalElementos() }} usuarios</span>
+        <button type="button" class="btn-ghost" [disabled]="pagina() >= totalPaginas() - 1" (click)="siguiente()">Siguiente</button>
+      </nav>
+    }
+  </section>
+
+  @if (dialogo(); as usuario) {
+    <div class="confirm-backdrop">
+      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialogo-usuario-titulo">
+        <h2 id="dialogo-usuario-titulo">Cambiar estado del usuario</h2>
+        <p>{{ usuario.nombre }} {{ usuario.apellido }} — {{ usuario.email }} ({{ etiquetasRol[usuario.rol] }})</p>
+
+        @if (errorDialogo(); as fallo) {
+          <p class="alert alert-error" role="alert">{{ fallo }}</p>
+        }
+
+        @if (accionesDisponibles().length > 0) {
+          <div role="group" aria-label="Acción a aplicar">
+            @for (accion of accionesDisponibles(); track accion) {
+              <button
+                type="button"
+                class="btn-ghost"
+                [class.btn-accion]="accionDialogo() === accion"
+                (click)="accionDialogo.set(accion)"
+              >{{ etiquetasAccion[accion] }}</button>
+            }
+          </div>
+          <div class="field">
+            <label for="motivo-desactivacion">Motivo</label>
+            <textarea
+              id="motivo-desactivacion"
+              #motivoCampo
+              rows="3"
+              [value]="motivoDialogo()"
+              (input)="motivoDialogo.set($any($event.target).value)"
+              placeholder="Describe la razón (mínimo 10 caracteres)"
+              [attr.aria-describedby]="errorDialogo() ? 'error-motivo' : null"></textarea>
+          </div>
+          <div class="confirm-actions">
+            <button type="button" class="btn-ghost" (click)="cerrarDialogo()">Cancelar</button>
+            <button
+              type="button"
+              class="btn-primary btn-inline"
+              [disabled]="enviando()"
+              (click)="confirmarCambio()"
+            >@if (enviando()) { <span class="spinner"></span> } Confirmar</button>
+          </div>
+        } @else {
+          <p>Esta cuenta no admite cambios de estado.</p>
+          <div class="confirm-actions">
+            <button type="button" class="btn-ghost" (click)="cerrarDialogo()">Cerrar</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</main>

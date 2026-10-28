@@ -113,8 +113,18 @@ public class AuthService {
                     bloqueado ? " (límite de intentos alcanzado, se bloquea temporalmente)" : "");
             throw ex;
         } catch (DisabledException ex) {
-            LOG.warn("Login rechazado: cuenta suspendida email={} ip={}", enmascararEmail(email), ip);
-            throw ex;
+            EstadoUsuario estado = usuarioRepository.findByEmail(email)
+                    .map(Usuario::getEstado)
+                    .orElse(null);
+            String mensaje = switch (estado == null ? EstadoUsuario.ELIMINADO : estado) {
+                case SUSPENDIDO -> "Su cuenta está suspendida; se abrió una apelación y recibirá la respuesta por correo.";
+                case BLOQUEADO -> "Su cuenta está bloqueada; se abrió una apelación y recibirá la respuesta por correo.";
+                case ELIMINADO -> "La cuenta fue eliminada y no puede iniciar sesión.";
+                case ACTIVO -> "No fue posible iniciar sesión con esta cuenta.";
+            };
+            LOG.warn("Login rechazado: cuenta deshabilitada estado={} email={} ip={}",
+                    estado, enmascararEmail(email), ip);
+            throw new BusinessException(HttpStatus.FORBIDDEN, mensaje);
         }
 
         Usuario usuario = usuarioRepository.findByEmail(email)

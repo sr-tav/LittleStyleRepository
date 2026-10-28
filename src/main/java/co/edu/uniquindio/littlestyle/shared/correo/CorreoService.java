@@ -187,8 +187,74 @@ public class CorreoService {
         }
     }
 
-    /** Escapa texto para inyectarlo seguro en la plantilla HTML del correo. */
-    static String escaparHtml(String valor) {
+    /** Avisa al usuario el cambio de estado de su cuenta: suspendida, bloqueada o habilitada (US-14). */
+    @Async
+    public void enviarEstadoCuenta(String para, String nombre, String estadoTexto, String motivo) {
+        if (!props.enviosHabilitados()) {
+            log.warn("Correo no configurado; se omite el aviso de estado de cuenta de {}", enmascarar(para));
+            return;
+        }
+        try {
+            String html = leerPlantilla("correo/cuenta-estado.html")
+                    .replace("{{nombre}}", escaparHtml(nombre))
+                    .replace("{{estado}}", escaparHtml(estadoTexto))
+                    .replace("{{motivo}}", escaparHtml(motivo == null ? "" : motivo));
+            enviarHtml(para, "Aviso sobre el estado de su cuenta LittleStyle", html);
+        } catch (Exception ex) {
+            log.error("No fue posible enviar el aviso de estado de cuenta a {}", enmascarar(para), ex);
+        }
+    }
+
+    /** Avisa al vendedor el resultado de la moderacion administrativa de una de sus prendas (US-14). */
+    @Async
+    public void enviarResultadoModeracion(String para, String tienda, String prenda,
+                                          String resultado, String motivo) {
+        if (!props.enviosHabilitados()) {
+            log.warn("Correo no configurado; se omite el aviso de moderacion de {}", prenda);
+            return;
+        }
+        try {
+            String html = leerPlantilla("correo/resultado-moderacion.html")
+                    .replace("{{nombre}}", escaparHtml(tienda == null || tienda.isBlank() ? "vendedor" : tienda))
+                    .replace("{{prenda}}", escaparHtml(prenda))
+                    .replace("{{resultado}}", escaparHtml(resultado))
+                    .replace("{{motivo}}", escaparHtml(motivo == null ? "" : motivo));
+            enviarHtml(para, "Resultado de la revision de " + prenda, html);
+        } catch (Exception ex) {
+            log.error("No fue posible enviar el aviso de moderacion de {}", prenda, ex);
+        }
+    }
+
+    /** Cierra el ciclo de una incidencia: envia al usuario la respuesta final del administrador (US-14). */
+    @Async
+    public void enviarRespuestaIncidencia(String para, String nombre, String asunto,
+                                          String resultado, String respuesta) {
+        if (!props.enviosHabilitados()) {
+            log.warn("Correo no configurado; se omite la respuesta de la incidencia {}", asunto);
+            return;
+        }
+        try {
+            String html = leerPlantilla("correo/respuesta-incidencia.html")
+                    .replace("{{nombre}}", escaparHtml(nombre))
+                    .replace("{{asunto}}", escaparHtml(asunto))
+                    .replace("{{resultado}}", escaparHtml(resultado))
+                    .replace("{{respuesta}}", escaparHtml(respuesta == null ? "" : respuesta));
+            enviarHtml(para, "Respuesta a su incidencia: " + asunto, html);
+        } catch (Exception ex) {
+            log.error("No fue posible enviar la respuesta de la incidencia {} a {}", asunto, enmascarar(para), ex);
+        }
+    }
+
+    /** Enmascara el correo para los logs, como el resto de la aplicacion. */
+    private static String enmascarar(String email) {
+        if (email == null || !email.contains("@")) {
+            return "correo-invalido";
+        }
+        int en = email.indexOf('@');
+        return (en <= 2 ? "*" : email.substring(0, 2)) + "***" + email.substring(en);
+    }
+
+    /** Escapa texto para inyectarlo seguro en la plantilla HTML del correo. */    static String escaparHtml(String valor) {
         if (valor == null) {
             return "";
         }

@@ -101,9 +101,15 @@ import {
           <a routerLink="/vendedor/inventario" (click)="cerrarMenu()">Inventario</a>
           <a routerLink="/vendedor/inventario/alertas" (click)="cerrarMenu()">Alertas</a>
           <a routerLink="/vendedor/pedidos" (click)="cerrarMenu()">Pedidos</a>
+          <a routerLink="/mis-incidencias" (click)="cerrarMenu()">Mis incidencias</a>
         } @else if (auth.rol() === 'ADMINISTRADOR') {
           <a routerLink="/admin" (click)="cerrarMenu()">Panel administrativo</a>
+          <a routerLink="/admin/usuarios" (click)="cerrarMenu()">Usuarios</a>
+          <a routerLink="/admin/moderacion" (click)="cerrarMenu()">Moderación</a>
+          <a routerLink="/admin/auditoria" (click)="cerrarMenu()">Auditoría</a>
+          <a routerLink="/admin/incidencias" (click)="cerrarMenu()">Incidencias</a>
         } @else {
+          <a routerLink="/mis-incidencias" (click)="cerrarMenu()">Mis incidencias</a>
           <div class="menu-grupo" [class.is-abierto]="grupoAbierto() === 'catalogo'">
             <div class="menu-grupo-head">
               <a routerLink="/cliente/catalogo" (click)="cerrarMenu()">Catálogo</a>

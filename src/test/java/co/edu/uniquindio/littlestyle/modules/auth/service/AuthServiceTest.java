@@ -235,13 +235,24 @@ class AuthServiceTest {
 
         // Es un caso de seguridad distinto al de clave mala: no cuenta como fallo de credenciales
         @Test
-        @DisplayName("propaga DisabledException si la cuenta está suspendida")
+        @DisplayName("responde 403 con instrucciones para una cuenta suspendida")
         void cuentaSuspendida() {
             when(authenticationManager.authenticate(any(Authentication.class)))
                     .thenThrow(new DisabledException("disabled"));
+            when(usuarioRepository.findByEmail("maria@correo.com"))
+                    .thenReturn(Optional.of(Usuario.builder()
+                            .email("maria@correo.com")
+                            .estado(EstadoUsuario.SUSPENDIDO)
+                            .build()));
 
             assertThatThrownBy(() -> authService.login(new LoginRequest("maria@correo.com", "Clave1234"), IP))
-                    .isInstanceOf(DisabledException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException error = (BusinessException) ex;
+                        assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+                        assertThat(error.getMessage()).contains("se abrió una apelación")
+                                .contains("respuesta por correo");
+                    });
             verify(intentosLoginService, never()).registrarFallo(any(), any());
             verifyNoInteractions(jwtService);
         }

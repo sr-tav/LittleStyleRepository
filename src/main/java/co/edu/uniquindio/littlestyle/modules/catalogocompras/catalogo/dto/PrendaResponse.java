@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
@@ -20,6 +21,9 @@ import java.util.TreeSet;
 /**
  * Prenda completa para el vendedor: datos, estado, stock total y nivel, atributos de seguridad textil,
  * composición, tallas con stock y mínimo, e imágenes.
+ *
+ * @see "US-14"
+ * @see "RNF-08"
  */
 public record PrendaResponse(
         Long id,
@@ -31,6 +35,9 @@ public record PrendaResponse(
         String marca,
         BigDecimal precio,
         EstadoPrenda estado,
+        EstadoModeracion estadoModeracion,
+        String motivoModeracion,
+        LocalDateTime fechaModeracion,
         int stockTotal,
         NivelStock nivelStock,
         Set<ColorPreferido> colores,
@@ -75,7 +82,8 @@ public record PrendaResponse(
         int stockTotal = p.stockTotal();
         return new PrendaResponse(
                 p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getDescripcion(), p.getInstruccionesCuidado(), p.getMarca(), p.getPrecio(),
-                p.getEstado(), stockTotal, nivelDe(p),
+                p.getEstado(), p.getEstadoModeracion(), p.getMotivoModeracion(), p.getFechaModeracion(),
+                stockTotal, nivelDe(p),
                 new TreeSet<>(p.getColores()), p.getEstampado(),
                 p.isTintesSinteticos(), p.isBrochesMetalicos(), p.isContieneNiquel(), p.isTratamientoFormaldehido(),
                 p.getComposicion().stream().map(c -> new Componente(c.getMaterial(), c.getPorcentaje())).toList(),
