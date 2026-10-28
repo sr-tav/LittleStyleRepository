@@ -10,7 +10,7 @@ Validar que el dashboard visual de reportes cumple las reglas de acceso por rol,
 |---|---|---|---|
 | CP-01 | Restricción de acceso por rol | Usuario con rol `CLIENTE` intenta acceder a `/dashboard` o consumir la API | Acceso denegado y la opción `Reportes` no se renderiza en el navbar. |
 | CP-02 | Visualización del dashboard | Sesión autenticada con `VENDEDOR` o `ADMINISTRADOR` | Carga del panel con diseño en rejilla y KPIs vigentes. |
-| CP-03 | Filtrado dinámico | Cambia `startDate`, `endDate` y/o `categoryId` | Se ejecuta la petición con nuevos parámetros y la vista se actualiza sin flickering. |
+| CP-03 | Filtrado dinámico | Cambia `startDate`, `endDate` y/o `categoria` | Se ejecuta la petición con nuevos parámetros y la vista se actualiza sin flickering. |
 | CP-04 | Pruebas unitarias backend | Ejecuta servicio JUnit/Mockito | Validación de `GROUP BY`, sumatorias `SUM` y manejo de listas vacías. |
 | CP-05 | Pruebas unitarias frontend | Ejecuta specs Vitest | Validación del componente y del servicio del dashboard. |
 

@@ -13,7 +13,7 @@ Los filtros principales se encuentran en la parte superior del panel:
 
 - Fecha inicial (`startDate`)
 - Fecha final (`endDate`)
-- Categoría (`categoryId`)
+- Categoría (`categoria`): lista tomada del catálogo real; filtra ventas, inventario y rankings
 
 ### Cómo usarlo
 
@@ -29,15 +29,13 @@ Los filtros principales se encuentran en la parte superior del panel:
 - Ventas totales en el periodo.
 - Número de pedidos procesados.
 - Ticket promedio.
-- Ingresos del negocio.
 - Stock total y alertas de inventario.
 
 ### Gráficas disponibles
 
 - Ventas por categoría
 - Demanda por talla
-- Productos más vendidos
-- Principales búsquedas
+- Más consultados (vistas reales de la ficha), más vendidos y palabras más buscadas
 
 ### Recomendación operativa
 
@@ -50,10 +48,9 @@ Los filtros principales se encuentran en la parte superior del panel:
 ### Indicadores principales
 
 - Ventas del vendedor.
-- Productos más vendidos de su negocio.
-- Tallas con mayor demanda.
-- Inventario crítico.
-- Búsquedas relevantes para su catálogo.
+- Ventas, unidades, ticket promedio y pedidos de su negocio (nunca de otras tiendas).
+- Inventario disponible y tallas con stock bajo (según el mínimo configurado en cada talla).
+- Demanda por talla y ventas por categoría.
 
 ### Recomendación operativa
 
