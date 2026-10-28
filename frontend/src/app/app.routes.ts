@@ -138,6 +138,16 @@ export const routes: Routes = [
       import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
   {
+    path: 'dashboard',
+    title: 'Dashboard operativo | LittleStyle',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMINISTRADOR', 'VENDEDOR'] },
+    loadComponent: () =>
+      import('./features/dashboard/pages/dashboard-analytics/dashboard-analytics').then(
+        (m) => m.DashboardAnalyticsPage,
+      ),
+  },
+  {
     path: 'mis-incidencias',
     title: 'Mis incidencias | LittleStyle',
     canActivate: [roleGuard],

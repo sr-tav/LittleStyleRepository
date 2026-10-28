@@ -25,7 +25,9 @@ public record CorreoProperties(
          * {@code /media/...} se convierten a URL absoluta para que el cliente
          * de correo pueda cargarlas; las de S3 ya vienen absolutas.
          */
-        @DefaultValue("http://localhost:8080") String urlPublica) {
+        @DefaultValue("http://localhost:8080") String urlPublica,
+        /** Base de la página pública para restablecer la contraseña desde el frontend. */
+        @DefaultValue("http://localhost:4200/auth/restablecer") String resetUrlBase) {
 
     /** Sin usuario o clave no se envía nada: se registra y se continúa. */
     public boolean enviosHabilitados() {

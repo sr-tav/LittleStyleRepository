@@ -9,7 +9,9 @@ import {
   ActualizarCuentaRequest,
   AuthResponse,
   LoginRequest,
+  PasswordResetRequest,
   RegistroRequest,
+  RestablecerPasswordRequest,
   Rol,
   Usuario,
 } from '../models/auth.models';
@@ -196,6 +198,16 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /** Solicita el enlace de recuperación de contraseña para un correo válido. */
+  solicitarRecuperacion(email: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/password-reset/request`, { email } satisfies PasswordResetRequest);
+  }
+
+  /** Restablece la contraseña usando el token recibido por correo. */
+  restablecerPassword(request: RestablecerPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/password-reset/reset`, request);
   }
 }
 

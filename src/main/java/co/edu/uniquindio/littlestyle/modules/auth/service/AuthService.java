@@ -4,19 +4,25 @@ import co.edu.uniquindio.littlestyle.config.security.JwtService;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.ActualizarCuentaRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.AuthResponse;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.LoginRequest;
+import co.edu.uniquindio.littlestyle.modules.auth.dto.PasswordResetRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.RegistroRequest;
+import co.edu.uniquindio.littlestyle.modules.auth.dto.RestablecerPasswordRequest;
 import co.edu.uniquindio.littlestyle.modules.auth.dto.UsuarioResponse;
 import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
+import co.edu.uniquindio.littlestyle.modules.auth.model.PasswordResetToken;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.auth.repository.PasswordResetTokenRepository;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
+import co.edu.uniquindio.littlestyle.shared.correo.CorreoProperties;
+import co.edu.uniquindio.littlestyle.shared.correo.CorreoService;
 import co.edu.uniquindio.littlestyle.shared.event.CuentaEliminadaEvent;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.EmailYaRegistradoException;
 import co.edu.uniquindio.littlestyle.shared.exception.LoginBloqueadoException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -37,23 +43,18 @@ import static co.edu.uniquindio.littlestyle.shared.util.SeguridadLog.enmascararE
 @RequiredArgsConstructor
 public class AuthService {
 
-    /**
-     * Versión de los términos y la política de tratamiento de datos que se muestran en el registro.
-     * Debe coincidir con {@code VERSION_TERMINOS} en el frontend (terminos-contenido.ts).
-     */
     public static final String VERSION_TERMINOS_VIGENTE = "1.1";
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final IntentosLoginService intentosLoginService;
+    private final CorreoService correoService;
+    private final CorreoProperties correoProperties;
 
-    /**
-     * Registra un cliente o vendedor y devuelve un token para que quede autenticado de inmediato.
-     * Los administradores no pueden auto-registrarse.
-     */
     @Transactional
     public AuthResponse registrar(RegistroRequest request) {
         if (request.rol() == Rol.ADMINISTRADOR) {
@@ -63,8 +64,10 @@ public class AuthService {
                     "Solo es posible registrarse como cliente o vendedor", "rol");
         }
         if (!request.password().equals(request.confirmarPassword())) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "Las contraseñas no coinciden", "confirmarPassword");
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "Las contraseñas no coinciden", "confirmarPassword");
         }
+
         boolean esVendedor = request.rol() == Rol.VENDEDOR;
         if (esVendedor && (request.nombreTienda() == null || request.nombreTienda().isBlank())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
@@ -92,10 +95,6 @@ public class AuthService {
         return construirRespuesta(usuarioRepository.save(usuario));
     }
 
-    /**
-     * Verifica credenciales con el AuthenticationManager (BCrypt + estado de la cuenta) y emite el JWT.
-     * Los fallos de contraseña cuentan para el límite de intentos por correo + IP.
-     */
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request, String ip) {
         String email = normalizarEmail(request.email());
@@ -133,7 +132,6 @@ public class AuthService {
         return construirRespuesta(usuario);
     }
 
-    /** Devuelve los datos del usuario con ese correo o 404 si no existe. */
     @Transactional(readOnly = true)
     public UsuarioResponse obtenerPerfil(String email) {
         return usuarioRepository.findByEmail(email)
@@ -141,11 +139,6 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 
-    /**
-     * Aplica los cambios enviados a la cuenta activa del usuario: valida que el nuevo correo no esté en uso,
-     * exige la contraseña actual y la confirmación para cambiar la contraseña, y solo permite cambiar el
-     * nombre de la tienda a vendedores. Devuelve un token nuevo con los datos actualizados.
-     */
     @Transactional
     public AuthResponse actualizarCuenta(Long id, ActualizarCuentaRequest request) {
         Usuario usuario = usuarioRepository.findByIdForUpdate(id)
@@ -166,8 +159,7 @@ public class AuthService {
         boolean envioConfirmacion = request.confirmarNuevaPassword() != null
                 && !request.confirmarNuevaPassword().isBlank();
         if (cambiarPassword) {
-            if (!envioPasswordActual
-                    || !passwordEncoder.matches(request.passwordActual(), usuario.getPassword())) {
+            if (!envioPasswordActual || !passwordEncoder.matches(request.passwordActual(), usuario.getPassword())) {
                 throw new BusinessException(HttpStatus.BAD_REQUEST,
                         "La contraseña actual no es correcta", "passwordActual");
             }
@@ -203,11 +195,6 @@ public class AuthService {
         return construirRespuesta(usuarioRepository.save(usuario));
     }
 
-    /**
-     * Elimina la cuenta del usuario: publica {@link CuentaEliminadaEvent} para que los demás módulos borren
-     * sus datos, anonimiza nombre, correo, teléfono y contraseña, y la marca como {@code ELIMINADO}. La
-     * cuenta administradora no se puede eliminar.
-     */
     @Transactional
     public void desactivarCuenta(Long id) {
         Usuario usuario = usuarioRepository.findByIdForUpdate(id)
@@ -230,14 +217,91 @@ public class AuthService {
         usuarioRepository.save(usuario);
     }
 
-    /** Emite el JWT del usuario y arma la respuesta de autenticación. */
+    @Transactional
+    public void solicitarRecuperacion(PasswordResetRequest request) {
+        String email = normalizarEmail(request.email());
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
+                        "No existe una cuenta con ese correo"));
+
+        passwordResetTokenRepository.deleteByEmail(email);
+        String token = UUID.randomUUID().toString();
+        LocalDateTime ahora = LocalDateTime.now();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .email(email)
+                .createdAt(ahora)
+                .expiresAt(ahora.plusMinutes(30))
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        String base = correoProperties.resetUrlBase() == null || correoProperties.resetUrlBase().isBlank()
+                ? "http://localhost:4200/auth/restablecer"
+                : correoProperties.resetUrlBase().replaceAll("/+$", "");
+        String url = base + "?token=" + token;
+        correoService.enviarRestablecerPassword(usuario.getEmail(), nombreCompleto(usuario), url);
+    }
+
+    @Transactional(readOnly = true)
+    public PasswordResetRequest recuperarContraseña(String email) {
+        String correo = normalizarEmail(email);
+        usuarioRepository.findByEmail(correo)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        return new PasswordResetRequest(correo);
+    }
+
+    @Transactional
+    public AuthResponse restablecerContraseña(Long id, RestablecerPasswordRequest request) {
+        if (!request.password().equals(request.confirmarPassword())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "Las contraseñas no coinciden", "confirmarPassword");
+        }
+
+        Usuario usuario = usuarioRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        usuario.setPassword(passwordEncoder.encode(request.password()));
+        usuarioRepository.save(usuario);
+        return construirRespuesta(usuario);
+    }
+
+    @Transactional
+    public void restablecerPassword(RestablecerPasswordRequest request) {
+        if (!request.password().equals(request.confirmarPassword())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "Las contraseñas no coinciden", "confirmarPassword");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+                .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
+                        "El enlace de recuperación es inválido o ya no existe"));
+
+        if (resetToken.getUsedAt() != null || LocalDateTime.now().isAfter(resetToken.getExpiresAt())) {
+            passwordResetTokenRepository.delete(resetToken);
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "El enlace de recuperación ha expirado o ya fue usado");
+        }
+
+        Usuario usuario = usuarioRepository.findByEmail(resetToken.getEmail())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        usuario.setPassword(passwordEncoder.encode(request.password()));
+        usuarioRepository.save(usuario);
+        resetToken.setUsedAt(LocalDateTime.now());
+        passwordResetTokenRepository.save(resetToken);
+    }
+
     private AuthResponse construirRespuesta(Usuario usuario) {
         JwtService.TokenEmitido token = jwtService.generarToken(usuario);
         return AuthResponse.bearer(token.token(), token.expiraEn(), UsuarioResponse.from(usuario));
     }
 
-    /** Recorta espacios y pasa el correo a minúsculas. */
     private static String normalizarEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String nombreCompleto(Usuario usuario) {
+        String nombre = usuario.getNombre() == null ? "" : usuario.getNombre().trim();
+        String apellido = usuario.getApellido() == null ? "" : usuario.getApellido().trim();
+        return (nombre + " " + apellido).trim();
     }
 }
