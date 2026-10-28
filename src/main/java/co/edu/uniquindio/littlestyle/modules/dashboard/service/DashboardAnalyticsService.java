@@ -1,10 +1,15 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.DashboardAnalyticsRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,210 +18,117 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
-/** Servicio de agregaciones analíticas para el dashboard visual. */
+/**
+ * Agregaciones analíticas del dashboard (US-15).
+ *
+ * <p>Nunca fabrica cifras: sin datos devuelve ceros y listas vacías, y si la base falla la excepción sube
+ * para que el cliente vea un error y no un dashboard "normal" con números inventados.
+ *
+ * <p>{@code vendedorId} limita todo al negocio de ese vendedor; nulo es alcance global y solo debe pasarlo
+ * quien ya verificó que el usuario es administrador (ver {@code DashboardController}).
+ */
 @Service
 @RequiredArgsConstructor
 public class DashboardAnalyticsService {
 
-    private final DashboardAnalyticsRepository dashboardAnalyticsRepository;
+    /** Una venta cuenta desde que el pago se confirma: cualquier estado posterior, salvo cancelado. */
+    static final Set<EstadoPedido> ESTADOS_VENTA = Set.of(
+            EstadoPedido.PAGADO,
+            EstadoPedido.REGISTRADO,
+            EstadoPedido.EN_PREPARACION,
+            EstadoPedido.PARCIALMENTE_ENVIADO,
+            EstadoPedido.ENVIADO);
+
+    static final int TAMANO_TOP = 10;
+    private static final int DIAS_POR_DEFECTO = 30;
+
+    private final DashboardAnalyticsRepository repository;
 
     @Transactional(readOnly = true)
-    public DashboardOverviewResponse obtenerResumen(LocalDate startDate,
-                                                     LocalDate endDate,
-                                                     Long categoryId,
-                                                     Long vendedorId) {
-        LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(30);
-        LocalDate hasta = endDate != null ? endDate : LocalDate.now();
-        validarRangoFechas(desde, hasta);
+    public DashboardOverviewResponse obtenerResumen(LocalDate startDate, LocalDate endDate,
+                                                    String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        CategoriaPrenda cat = parsearCategoria(categoria);
 
-        LocalDateTime inicio = desde.atStartOfDay();
-        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
+        BigDecimal totalVentas = ceroSiNulo(repository.sumTotalVentas(
+                rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat));
+        long totalPedidos = repository.countPedidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat);
+        long productosVendidos = ceroSiNulo(repository.sumUnidadesVendidas(
+                rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat));
+        BigDecimal ticketPromedio = totalPedidos == 0
+                ? BigDecimal.ZERO
+                : totalVentas.divide(BigDecimal.valueOf(totalPedidos), 2, RoundingMode.HALF_UP);
 
-        try {
-            BigDecimal totalVentas = dashboardAnalyticsRepository.sumTotalVentas(inicio, fin);
-            long totalPedidos = dashboardAnalyticsRepository.countPedidos(inicio, fin);
-            BigDecimal ticketPromedio = totalPedidos == 0 ? BigDecimal.ZERO
-                    : totalVentas.divide(BigDecimal.valueOf(totalPedidos), 2, RoundingMode.HALF_UP);
-
-            List<DashboardSerieResponse> ventasPorCategoria = dashboardAnalyticsRepository.ventasPorCategoria(inicio, fin)
-                    .stream()
-                    .map(this::mapToSerie)
-                    .toList();
-
-            List<DashboardSerieResponse> demandaPorTalla = dashboardAnalyticsRepository.demandaPorTalla(inicio, fin)
-                    .stream()
-                    .map(this::mapToSerie)
-                    .toList();
-
-            List<DashboardSerieResponse> productosPopulares = obtenerProductosMasVendidosInternal(startDate, endDate, categoryId, vendedorId);
-            List<DashboardSerieResponse> busquedasMasFrecuentes = Collections.emptyList();
-
-            long stockTotal = 0L;
-            long stockBajo = 0L;
-            BigDecimal margenBruto = BigDecimal.ZERO;
-            long productosVendidos = 0L;
-
-            if ((totalPedidos == 0 || totalVentas.compareTo(BigDecimal.ZERO) == 0)
-                    && ventasPorCategoria.isEmpty()
-                    && demandaPorTalla.isEmpty()
-                    && productosPopulares.isEmpty()) {
-                return crearResumenDemo();
-            }
-
-            return new DashboardOverviewResponse(
-                    totalVentas,
-                    totalPedidos,
-                    ticketPromedio,
-                    productosVendidos,
-                    margenBruto,
-                    stockTotal,
-                    stockBajo,
-                    ventasPorCategoria,
-                    demandaPorTalla,
-                    productosPopulares,
-                    busquedasMasFrecuentes
-            );
-        } catch (Exception ex) {
-            return crearResumenDemo();
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public List<DashboardSerieResponse> obtenerProductosMasConsultados(LocalDate startDate,
-                                                                       LocalDate endDate,
-                                                                       Long categoryId,
-                                                                       Long vendedorId) {
-        LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(30);
-        LocalDate hasta = endDate != null ? endDate : LocalDate.now();
-        validarRangoFechas(desde, hasta);
-
-        LocalDateTime inicio = desde.atStartOfDay();
-        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
-
-        return dashboardAnalyticsRepository.productosMasConsultados(inicio, fin)
-                .stream()
-                .map(this::mapToSerie)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<DashboardSerieResponse> obtenerProductosMasVendidos(LocalDate startDate,
-                                                                     LocalDate endDate,
-                                                                     Long categoryId,
-                                                                     Long vendedorId) {
-        LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(30);
-        LocalDate hasta = endDate != null ? endDate : LocalDate.now();
-        validarRangoFechas(desde, hasta);
-
-        LocalDateTime inicio = desde.atStartOfDay();
-        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
-
-        return dashboardAnalyticsRepository.productosMasVendidos(inicio, fin)
-                .stream()
-                .map(this::mapToSerie)
-                .toList();
-    }
-
-    private void validarRangoFechas(LocalDate desde, LocalDate hasta) {
-        if (desde.isAfter(hasta)) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST,
-                    "La fecha inicial no puede ser posterior a la final", "startDate");
-        }
-    }
-
-    private List<DashboardSerieResponse> obtenerProductosMasVendidosInternal(LocalDate startDate,
-                                                                           LocalDate endDate,
-                                                                           Long categoryId,
-                                                                           Long vendedorId) {
-        LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(30);
-        LocalDate hasta = endDate != null ? endDate : LocalDate.now();
-        validarRangoFechas(desde, hasta);
-
-        LocalDateTime inicio = desde.atStartOfDay();
-        LocalDateTime fin = hasta.plusDays(1).atStartOfDay();
-
-        return dashboardAnalyticsRepository.productosMasVendidos(inicio, fin)
-                .stream()
-                .map(this::mapToSerie)
-                .toList();
-    }
-
-    private DashboardOverviewResponse crearResumenDemo() {
         return new DashboardOverviewResponse(
-                new BigDecimal("488000.00"),
-                18L,
-                new BigDecimal("27111.11"),
-                42L,
-                new BigDecimal("134500.00"),
-                126L,
-                6L,
-                List.of(
-                        new DashboardSerieResponse("Vestidos", new BigDecimal("174000.00"), 16L),
-                        new DashboardSerieResponse("Conjuntos", new BigDecimal("142000.00"), 13L),
-                        new DashboardSerieResponse("Pantalones", new BigDecimal("98000.00"), 9L),
-                        new DashboardSerieResponse("Camisetas", new BigDecimal("74000.00"), 11L)
-                ),
-                List.of(
-                        new DashboardSerieResponse("6", new BigDecimal("12"), 12L),
-                        new DashboardSerieResponse("8", new BigDecimal("18"), 18L),
-                        new DashboardSerieResponse("10", new BigDecimal("15"), 15L),
-                        new DashboardSerieResponse("12", new BigDecimal("9"), 9L)
-                ),
-                List.of(
-                        new DashboardSerieResponse("Vestido Rosa Primavera", new BigDecimal("174000.00"), 16L),
-                        new DashboardSerieResponse("Conjunto Verano", new BigDecimal("142000.00"), 13L),
-                        new DashboardSerieResponse("Pantalón Urbano", new BigDecimal("98000.00"), 9L),
-                        new DashboardSerieResponse("Camiseta Básica", new BigDecimal("74000.00"), 11L)
-                ),
-                Collections.emptyList()
-        );
+                totalVentas,
+                totalPedidos,
+                ticketPromedio,
+                productosVendidos,
+                null, // el catálogo no guarda costos: no hay margen que calcular
+                ceroSiNulo(repository.sumStockTotal(EstadoPrenda.ACTIVA, vendedorId, cat)),
+                repository.countStockBajo(EstadoPrenda.ACTIVA, vendedorId, cat),
+                repository.ventasPorCategoria(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat),
+                repository.demandaPorTalla(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat),
+                repository.productosMasVendidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat, top()),
+                repository.productosMasConsultados(rango.inicio, rango.fin, vendedorId, cat, top()),
+                repository.busquedasMasFrecuentes(rango.inicio, rango.fin, top()));
     }
 
-    private DashboardSerieResponse mapToSerie(Object[] row) {
-        String label = row[0] == null ? "N/A" : row[0].toString();
+    @Transactional(readOnly = true)
+    public List<DashboardSerieResponse> obtenerProductosMasConsultados(LocalDate startDate, LocalDate endDate,
+                                                                       String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.productosMasConsultados(rango.inicio, rango.fin, vendedorId,
+                parsearCategoria(categoria), top());
+    }
 
-        BigDecimal value = BigDecimal.ZERO;
-        if (row.length > 1 && row[1] != null) {
-            switch (row[1]) {
-                case BigDecimal bd -> value = bd;
-                case Number number -> value = BigDecimal.valueOf(number.doubleValue());
-                case String s -> value = new BigDecimal(s);
-                default -> { }
-            }
+    @Transactional(readOnly = true)
+    public List<DashboardSerieResponse> obtenerProductosMasVendidos(LocalDate startDate, LocalDate endDate,
+                                                                    String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.productosMasVendidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria), top());
+    }
+
+    private static Pageable top() {
+        return PageRequest.of(0, TAMANO_TOP);
+    }
+
+    /** Convierte el filtro de categoría; nulo si no se envió y 400 si no existe. */
+    static CategoriaPrenda parsearCategoria(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
         }
-
-        if (value.compareTo(BigDecimal.ZERO) == 0 && row.length > 2 && row[2] != null) {
-            switch (row[2]) {
-                case BigDecimal bd -> value = bd;
-                case Number number -> value = BigDecimal.valueOf(number.doubleValue());
-                case String s -> value = new BigDecimal(s);
-                default -> { }
-            }
+        try {
+            return CategoriaPrenda.valueOf(valor.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "La categoría no es válida", "categoria");
         }
+    }
 
-        long cantidad = 0L;
-        for (int i = 1; i < row.length; i++) {
-            Object candidate = row[i];
-            if (candidate == null) {
-                continue;
+    private static BigDecimal ceroSiNulo(BigDecimal valor) {
+        return valor == null ? BigDecimal.ZERO : valor;
+    }
+
+    private static long ceroSiNulo(Long valor) {
+        return valor == null ? 0L : valor;
+    }
+
+    /** Rango de fechas [inicio, fin) listo para consultar; por defecto, los últimos 30 días. */
+    private record Rango(LocalDateTime inicio, LocalDateTime fin) {
+
+        static Rango de(LocalDate startDate, LocalDate endDate) {
+            LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(DIAS_POR_DEFECTO);
+            LocalDate hasta = endDate != null ? endDate : LocalDate.now();
+            if (desde.isAfter(hasta)) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "La fecha inicial no puede ser posterior a la final", "startDate");
             }
-            if (candidate instanceof Number number && !(candidate instanceof BigDecimal)) {
-                cantidad = number.longValue();
-                break;
-            }
-            if (candidate instanceof String s) {
-                try {
-                    cantidad = Long.parseLong(s);
-                    break;
-                } catch (NumberFormatException ignored) {
-                    // Sigue buscando una cantidad numérica en la fila.
-                }
-            }
+            return new Rango(desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay());
         }
-
-        return new DashboardSerieResponse(label, value, cantidad);
     }
 }

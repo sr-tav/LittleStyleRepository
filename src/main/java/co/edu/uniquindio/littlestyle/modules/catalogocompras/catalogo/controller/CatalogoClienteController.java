@@ -3,6 +3,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.controlle
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaVitrinaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service.CatalogoClienteService;
+import co.edu.uniquindio.littlestyle.modules.dashboard.service.TrackingAnalyticsService;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import java.util.List;
 public class CatalogoClienteController {
 
     private final CatalogoClienteService catalogo;
+    private final TrackingAnalyticsService tracking;
 
     /**
      * Busca prendas publicadas con filtros opcionales (texto, categoría, género, precio, disponibilidad,
@@ -53,12 +55,18 @@ public class CatalogoClienteController {
         PaginaResponse<PrendaVitrinaResponse> res = catalogo.explorar(texto, categoria, genero, precioMin,
                 precioMax, disponible, material, talla, ids, perfilId, soloMiTalla, edadMeses, pagina, tamano, orden);
         long ms = (System.nanoTime() - ini) / 1_000_000;
+        // Solo la primera página: paginar la misma búsqueda no es una búsqueda nueva (métrica US-15).
+        if (pagina == 0 && texto != null && !texto.isBlank()) {
+            tracking.registrarBusqueda(texto, res.totalElementos());
+        }
         return ResponseEntity.ok().header("X-Catalogo-Ms", String.valueOf(ms)).body(res);
     }
 
     /** Devuelve la ficha de una prenda publicada. */
     @GetMapping("/{id}")
     public ResponseEntity<PrendaDetalleResponse> detalle(@PathVariable Long id) {
-        return ResponseEntity.ok(catalogo.detalle(id));
+        PrendaDetalleResponse ficha = catalogo.detalle(id);
+        tracking.registrarVista(id); // solo si la prenda existe y está publicada (detalle lanza 404 si no)
+        return ResponseEntity.ok(ficha);
     }
 }

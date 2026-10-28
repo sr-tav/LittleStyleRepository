@@ -7,7 +7,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -57,7 +57,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -93,7 +93,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 
@@ -218,7 +218,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -268,7 +268,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -304,7 +304,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 
@@ -429,7 +429,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -479,7 +479,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -515,7 +515,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 
@@ -640,7 +640,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -690,7 +690,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -726,7 +726,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 
@@ -851,7 +851,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -901,7 +901,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -937,7 +937,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 
@@ -1062,7 +1062,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -1112,7 +1112,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -1148,7 +1148,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 
@@ -1273,7 +1273,7 @@ La historia de usuario US-15 define un dashboard visual para consultar métricas
 ### Objetivos del módulo
 
 - Centralizar métricas clave de operación en una vista única.
-- Permitir filtros reactivos por `startDate`, `endDate` y `categoryId`.
+- Permitir filtros reactivos por `startDate`, `endDate` y `categoria`.
 - Diferenciar la UI por rol (`ADMINISTRADOR` y `VENDEDOR`).
 - Exponer una API REST estable para soporte frontend.
 - Mantener consistencia visual y evitación de duplicación de contenido por rol.
@@ -1323,7 +1323,7 @@ El dashboard soporta los filtros:
 
 - `startDate`: fecha inicial del rango
 - `endDate`: fecha final del rango
-- `categoryId`: categoría opcional
+- `categoria`: código de categoría opcional (p. ej. `VESTIDOS`)
 
 Cuando cambia cualquiera de ellos, se reenvía la solicitud y el contenido se actualiza sin recargar la página.
 
@@ -1359,7 +1359,7 @@ Debe renderizar gráficos en Chart.js con estructura visual clara y consistencia
 
 - `startDate` (opcional): fecha ISO `yyyy-MM-dd`
 - `endDate` (opcional): fecha ISO `yyyy-MM-dd`
-- `categoryId` (opcional): identificador de categoría
+- `categoria` (opcional): código de categoría (`VESTIDOS`, `BUZOS`, ...); 400 si no existe
 
 ### 4.4 Respuesta principal
 

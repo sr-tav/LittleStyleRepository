@@ -6,6 +6,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -22,7 +23,9 @@ import java.math.BigDecimal;
  * catálogo no alteren el pedido.
  */
 @Entity
-@Table(name = "pedido_items")
+@Table(name = "pedido_items", indexes = {
+        @Index(name = "idx_pedido_items_prenda", columnList = "prenda_id")
+})
 @Getter
 @Setter
 @Builder

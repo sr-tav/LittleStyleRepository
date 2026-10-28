@@ -1,5 +1,4 @@
 import {
-  AfterViewInit,
   Component,
   ElementRef,
   OnDestroy,
@@ -11,9 +10,10 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
-import { forkJoin } from 'rxjs';
+import { Subscription } from 'rxjs';
 
 import {
   DashboardAnalyticsService,
@@ -22,8 +22,27 @@ import {
 } from '../../services/dashboard-analytics.service';
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { AuthService } from '../../../../core/services/auth.service';
+import {
+  ETIQUETAS_CATEGORIAS,
+  OPCIONES_CATEGORIAS,
+} from '../../../catalogoCompras/models/prenda-opciones';
 
 Chart.register(...registerables);
+
+const RESUMEN_VACIO: DashboardOverview = {
+  totalVentas: 0,
+  totalPedidos: 0,
+  ticketPromedio: 0,
+  productosVendidos: 0,
+  margenBruto: null,
+  stockTotal: 0,
+  stockBajo: 0,
+  ventasPorCategoria: [],
+  demandaPorTalla: [],
+  productosPopulares: [],
+  productosMasConsultados: [],
+  busquedasMasFrecuentes: [],
+};
 
 @Component({
   selector: 'app-dashboard-analytics',
@@ -63,11 +82,9 @@ Chart.register(...registerables);
             <span>CATEGORÍAS</span>
             <select [(ngModel)]="categoriaSeleccionada" (change)="onCategoriaChange()">
               <option value="TODAS">Todas las categorías</option>
-              <option value="Vestidos">Vestidos</option>
-              <option value="Conjuntos">Conjuntos</option>
-              <option value="Pantalones">Pantalones</option>
-              <option value="Camisetas">Camisetas</option>
-              <option value="Chaquetas">Chaquetas</option>
+              @for (opcion of opcionesCategorias; track opcion.valor) {
+                <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+              }
             </select>
           </div>
         </div>
@@ -82,126 +99,164 @@ Chart.register(...registerables);
         <div class="empty-state error-state">
           <h3>Error al cargar datos</h3>
           <p>{{ error() }}</p>
+          <button type="button" class="retry-btn" (click)="cargarDatosDashboard()">Reintentar</button>
         </div>
-      } @else if (esVendedor()) {
-        <!-- VISTA EXCLUSIVA DEL VENDEDOR (KPIS + VENTAS Y DEMANDA) -->
+      } @else {
         <section class="reports-grid-layout">
-          <!-- FILA SUPERIOR: KPIS DE VENDEDOR (3 COLUMNAS) -->
+          <!-- KPIS (AMBOS ROLES): los datos ya vienen limitados por el backend según el token -->
           <div class="kpi-grid">
             <article class="kpi-card">
               <span>Ventas totales</span>
-              <strong>{{ formatCurrency(overviewData()?.totalVentas ?? 488000) }}</strong>
+              <strong>{{ formatCurrency(resumen().totalVentas) }}</strong>
             </article>
 
             <article class="kpi-card">
               <span>Unidades vendidas</span>
-              <strong>{{ formatUnits(overviewData()?.productosVendidos ?? 42) }}</strong>
+              <strong>{{ formatUnits(resumen().productosVendidos) }}</strong>
             </article>
 
             <article class="kpi-card">
               <span>Ticket promedio</span>
-              <strong>{{ formatCurrency(overviewData()?.ticketPromedio ?? 27111) }}</strong>
+              <strong>{{ formatCurrency(resumen().ticketPromedio) }}</strong>
             </article>
+
+            <article class="kpi-card">
+              <span>Pedidos</span>
+              <strong>{{ resumen().totalPedidos.toLocaleString('es-CO') }}</strong>
+            </article>
+
+            <article class="kpi-card">
+              <span>Inventario disponible</span>
+              <strong>{{ formatUnits(resumen().stockTotal) }}</strong>
+            </article>
+
+            <article class="kpi-card" [class.kpi-alerta]="resumen().stockBajo > 0">
+              <span>Tallas con stock bajo</span>
+              <strong>{{ resumen().stockBajo.toLocaleString('es-CO') }}</strong>
+            </article>
+
+            @if (resumen().margenBruto !== null) {
+              <article class="kpi-card">
+                <span>Margen bruto</span>
+                <strong>{{ formatCurrency(resumen().margenBruto ?? 0) }}</strong>
+              </article>
+            }
           </div>
 
-          <!-- FILA INFERIOR: GRÁFICOS DE VENDEDOR -->
-          <div class="sales-grid">
-            <article class="chart-card">
-              <div class="chart-header">
-                <h3>Ventas por período</h3>
-              </div>
-              <div class="chart-wrapper">
-                <canvas #sellerLineChartCanvas></canvas>
-              </div>
-            </article>
+          @if (resumen().margenBruto === null) {
+            <p class="kpi-note">
+              El margen bruto no está disponible porque las prendas todavía no registran su costo.
+            </p>
+          }
 
-            <article class="chart-card">
-              <div class="chart-header">
-                <h3>Demanda por talla</h3>
-              </div>
-              <div class="chart-wrapper">
-                <canvas #sellerBarChartCanvas></canvas>
-              </div>
-            </article>
-          </div>
-        </section>
-      } @else {
-        <!-- VISTA EXCLUSIVA DEL ADMINISTRADOR (LISTAS DE DEMANDA + CATEGORÍAS) -->
-        <section class="reports-grid-layout">
-          <!-- FILA SUPERIOR: LISTAS DE PRODUCTOS (3 COLUMNAS) -->
-          <div class="summary-grid">
-            <article class="metric-card blue-card">
-              <div class="card-header">
-                <h3>Más consultados</h3>
-              </div>
-              <ul class="product-list">
-                @for (item of mostViewedProducts(); track item.label) {
-                  <li>
-                    <span>{{ item.label }}</span>
-                    <strong>{{ formatMetric(item.value, 'visitas') }}</strong>
-                  </li>
-                }
-                @if (mostViewedProducts().length === 0) {
-                  <li class="empty-list">Sin registros para esta categoría</li>
-                }
-              </ul>
-            </article>
+          @if (esVendedor()) {
+            <!-- VISTA DEL VENDEDOR: DEMANDA Y VENTAS DE SU TIENDA -->
+            <div class="sales-grid">
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Demanda por talla (unidades)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosTalla()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #sellerLineChartCanvas [class.oculto]="sinDatosTalla()"></canvas>
+                </div>
+              </article>
 
-            <article class="metric-card green-card">
-              <div class="card-header">
-                <h3>Más vendidos</h3>
-              </div>
-              <ul class="product-list">
-                @for (item of bestSellerProducts(); track item.label) {
-                  <li>
-                    <span>{{ item.label }}</span>
-                    <strong>{{ formatMetric(item.value, 'uds') }}</strong>
-                  </li>
-                }
-                @if (bestSellerProducts().length === 0) {
-                  <li class="empty-list">Sin registros para esta categoría</li>
-                }
-              </ul>
-            </article>
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Ventas por categoría (COP)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosCategorias()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #sellerBarChartCanvas [class.oculto]="sinDatosCategorias()"></canvas>
+                </div>
+              </article>
+            </div>
+          } @else {
+            <!-- VISTA DEL ADMINISTRADOR: LISTAS DE DEMANDA DE TODA LA PLATAFORMA -->
+            <div class="summary-grid">
+              <article class="metric-card blue-card">
+                <div class="card-header">
+                  <h3>Más consultados</h3>
+                </div>
+                <ul class="product-list">
+                  @for (item of mostViewedProducts(); track item.label) {
+                    <li>
+                      <span>{{ item.label }}</span>
+                      <strong>{{ formatMetric(item.cantidad, 'vistas') }}</strong>
+                    </li>
+                  }
+                  @if (mostViewedProducts().length === 0) {
+                    <li class="empty-list">Sin consultas en el período seleccionado</li>
+                  }
+                </ul>
+              </article>
 
-            <article class="metric-card red-card">
-              <div class="card-header">
-                <h3>Baja rotación</h3>
-              </div>
-              <ul class="product-list">
-                @for (item of lowRotationProducts(); track item.label) {
-                  <li>
-                    <span>{{ item.label }}</span>
-                    <strong>{{ formatMetric(item.value, 'uds') }}</strong>
-                  </li>
-                }
-                @if (lowRotationProducts().length === 0) {
-                  <li class="empty-list">Sin registros para esta categoría</li>
-                }
-              </ul>
-            </article>
-          </div>
+              <article class="metric-card green-card">
+                <div class="card-header">
+                  <h3>Más vendidos</h3>
+                </div>
+                <ul class="product-list">
+                  @for (item of bestSellerProducts(); track item.label) {
+                    <li>
+                      <span>{{ item.label }}</span>
+                      <strong>{{ formatMetric(item.cantidad, 'uds') }}</strong>
+                    </li>
+                  }
+                  @if (bestSellerProducts().length === 0) {
+                    <li class="empty-list">Sin ventas en el período seleccionado</li>
+                  }
+                </ul>
+              </article>
 
-          <!-- FILA INFERIOR: GRÁFICOS DE ADMINISTRADOR -->
-          <div class="sales-grid">
-            <article class="chart-card">
-              <div class="chart-header">
-                <h3>Demanda por talla</h3>
-              </div>
-              <div class="chart-wrapper">
-                <canvas #adminLineChartCanvas></canvas>
-              </div>
-            </article>
+              <article class="metric-card red-card">
+                <div class="card-header">
+                  <h3>Palabras más buscadas</h3>
+                </div>
+                <ul class="product-list">
+                  @for (item of topSearches(); track item.label) {
+                    <li>
+                      <span>{{ item.label }}</span>
+                      <strong>{{ formatMetric(item.cantidad, 'búsquedas') }}</strong>
+                    </li>
+                  }
+                  @if (topSearches().length === 0) {
+                    <li class="empty-list">Sin búsquedas en el período seleccionado</li>
+                  }
+                </ul>
+              </article>
+            </div>
 
-            <article class="chart-card">
-              <div class="chart-header">
-                <h3>Ventas por categoría</h3>
-              </div>
-              <div class="chart-wrapper">
-                <canvas #adminBarChartCanvas></canvas>
-              </div>
-            </article>
-          </div>
+            <div class="sales-grid">
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Demanda por talla (unidades)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosTalla()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #adminLineChartCanvas [class.oculto]="sinDatosTalla()"></canvas>
+                </div>
+              </article>
+
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Ventas por categoría (COP)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosCategorias()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #adminBarChartCanvas [class.oculto]="sinDatosCategorias()"></canvas>
+                </div>
+              </article>
+            </div>
+          }
         </section>
       }
     </section>
@@ -436,6 +491,47 @@ Chart.register(...registerables);
         height: 100% !important;
       }
 
+      .chart-wrapper canvas.oculto {
+        display: none;
+      }
+
+      .empty-chart {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        color: #9ca3af;
+        font-style: italic;
+        text-align: center;
+      }
+
+      .kpi-alerta strong {
+        color: #b45309;
+      }
+
+      .kpi-note {
+        margin: -0.5rem 0 0;
+        color: #6b7280;
+        font-size: 0.82rem;
+      }
+
+      .retry-btn {
+        margin-top: 0.75rem;
+        padding: 0.55rem 1.2rem;
+        border: 1px solid #15803d;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #15803d;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .retry-btn:hover {
+        background: #f0fdf4;
+      }
+
       .loader,
       .empty-state {
         background: #ffffff;
@@ -490,7 +586,7 @@ Chart.register(...registerables);
     `,
   ],
 })
-export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy {
+export class DashboardAnalyticsPage implements OnInit, OnDestroy {
   private readonly _authService = inject(AuthService);
   private readonly _dashboardAnalyticsService = inject(DashboardAnalyticsService);
 
@@ -503,17 +599,23 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
   periodoSeleccionado = '30_DIAS';
   fechaDesde = '';
   fechaHasta = '';
-  categoriaSeleccionada: string = 'TODAS';
+  /** `TODAS` o el código del enum de categoría (`VESTIDOS`, ...): es lo que espera el backend. */
+  categoriaSeleccionada = 'TODAS';
+  readonly opcionesCategorias = OPCIONES_CATEGORIAS;
 
   // Signals de estado
-  startDate = signal('2026-09-27');
-  endDate = signal('2026-10-27');
-  categoryId = signal<string>('');
+  startDate = signal('');
+  endDate = signal('');
 
-  mostViewedProducts = signal<DashboardSerie[]>([]);
-  bestSellerProducts = signal<DashboardSerie[]>([]);
-  lowRotationProducts = signal<DashboardSerie[]>([]);
   overviewData = signal<DashboardOverview | null>(null);
+
+  /** Ceros (no cifras inventadas) mientras no hay respuesta; el template solo se pinta tras cargar. */
+  resumen = computed<DashboardOverview>(() => this.overviewData() ?? RESUMEN_VACIO);
+  mostViewedProducts = computed(() => (this.overviewData()?.productosMasConsultados ?? []).slice(0, 5));
+  bestSellerProducts = computed(() => (this.overviewData()?.productosPopulares ?? []).slice(0, 5));
+  topSearches = computed(() => (this.overviewData()?.busquedasMasFrecuentes ?? []).slice(0, 5));
+  sinDatosTalla = computed(() => !this.overviewData()?.demandaPorTalla?.length);
+  sinDatosCategorias = computed(() => !this.overviewData()?.ventasPorCategoria?.length);
 
   cargando = signal(true);
   error = signal('');
@@ -532,30 +634,12 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
 
   private lineChart?: Chart<'line'>;
   private barChart?: Chart<'bar'>;
-
-  private readonly defaultMostViewed: DashboardSerie[] = [
-    { label: 'Vestido de lino', value: 1240, cantidad: 1240 },
-    { label: 'Pantalón cargo', value: 980, cantidad: 980 },
-    { label: 'Chaqueta urbana', value: 840, cantidad: 840 },
-    { label: 'Conjunto premium', value: 760, cantidad: 760 },
-  ];
-
-  private readonly defaultBestSeller: DashboardSerie[] = [
-    { label: 'Vestido de lino', value: 124, cantidad: 124 },
-    { label: 'Pantalón cargo', value: 98, cantidad: 98 },
-    { label: 'Chaqueta urbana', value: 82, cantidad: 82 },
-    { label: 'Conjunto premium', value: 76, cantidad: 76 },
-  ];
-
-  private readonly defaultLowRotation: DashboardSerie[] = [
-    { label: 'Saco de lana', value: 2, cantidad: 2 },
-    { label: 'Blazer corto', value: 1, cantidad: 1 },
-    { label: 'Safari oversize', value: 0, cantidad: 0 },
-    { label: 'Pantalón clásico', value: 0, cantidad: 0 },
-  ];
+  private cargaEnCurso?: Subscription;
 
   constructor() {
     effect(() => {
+      // Lee el rol para repintar si el perfil llega después de los datos: los canvas dependen de él.
+      this.esVendedor();
       if (!this.cargando()) {
         const overview = this.overviewData();
         const chartData = this.buildChartDataFromOverview(overview);
@@ -572,23 +656,22 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnInit(): void {
+    // Se conoce el rol antes de pedir datos para cargar una sola vez; si el perfil falla se muestra la vista
+    // de vendedor, que es la más restrictiva (el backend limita los datos con el token de todos modos).
     this._authService.perfil().subscribe({
       next: (profile) => {
         this.esVendedor.set(profile.rol === 'VENDEDOR');
+        this.onPeriodoChange();
       },
       error: () => {
         this.esVendedor.set(true);
+        this.onPeriodoChange();
       },
     });
-
-    this.onPeriodoChange();
-  }
-
-  ngAfterViewInit(): void {
-    setTimeout(() => this.cargarDatosDashboard(), 100);
   }
 
   ngOnDestroy(): void {
+    this.cargaEnCurso?.unsubscribe();
     this.destruirGraficos();
   }
 
@@ -625,59 +708,41 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
   }
 
   onCategoriaChange(): void {
-    this.categoryId.set(
-      this.categoriaSeleccionada === 'TODAS' ? '' : String(this.categoriaSeleccionada)
-    );
     this.cargarDatosDashboard();
   }
 
+  /** Una sola petición: el resumen ya trae los tops y las búsquedas. Cancela la anterior si sigue en vuelo. */
   cargarDatosDashboard(): void {
+    this.cargaEnCurso?.unsubscribe();
     this.cargando.set(true);
     this.error.set('');
 
-    const categoryParam =
-      this.categoriaSeleccionada === 'TODAS' ? undefined : Number(this.categoriaSeleccionada);
+    const categoria = this.categoriaSeleccionada === 'TODAS' ? undefined : this.categoriaSeleccionada;
 
-    forkJoin({
-      overview: this._dashboardAnalyticsService.consultar(
-        this.startDate(),
-        this.endDate(),
-        categoryParam
-      ),
-      mostViewed: this._dashboardAnalyticsService.consultarTopMasConsultados(
-        this.startDate(),
-        this.endDate(),
-        categoryParam
-      ),
-      bestSeller: this._dashboardAnalyticsService.consultarTopMasVendidos(
-        this.startDate(),
-        this.endDate(),
-        categoryParam
-      ),
-    }).subscribe({
-      next: ({ overview, mostViewed, bestSeller }) => {
-        const filteredMostViewed = this.filterSeriesByCategory(mostViewed);
-        const filteredBestSeller = this.filterSeriesByCategory(bestSeller);
+    this.cargaEnCurso = this._dashboardAnalyticsService
+      .consultar(this.startDate(), this.endDate(), categoria)
+      .subscribe({
+        next: (overview) => {
+          this.overviewData.set(overview);
+          this.cargando.set(false);
+        },
+        error: (err: unknown) => {
+          this.overviewData.set(null);
+          this.error.set(this.mensajeError(err));
+          this.cargando.set(false);
+        },
+      });
+  }
 
-        this.overviewData.set(overview);
-        this.mostViewedProducts.set(
-          filteredMostViewed.length ? filteredMostViewed.slice(0, 4) : this.defaultMostViewed
-        );
-        this.bestSellerProducts.set(
-          filteredBestSeller.length ? filteredBestSeller.slice(0, 4) : this.defaultBestSeller
-        );
-        this.lowRotationProducts.set(this.defaultLowRotation);
-
-        this.cargando.set(false);
-      },
-      error: () => {
-        this.overviewData.set(null);
-        this.mostViewedProducts.set(this.defaultMostViewed);
-        this.bestSellerProducts.set(this.defaultBestSeller);
-        this.lowRotationProducts.set(this.defaultLowRotation);
-        this.cargando.set(false);
-      },
-    });
+  private mensajeError(err: unknown): string {
+    const status = err instanceof HttpErrorResponse ? err.status : 0;
+    if (status === 401 || status === 403) {
+      return 'No tienes permiso para ver este reporte. Inicia sesión de nuevo.';
+    }
+    if (status === 400) {
+      return 'Los filtros seleccionados no son válidos. Revisa las fechas y la categoría.';
+    }
+    return 'No pudimos cargar las métricas. Revisa tu conexión e inténtalo de nuevo.';
   }
 
   formatMetric(value: number, unit: string): string {
@@ -693,47 +758,24 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
   }
 
   formatUnits(value: number): string {
-    return `${value.toLocaleString('es-CO')} ventas`;
+    return `${value.toLocaleString('es-CO')} uds`;
   }
 
-  private filterSeriesByCategory<T extends Record<string, any>>(items: T[] = []): T[] {
-    if (this.categoriaSeleccionada === 'TODAS' || !this.categoriaSeleccionada) {
-      return items;
-    }
-    const cat = String(this.categoriaSeleccionada).trim().toLowerCase();
-    return items.filter((item) => {
-      const catObj = item['categoria'];
-      const catNombre = catObj && typeof catObj === 'object' ? catObj['nombre'] : undefined;
-      const catId = item['categoriaId'];
-      return (
-        String(catNombre ?? '').trim().toLowerCase() === cat ||
-        String(catId ?? '').trim().toLowerCase() === cat
-      );
-    });
+  /** Código de categoría (`VESTIDOS`) a etiqueta legible (`Vestidos`); si no se conoce, el mismo código. */
+  etiquetaCategoria(codigo: string): string {
+    return (ETIQUETAS_CATEGORIAS as Record<string, string>)[codigo] ?? codigo;
   }
 
+  /** Solo datos reales: sin datos las listas quedan vacías y el template muestra el estado vacío. */
   private buildChartDataFromOverview(overview: DashboardOverview | null) {
-    const lineData = overview?.demandaPorTalla?.length ? overview.demandaPorTalla : [];
-    const barData = overview?.ventasPorCategoria?.length ? overview.ventasPorCategoria : [];
-
-    const lineMocks: Record<string, { labels: string[]; values: number[] }> = {
-      TODAS: { labels: ['6', '8', '10', '12'], values: [12, 18, 15, 9] },
-      Vestidos: { labels: ['6', '8', '10', '12'], values: [15, 22, 17, 8] },
-      Conjuntos: { labels: ['6', '8', '10', '12'], values: [10, 16, 13, 7] },
-      Pantalones: { labels: ['6', '8', '10', '12'], values: [7, 12, 19, 14] },
-      Camisetas: { labels: ['6', '8', '10', '12'], values: [9, 14, 11, 6] },
-      Chaquetas: { labels: ['6', '8', '10', '12'], values: [4, 8, 12, 6] },
-    };
-
-    const fallbackLine = lineMocks[String(this.categoriaSeleccionada)] || lineMocks['TODAS'];
+    const tallas = overview?.demandaPorTalla ?? [];
+    const categorias = overview?.ventasPorCategoria ?? [];
 
     return {
-      lineLabels: lineData.length ? lineData.map((i) => i.label) : fallbackLine.labels,
-      lineValues: lineData.length ? lineData.map((i) => i.value) : fallbackLine.values,
-      barLabels: barData.length
-        ? barData.map((i) => i.label)
-        : ['Vestidos', 'Conjuntos', 'Pantalones', 'Camisetas', 'Chaquetas'],
-      barValues: barData.length ? barData.map((i) => i.value) : [170000, 140000, 95000, 72000, 50000],
+      lineLabels: tallas.map((i) => i.label),
+      lineValues: tallas.map((i) => i.cantidad), // unidades por talla
+      barLabels: categorias.map((i) => this.etiquetaCategoria(i.label)),
+      barValues: categorias.map((i) => i.value), // monto vendido en COP
     };
   }
 
@@ -784,12 +826,6 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
       },
     });
 
-    const coloresBarras = barLabels.map((label) =>
-      this.categoriaSeleccionada === 'TODAS' || this.categoriaSeleccionada === label
-        ? '#15803d'
-        : '#e7e5e4'
-    );
-
     this.barChart = new Chart(barCtx, {
       type: 'bar',
       data: {
@@ -797,7 +833,7 @@ export class DashboardAnalyticsPage implements OnInit, AfterViewInit, OnDestroy 
         datasets: [
           {
             data: barValues,
-            backgroundColor: coloresBarras,
+            backgroundColor: '#15803d',
             borderRadius: 8,
           },
         ],

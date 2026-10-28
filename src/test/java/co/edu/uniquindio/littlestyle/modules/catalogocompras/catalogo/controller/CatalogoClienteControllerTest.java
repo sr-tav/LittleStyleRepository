@@ -4,6 +4,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.Prenda
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service.CatalogoClienteService;
+import co.edu.uniquindio.littlestyle.modules.dashboard.service.TrackingAnalyticsService;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.GlobalExceptionHandler;
@@ -39,6 +40,10 @@ class CatalogoClienteControllerTest {
     // Mock del servicio: el controller nunca toca base de datos real
     @Mock
     private CatalogoClienteService catalogo;
+
+    // Mock del registro de métricas (US-15): el controller no debe depender de que funcione
+    @Mock
+    private TrackingAnalyticsService tracking;
 
     @InjectMocks
     private CatalogoClienteController controller;
