@@ -1,5 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.controller;
 
+import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
+import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaVitrinaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
@@ -8,6 +10,7 @@ import co.edu.uniquindio.littlestyle.modules.dashboard.service.TrackingAnalytics
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.exception.GlobalExceptionHandler;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +19,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -24,7 +30,10 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,10 +60,22 @@ class CatalogoClienteControllerTest {
     private MockMvc mockMvc;
 
     // Levanta el controller solo, con el handler de errores global para probar los códigos HTTP
+    // Cliente autenticado que el resolver del principal toma del SecurityContext, como en producción
+    private static final AuthenticatedUser CLIENTE = new AuthenticatedUser(5L, "cli@mail.com", "Cli", Rol.CLIENTE);
+    private static final String NAVEGADOR = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0";
+
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(CLIENTE, null, List.of()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
+    }
+
+    @AfterEach
+    void limpiarContexto() {
+        SecurityContextHolder.clearContext();
     }
 
     // La vitrina pagina bien y responde con datos públicos: sin stockMinimo ni stockTotal internos
@@ -123,5 +144,55 @@ class CatalogoClienteControllerTest {
     void idNoNumericoDevuelve400EnVezDe500() throws Exception {
         mockMvc.perform(get("/api/cliente/catalogo/abc"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // La búsqueda de texto se registra con el cliente y su agente, para que el tracking filtre repeticiones y bots
+    @Test
+    void busquedaDeTextoSeRegistraConClienteYAgente() throws Exception {
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(), anyInt(), anyInt(), any()))
+                .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
+
+        mockMvc.perform(get("/api/cliente/catalogo").param("q", "vestido rosa").header("User-Agent", NAVEGADOR))
+                .andExpect(status().isOk());
+
+        verify(tracking).registrarBusqueda(eq("vestido rosa"), eq(0L), eq(5L), eq(NAVEGADOR));
+    }
+
+    // Paginar o filtrar sin texto no es una búsqueda nueva
+    @Test
+    void paginarOExplorarSinTextoNoRegistraBusqueda() throws Exception {
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(), anyInt(), anyInt(), any()))
+                .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
+
+        mockMvc.perform(get("/api/cliente/catalogo").param("q", "vestido").param("pagina", "1"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/cliente/catalogo").param("categoria", "BUZOS"))
+                .andExpect(status().isOk());
+
+        verify(tracking, never()).registrarBusqueda(any(), anyLong(), any(), any());
+    }
+
+    // La vista se registra con el cliente y el agente; el tracking decide si cuenta
+    @Test
+    void verLaFichaRegistraLaVistaConClienteYAgente() throws Exception {
+        when(catalogo.detalle(10L)).thenReturn(null);
+
+        mockMvc.perform(get("/api/cliente/catalogo/10").header("User-Agent", NAVEGADOR))
+                .andExpect(status().isOk());
+
+        verify(tracking).registrarVista(10L, 5L, NAVEGADOR);
+    }
+
+    // Una prenda inexistente responde 404 y no suma ninguna vista
+    @Test
+    void fichaInexistenteNoRegistraVista() throws Exception {
+        when(catalogo.detalle(99L)).thenThrow(new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
+
+        mockMvc.perform(get("/api/cliente/catalogo/99").header("User-Agent", NAVEGADOR))
+                .andExpect(status().isNotFound());
+
+        verify(tracking, never()).registrarVista(any(), any(), any());
     }
 }
