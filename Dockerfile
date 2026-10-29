@@ -11,6 +11,8 @@ RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw -B -q dependency:go-offline
 
 # --- Pruebas: los fallos no cortan el build para poder exportar los reportes; CI decide con ellos ---
 FROM deps AS test
+RUN apt-get update && apt-get install -y --no-install-recommends fontconfig libfreetype6 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 COPY src/ src/
 RUN ./mvnw -B test -Dmaven.test.failure.ignore=true
 
@@ -26,6 +28,9 @@ RUN ./mvnw -B -q package -DskipTests && cp target/*.jar app.jar
 # --- Ejecución solo con JRE y usuario sin privilegios ---
 FROM eclipse-temurin:25-jre
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends fontconfig libfreetype6 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system app && useradd --system --gid app --home /app app \
     && mkdir -p /app/data/uploads && chown -R app:app /app

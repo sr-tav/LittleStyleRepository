@@ -13,7 +13,7 @@ Los filtros principales se encuentran en la parte superior del panel:
 
 - Fecha inicial (`startDate`)
 - Fecha final (`endDate`)
-- Categoría (`categoryId`)
+- Categoría (`categoria`)
 
 ### Cómo usarlo
 
@@ -21,6 +21,8 @@ Los filtros principales se encuentran en la parte superior del panel:
 2. Selecciona la fecha final.
 3. Opcionalmente, filtra por categoría.
 4. El sistema recarga los indicadores automáticamente.
+
+Al elegir una categoría, las ventas se desglosan por prenda y la demanda por talla y por combinación de prenda/talla queda limitada a esa categoría. La misma lectura se aplica en el panel del vendedor dentro de su propia tienda.
 
 ## 3. Panel del administrador
 
@@ -105,6 +107,15 @@ Cuando no hay datos en el rango elegido, el sistema indica:
 - sin stock bajo en la categoría filtrada.
 
 Esto evita confusiones y facilita la acción del usuario.
+
+## 9. Exportación de reportes PDF
+
+Selecciona el tipo de reporte y usa el botón de descarga o impresión. Ventas y demanda aplican el período y la categoría visibles en los filtros; inventario presenta el corte actual.
+
+- El administrador obtiene el consolidado de toda la plataforma.
+- El vendedor obtiene únicamente la información de su tienda; el alcance se determina con su sesión.
+- Ventas incluye indicadores y detalle por categoría y prenda. Demanda incluye unidades e ingresos por talla y por prenda/talla. Inventario incluye stock, mínimo y nivel por prenda y talla.
+- Los importes se expresan explícitamente en pesos colombianos, por ejemplo `COP $ 12.000`.
 
 ## 9. Trazabilidad de uso por subtarea 
 

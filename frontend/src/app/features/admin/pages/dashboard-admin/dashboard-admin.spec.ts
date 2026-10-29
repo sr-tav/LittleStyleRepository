@@ -47,6 +47,10 @@ describe('DashboardAdmin (US-14)', () => {
     for (const ruta of ['/admin/usuarios', '/admin/moderacion', '/admin/auditoria', '/admin/incidencias']) {
       expect(el.querySelector<HTMLAnchorElement>(`a[href="${ruta}"]`)).not.toBeNull();
     }
+    expect(el.querySelector<HTMLAnchorElement>('.kpi-card[href="/admin/usuarios"]')).not.toBeNull();
+    expect(el.querySelector<HTMLAnchorElement>('.kpi-card[href="/admin/moderacion"]')).not.toBeNull();
+    expect(el.querySelector<HTMLAnchorElement>('.kpi-card[href="/admin/incidencias"]:last-of-type')).not.toBeNull();
+    expect(el.querySelector('.home-tile-moderacion h2')?.textContent?.trim()).toBe('6 pendientes de revisión');
   });
 
   it('muestra un error amable y permite reintentar la carga', () => {

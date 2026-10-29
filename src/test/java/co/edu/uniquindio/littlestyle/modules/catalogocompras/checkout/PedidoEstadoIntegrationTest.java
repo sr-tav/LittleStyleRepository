@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -48,6 +49,8 @@ class PedidoEstadoIntegrationTest {
     private co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.service.DespachoService despachoService;
     @Autowired
     private co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository prendaRepository;
+    @Autowired
+    private co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService dashboardAnalyticsService;
     @Autowired
     private co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository usuarioRepository;
     @Autowired
@@ -130,6 +133,28 @@ class PedidoEstadoIntegrationTest {
 
     private long despachoDelPedido(long pedidoId) {
         return despachoRepository.findAllByPedidoIdOrderByIdAsc(pedidoId).getFirst().getId();
+    }
+
+    @Test
+    void dashboardGlobalIncluyePedidosPagadosYEnCursoDeCualquierVendedor() throws Exception {
+        String vendedor = registrar("vendedor-dashboard-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String clienteEmail = "cliente-dashboard-" + System.nanoTime() + "@correo.com";
+        registrar(clienteEmail, "CLIENTE");
+        int prendaId = crearPrenda(vendedor);
+        crearPedido(clienteEmail, prendaId,
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido.REGISTRADO);
+
+        var resumen = dashboardAnalyticsService.obtenerResumen(
+                LocalDate.now().minusDays(1), LocalDate.now().plusDays(1), null, null);
+
+        assertThat(resumen.totalVentas()).isGreaterThanOrEqualTo(new BigDecimal("65800"));
+        assertThat(resumen.totalPedidos()).isGreaterThanOrEqualTo(1);
+        assertThat(resumen.productosVendidos()).isGreaterThanOrEqualTo(2);
+        assertThat(resumen.demandaDetalle()).anySatisfy(detalle -> {
+            assertThat(detalle.prenda()).isEqualTo("Pantalón Jogger Azul");
+            assertThat(detalle.talla()).isEqualTo("4");
+            assertThat(detalle.unidades()).isEqualTo(2);
+        });
     }
 
     @Test

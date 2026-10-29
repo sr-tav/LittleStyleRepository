@@ -10,6 +10,7 @@ Como administrador o como vendedor, se requiere un panel visual que consolide in
 - Acceso restringido por rol y visibilidad del menú `Reportes`.
 - Filtros dinámicos por rango de fechas y categoría.
 - Presentación gráfica con tarjetas KPI y gráficos Chart.js.
+- La categoría seleccionada limita los gráficos y los detalles de venta por prenda y demanda por talla/prenda.
 - Integración entre frontend Angular y backend REST.
 
 ### Restricción por rol
@@ -22,21 +23,24 @@ Como administrador o como vendedor, se requiere un panel visual que consolide in
 
 ### Endpoints API REST consumidos / expuestos
 
-- `GET /api/dashboard/overview`
-  - Parámetros query: `startDate` (LocalDate), `endDate` (LocalDate), `categoryId` (Long)
+- `GET /api/v1/dashboard/overview`
+  - Parámetros query: `startDate` (LocalDate), `endDate` (LocalDate), `categoria` (nombre del enum `CategoriaPrenda`, p. ej. `VESTIDOS`)
   - Respuesta: objeto `DashboardOverview` con KPIs y colecciones de agregación.
   - Datos esperados:
-    - `ventasTotales`
-    - `pedidos`
+    - `totalVentas`
+    - `totalPedidos`
     - `ticketPromedio`
+    - `productosVendidos`
+    - `stockTotal`
     - `stockBajo`
-    - `masConsultados`
-    - `masVendidos`
-    - `bajaRotacion`
-    - `demandaPorTalla`
     - `ventasPorCategoria`
+    - `demandaPorTalla`
+    - `productosPopulares`
+    - `demandaDetalle` (prenda, talla, unidades y valor)
 
-> Nota: en la implementación del proyecto actual la ruta técnica del backend queda en `/api/v1/dashboard`, manteniendo la misma semántica funcional del contrato de la historia.
+Al seleccionar una categoría, la vista desglosa las ventas por prenda y limita la demanda por talla y por combinación de prenda/talla a esa categoría.
+
+> El alcance no se envía por query param: se resuelve del JWT. `ADMINISTRADOR` obtiene el consolidado global y `VENDEDOR` solo su tienda.
 
 ## 2. Documentación técnica
 

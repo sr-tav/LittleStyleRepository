@@ -15,7 +15,7 @@ public record DashboardOverviewResponse(
         List<DashboardSerieResponse> ventasPorCategoria,
         List<DashboardSerieResponse> demandaPorTalla,
         List<DashboardSerieResponse> productosPopulares,
-        List<DashboardSerieResponse> busquedasMasFrecuentes
+        List<DashboardSerieResponse> busquedasMasFrecuentes,
+        List<DashboardDemandaDetalleResponse> demandaDetalle
 ) {
 }
-

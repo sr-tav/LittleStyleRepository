@@ -1,5 +1,7 @@
 -- US-15: consultas analíticas para dashboard visual
 -- Objetivo: calcular ventas, demanda por talla, productos populares y palabras más buscadas.
+-- Estados con pago confirmado: PAGADO, REGISTRADO, EN_PREPARACION,
+-- PARCIALMENTE_ENVIADO y ENVIADO. Se excluyen PENDIENTE_PAGO y CANCELADO.
 
 -- 1) Ventas totales y pedidos del periodo
 SELECT
@@ -11,7 +13,7 @@ FROM pedidos p
 JOIN pedido_items li ON li.pedido_id = p.id
 WHERE p.fecha_creacion >= :startDate
   AND p.fecha_creacion < DATE_ADD(:endDate, INTERVAL 1 DAY)
-  AND p.estado IN ('PAGADO', 'ENVIADO', 'ENTREGADO');
+  AND p.estado IN ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO');
 
 -- 2) Ventas por categoría
 SELECT
@@ -23,7 +25,7 @@ JOIN prendas pr ON pr.id = li.prenda_id
 JOIN pedidos p ON p.id = li.pedido_id
 WHERE p.fecha_creacion >= :startDate
   AND p.fecha_creacion < DATE_ADD(:endDate, INTERVAL 1 DAY)
-  AND p.estado IN ('PAGADO', 'ENVIADO', 'ENTREGADO')
+  AND p.estado IN ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
   AND (:categoryId IS NULL OR pr.categoria_id = :categoryId)
 GROUP BY pr.categoria
 ORDER BY ingreso_total DESC;
@@ -37,7 +39,7 @@ FROM pedido_items li
 JOIN pedidos p ON p.id = li.pedido_id
 WHERE p.fecha_creacion >= :startDate
   AND p.fecha_creacion < DATE_ADD(:endDate, INTERVAL 1 DAY)
-  AND p.estado IN ('PAGADO', 'ENVIADO', 'ENTREGADO')
+  AND p.estado IN ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
   AND (:categoryId IS NULL OR li.categoria_id = :categoryId)
 GROUP BY li.talla
 ORDER BY unidades_vendidas DESC;
@@ -53,7 +55,7 @@ JOIN prendas pr ON pr.id = li.prenda_id
 JOIN pedidos p ON p.id = li.pedido_id
 WHERE p.fecha_creacion >= :startDate
   AND p.fecha_creacion < DATE_ADD(:endDate, INTERVAL 1 DAY)
-  AND p.estado IN ('PAGADO', 'ENVIADO', 'ENTREGADO')
+  AND p.estado IN ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
   AND (:categoryId IS NULL OR pr.categoria_id = :categoryId)
 GROUP BY pr.id, pr.nombre
 ORDER BY unidades_vendidas DESC
@@ -107,4 +109,3 @@ WHERE p.fecha_creacion >= :startDate
   AND p.fecha_creacion < DATE_ADD(:endDate, INTERVAL 1 DAY)
 GROUP BY DATE(p.fecha_creacion)
 ORDER BY fecha ASC;
-

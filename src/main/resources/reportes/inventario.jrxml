@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="inventario" language="java" pageWidth="842" pageHeight="595" columnWidth="802"
+              leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
+              whenNoDataType="AllSectionsNoDetail">
+    <parameter name="TITULO" class="java.lang.String"/>
+    <parameter name="SUBTITULO" class="java.lang.String"/>
+    <parameter name="ALCANCE" class="java.lang.String"/>
+    <parameter name="GENERADO_EN" class="java.lang.String"/>
+    <parameter name="GENERADO_POR" class="java.lang.String"/>
+    <parameter name="TOTAL_REGISTROS" class="java.lang.String"/>
+    <parameter name="TOTAL_UNIDADES" class="java.lang.String"/>
+    <parameter name="TOTAL_BAJOS" class="java.lang.String"/>
+    <field name="producto" class="java.lang.String"/>
+    <field name="tienda" class="java.lang.String"/>
+    <field name="categoria" class="java.lang.String"/>
+    <field name="talla" class="java.lang.String"/>
+    <field name="stock" class="java.lang.String"/>
+    <field name="minimo" class="java.lang.String"/>
+    <field name="nivel" class="java.lang.String"/>
+    <group name="Tienda">
+        <expression><![CDATA[$F{tienda}]]></expression>
+        <groupHeader>
+            <band height="24">
+                <element kind="textField" x="0" y="2" width="802" height="18" fontSize="9.5" bold="true" forecolor="#14532D" vTextAlign="Middle">
+                    <expression><![CDATA["Tienda: " + $F{tienda}]]></expression>
+                </element>
+                <element kind="line" x="0" y="22" width="802" height="1">
+                    <pen lineWidth="0.8" lineColor="#15803D"/>
+                </element>
+            </band>
+        </groupHeader>
+    </group>
+    <title height="84">
+        <element kind="textField" x="0" y="0" width="200" height="32" fontSize="14.0" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle">
+            <expression><![CDATA["  LittleStyle"]]></expression>
+        </element>
+        <element kind="textField" x="200" y="0" width="602" height="32" fontSize="11.0" bold="true" forecolor="#FFFFFF" backcolor="#15803D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <expression><![CDATA[$P{TITULO} + "  "]]></expression>
+        </element>
+        <element kind="textField" x="0" y="38" width="802" height="14" fontSize="9.0" forecolor="#374151">
+            <expression><![CDATA[$P{SUBTITULO}]]></expression>
+        </element>
+        <element kind="textField" x="0" y="54" width="802" height="12" fontSize="8.0" forecolor="#6B7280">
+            <expression><![CDATA["Alcance: " + $P{ALCANCE} + "   ·   Generado: " + $P{GENERADO_EN} + "   ·   Por: " + $P{GENERADO_POR}]]></expression>
+        </element>
+        <element kind="line" x="0" y="72" width="802" height="1">
+            <pen lineWidth="1.0" lineColor="#14532D"/>
+        </element>
+    </title>
+    <columnHeader height="24">
+        <element kind="staticText" x="0" y="0" width="280" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle"><text><![CDATA[  Prenda]]></text></element>
+        <element kind="staticText" x="280" y="0" width="140" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle"><text><![CDATA[Categoría]]></text></element>
+        <element kind="staticText" x="420" y="0" width="70" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Center" vTextAlign="Middle"><text><![CDATA[Talla]]></text></element>
+        <element kind="staticText" x="490" y="0" width="90" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle"><text><![CDATA[Stock  ]]></text></element>
+        <element kind="staticText" x="580" y="0" width="90" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle"><text><![CDATA[Mínimo  ]]></text></element>
+        <element kind="staticText" x="670" y="0" width="132" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Center" vTextAlign="Middle"><text><![CDATA[Nivel]]></text></element>
+    </columnHeader>
+    <detail>
+        <band height="17">
+            <element kind="textField" x="0" y="0" width="280" height="17" fontSize="8.5" textAdjust="StretchHeight" vTextAlign="Middle"><expression><![CDATA["  " + $F{producto}]]></expression></element>
+            <element kind="textField" x="280" y="0" width="140" height="17" fontSize="8.5" vTextAlign="Middle"><expression><![CDATA[$F{categoria}]]></expression></element>
+            <element kind="textField" x="420" y="0" width="70" height="17" fontSize="8.5" hTextAlign="Center" vTextAlign="Middle"><expression><![CDATA[$F{talla}]]></expression></element>
+            <element kind="textField" x="490" y="0" width="90" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle"><expression><![CDATA[$F{stock} + "  "]]></expression></element>
+            <element kind="textField" x="580" y="0" width="90" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle"><expression><![CDATA[$F{minimo} + "  "]]></expression></element>
+            <element kind="textField" x="670" y="0" width="132" height="17" fontSize="8.5" hTextAlign="Center" vTextAlign="Middle"><expression><![CDATA[$F{nivel}]]></expression></element>
+            <element kind="line" x="0" y="16" width="802" height="1">
+                <pen lineWidth="0.3" lineColor="#E7E5E4"/>
+            </element>
+        </band>
+    </detail>
+    <summary height="56">
+        <element kind="line" x="0" y="2" width="802" height="1">
+            <pen lineWidth="1.0" lineColor="#14532D"/>
+        </element>
+        <element kind="textField" x="0" y="8" width="802" height="14" fontSize="8.5" bold="true" forecolor="#14532D">
+            <expression><![CDATA["Filas: " + $P{TOTAL_REGISTROS} + "   ·   Unidades en stock: " + $P{TOTAL_UNIDADES} + "   ·   Tallas con stock bajo: " + $P{TOTAL_BAJOS}]]></expression>
+        </element>
+        <element kind="staticText" x="0" y="28" width="802" height="12" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Documento generado automáticamente por LittleStyle · Información confidencial para uso interno]]></text>
+        </element>
+    </summary>
+    <pageFooter height="24">
+        <element kind="staticText" x="0" y="6" width="400" height="12" fontSize="7.5" forecolor="#6B7280"><text><![CDATA[LittleStyle · Reporte corporativo]]></text></element>
+        <element kind="textField" x="722" y="6" width="60" height="12" fontSize="7.5" forecolor="#6B7280" hTextAlign="Right"><expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de"]]></expression></element>
+        <element kind="textField" x="782" y="6" width="20" height="12" fontSize="7.5" forecolor="#6B7280" evaluationTime="Report"><expression><![CDATA[" " + $V{PAGE_NUMBER}]]></expression></element>
+    </pageFooter>
+</jasperReport>
