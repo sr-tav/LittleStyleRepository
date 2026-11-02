@@ -1,6 +1,8 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
@@ -8,6 +10,8 @@ import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaRes
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.DashboardAnalyticsRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,196 +20,136 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
- * Servicio de agregaciones analíticas para el dashboard visual.
+ * Agregaciones analíticas del dashboard (US-15).
  *
- * <p>El alcance lo decide el llamador: {@code vendedorId == null} es el consolidado global del
- * administrador; un id filtra la tienda del vendedor. La categoría también es opcional. Todos los
- * indicadores salen de datos reales: si no hay ventas, el dashboard muestra ceros y listas vacías
- * en lugar de cifras de ejemplo.</p>
+ * <p>Nunca fabrica cifras: sin datos devuelve ceros y listas vacías, y si la base falla la excepción sube
+ * para que el cliente vea un error y no un dashboard "normal" con números inventados.
+ *
+ * <p>{@code vendedorId} limita todo al negocio de ese vendedor; nulo es alcance global y solo debe pasarlo
+ * quien ya verificó que el usuario es administrador (ver {@code DashboardController}).
  */
 @Service
 @RequiredArgsConstructor
 public class DashboardAnalyticsService {
 
-    private final DashboardAnalyticsRepository dashboardAnalyticsRepository;
+    /** Una venta cuenta desde que el pago se confirma: cualquier estado posterior, salvo cancelado. */
+    static final Set<EstadoPedido> ESTADOS_VENTA = Set.of(
+            EstadoPedido.PAGADO,
+            EstadoPedido.REGISTRADO,
+            EstadoPedido.EN_PREPARACION,
+            EstadoPedido.PARCIALMENTE_ENVIADO,
+            EstadoPedido.ENVIADO);
+
+    static final int TAMANO_TOP = 10;
+    public static final int MAX_FILAS_REPORTE = 5_000;
+    private static final int DIAS_POR_DEFECTO = 30;
+
+    private final DashboardAnalyticsRepository repository;
 
     @Transactional(readOnly = true)
-    public DashboardOverviewResponse obtenerResumen(LocalDate startDate,
-                                                    LocalDate endDate,
-                                                    CategoriaPrenda categoria,
-                                                    Long vendedorId) {
+    public DashboardOverviewResponse obtenerResumen(LocalDate startDate, LocalDate endDate,
+                                                    String categoria, Long vendedorId) {
         Rango rango = Rango.de(startDate, endDate);
-        String categoriaFiltro = categoria == null ? null : categoria.name();
+        CategoriaPrenda cat = parsearCategoria(categoria);
 
-        BigDecimal totalVentas = nuloCero(dashboardAnalyticsRepository
-                .sumTotalVentas(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId));
-        long totalPedidos = dashboardAnalyticsRepository
-                .countPedidos(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId);
-        BigDecimal ticketPromedio = totalPedidos == 0 ? BigDecimal.ZERO
+        BigDecimal totalVentas = ceroSiNulo(repository.sumTotalVentas(
+                rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat));
+        long totalPedidos = repository.countPedidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat);
+        long productosVendidos = ceroSiNulo(repository.sumUnidadesVendidas(
+                rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat));
+        BigDecimal ticketPromedio = totalPedidos == 0
+                ? BigDecimal.ZERO
                 : totalVentas.divide(BigDecimal.valueOf(totalPedidos), 2, RoundingMode.HALF_UP);
-        long productosVendidos = dashboardAnalyticsRepository
-                .sumUnidadesVendidas(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId)
-                .longValue();
-
-        List<DashboardSerieResponse> ventasPorCategoria = dashboardAnalyticsRepository
-                .ventasPorCategoria(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId)
-                .stream()
-                .map(this::mapVentasPorCategoria)
-                .toList();
-
-        List<DashboardSerieResponse> demandaPorTalla = dashboardAnalyticsRepository
-                .demandaPorTalla(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId)
-                .stream()
-                .map(this::mapDemandaPorTalla)
-                .toList();
-
-        List<DashboardSerieResponse> productosPopulares = dashboardAnalyticsRepository
-                .productosMasVendidos(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId)
-                .stream()
-                .map(this::mapProducto)
-                .toList();
-
-        List<DashboardDemandaDetalleResponse> demandaDetalle = dashboardAnalyticsRepository
-                .demandaPorPrendaTalla(rango.inicio(), rango.fin(), categoriaFiltro, vendedorId)
-                .stream()
-                .map(this::mapDemandaDetalle)
-                .toList();
-
-        long stockTotal = dashboardAnalyticsRepository.stockTotal(categoriaFiltro, vendedorId).longValue();
-        long stockBajo = dashboardAnalyticsRepository.tallasBajoStock(categoriaFiltro, vendedorId);
 
         return new DashboardOverviewResponse(
                 totalVentas,
                 totalPedidos,
                 ticketPromedio,
                 productosVendidos,
-                BigDecimal.ZERO,
-                stockTotal,
-                stockBajo,
-                ventasPorCategoria,
-                demandaPorTalla,
-                productosPopulares,
-                Collections.emptyList(),
-                demandaDetalle
-        );
+                null, // el catálogo no guarda costos: no hay margen que calcular
+                ceroSiNulo(repository.sumStockTotal(EstadoPrenda.ACTIVA, vendedorId, cat)),
+                repository.countStockBajo(EstadoPrenda.ACTIVA, vendedorId, cat),
+                repository.ventasPorCategoria(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat),
+                repository.demandaPorTalla(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat),
+                repository.productosMasVendidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId, cat, top()),
+                repository.productosMasConsultados(rango.inicio, rango.fin, vendedorId, cat, top()),
+                repository.busquedasMasFrecuentes(rango.inicio, rango.fin, top()));
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardSerieResponse> obtenerProductosMasConsultados(LocalDate startDate,
-                                                                       LocalDate endDate,
-                                                                       CategoriaPrenda categoria,
-                                                                       Long vendedorId) {
+    public List<DashboardVentasDiaResponse> obtenerVentasPorDia(LocalDate startDate, LocalDate endDate,
+                                                                String categoria, Long vendedorId) {
         Rango rango = Rango.de(startDate, endDate);
-        return dashboardAnalyticsRepository
-                .productosMasConsultados(rango.inicio(), rango.fin(), filtro(categoria), vendedorId)
-                .stream()
-                .map(this::mapProducto)
-                .toList();
+        return repository.ventasPorDia(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria));
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardSerieResponse> obtenerProductosMasVendidos(LocalDate startDate,
-                                                                     LocalDate endDate,
-                                                                     CategoriaPrenda categoria,
-                                                                     Long vendedorId) {
+    public List<DashboardDemandaDetalleResponse> obtenerDemandaDetalle(LocalDate startDate, LocalDate endDate,
+                                                                       String categoria, Long vendedorId) {
         Rango rango = Rango.de(startDate, endDate);
-        return dashboardAnalyticsRepository
-                .productosMasVendidos(rango.inicio(), rango.fin(), filtro(categoria), vendedorId)
-                .stream()
-                .map(this::mapProducto)
-                .toList();
+        return repository.demandaDetalle(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria));
     }
 
-    /**
-     * Serie diaria de ventas del período (US-16). Reutiliza las mismas reglas de alcance,
-     * categoría y estados de pedido que el resto del dashboard.
-     */
     @Transactional(readOnly = true)
-    public List<DashboardVentasDiaResponse> obtenerVentasPorDia(LocalDate startDate,
-                                                                 LocalDate endDate,
-                                                                 CategoriaPrenda categoria,
-                                                                 Long vendedorId) {
+    public List<DashboardSerieResponse> obtenerProductosMasConsultados(LocalDate startDate, LocalDate endDate,
+                                                                       String categoria, Long vendedorId) {
         Rango rango = Rango.de(startDate, endDate);
-        return dashboardAnalyticsRepository
-                .ventasPorDia(rango.inicio(), rango.fin(), filtro(categoria), vendedorId)
-                .stream()
-                .map(this::mapVentasDia)
-                .toList();
+        return repository.productosMasConsultados(rango.inicio, rango.fin, vendedorId,
+                parsearCategoria(categoria), top());
     }
 
-    private static String filtro(CategoriaPrenda categoria) {
-        return categoria == null ? null : categoria.name();
+    @Transactional(readOnly = true)
+    public List<DashboardSerieResponse> obtenerProductosMasVendidos(LocalDate startDate, LocalDate endDate,
+                                                                    String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.productosMasVendidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria), top());
     }
 
-    private DashboardSerieResponse mapVentasPorCategoria(Object[] fila) {
-        return new DashboardSerieResponse(texto(fila[0]), decimal(fila[1]), largo(fila[2]));
+    @Transactional(readOnly = true)
+    public List<DashboardSerieResponse> obtenerProductosVendidosCompleto(LocalDate startDate, LocalDate endDate,
+                                                                         String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.productosMasVendidosCompleto(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria), PageRequest.of(0, MAX_FILAS_REPORTE + 1));
     }
 
-    private DashboardSerieResponse mapDemandaPorTalla(Object[] fila) {
-        return new DashboardSerieResponse(texto(fila[0]), decimal(fila[2]), largo(fila[1]));
+    private static Pageable top() {
+        return PageRequest.of(0, TAMANO_TOP);
     }
 
-    private DashboardSerieResponse mapProducto(Object[] fila) {
-        return new DashboardSerieResponse(texto(fila[0]), decimal(fila[2]), largo(fila[1]));
+    /** Convierte el filtro de categoría; nulo si no se envió y 400 si no existe. */
+    static CategoriaPrenda parsearCategoria(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        try {
+            return CategoriaPrenda.valueOf(valor.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "La categoría no es válida", "categoria");
+        }
     }
 
-    private DashboardDemandaDetalleResponse mapDemandaDetalle(Object[] fila) {
-        return new DashboardDemandaDetalleResponse(texto(fila[0]), texto(fila[1]), largo(fila[2]), decimal(fila[3]));
-    }
-
-    private DashboardVentasDiaResponse mapVentasDia(Object[] fila) {
-        return new DashboardVentasDiaResponse(fecha(fila[0]), largo(fila[1]), decimal(fila[2]));
-    }
-
-    /** Convierte la fecha que devuelve la consulta nativa en {@link LocalDate}. */
-    private static LocalDate fecha(Object valor) {
-        return switch (valor) {
-            case null -> null;
-            case LocalDate d -> d;
-            case java.sql.Date d -> d.toLocalDate();
-            case LocalDateTime dt -> dt.toLocalDate();
-            case java.util.Date d -> d.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-            case String s -> LocalDate.parse(s);
-            default -> LocalDate.parse(valor.toString());
-        };
-    }
-
-    private static String texto(Object valor) {
-        return valor == null ? "Sin dato" : valor.toString();
-    }
-
-    private static BigDecimal decimal(Object valor) {
-        return switch (valor) {
-            case null -> BigDecimal.ZERO;
-            case BigDecimal bd -> bd;
-            case Number n -> BigDecimal.valueOf(n.doubleValue());
-            case String s -> new BigDecimal(s);
-            default -> BigDecimal.ZERO;
-        };
-    }
-
-    private static long largo(Object valor) {
-        return switch (valor) {
-            case null -> 0L;
-            case Number n -> n.longValue();
-            case String s -> Long.parseLong(s.trim());
-            default -> 0L;
-        };
-    }
-
-    private static BigDecimal nuloCero(BigDecimal valor) {
+    private static BigDecimal ceroSiNulo(BigDecimal valor) {
         return valor == null ? BigDecimal.ZERO : valor;
     }
 
-    /** Rango ya validado y convertido a los límites {@code [inicio, fin)} que usan las consultas. */
+    private static long ceroSiNulo(Long valor) {
+        return valor == null ? 0L : valor;
+    }
+
+    /** Rango de fechas [inicio, fin) listo para consultar; por defecto, los últimos 30 días. */
     private record Rango(LocalDateTime inicio, LocalDateTime fin) {
 
         static Rango de(LocalDate startDate, LocalDate endDate) {
-            LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(30);
+            LocalDate desde = startDate != null ? startDate : LocalDate.now().minusDays(DIAS_POR_DEFECTO);
             LocalDate hasta = endDate != null ? endDate : LocalDate.now();
             if (desde.isAfter(hasta)) {
                 throw new BusinessException(HttpStatus.BAD_REQUEST,

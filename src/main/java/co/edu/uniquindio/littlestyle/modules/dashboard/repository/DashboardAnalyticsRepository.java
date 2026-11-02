@@ -1,218 +1,245 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.repository;
 
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 /**
  * Consultas analíticas del dashboard de operación.
  *
- * <p>Todas las consultas aceptan dos filtros opcionales: {@code categoria} (nombre del enum
- * {@code CategoriaPrenda}) y {@code vendedorId}. Un {@code null} significa "sin filtro", de modo que
- * el administrador obtiene el consolidado global y el vendedor solo su tienda. El filtro por
- * vendedor se aplica siempre sobre la prenda vendida, no sobre el pedido, porque un pedido puede
- * agrupar prendas de varias tiendas.</p>
+ * <p>Un pedido puede mezclar prendas de varios vendedores y no guarda vendedor propio, así que todo lo que
+ * depende del negocio se filtra por el vendedor de la prenda ({@code pr.vendedor.id}). {@code vendedorId} nulo
+ * significa alcance global (solo administrador); {@code categoria} nula significa todas las categorías.
+ * Los {@code sum} de una consulta sin filas devuelven {@code null}: el servicio los normaliza a cero.
  */
 public interface DashboardAnalyticsRepository extends JpaRepository<Pedido, Long> {
 
-    @Query(value = """
-            select coalesce(sum(li.subtotal), 0)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    @Query("""
+            select sum(li.subtotal)
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            """, nativeQuery = true)
+            """)
     BigDecimal sumTotalVentas(@Param("inicio") LocalDateTime inicio,
                               @Param("fin") LocalDateTime fin,
-                              @Param("categoria") String categoria,
-                              @Param("vendedorId") Long vendedorId);
+                              @Param("estados") Collection<EstadoPedido> estados,
+                              @Param("vendedorId") Long vendedorId,
+                              @Param("categoria") CategoriaPrenda categoria);
 
-    @Query(value = """
-            select count(distinct p.id)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    @Query("""
+            select sum(li.cantidad)
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            """, nativeQuery = true)
+            """)
+    Long sumUnidadesVendidas(@Param("inicio") LocalDateTime inicio,
+                             @Param("fin") LocalDateTime fin,
+                             @Param("estados") Collection<EstadoPedido> estados,
+                             @Param("vendedorId") Long vendedorId,
+                             @Param("categoria") CategoriaPrenda categoria);
+
+    @Query("""
+            select count(distinct p.id)
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
+              and (:categoria is null or pr.categoria = :categoria)
+            """)
     long countPedidos(@Param("inicio") LocalDateTime inicio,
                       @Param("fin") LocalDateTime fin,
-                      @Param("categoria") String categoria,
-                      @Param("vendedorId") Long vendedorId);
+                      @Param("estados") Collection<EstadoPedido> estados,
+                      @Param("vendedorId") Long vendedorId,
+                      @Param("categoria") CategoriaPrenda categoria);
 
-    @Query(value = """
-            select coalesce(sum(li.cantidad), 0)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
+                     cast(pr.categoria as string), sum(li.subtotal), sum(li.cantidad))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            """, nativeQuery = true)
-    BigDecimal sumUnidadesVendidas(@Param("inicio") LocalDateTime inicio,
-                                   @Param("fin") LocalDateTime fin,
-                                   @Param("categoria") String categoria,
-                                   @Param("vendedorId") Long vendedorId);
-
-    @Query(value = """
-            select pr.categoria,
-                   coalesce(sum(li.subtotal), 0),
-                   coalesce(sum(li.cantidad), 0)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
-              and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
             group by pr.categoria
             order by sum(li.subtotal) desc
-            """, nativeQuery = true)
-    List<Object[]> ventasPorCategoria(@Param("inicio") LocalDateTime inicio,
-                                      @Param("fin") LocalDateTime fin,
-                                      @Param("categoria") String categoria,
-                                      @Param("vendedorId") Long vendedorId);
+            """)
+    List<DashboardSerieResponse> ventasPorCategoria(@Param("inicio") LocalDateTime inicio,
+                                                    @Param("fin") LocalDateTime fin,
+                                                    @Param("estados") Collection<EstadoPedido> estados,
+                                                    @Param("vendedorId") Long vendedorId,
+                                                    @Param("categoria") CategoriaPrenda categoria);
 
-    @Query(value = """
-            select li.talla,
-                   coalesce(sum(li.cantidad), 0),
-                   coalesce(sum(li.subtotal), 0)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
+                     li.talla, sum(li.subtotal), sum(li.cantidad))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
             group by li.talla
             order by sum(li.cantidad) desc
-            """, nativeQuery = true)
-    List<Object[]> demandaPorTalla(@Param("inicio") LocalDateTime inicio,
-                                   @Param("fin") LocalDateTime fin,
-                                   @Param("categoria") String categoria,
-                                   @Param("vendedorId") Long vendedorId);
+            """)
+    List<DashboardSerieResponse> demandaPorTalla(@Param("inicio") LocalDateTime inicio,
+                                                 @Param("fin") LocalDateTime fin,
+                                                 @Param("estados") Collection<EstadoPedido> estados,
+                                                 @Param("vendedorId") Long vendedorId,
+                                                 @Param("categoria") CategoriaPrenda categoria);
 
-    /** Detalle prenda + talla: permite responder qué modelos y tallas se piden más. */
-    @Query(value = """
-            select pr.nombre,
-                   li.talla,
-                   coalesce(sum(li.cantidad), 0),
-                   coalesce(sum(li.subtotal), 0)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse(
+                     cast(p.fechaCreacion as LocalDate), count(distinct p.id), sum(li.subtotal))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
+            group by cast(p.fechaCreacion as LocalDate)
+            order by cast(p.fechaCreacion as LocalDate)
+            """)
+    List<DashboardVentasDiaResponse> ventasPorDia(@Param("inicio") LocalDateTime inicio,
+                                                  @Param("fin") LocalDateTime fin,
+                                                  @Param("estados") Collection<EstadoPedido> estados,
+                                                  @Param("vendedorId") Long vendedorId,
+                                                  @Param("categoria") CategoriaPrenda categoria);
+
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse(
+                     pr.nombre, li.talla, sum(li.cantidad), sum(li.subtotal))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
+              and (:categoria is null or pr.categoria = :categoria)
             group by pr.id, pr.nombre, li.talla
+            order by sum(li.cantidad) desc, pr.nombre asc, li.talla asc
+            """)
+    List<DashboardDemandaDetalleResponse> demandaDetalle(@Param("inicio") LocalDateTime inicio,
+                                                         @Param("fin") LocalDateTime fin,
+                                                         @Param("estados") Collection<EstadoPedido> estados,
+                                                         @Param("vendedorId") Long vendedorId,
+                                                         @Param("categoria") CategoriaPrenda categoria);
+
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
+                     pr.nombre, sum(li.subtotal), sum(li.cantidad))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
+              and (:categoria is null or pr.categoria = :categoria)
+            group by pr.id, pr.nombre
             order by sum(li.cantidad) desc, pr.nombre asc
-            """, nativeQuery = true)
-    List<Object[]> demandaPorPrendaTalla(@Param("inicio") LocalDateTime inicio,
-                                         @Param("fin") LocalDateTime fin,
-                                         @Param("categoria") String categoria,
-                                         @Param("vendedorId") Long vendedorId);
+            """)
+    List<DashboardSerieResponse> productosMasVendidos(@Param("inicio") LocalDateTime inicio,
+                                                      @Param("fin") LocalDateTime fin,
+                                                      @Param("estados") Collection<EstadoPedido> estados,
+                                                      @Param("vendedorId") Long vendedorId,
+                                                      @Param("categoria") CategoriaPrenda categoria,
+                                                      Pageable limite);
 
-    @Query(value = """
-            select pr.nombre,
-                   count(*) as veces_pedida,
-                   coalesce(sum(li.cantidad), 0) as unidades_vendidas
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    default List<DashboardSerieResponse> productosMasVendidosCompleto(LocalDateTime inicio, LocalDateTime fin,
+                                                                       Collection<EstadoPedido> estados,
+                                                                       Long vendedorId, CategoriaPrenda categoria,
+                                                                       Pageable limite) {
+        return productosMasVendidos(inicio, fin, estados, vendedorId, categoria, limite);
+    }
+
+    /** Vistas reales de la ficha de cada prenda (no ventas). */
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
+                     pr.nombre, count(v))
+            from ProductoVista v
+              join Prenda pr on pr.id = v.prendaId
+            where v.fecha >= :inicio and v.fecha < :fin
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
             group by pr.id, pr.nombre
-            order by count(*) desc, sum(li.cantidad) desc
-            limit 10
-            """, nativeQuery = true)
-    List<Object[]> productosMasConsultados(@Param("inicio") LocalDateTime inicio,
-                                           @Param("fin") LocalDateTime fin,
-                                           @Param("categoria") String categoria,
-                                           @Param("vendedorId") Long vendedorId);
+            order by count(v) desc, pr.nombre asc
+            """)
+    List<DashboardSerieResponse> productosMasConsultados(@Param("inicio") LocalDateTime inicio,
+                                                         @Param("fin") LocalDateTime fin,
+                                                         @Param("vendedorId") Long vendedorId,
+                                                         @Param("categoria") CategoriaPrenda categoria,
+                                                         Pageable limite);
 
-    @Query(value = """
-            select pr.nombre,
-                   coalesce(sum(li.cantidad), 0),
-                   coalesce(sum(li.subtotal), 0)
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
-              and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            group by pr.id, pr.nombre
-            order by sum(li.cantidad) desc
-            """, nativeQuery = true)
-    List<Object[]> productosMasVendidos(@Param("inicio") LocalDateTime inicio,
-                                        @Param("fin") LocalDateTime fin,
-                                        @Param("categoria") String categoria,
-                                        @Param("vendedorId") Long vendedorId);
+    /**
+     * Términos más buscados en el catálogo. Es una señal de demanda de toda la plataforma: una búsqueda no
+     * pertenece a ningún vendedor, así que no se filtra por vendedor ni por categoría.
+     */
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
+                     b.termino, count(b))
+            from Busqueda b
+            where b.fecha >= :inicio and b.fecha < :fin
+            group by b.termino
+            order by count(b) desc, b.termino asc
+            """)
+    List<DashboardSerieResponse> busquedasMasFrecuentes(@Param("inicio") LocalDateTime inicio,
+                                                        @Param("fin") LocalDateTime fin,
+                                                        Pageable limite);
 
-    /** Serie diaria de ventas del período: fecha, pedidos distintos y total vendido. */
-    @Query(value = """
-            select cast(p.fecha_creacion as date) as dia,
-                   count(distinct p.id) as pedidos,
-                   coalesce(sum(li.subtotal), 0) as total
-            from pedidos p
-            join pedido_items li on li.pedido_id = p.id
-            join prendas pr on pr.id = li.prenda_id
-            where p.fecha_creacion >= :inicio
-              and p.fecha_creacion < :fin
-              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+    /** Unidades en inventario de prendas activas (foto actual, no depende del rango de fechas). */
+    @Query("""
+            select sum(t.stock)
+            from TallaPrenda t
+              join t.prenda pr
+            where pr.estado = :estadoPrenda
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            group by cast(p.fecha_creacion as date)
-            order by dia asc
-            """, nativeQuery = true)
-    List<Object[]> ventasPorDia(@Param("inicio") LocalDateTime inicio,
-                                @Param("fin") LocalDateTime fin,
-                                @Param("categoria") String categoria,
-                                @Param("vendedorId") Long vendedorId);
+            """)
+    Long sumStockTotal(@Param("estadoPrenda") EstadoPrenda estadoPrenda,
+                       @Param("vendedorId") Long vendedorId,
+                       @Param("categoria") CategoriaPrenda categoria);
 
-    @Query(value = """
-            select coalesce(sum(t.stock), 0)
-            from prenda_tallas t
-            join prendas pr on pr.id = t.prenda_id
-            where pr.estado = 'ACTIVA'
+    /**
+     * Tallas activas con stock en o bajo su mínimo de reabastecimiento. Una talla sin mínimo configurado no
+     * alerta (ver {@code TallaPrenda.stockMinimo}).
+     */
+    @Query("""
+            select count(t)
+            from TallaPrenda t
+              join t.prenda pr
+            where pr.estado = :estadoPrenda
+              and t.stockMinimo is not null
+              and t.stock <= t.stockMinimo
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            """, nativeQuery = true)
-    BigDecimal stockTotal(@Param("categoria") String categoria,
-                          @Param("vendedorId") Long vendedorId);
-
-    @Query(value = """
-            select count(*)
-            from prenda_tallas t
-            join prendas pr on pr.id = t.prenda_id
-            where pr.estado = 'ACTIVA'
-              and t.stock_minimo is not null
-              and t.stock <= t.stock_minimo
-              and (:categoria is null or pr.categoria = :categoria)
-              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
-            """, nativeQuery = true)
-    long tallasBajoStock(@Param("categoria") String categoria,
-                         @Param("vendedorId") Long vendedorId);
+            """)
+    long countStockBajo(@Param("estadoPrenda") EstadoPrenda estadoPrenda,
+                        @Param("vendedorId") Long vendedorId,
+                        @Param("categoria") CategoriaPrenda categoria);
 }

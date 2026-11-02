@@ -10,13 +10,12 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import Chart from 'chart.js/auto';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, catchError, forkJoin, of, switchMap, tap } from 'rxjs';
+import { Chart, registerables } from 'chart.js';
+import { Subscription } from 'rxjs';
 
 import {
-  CATEGORIAS_DASHBOARD,
   DashboardAnalyticsService,
   DashboardOverview,
   DashboardSerie,
@@ -24,569 +23,451 @@ import {
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ExportarReporte } from '../../../reportes/components/exportar-reporte';
+import {
+  ETIQUETAS_CATEGORIAS,
+  OPCIONES_CATEGORIAS,
+} from '../../../catalogoCompras/models/prenda-opciones';
 
-const NUMERO_CO = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
-const VALOR_COP = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 });
-const COMPACTO_CO = new Intl.NumberFormat('es-CO', { notation: 'compact', maximumFractionDigits: 1 });
+Chart.register(...registerables);
 
-/**
- * Dashboard analítico de US-15/16. Administrador y vendedor comparten la misma lectura:
- * el alcance (global o tienda) lo resuelve el backend a partir del token, y aquí solo se
- * muestran datos reales filtrados por período y categoría.
- */
+const RESUMEN_VACIO: DashboardOverview = {
+  totalVentas: 0,
+  totalPedidos: 0,
+  ticketPromedio: 0,
+  productosVendidos: 0,
+  margenBruto: null,
+  stockTotal: 0,
+  stockBajo: 0,
+  ventasPorCategoria: [],
+  demandaPorTalla: [],
+  productosPopulares: [],
+  productosMasConsultados: [],
+  busquedasMasFrecuentes: [],
+};
+
 @Component({
   selector: 'app-dashboard-analytics',
   standalone: true,
   imports: [CommonModule, Navbar, FormsModule, ExportarReporte],
   template: `
     <app-navbar />
-    <main class="dashboard-shell">
-      <header class="page-head">
-        <div class="page-title">
-          <span class="eyebrow">Analítica</span>
-          <h1>{{ tituloVista() }}</h1>
+    <section class="dashboard-shell">
+      <!-- HEADER CON TÍTULOS Y FILTROS -->
+      <header class="dashboard-header">
+        <div class="header-copy">
+          <h2>{{ tituloVista() }}</h2>
           <p>{{ subtituloVista() }}</p>
         </div>
-        <button type="button" class="btn-ghost" (click)="cargarDatosDashboard()" [disabled]="cargando()">
-          Actualizar
-        </button>
-      </header>
 
-      <section class="panel" aria-labelledby="filtros-titulo">
-        <div class="panel-head">
-          <h2 id="filtros-titulo">Filtros</h2>
-          <span class="panel-hint">Los indicadores se recalculan con cada cambio</span>
-        </div>
-
-        <div class="filters-grid">
-          <label class="field">
-            <span>Período</span>
+        <div class="header-filters" aria-label="Filtros del dashboard">
+          <div class="filter-field">
+            <span>PERIODO</span>
             <select [(ngModel)]="periodoSeleccionado" (change)="onPeriodoChange()">
               <option value="30_DIAS">Últimos 30 días</option>
               <option value="MES_ACTUAL">Este mes</option>
               <option value="6_MESES">Últimos 6 meses</option>
             </select>
-          </label>
+          </div>
 
-          <label class="field">
-            <span>Desde</span>
+          <div class="filter-field date-field">
+            <span>DESDE</span>
             <input type="date" [(ngModel)]="fechaDesde" (change)="onFechaManualChange()" />
-          </label>
+          </div>
 
-          <label class="field">
-            <span>Hasta</span>
+          <div class="filter-field date-field">
+            <span>HASTA</span>
             <input type="date" [(ngModel)]="fechaHasta" (change)="onFechaManualChange()" />
-          </label>
+          </div>
 
-          <label class="field">
-            <span>Categoría</span>
-            <select [ngModel]="categoriaSeleccionada" (ngModelChange)="onCategoriaChange($event)">
+          <div class="filter-field category-field">
+            <span>CATEGORÍAS</span>
+            <select [(ngModel)]="categoriaSeleccionada" (change)="onCategoriaChange()">
               <option value="TODAS">Todas las categorías</option>
-              @for (cat of categorias; track cat.valor) {
-                <option [value]="cat.valor">{{ cat.etiqueta }}</option>
+              @for (opcion of opcionesCategorias; track opcion.valor) {
+                <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
               }
             </select>
-          </label>
-
-          <div class="field field-action">
-            <span class="sr-only">&nbsp;</span>
-            <button type="button" class="btn-secondary" (click)="limpiarFiltros()" [disabled]="cargando()">
-              Limpiar
-            </button>
           </div>
         </div>
-
-        @if (errorFechas()) {
-          <p class="inline-error" role="alert">{{ errorFechas() }}</p>
-        }
-      </section>
-
-      @if (errorGraficos()) {
-        <p class="inline-error" role="alert">{{ errorGraficos() }}</p>
-      }
-
-      <section class="panel" aria-labelledby="exportar-titulo">
-        <div class="panel-head">
-          <h2 id="exportar-titulo">Exportar reporte</h2>
-          <span class="panel-hint">Descarga en PDF, Excel o CSV con los filtros activos y el alcance de tu rol</span>
-        </div>
-        <app-exportar-reporte
-          [startDate]="startDate()"
-          [endDate]="endDate()"
-          [categoria]="categoriaSeleccionada === 'TODAS' ? null : categoriaSeleccionada"
-        />
-      </section>
+      </header>
 
       @if (cargando()) {
         <div class="loader" role="status" aria-live="polite">
           <div class="spinner" aria-hidden="true"></div>
-          <span>Cargando métricas…</span>
+          <span>Cargando métricas de reportes...</span>
         </div>
       } @else if (error()) {
-        <div class="empty-state error-state" role="alert">
-          <h2>No pudimos cargar el dashboard</h2>
+        <div class="empty-state error-state">
+          <h3>Error al cargar datos</h3>
           <p>{{ error() }}</p>
-          <button type="button" class="btn-primary" (click)="cargarDatosDashboard()">Reintentar</button>
+          <button type="button" class="retry-btn" (click)="cargarDatosDashboard()">Reintentar</button>
         </div>
       } @else {
-        <section class="kpi-grid" aria-label="Indicadores del período">
-          <article class="kpi-card">
-            <span class="kpi-label">Ventas totales</span>
-            <strong class="kpi-value">{{ formatCurrency(overviewData()?.totalVentas ?? 0) }}</strong>
-            <span class="kpi-hint">COP · pedidos con pago confirmado</span>
-          </article>
-          <article class="kpi-card">
-            <span class="kpi-label">Pedidos</span>
-            <strong class="kpi-value">{{ formatNumber(overviewData()?.totalPedidos ?? 0) }}</strong>
-            <span class="kpi-hint">Órdenes con venta en el período</span>
-          </article>
-          <article class="kpi-card">
-            <span class="kpi-label">Unidades vendidas</span>
-            <strong class="kpi-value">{{ formatNumber(overviewData()?.productosVendidos ?? 0) }}</strong>
-            <span class="kpi-hint">{{ formatNumber(overviewData()?.stockBajo ?? 0) }} tallas con stock bajo</span>
-          </article>
-          <article class="kpi-card">
-            <span class="kpi-label">Ticket promedio</span>
-            <strong class="kpi-value">{{ formatCurrency(overviewData()?.ticketPromedio ?? 0) }}</strong>
-            <span class="kpi-hint">Valor medio por pedido</span>
-          </article>
-        </section>
-
-        <section class="charts-grid" aria-label="Gráficos del período">
-          <article class="card">
-            <header class="card-head">
-              <div>
-                <h2>{{ tituloVentas() }}</h2>
-                <p>{{ subtituloVentas() }}</p>
-              </div>
-            </header>
-            @if (hayVentasGrafico()) {
-              <div class="chart-wrapper"><canvas #ventasCanvas></canvas></div>
-            } @else {
-              <p class="empty-cell">Sin ventas registradas para este filtro.</p>
-            }
-          </article>
-
-          <article class="card">
-            <header class="card-head">
-              <div>
-                <h2>Demanda por talla</h2>
-                <p>Unidades vendidas por talla</p>
-              </div>
-            </header>
-            @if (demandaTalla().length) {
-              <div class="chart-wrapper"><canvas #demandaCanvas></canvas></div>
-            } @else {
-              <p class="empty-cell">Sin demanda registrada para este filtro.</p>
-            }
-          </article>
-        </section>
-
-        <section class="detail-grid">
-          <article class="card table-card" aria-labelledby="detalle-titulo">
-            <header class="card-head">
-              <div>
-                <h2 id="detalle-titulo">Prendas y tallas más pedidas</h2>
-                <p>Detalle del filtro aplicado</p>
-              </div>
-            </header>
-            <div class="table-scroll">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Prenda</th>
-                    <th scope="col">Talla</th>
-                    <th scope="col" class="num">Unidades</th>
-                    <th scope="col" class="num">Ventas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of demandaDetalle(); track $index) {
-                    <tr>
-                      <td>{{ item.prenda }}</td>
-                      <td><span class="size-chip">{{ item.talla }}</span></td>
-                      <td class="num">{{ formatNumber(item.unidades) }}</td>
-                      <td class="num">{{ formatCurrency(item.valor) }}</td>
-                    </tr>
-                  } @empty {
-                    <tr>
-                      <td colspan="4" class="empty-cell">Sin demanda registrada para este filtro.</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </article>
-
-          <div class="list-stack">
-            <article class="card" aria-labelledby="vendidos-titulo">
-              <header class="card-head">
-                <div>
-                  <h2 id="vendidos-titulo">Más vendidos</h2>
-                  <p>Unidades e ingresos en el período filtrado</p>
-                </div>
-              </header>
-              <ul class="product-list">
-                @for (item of productosPopulares(); track $index) {
-                  <li>
-                    <span class="product-name">{{ item.label }}</span>
-                    <span class="product-meta">{{ formatNumber(item.cantidad) }} uds · {{ formatCurrency(item.value) }}</span>
-                  </li>
-                } @empty {
-                  <li class="empty-cell">Sin ventas registradas.</li>
-                }
-              </ul>
+        <section class="reports-grid-layout">
+          <!-- KPIS (AMBOS ROLES): los datos ya vienen limitados por el backend según el token -->
+          <div class="kpi-grid">
+            <article class="kpi-card">
+              <span>Ventas totales</span>
+              <strong>{{ formatCurrency(resumen().totalVentas) }}</strong>
             </article>
 
-            <article class="card" aria-labelledby="solicitados-titulo">
-              <header class="card-head">
-                <div>
-                  <h2 id="solicitados-titulo">Más solicitados</h2>
-                  <p>Productos con más pedidos</p>
-                </div>
-              </header>
-              <ul class="product-list">
-                @for (item of masConsultados(); track $index) {
-                  <li>
-                    <span class="product-name">{{ item.label }}</span>
-                    <span class="product-meta">{{ formatNumber(item.cantidad) }} pedidos</span>
-                  </li>
-                } @empty {
-                  <li class="empty-cell">Sin pedidos registrados.</li>
-                }
-              </ul>
+            <article class="kpi-card">
+              <span>Unidades vendidas</span>
+              <strong>{{ formatUnits(resumen().productosVendidos) }}</strong>
             </article>
+
+            <article class="kpi-card">
+              <span>Ticket promedio</span>
+              <strong>{{ formatCurrency(resumen().ticketPromedio) }}</strong>
+            </article>
+
+            <article class="kpi-card">
+              <span>Pedidos</span>
+              <strong>{{ resumen().totalPedidos.toLocaleString('es-CO') }}</strong>
+            </article>
+
+            <article class="kpi-card">
+              <span>Inventario disponible</span>
+              <strong>{{ formatUnits(resumen().stockTotal) }}</strong>
+            </article>
+
+            <article class="kpi-card" [class.kpi-alerta]="resumen().stockBajo > 0">
+              <span>Tallas con stock bajo</span>
+              <strong>{{ resumen().stockBajo.toLocaleString('es-CO') }}</strong>
+            </article>
+
+            @if (resumen().margenBruto !== null) {
+              <article class="kpi-card">
+                <span>Margen bruto</span>
+                <strong>{{ formatCurrency(resumen().margenBruto ?? 0) }}</strong>
+              </article>
+            }
           </div>
+
+          @if (resumen().margenBruto === null) {
+            <p class="kpi-note">
+              El margen bruto no está disponible porque las prendas todavía no registran su costo.
+            </p>
+          }
+
+          @if (esVendedor()) {
+            <!-- VISTA DEL VENDEDOR: DEMANDA Y VENTAS DE SU TIENDA -->
+            <div class="sales-grid">
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Demanda por talla (unidades)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosTalla()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #sellerLineChartCanvas [class.oculto]="sinDatosTalla()"></canvas>
+                </div>
+              </article>
+
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Ventas por categoría (COP)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosCategorias()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #sellerBarChartCanvas [class.oculto]="sinDatosCategorias()"></canvas>
+                </div>
+              </article>
+            </div>
+          } @else {
+            <!-- VISTA DEL ADMINISTRADOR: LISTAS DE DEMANDA DE TODA LA PLATAFORMA -->
+            <div class="summary-grid">
+              <article class="metric-card blue-card">
+                <div class="card-header">
+                  <h3>Más consultados</h3>
+                </div>
+                <ul class="product-list">
+                  @for (item of mostViewedProducts(); track item.label) {
+                    <li>
+                      <span>{{ item.label }}</span>
+                      <strong>{{ formatMetric(item.cantidad, 'vistas') }}</strong>
+                    </li>
+                  }
+                  @if (mostViewedProducts().length === 0) {
+                    <li class="empty-list">Sin consultas en el período seleccionado</li>
+                  }
+                </ul>
+              </article>
+
+              <article class="metric-card green-card">
+                <div class="card-header">
+                  <h3>Más vendidos</h3>
+                </div>
+                <ul class="product-list">
+                  @for (item of bestSellerProducts(); track item.label) {
+                    <li>
+                      <span>{{ item.label }}</span>
+                      <strong>{{ formatMetric(item.cantidad, 'uds') }}</strong>
+                    </li>
+                  }
+                  @if (bestSellerProducts().length === 0) {
+                    <li class="empty-list">Sin ventas en el período seleccionado</li>
+                  }
+                </ul>
+              </article>
+
+              <article class="metric-card red-card">
+                <div class="card-header">
+                  <h3>Palabras más buscadas</h3>
+                </div>
+                <ul class="product-list">
+                  @for (item of topSearches(); track item.label) {
+                    <li>
+                      <span>{{ item.label }}</span>
+                      <strong>{{ formatMetric(item.cantidad, 'búsquedas') }}</strong>
+                    </li>
+                  }
+                  @if (topSearches().length === 0) {
+                    <li class="empty-list">Sin búsquedas en el período seleccionado</li>
+                  }
+                </ul>
+              </article>
+            </div>
+
+            <div class="sales-grid">
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Demanda por talla (unidades)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosTalla()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #adminLineChartCanvas [class.oculto]="sinDatosTalla()"></canvas>
+                </div>
+              </article>
+
+              <article class="chart-card">
+                <div class="chart-header">
+                  <h3>Ventas por categoría (COP)</h3>
+                </div>
+                <div class="chart-wrapper">
+                  @if (sinDatosCategorias()) {
+                    <p class="empty-chart">Sin ventas en el período seleccionado</p>
+                  }
+                  <canvas #adminBarChartCanvas [class.oculto]="sinDatosCategorias()"></canvas>
+                </div>
+              </article>
+            </div>
+          }
+        </section>
+        <section class="chart-card">
+          <div class="chart-header">
+            <h3>Exportar reporte</h3>
+          </div>
+          <p>Descarga en PDF, Excel o CSV con los filtros activos y el alcance de tu rol</p>
+          <app-exportar-reporte
+            [startDate]="startDate()"
+            [endDate]="endDate()"
+            [categoria]="categoriaSeleccionada === 'TODAS' ? null : categoriaSeleccionada"
+          />
         </section>
       }
-    </main>
+    </section>
   `,
   styles: [
     `
       :host {
         display: block;
-        --ls-radius: 14px;
-        --ls-gap: 1.25rem;
-        --ls-line: #e7e5e4;
-        --ls-ink: #14532d;
-        --ls-muted: #6b7280;
-        --ls-brand: #15803d;
-        --ls-brand-dark: #14532d;
       }
 
       .dashboard-shell {
-        box-sizing: border-box;
-        min-height: 100vh;
-        max-width: 1240px;
-        margin: 0 auto;
-        padding: 2rem 1.5rem 3rem;
         background: #fafaf9;
-        color: #1f2937;
+        padding: 2rem 1.75rem 2.5rem;
+        color: #14532d;
         font-family: var(--ls-font, 'Nunito', 'Segoe UI', sans-serif);
+        min-height: 100vh;
+        box-sizing: border-box;
       }
 
-      .page-head {
+      .dashboard-header {
         display: flex;
-        flex-wrap: wrap;
-        align-items: flex-end;
         justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: var(--ls-gap);
+        align-items: flex-end;
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+        padding: 1.2rem 1.5rem;
+        background: #ffffff;
+        border: 1px solid #e7e5e4;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+        flex-wrap: wrap;
       }
 
-      .eyebrow {
-        color: var(--ls-brand);
-        font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      .page-title h1 {
-        margin: 0.25rem 0 0.35rem;
-        color: var(--ls-ink);
-        font-size: clamp(1.7rem, 2.4vw, 2.3rem);
-        font-weight: 800;
-        letter-spacing: -0.03em;
+      .header-copy h2 {
+        margin: 0 0 0.25rem;
+        font-size: clamp(1.8rem, 2.2vw, 2.4rem);
         line-height: 1.1;
+        letter-spacing: -0.04em;
+        color: #14532d;
+        font-weight: 800;
       }
 
-      .page-title p {
+      .header-copy p {
         margin: 0;
-        color: var(--ls-muted);
+        color: #4b5563;
         font-size: 0.92rem;
       }
 
-      .btn-ghost,
-      .btn-secondary,
-      .btn-primary {
-        min-height: 42px;
-        border-radius: 10px;
-        padding: 0 1.1rem;
-        font: inherit;
-        font-size: 0.85rem;
-        font-weight: 700;
-        cursor: pointer;
-      }
-
-      .btn-ghost {
-        border: 1px solid var(--ls-line);
-        background: #fff;
-        color: var(--ls-ink);
-      }
-
-      .btn-secondary {
-        border: 1px solid var(--ls-brand);
-        background: #fff;
-        color: var(--ls-brand);
-      }
-
-      .btn-primary {
-        border: 1px solid var(--ls-brand);
-        background: var(--ls-brand);
-        color: #fff;
-      }
-
-      button:disabled {
-        cursor: not-allowed;
-        opacity: 0.55;
-      }
-
-      .panel,
-      .card,
-      .kpi-card,
-      .loader,
-      .empty-state {
-        background: #fff;
-        border: 1px solid var(--ls-line);
-        border-radius: var(--ls-radius);
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-      }
-
-      .panel {
-        padding: 1.25rem 1.5rem;
-        margin-bottom: var(--ls-gap);
-      }
-
-      .panel-head {
+      .header-filters {
         display: flex;
         flex-wrap: wrap;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+        justify-content: flex-end;
+        align-items: flex-end;
+        gap: 0.85rem;
       }
 
-      .panel-head h2,
-      .card-head h2 {
-        margin: 0;
-        color: var(--ls-ink);
-        font-size: 1rem;
-        font-weight: 800;
-      }
-
-      .panel-hint,
-      .card-head p {
-        margin: 0;
-        color: var(--ls-muted);
-        font-size: 0.8rem;
-      }
-
-      .filters-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(150px, 1fr)) minmax(100px, auto);
-        align-items: end;
-        gap: clamp(0.65rem, 1.1vw, 0.9rem);
-      }
-
-      .field {
+      .filter-field {
         display: flex;
-        min-width: 0;
         flex-direction: column;
         gap: 0.35rem;
+        min-width: 140px;
       }
 
-      .field > span {
-        color: var(--ls-muted);
-        font-size: 0.7rem;
-        font-weight: 800;
+      .date-field {
+        min-width: 140px;
+      }
+
+      .category-field {
+        min-width: 190px;
+      }
+
+      .filter-field span {
+        color: #6b7280;
+        font-size: 0.68rem;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+        font-weight: 800;
       }
 
-      .field select,
-      .field input {
-        box-sizing: border-box;
+      .filter-field select,
+      .filter-field input {
         width: 100%;
         height: 42px;
+        background: #ffffff;
         border: 1px solid #d6d3d1;
+        color: #14532d;
         border-radius: 10px;
-        background: #fff;
-        color: var(--ls-ink);
-        padding: 0 0.75rem;
+        padding: 0.5rem 0.75rem;
         font: inherit;
-        font-size: 0.86rem;
+        font-size: 0.85rem;
         font-weight: 600;
+        box-sizing: border-box;
       }
 
-      .field select:focus,
-      .field input:focus {
-        border-color: var(--ls-brand);
-        box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.14);
+      .filter-field select:focus,
+      .filter-field input:focus {
         outline: none;
+        border-color: #15803d;
+        box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
       }
 
-      .field-action {
-        justify-self: end;
+      .reports-grid-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
       }
 
-      .inline-error {
-        margin: 0.75rem 0 0;
-        color: #b91c1c;
-        font-size: 0.82rem;
-        font-weight: 600;
-      }
-
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
-        white-space: nowrap;
-      }
-
+      /* TARJETAS KPI DE VENDEDOR */
       .kpi-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: var(--ls-gap);
-        margin-bottom: var(--ls-gap);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.25rem;
       }
 
       .kpi-card {
+        background: #ffffff;
+        border: 1px solid #e7e5e4;
+        border-radius: 16px;
+        padding: 1.25rem;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
-        padding: 1.25rem;
+        gap: 0.5rem;
       }
 
-      .kpi-label {
-        color: var(--ls-muted);
-        font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-
-      .kpi-value {
-        color: var(--ls-ink);
-        font-size: clamp(1.35rem, 1.9vw, 1.7rem);
-        font-weight: 800;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .kpi-hint {
-        color: var(--ls-muted);
-        font-size: 0.78rem;
-      }
-
-      .charts-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--ls-gap);
-        margin-bottom: var(--ls-gap);
-      }
-
-      .detail-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-        align-items: start;
-        gap: var(--ls-gap);
-      }
-
-      .card {
-        padding: 1.25rem;
-      }
-
-      .card-head {
-        margin-bottom: 0.9rem;
-      }
-
-      .chart-wrapper {
-        position: relative;
-        width: 100%;
-        height: 260px;
-      }
-
-      .chart-wrapper canvas {
-        width: 100% !important;
-        height: 100% !important;
-      }
-
-      .table-scroll {
-        overflow-x: auto;
-      }
-
-      .data-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.85rem;
-      }
-
-      .data-table th,
-      .data-table td {
-        padding: 0.6rem 0.5rem;
-        border-bottom: 1px solid #f5f5f4;
-        text-align: left;
-        white-space: nowrap;
-      }
-
-      .data-table th {
-        color: var(--ls-muted);
-        font-size: 0.7rem;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-      }
-
-      .data-table td.num,
-      .data-table th.num {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .size-chip {
-        display: inline-block;
-        padding: 0.1rem 0.5rem;
-        border-radius: 999px;
-        background: #dcfce7;
-        color: var(--ls-brand-dark);
+      .kpi-card span {
+        color: #6b7280;
         font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .kpi-card strong {
+        color: #14532d;
+        font-size: clamp(1.4rem, 2vw, 1.8rem);
         font-weight: 800;
       }
 
-      .list-stack {
-        display: flex;
-        flex-direction: column;
-        gap: var(--ls-gap);
+      /* LISTAS RESUMEN DE ADMINISTRADOR */
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.25rem;
+      }
+
+      .sales-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 1.25rem;
+      }
+
+      .metric-card,
+      .chart-card {
+        background: #ffffff;
+        border: 1px solid #e7e5e4;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+      }
+
+      .metric-card {
+        padding: 1.2rem;
+      }
+
+      .chart-card {
+        padding: 1.2rem;
+        min-height: 320px;
+      }
+
+      .card-header,
+      .chart-header {
+        margin-bottom: 0.85rem;
+      }
+
+      .metric-card h3,
+      .chart-card h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        color: #14532d;
+        font-weight: 700;
       }
 
       .product-list {
-        display: flex;
-        flex-direction: column;
+        list-style: none;
         margin: 0;
         padding: 0;
-        list-style: none;
+        display: flex;
+        flex-direction: column;
       }
 
       .product-list li {
         display: flex;
-        align-items: baseline;
         justify-content: space-between;
-        gap: 0.75rem;
-        padding: 0.55rem 0;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.65rem 0;
         border-bottom: 1px solid #f5f5f4;
-        font-size: 0.85rem;
+        color: #1f2937;
+        font-size: 0.9rem;
       }
 
       .product-list li:last-child {
@@ -594,392 +475,385 @@ const COMPACTO_CO = new Intl.NumberFormat('es-CO', { notation: 'compact', maximu
         padding-bottom: 0;
       }
 
-      .product-name {
-        min-width: 0;
+      .product-list span {
         overflow: hidden;
-        color: #1f2937;
         text-overflow: ellipsis;
         white-space: nowrap;
+        max-width: 70%;
       }
 
-      .product-meta {
-        flex-shrink: 0;
-        color: var(--ls-muted);
-        font-size: 0.78rem;
-        font-variant-numeric: tabular-nums;
-      }
+      .blue-card strong { color: #2563eb; font-weight: 700; font-size: 0.88rem; }
+      .green-card strong { color: #166534; font-weight: 700; font-size: 0.88rem; }
+      .red-card strong { color: #dc2626; font-weight: 700; font-size: 0.88rem; }
 
-      .empty-cell {
-        padding: 1rem 0.5rem;
-        color: #9ca3af;
-        font-size: 0.85rem;
+      .empty-list {
+        color: #9ca3af !important;
         font-style: italic;
+        justify-content: center !important;
+      }
+
+      .chart-wrapper {
+        position: relative;
+        width: 100%;
+        height: 270px;
+      }
+
+      .chart-wrapper canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .chart-wrapper canvas.oculto {
+        display: none;
+      }
+
+      .empty-chart {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        color: #9ca3af;
+        font-style: italic;
+        text-align: center;
+      }
+
+      .kpi-alerta strong {
+        color: #b45309;
+      }
+
+      .kpi-note {
+        margin: -0.5rem 0 0;
+        color: #6b7280;
+        font-size: 0.82rem;
+      }
+
+      .retry-btn {
+        margin-top: 0.75rem;
+        padding: 0.55rem 1.2rem;
+        border: 1px solid #15803d;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #15803d;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .retry-btn:hover {
+        background: #f0fdf4;
+      }
+
+      .loader,
+      .empty-state {
+        background: #ffffff;
+        border: 1px solid #e7e5e4;
+        border-radius: 16px;
+        padding: 2rem;
+        color: #14532d;
         text-align: center;
       }
 
       .loader {
         display: flex;
-        align-items: center;
         justify-content: center;
+        align-items: center;
         gap: 0.85rem;
-        padding: 2.5rem;
-        color: var(--ls-ink);
       }
 
       .spinner {
         width: 20px;
         height: 20px;
-        border: 3px solid #d1fae5;
-        border-top-color: var(--ls-brand);
         border-radius: 50%;
+        border: 3px solid #d1fae5;
+        border-top-color: #15803d;
         animation: spin 0.8s linear infinite;
       }
 
       @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
+        to { transform: rotate(360deg); }
       }
 
-      .empty-state {
-        padding: 2rem;
-        text-align: center;
-      }
-
-      .empty-state h2 {
-        margin: 0 0 0.5rem;
-        color: var(--ls-ink);
-      }
-
-      .empty-state p {
-        margin: 0 0 1rem;
-        color: var(--ls-muted);
-      }
-
-      @media (max-width: 1024px) {
-        .filters-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+      @media (max-width: 900px) {
+        .dashboard-header {
+          flex-direction: column;
+          align-items: flex-start;
         }
 
-        .field-action {
-          justify-self: stretch;
-        }
-
-        .field-action .btn-secondary {
+        .header-filters {
+          justify-content: flex-start;
           width: 100%;
         }
 
-        .kpi-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .detail-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      @media (max-width: 760px) {
-        .dashboard-shell {
-          padding: 1.5rem 1rem 2.5rem;
-        }
-
-        .charts-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      @media (max-width: 520px) {
-        .filters-grid,
-        .kpi-grid {
+        .kpi-grid,
+        .summary-grid,
+        .sales-grid {
           grid-template-columns: 1fr;
         }
 
-        .panel {
-          padding: 1.1rem;
+        .filter-field {
+          flex: 1 1 130px;
         }
       }
     `,
   ],
 })
 export class DashboardAnalyticsPage implements OnInit, OnDestroy {
-  private readonly authService = inject(AuthService);
-  private readonly dashboardService = inject(DashboardAnalyticsService);
+  private readonly _authService = inject(AuthService);
+  private readonly _dashboardAnalyticsService = inject(DashboardAnalyticsService);
 
-  @ViewChild('ventasCanvas') ventasCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('demandaCanvas') demandaCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('sellerLineChartCanvas') sellerLineChartCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('sellerBarChartCanvas') sellerBarChartCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('adminLineChartCanvas') adminLineChartCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('adminBarChartCanvas') adminBarChartCanvas!: ElementRef<HTMLCanvasElement>;
 
-  readonly categorias = CATEGORIAS_DASHBOARD;
-
+  // Variables de Filtro
   periodoSeleccionado = '30_DIAS';
   fechaDesde = '';
   fechaHasta = '';
+  /** `TODAS` o el código del enum de categoría (`VESTIDOS`, ...): es lo que espera el backend. */
   categoriaSeleccionada = 'TODAS';
+  readonly opcionesCategorias = OPCIONES_CATEGORIAS;
 
-  readonly startDate = signal('');
-  readonly endDate = signal('');
+  // Signals de estado
+  startDate = signal('');
+  endDate = signal('');
 
-  readonly overviewData = signal<DashboardOverview | null>(null);
-  readonly masConsultados = signal<DashboardSerie[]>([]);
-  readonly cargando = signal(true);
-  readonly error = signal('');
-  readonly errorFechas = signal('');
-  readonly errorGraficos = signal('');
-  readonly esVendedor = signal(false);
+  overviewData = signal<DashboardOverview | null>(null);
 
-  readonly ventasCategoria = computed(() => this.overviewData()?.ventasPorCategoria ?? []);
-  readonly demandaTalla = computed(() => this.overviewData()?.demandaPorTalla ?? []);
-  readonly productosPopulares = computed(() => this.overviewData()?.productosPopulares ?? []);
-  readonly demandaDetalle = computed(() => this.overviewData()?.demandaDetalle ?? []);
+  /** Ceros (no cifras inventadas) mientras no hay respuesta; el template solo se pinta tras cargar. */
+  resumen = computed<DashboardOverview>(() => this.overviewData() ?? RESUMEN_VACIO);
+  mostViewedProducts = computed(() => (this.overviewData()?.productosMasConsultados ?? []).slice(0, 5));
+  bestSellerProducts = computed(() => (this.overviewData()?.productosPopulares ?? []).slice(0, 5));
+  topSearches = computed(() => (this.overviewData()?.busquedasMasFrecuentes ?? []).slice(0, 5));
+  sinDatosTalla = computed(() => !this.overviewData()?.demandaPorTalla?.length);
+  sinDatosCategorias = computed(() => !this.overviewData()?.ventasPorCategoria?.length);
 
-  readonly tituloVista = computed(() =>
-    this.esVendedor() ? 'Reportes de mi tienda' : 'Reportes administrativos',
+  cargando = signal(true);
+  error = signal('');
+  esVendedor = signal(true);
+
+  // Títulos dinámicos según el Rol
+  tituloVista = computed(() =>
+    this.esVendedor() ? 'Reportes del vendedor' : 'Reportes administrativos'
   );
-  readonly subtituloVista = computed(() =>
+
+  subtituloVista = computed(() =>
     this.esVendedor()
-      ? 'Ventas, demanda e inventario de tu tienda. Solo ves tu propia información.'
-      : 'Consolidado de la plataforma: ventas, demanda e inventario de todas las tiendas.',
+      ? 'Evolución de tu catálogo, pedidos y ventas de tu tienda.'
+      : 'Análisis general de la operación de la plataforma.'
   );
 
-  private ventasChart?: Chart;
-  private demandaChart?: Chart;
-
-  private readonly recarga$ = new Subject<void>();
+  private lineChart?: Chart<'line'>;
+  private barChart?: Chart<'bar'>;
+  private cargaEnCurso?: Subscription;
 
   constructor() {
-    this.inicializarFechas();
-
-    this.recarga$
-      .pipe(
-        tap(() => {
-          this.cargando.set(true);
-          this.error.set('');
-        }),
-        // switchMap cancela la petición anterior: solo cuenta el último filtro aplicado
-        switchMap(() => {
-          const categoria =
-            this.categoriaSeleccionada === 'TODAS' ? undefined : this.categoriaSeleccionada;
-          return forkJoin({
-            overview: this.dashboardService.consultar(this.startDate(), this.endDate(), categoria),
-            masConsultados: this.dashboardService.consultarTopMasConsultados(
-              this.startDate(), this.endDate(), categoria),
-          }).pipe(
-            catchError((err: unknown) => {
-              this.overviewData.set(null);
-              this.masConsultados.set([]);
-              this.error.set(this.mensajeError(err));
-              this.cargando.set(false);
-              return of(null);
-            }),
-          );
-        }),
-        takeUntilDestroyed(),
-      )
-      .subscribe((res) => {
-        if (!res) return;
-        this.overviewData.set(res.overview);
-        this.masConsultados.set(res.masConsultados);
-        this.cargando.set(false);
-      });
-
     effect(() => {
-      const overview = this.overviewData();
-      if (this.cargando() || !overview) return;
-      queueMicrotask(() => setTimeout(() => this.renderCharts(overview), 0));
+      // Lee el rol para repintar si el perfil llega después de los datos: los canvas dependen de él.
+      this.esVendedor();
+      if (!this.cargando()) {
+        const overview = this.overviewData();
+        const chartData = this.buildChartDataFromOverview(overview);
+        queueMicrotask(() =>
+          this.renderCharts(
+            chartData.lineLabels,
+            chartData.lineValues,
+            chartData.barLabels,
+            chartData.barValues
+          )
+        );
+      }
     });
   }
 
   ngOnInit(): void {
-    this.authService.perfil().subscribe({
-      next: (perfil) => this.esVendedor.set(perfil.rol === 'VENDEDOR'),
-      error: () => this.esVendedor.set(false),
+    // Se conoce el rol antes de pedir datos para cargar una sola vez; si el perfil falla se muestra la vista
+    // de vendedor, que es la más restrictiva (el backend limita los datos con el token de todos modos).
+    this._authService.perfil().subscribe({
+      next: (profile) => {
+        this.esVendedor.set(profile.rol === 'VENDEDOR');
+        this.onPeriodoChange();
+      },
+      error: () => {
+        this.esVendedor.set(true);
+        this.onPeriodoChange();
+      },
     });
-    this.cargarDatosDashboard();
   }
 
   ngOnDestroy(): void {
+    this.cargaEnCurso?.unsubscribe();
     this.destruirGraficos();
   }
 
+  // --- SINCRONIZACIÓN DE FECHAS ---
   onPeriodoChange(): void {
-    this.inicializarFechas();
-    this.errorFechas.set('');
+    const hoy = new Date();
+
+    switch (this.periodoSeleccionado) {
+      case '30_DIAS':
+        this.fechaHasta = this.formatISODate(hoy);
+        this.fechaDesde = this.formatISODate(this.addDays(hoy, -30));
+        break;
+      case 'MES_ACTUAL':
+        this.fechaHasta = this.formatISODate(hoy);
+        this.fechaDesde = this.formatISODate(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+        break;
+      case '6_MESES':
+        this.fechaHasta = this.formatISODate(hoy);
+        this.fechaDesde = this.formatISODate(this.addMonths(hoy, -6));
+        break;
+    }
+
+    this.startDate.set(this.fechaDesde);
+    this.endDate.set(this.fechaHasta);
     this.cargarDatosDashboard();
   }
 
   onFechaManualChange(): void {
-    if (!this.fechaDesde || !this.fechaHasta) {
-      this.errorFechas.set('Selecciona ambas fechas para aplicar el filtro.');
-      return;
+    if (this.fechaDesde && this.fechaHasta && this.fechaDesde <= this.fechaHasta) {
+      this.startDate.set(this.fechaDesde);
+      this.endDate.set(this.fechaHasta);
+      this.cargarDatosDashboard();
     }
-    if (this.fechaDesde > this.fechaHasta) {
-      this.errorFechas.set('La fecha inicial no puede ser posterior a la final.');
-      return;
-    }
-    this.errorFechas.set('');
-    this.startDate.set(this.fechaDesde);
-    this.endDate.set(this.fechaHasta);
+  }
+
+  onCategoriaChange(): void {
     this.cargarDatosDashboard();
   }
 
-  limpiarFiltros(): void {
-    this.periodoSeleccionado = '30_DIAS';
-    this.categoriaSeleccionada = 'TODAS';
-    this.errorFechas.set('');
-    this.inicializarFechas();
-    this.cargarDatosDashboard();
-  }
-
+  /** Una sola petición: el resumen ya trae los tops y las búsquedas. Cancela la anterior si sigue en vuelo. */
   cargarDatosDashboard(): void {
-    if (!this.startDate() || !this.endDate()) return;
-    this.recarga$.next();
+    this.cargaEnCurso?.unsubscribe();
+    this.cargando.set(true);
+    this.error.set('');
+
+    const categoria = this.categoriaSeleccionada === 'TODAS' ? undefined : this.categoriaSeleccionada;
+
+    this.cargaEnCurso = this._dashboardAnalyticsService
+      .consultar(this.startDate(), this.endDate(), categoria)
+      .subscribe({
+        next: (overview) => {
+          this.overviewData.set(overview);
+          this.cargando.set(false);
+        },
+        error: (err: unknown) => {
+          this.overviewData.set(null);
+          this.error.set(this.mensajeError(err));
+          this.cargando.set(false);
+        },
+      });
   }
 
-  onCategoriaChange(valor: string): void {
-    this.categoriaSeleccionada = valor;
-    this.cargarDatosDashboard();
+  private mensajeError(err: unknown): string {
+    const status = err instanceof HttpErrorResponse ? err.status : 0;
+    if (status === 401 || status === 403) {
+      return 'No tienes permiso para ver este reporte. Inicia sesión de nuevo.';
+    }
+    if (status === 400) {
+      return 'Los filtros seleccionados no son válidos. Revisa las fechas y la categoría.';
+    }
+    return 'No pudimos cargar las métricas. Revisa tu conexión e inténtalo de nuevo.';
+  }
+
+  formatMetric(value: number, unit: string): string {
+    return `${value.toLocaleString('es-CO')} ${unit}`;
   }
 
   formatCurrency(value: number): string {
-    return `COP $ ${VALOR_COP.format(value ?? 0)}`;
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      maximumFractionDigits: 0,
+    }).format(value);
   }
 
-  formatNumber(value: number): string {
-    return NUMERO_CO.format(value ?? 0);
+  formatUnits(value: number): string {
+    return `${value.toLocaleString('es-CO')} uds`;
   }
 
-  tituloVentas(): string {
-    return this.categoriaSeleccionada === 'TODAS' ? 'Ventas por categoría' : 'Ventas por prenda';
+  /** Código de categoría (`VESTIDOS`) a etiqueta legible (`Vestidos`); si no se conoce, el mismo código. */
+  etiquetaCategoria(codigo: string): string {
+    return (ETIQUETAS_CATEGORIAS as Record<string, string>)[codigo] ?? codigo;
   }
 
-  subtituloVentas(): string {
-    return this.categoriaSeleccionada === 'TODAS'
-      ? 'Distribución de los ingresos del período'
-      : `Ingresos por prenda en ${this.etiquetaCategoria(this.categoriaSeleccionada)}`;
+  /** Solo datos reales: sin datos las listas quedan vacías y el template muestra el estado vacío. */
+  private buildChartDataFromOverview(overview: DashboardOverview | null) {
+    const tallas = overview?.demandaPorTalla ?? [];
+    const categorias = overview?.ventasPorCategoria ?? [];
+
+    return {
+      lineLabels: tallas.map((i) => i.label),
+      lineValues: tallas.map((i) => i.cantidad), // unidades por talla
+      barLabels: categorias.map((i) => this.etiquetaCategoria(i.label)),
+      barValues: categorias.map((i) => i.value), // monto vendido en COP
+    };
   }
 
-  hayVentasGrafico(): boolean {
-    return this.ventasParaGrafico().length > 0;
-  }
-
-  private ventasParaGrafico(): DashboardSerie[] {
-    return this.categoriaSeleccionada === 'TODAS' ? this.ventasCategoria() : this.productosPopulares();
-  }
-
-  private inicializarFechas(): void {
-    const hoy = new Date();
-    let desde: Date;
-
-    switch (this.periodoSeleccionado) {
-      case 'MES_ACTUAL':
-        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-        break;
-      case '6_MESES':
-        desde = new Date(hoy.getFullYear(), hoy.getMonth() - 6, hoy.getDate());
-        break;
-      default:
-        desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 30);
-        break;
-    }
-
-    this.fechaDesde = this.formatISODate(desde);
-    this.fechaHasta = this.formatISODate(hoy);
-    this.startDate.set(this.fechaDesde);
-    this.endDate.set(this.fechaHasta);
-  }
-
-  private renderCharts(overview: DashboardOverview): void {
+  private renderCharts(
+    lineLabels: string[],
+    lineValues: number[],
+    barLabels: string[],
+    barValues: number[]
+  ): void {
     this.destruirGraficos();
-    this.errorGraficos.set('');
 
-    const ventas =
-      this.categoriaSeleccionada === 'TODAS' ? overview.ventasPorCategoria ?? [] : overview.productosPopulares ?? [];
-    const demanda = overview.demandaPorTalla ?? [];
+    const lineCanvas = this.esVendedor() ? this.sellerLineChartCanvas : this.adminLineChartCanvas;
+    const barCanvas = this.esVendedor() ? this.sellerBarChartCanvas : this.adminBarChartCanvas;
 
-    try {
-      this.crearGraficoVentas(ventas);
-      this.crearGraficoDemanda(demanda);
-    } catch (error: unknown) {
-      this.destruirGraficos();
-      this.errorGraficos.set(
-        error instanceof Error && error.message
-          ? `No se pudieron mostrar los gráficos: ${error.message}`
-          : 'No se pudieron mostrar los gráficos. Los datos detallados siguen disponibles.',
-      );
-    }
-  }
+    if (!lineCanvas || !barCanvas) return;
 
-  private crearGraficoVentas(ventas: DashboardSerie[]): void {
-    if (!this.ventasCanvas?.nativeElement || !ventas.length) {
-      return;
-    }
+    const lineCtx = lineCanvas.nativeElement.getContext('2d');
+    const barCtx = barCanvas.nativeElement.getContext('2d');
 
-    this.ventasChart = new Chart(this.ventasCanvas.nativeElement, {
-      type: 'bar',
+    if (!lineCtx || !barCtx) return;
+
+    this.lineChart = new Chart(lineCtx, {
+      type: 'line',
       data: {
-        labels: ventas.map((item) =>
-          this.categoriaSeleccionada === 'TODAS' ? this.etiquetaCategoria(item.label) : item.label,
-        ),
+        labels: lineLabels,
         datasets: [
           {
-            data: ventas.map((item) => item.value),
-            backgroundColor: '#15803d',
-            borderRadius: 8,
-            maxBarThickness: 48,
+            data: lineValues,
+            borderColor: '#15803d',
+            backgroundColor: 'rgba(34, 197, 94, 0.15)',
+            borderWidth: 3,
+            pointRadius: 4,
+            pointBackgroundColor: '#15803d',
+            pointBorderColor: '#ffffff',
+            fill: true,
+            tension: 0.38,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => this.formatCurrency(Number(ctx.raw)),
-            },
-          },
-        },
+        plugins: { legend: { display: false } },
         scales: {
           x: { grid: { display: false }, ticks: { color: '#6b7280' } },
-          y: {
-            beginAtZero: true,
-            grid: { color: '#f5f5f4' },
-            ticks: { color: '#6b7280', callback: (value) => this.formatCompact(Number(value)) },
-          },
+          y: { beginAtZero: true, grid: { color: '#f5f5f4' }, ticks: { color: '#6b7280' } },
         },
       },
     });
-  }
 
-  private crearGraficoDemanda(demanda: DashboardSerie[]): void {
-    if (!this.demandaCanvas?.nativeElement || !demanda.length) {
-      return;
-    }
-
-    this.demandaChart = new Chart(this.demandaCanvas.nativeElement, {
+    this.barChart = new Chart(barCtx, {
       type: 'bar',
       data: {
-        labels: demanda.map((item) => `Talla ${item.label}`),
+        labels: barLabels,
         datasets: [
           {
-            data: demanda.map((item) => item.cantidad),
-            backgroundColor: '#0ea5e9',
+            data: barValues,
+            backgroundColor: '#15803d',
             borderRadius: 8,
-            maxBarThickness: 48,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${this.formatNumber(Number(ctx.raw))} unidades`,
-            },
-          },
-        },
+        plugins: { legend: { display: false } },
         scales: {
           x: { grid: { display: false }, ticks: { color: '#6b7280' } },
           y: { beginAtZero: true, grid: { color: '#f5f5f4' }, ticks: { color: '#6b7280' } },
@@ -989,23 +863,14 @@ export class DashboardAnalyticsPage implements OnInit, OnDestroy {
   }
 
   private destruirGraficos(): void {
-    this.ventasChart?.destroy();
-    this.ventasChart = undefined;
-    this.demandaChart?.destroy();
-    this.demandaChart = undefined;
-  }
-
-  private etiquetaCategoria(valor: string): string {
-    return this.categorias.find((cat) => cat.valor === valor)?.etiqueta ?? valor;
-  }
-
-  private formatCompact(value: number): string {
-    return COMPACTO_CO.format(value);
-  }
-
-  private mensajeError(err: unknown): string {
-    if (err instanceof Error && err.message) return err.message;
-    return 'No pudimos cargar los indicadores. Inténtalo de nuevo.';
+    if (this.lineChart) {
+      this.lineChart.destroy();
+      this.lineChart = undefined;
+    }
+    if (this.barChart) {
+      this.barChart.destroy();
+      this.barChart = undefined;
+    }
   }
 
   private formatISODate(date: Date): string {
@@ -1015,4 +880,15 @@ export class DashboardAnalyticsPage implements OnInit, OnDestroy {
     return `${year}-${month}-${day}`;
   }
 
+  private addDays(date: Date, days: number): Date {
+    const res = new Date(date);
+    res.setDate(res.getDate() + days);
+    return res;
+  }
+
+  private addMonths(date: Date, months: number): Date {
+    const res = new Date(date);
+    res.setMonth(res.getMonth() + months);
+    return res;
+  }
 }

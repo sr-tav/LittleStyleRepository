@@ -4,7 +4,9 @@ import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
 import co.edu.uniquindio.littlestyle.modules.reportes.dto.BusquedaResumenFila;
@@ -49,7 +51,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ConstructorDatosReporte {
 
-    static final int MAX_FILAS = 5_000;
+    static final int MAX_FILAS = DashboardAnalyticsService.MAX_FILAS_REPORTE;
     private static final Locale CO = Locale.of("es", "CO");
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy", CO);
     private static final DateTimeFormatter FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", CO);
@@ -71,9 +73,15 @@ public class ConstructorDatosReporte {
 
     private ReporteDatos ventas(SolicitudReporte s, CategoriaPrenda categoria, Long vendedorId, AuthenticatedUser u) {
         Periodo p = Periodo.de(s.startDate(), s.endDate());
-        DashboardOverviewResponse r = dashboard.obtenerResumen(p.desde(), p.hasta(), categoria, vendedorId);
+        String cat = categoria == null ? null : categoria.name();
+        DashboardOverviewResponse r = dashboard.obtenerResumen(p.desde(), p.hasta(), cat, vendedorId);
         List<DashboardVentasDiaResponse> diarias =
-                dashboard.obtenerVentasPorDia(p.desde(), p.hasta(), categoria, vendedorId);
+                dashboard.obtenerVentasPorDia(p.desde(), p.hasta(), cat, vendedorId);
+        List<DashboardSerieResponse> productos = dashboard.obtenerProductosVendidosCompleto(
+                p.desde(), p.hasta(), cat, vendedorId);
+        if (productos.size() > MAX_FILAS) {
+            throw limiteSuperado("reporte de ventas");
+        }
 
         List<Map<String, ?>> filas = new ArrayList<>();
         List<List<Object>> crudas = new ArrayList<>();
@@ -106,11 +114,11 @@ public class ConstructorDatosReporte {
                     "Ventas por día", d.fecha(), d.pedidos(), d.total());
         }
 
-        r.productosPopulares().forEach(x -> agregar(filas, crudas,
+        productos.forEach(x -> agregar(filas, crudas,
                 fila("Ventas por prenda", x.label(), entero(x.cantidad()), moneda(x.value())),
                 "Ventas por prenda", x.label(), x.cantidad(), x.value()));
 
-        if (r.productosPopulares().isEmpty()) {
+        if (productos.isEmpty()) {
             agregar(filas, crudas,
                     fila("Resumen", "Sin ventas registradas en el período", "", ""),
                     "Resumen", "Sin ventas registradas en el período", null, null);
@@ -131,11 +139,12 @@ public class ConstructorDatosReporte {
 
     private ReporteDatos demanda(SolicitudReporte s, CategoriaPrenda categoria, Long vendedorId, AuthenticatedUser u) {
         Periodo p = Periodo.de(s.startDate(), s.endDate());
-        DashboardOverviewResponse r = dashboard.obtenerResumen(p.desde(), p.hasta(), categoria, vendedorId);
+        List<DashboardDemandaDetalleResponse> detalle = dashboard.obtenerDemandaDetalle(
+                p.desde(), p.hasta(), categoria == null ? null : categoria.name(), vendedorId);
 
         List<Map<String, ?>> filas = new ArrayList<>();
         List<List<Object>> crudas = new ArrayList<>();
-        r.demandaDetalle().forEach(x -> {
+        detalle.forEach(x -> {
             Map<String, Object> m = new HashMap<>();
             m.put("seccion", "Demanda por prenda y talla");
             m.put("etiqueta", txt(x.prenda()));
@@ -150,7 +159,7 @@ public class ConstructorDatosReporte {
             agregar(filas, crudas, m, x.prenda(), x.talla(), x.unidades(), x.valor());
         });
 
-        if (r.demandaDetalle().isEmpty()) {
+        if (detalle.isEmpty()) {
             agregar(filas, crudas,
                     fila("Resumen", "Sin actividad registrada en el período", "", ""),
                     "Resumen", "Sin actividad registrada en el período", null, null);

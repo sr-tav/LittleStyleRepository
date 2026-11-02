@@ -1,8 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.controller;
 
-import co.edu.uniquindio.littlestyle.config.security.AlcanceDatos;
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.config.security.AlcanceDatos;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
@@ -19,8 +18,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Controller REST del dashboard analítico de operación. El alcance sale del token: el administrador
- * ve toda la plataforma y el vendedor solo su tienda.
+ * Controller REST del dashboard analítico de operación.
+ *
+ * <p>El alcance de los datos sale del token, nunca de un parámetro: un vendedor solo ve su negocio y el
+ * administrador ve la plataforma completa (RNF-15).
  */
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -35,8 +36,8 @@ public class DashboardController {
             @AuthenticationPrincipal AuthenticatedUser usuario,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) CategoriaPrenda categoria) {
-        return dashboardAnalyticsService.obtenerResumen(startDate, endDate, categoria, AlcanceDatos.vendedorId(usuario));
+            @RequestParam(required = false) String categoria) {
+        return dashboardAnalyticsService.obtenerResumen(startDate, endDate, categoria, alcance(usuario));
     }
 
     @GetMapping("/top-viewed-products")
@@ -45,9 +46,9 @@ public class DashboardController {
             @AuthenticationPrincipal AuthenticatedUser usuario,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) CategoriaPrenda categoria) {
-        return dashboardAnalyticsService.obtenerProductosMasConsultados(
-                startDate, endDate, categoria, AlcanceDatos.vendedorId(usuario));
+            @RequestParam(required = false) String categoria) {
+        return dashboardAnalyticsService.obtenerProductosMasConsultados(startDate, endDate, categoria,
+                alcance(usuario));
     }
 
     @GetMapping("/top-sold-products")
@@ -56,8 +57,16 @@ public class DashboardController {
             @AuthenticationPrincipal AuthenticatedUser usuario,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) CategoriaPrenda categoria) {
-        return dashboardAnalyticsService.obtenerProductosMasVendidos(
-                startDate, endDate, categoria, AlcanceDatos.vendedorId(usuario));
+            @RequestParam(required = false) String categoria) {
+        return dashboardAnalyticsService.obtenerProductosMasVendidos(startDate, endDate, categoria,
+                alcance(usuario));
+    }
+
+    /**
+     * Resuelve el mismo alcance seguro que los reportes: vendedor propio, global para administradores,
+     * y rechazo para clientes o usuarios no autenticados.
+     */
+    static Long alcance(AuthenticatedUser usuario) {
+        return AlcanceDatos.vendedorId(usuario);
     }
 }

@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -79,19 +80,14 @@ class DashboardControllerIntegrationTest {
         assertThat(((Number) JsonPath.read(global, "$.totalPedidos")).intValue()).isEqualTo(2);
         assertThat(((Number) JsonPath.read(global, "$.productosVendidos")).intValue()).isEqualTo(4);
         assertThat((java.util.List<?>) JsonPath.read(global, "$.ventasPorCategoria")).hasSize(2);
-        assertThat((java.util.List<?>) JsonPath.read(global, "$.demandaDetalle")).hasSize(2);
+        assertThat(JsonPath.<Map<String, Object>>read(global, "$")).doesNotContainKey("demandaDetalle");
 
         assertThat(((Number) JsonPath.read(vestidosGlobal, "$.totalVentas")).doubleValue()).isEqualTo(65800d);
         assertThat((java.util.List<?>) JsonPath.read(vestidosGlobal, "$.ventasPorCategoria")).hasSize(1);
         assertThat((String) JsonPath.read(vestidosGlobal, "$.ventasPorCategoria[0].label")).isEqualTo("VESTIDOS");
-        assertThat((java.util.List<?>) JsonPath.read(vestidosGlobal, "$.demandaDetalle")).hasSize(1);
-        assertThat((String) JsonPath.read(vestidosGlobal, "$.demandaDetalle[0].prenda")).isEqualTo("Vestido Floral");
 
         assertThat(((Number) JsonPath.read(propio, "$.totalVentas")).doubleValue()).isEqualTo(65800d);
-        assertThat((java.util.List<?>) JsonPath.read(propio, "$.demandaDetalle")).hasSize(1);
-        assertThat((String) JsonPath.read(propio, "$.demandaDetalle[0].prenda")).isEqualTo("Pantalón Jogger Azul");
         assertThat(((Number) JsonPath.read(vestidosPropios, "$.totalVentas")).doubleValue()).isZero();
-        assertThat((java.util.List<?>) JsonPath.read(vestidosPropios, "$.demandaDetalle")).isEmpty();
     }
 
     private String consultar(String token, LocalDate desde, LocalDate hasta, String categoria) throws Exception {

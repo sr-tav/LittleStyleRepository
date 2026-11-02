@@ -4,18 +4,14 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 
+/**
+ * Serie de un gráfico. `value` es el monto en COP en las series de ventas y `cantidad` son las unidades,
+ * vistas o búsquedas según la serie (en las de conteo ambos coinciden).
+ */
 export type DashboardSerie = {
   label: string;
   value: number;
   cantidad: number;
-};
-
-/** Detalle prenda + talla de la demanda: qué modelos y tallas se piden más. */
-export type DashboardDemandaDetalle = {
-  prenda: string;
-  talla: string;
-  unidades: number;
-  valor: number;
 };
 
 export type DashboardOverview = {
@@ -23,31 +19,22 @@ export type DashboardOverview = {
   totalPedidos: number;
   ticketPromedio: number;
   productosVendidos: number;
-  margenBruto: number;
+  /** `null` mientras las prendas no registren su costo: sin costo no hay margen que calcular. */
+  margenBruto: number | null;
   stockTotal: number;
   stockBajo: number;
+  /** El `label` es el código de la categoría (p. ej. `VESTIDOS`), no su etiqueta en español. */
   ventasPorCategoria: DashboardSerie[];
   demandaPorTalla: DashboardSerie[];
   productosPopulares: DashboardSerie[];
+  productosMasConsultados: DashboardSerie[];
   busquedasMasFrecuentes: DashboardSerie[];
-  demandaDetalle: DashboardDemandaDetalle[];
 };
 
-/** Categorías reales del catálogo (enum {@code CategoriaPrenda} del backend). */
-export const CATEGORIAS_DASHBOARD: { valor: string; etiqueta: string }[] = [
-  { valor: 'VESTIDOS', etiqueta: 'Vestidos' },
-  { valor: 'PANTALONES', etiqueta: 'Pantalones' },
-  { valor: 'SHORTS', etiqueta: 'Shorts' },
-  { valor: 'FALDAS', etiqueta: 'Faldas' },
-  { valor: 'CAMISAS', etiqueta: 'Camisas' },
-  { valor: 'CAMISETAS', etiqueta: 'Camisetas' },
-  { valor: 'BUZOS', etiqueta: 'Buzos' },
-  { valor: 'CHAQUETAS', etiqueta: 'Chaquetas' },
-  { valor: 'CONJUNTOS', etiqueta: 'Conjuntos' },
-  { valor: 'PIJAMAS', etiqueta: 'Pijamas' },
-  { valor: 'ACCESORIOS', etiqueta: 'Accesorios' },
-];
-
+/**
+ * Cliente del dashboard analítico. El alcance (vendedor propio o plataforma completa) lo decide el backend
+ * con el token; el cliente nunca envía un vendedor. `categoria` es el código del enum (`VESTIDOS`, ...).
+ */
 @Injectable({ providedIn: 'root' })
 export class DashboardAnalyticsService {
   private readonly http = inject(HttpClient);

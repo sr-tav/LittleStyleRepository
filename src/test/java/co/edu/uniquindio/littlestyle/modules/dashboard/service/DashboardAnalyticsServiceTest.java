@@ -1,13 +1,19 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.DashboardAnalyticsRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,133 +22,189 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+/** Reglas del servicio con el repositorio mockeado: nada de datos demo y alcance por vendedor/categoría. */
+@ExtendWith(MockitoExtension.class)
 class DashboardAnalyticsServiceTest {
 
-    @Mock
-    private DashboardAnalyticsRepository dashboardAnalyticsRepository;
+    private static final LocalDate DESDE = LocalDate.of(2026, 10, 1);
+    private static final LocalDate HASTA = LocalDate.of(2026, 10, 30);
+    private static final LocalDateTime INICIO = DESDE.atStartOfDay();
+    private static final LocalDateTime FIN = HASTA.plusDays(1).atStartOfDay();
 
-    private DashboardAnalyticsService dashboardAnalyticsService;
+    @Mock
+    private DashboardAnalyticsRepository repository;
+
+    private DashboardAnalyticsService service;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        dashboardAnalyticsService = new DashboardAnalyticsService(dashboardAnalyticsRepository);
+        service = new DashboardAnalyticsService(repository);
+        // Listas vacías por defecto; cada test sobreescribe lo que le interesa.
+        lenient().when(repository.ventasPorCategoria(any(), any(), any(), any(), any())).thenReturn(List.of());
+        lenient().when(repository.demandaPorTalla(any(), any(), any(), any(), any())).thenReturn(List.of());
+        lenient().when(repository.productosMasVendidos(any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(List.of());
+        lenient().when(repository.productosMasConsultados(any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(List.of());
+        lenient().when(repository.busquedasMasFrecuentes(any(), any(), any(Pageable.class))).thenReturn(List.of());
     }
 
     @Test
-    void resumenCalculaTotalesYSeriesDeDashboard() {
-        LocalDate startDate = LocalDate.of(2026, 10, 1);
-        LocalDate endDate = LocalDate.of(2026, 10, 30);
-        LocalDateTime inicio = startDate.atStartOfDay();
-        LocalDateTime fin = endDate.plusDays(1).atStartOfDay();
+    void resumenCalculaTotalesInventarioYSeriesReales() {
+        when(repository.sumTotalVentas(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.BUZOS)).thenReturn(new BigDecimal("350000.00"));
+        when(repository.countPedidos(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.BUZOS)).thenReturn(42L);
+        when(repository.sumUnidadesVendidas(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.BUZOS)).thenReturn(55L);
+        when(repository.sumStockTotal(EstadoPrenda.ACTIVA, 7L, CategoriaPrenda.BUZOS)).thenReturn(120L);
+        when(repository.countStockBajo(EstadoPrenda.ACTIVA, 7L, CategoriaPrenda.BUZOS)).thenReturn(4L);
+        when(repository.productosMasVendidos(eq(INICIO), eq(FIN), any(), eq(7L), eq(CategoriaPrenda.BUZOS),
+                any(Pageable.class)))
+                .thenReturn(List.of(new DashboardSerieResponse("Buzo azul", new BigDecimal("120000"), 12L)));
+        when(repository.busquedasMasFrecuentes(eq(INICIO), eq(FIN), any(Pageable.class)))
+                .thenReturn(List.of(new DashboardSerieResponse("buzo", 9L)));
 
-        when(dashboardAnalyticsRepository.sumTotalVentas(inicio, fin, "VESTIDOS", 7L))
-                .thenReturn(new BigDecimal("350000.00"));
-        when(dashboardAnalyticsRepository.countPedidos(inicio, fin, "VESTIDOS", 7L)).thenReturn(42L);
-        when(dashboardAnalyticsRepository.sumUnidadesVendidas(inicio, fin, "VESTIDOS", 7L))
-                .thenReturn(new BigDecimal("120"));
-        when(dashboardAnalyticsRepository.ventasPorCategoria(inicio, fin, "VESTIDOS", 7L)).thenReturn(List.of(
-                new Object[] { "VESTIDOS", new BigDecimal("180000.00"), new BigDecimal("18") },
-                new Object[] { "CONJUNTOS", new BigDecimal("170000.00"), new BigDecimal("24") }
-        ));
-        when(dashboardAnalyticsRepository.demandaPorTalla(inicio, fin, "VESTIDOS", 7L)).thenReturn(List.of(
-                new Object[] { "M", new BigDecimal("18"), new BigDecimal("90000.00") },
-                new Object[] { "L", new BigDecimal("16"), new BigDecimal("110000.00") }
-        ));
-        when(dashboardAnalyticsRepository.demandaPorPrendaTalla(inicio, fin, "VESTIDOS", 7L)).thenReturn(List.<Object[]>of(
-                new Object[] { "Vestido floral", "4T", new BigDecimal("12"), new BigDecimal("240000.00") }
-        ));
-        when(dashboardAnalyticsRepository.productosMasVendidos(inicio, fin, "VESTIDOS", 7L)).thenReturn(List.of(
-                new Object[] { "Buzo azul", new BigDecimal("12"), new BigDecimal("120000.00") },
-                new Object[] { "Camiseta eco", new BigDecimal("10"), new BigDecimal("90000.00") }
-        ));
-        when(dashboardAnalyticsRepository.stockTotal("VESTIDOS", 7L)).thenReturn(new BigDecimal("300"));
-        when(dashboardAnalyticsRepository.tallasBajoStock("VESTIDOS", 7L)).thenReturn(4L);
+        DashboardOverviewResponse r = service.obtenerResumen(DESDE, HASTA, "buzos", 7L);
 
-        DashboardOverviewResponse response = dashboardAnalyticsService.obtenerResumen(
-                startDate, endDate, CategoriaPrenda.VESTIDOS, 7L);
-
-        assertThat(response.totalVentas()).isEqualByComparingTo("350000.00");
-        assertThat(response.totalPedidos()).isEqualTo(42L);
-        assertThat(response.ticketPromedio()).isEqualByComparingTo("8333.33");
-        assertThat(response.productosVendidos()).isEqualTo(120L);
-        assertThat(response.stockTotal()).isEqualTo(300L);
-        assertThat(response.stockBajo()).isEqualTo(4L);
-        assertThat(response.ventasPorCategoria()).hasSize(2);
-        assertThat(response.ventasPorCategoria().get(0).cantidad()).isEqualTo(18L);
-        assertThat(response.demandaPorTalla().get(0).label()).isEqualTo("M");
-        assertThat(response.demandaPorTalla().get(0).cantidad()).isEqualTo(18L);
-        assertThat(response.demandaDetalle()).singleElement().satisfies(detalle -> {
-            assertThat(detalle.prenda()).isEqualTo("Vestido floral");
-            assertThat(detalle.talla()).isEqualTo("4T");
-            assertThat(detalle.unidades()).isEqualTo(12L);
-        });
-        assertThat(response.busquedasMasFrecuentes()).isEmpty();
+        assertThat(r.totalVentas()).isEqualByComparingTo("350000.00");
+        assertThat(r.totalPedidos()).isEqualTo(42L);
+        assertThat(r.ticketPromedio()).isEqualByComparingTo("8333.33");
+        assertThat(r.productosVendidos()).isEqualTo(55L);
+        assertThat(r.stockTotal()).isEqualTo(120L);
+        assertThat(r.stockBajo()).isEqualTo(4L);
+        assertThat(r.margenBruto()).isNull();
+        assertThat(r.productosPopulares()).extracting(DashboardSerieResponse::label).containsExactly("Buzo azul");
+        assertThat(r.busquedasMasFrecuentes()).extracting(DashboardSerieResponse::label).containsExactly("buzo");
     }
 
     @Test
-    void sinVentasDevuelveCerosYListasVaciasSinDatosDeEjemplo() {
-        LocalDate startDate = LocalDate.of(2026, 10, 1);
-        LocalDate endDate = LocalDate.of(2026, 10, 30);
-        LocalDateTime inicio = startDate.atStartOfDay();
-        LocalDateTime fin = endDate.plusDays(1).atStartOfDay();
+    void sinVentasNiPedidosDevuelveCerosYNoCifrasInventadas() {
+        // Los sum de una consulta vacía llegan como null desde la base.
+        when(repository.sumTotalVentas(any(), any(), any(), any(), any())).thenReturn(null);
+        when(repository.sumUnidadesVendidas(any(), any(), any(), any(), any())).thenReturn(null);
+        when(repository.sumStockTotal(any(), any(), any())).thenReturn(null);
 
-        when(dashboardAnalyticsRepository.sumTotalVentas(inicio, fin, null, null)).thenReturn(BigDecimal.ZERO);
-        when(dashboardAnalyticsRepository.countPedidos(inicio, fin, null, null)).thenReturn(0L);
-        when(dashboardAnalyticsRepository.sumUnidadesVendidas(inicio, fin, null, null)).thenReturn(BigDecimal.ZERO);
-        when(dashboardAnalyticsRepository.ventasPorCategoria(inicio, fin, null, null)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.demandaPorTalla(inicio, fin, null, null)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.demandaPorPrendaTalla(inicio, fin, null, null)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.productosMasVendidos(inicio, fin, null, null)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.stockTotal(null, null)).thenReturn(BigDecimal.ZERO);
-        when(dashboardAnalyticsRepository.tallasBajoStock(null, null)).thenReturn(0L);
+        DashboardOverviewResponse r = service.obtenerResumen(DESDE, HASTA, null, 7L);
 
-        DashboardOverviewResponse response = dashboardAnalyticsService.obtenerResumen(startDate, endDate, null, null);
-
-        assertThat(response.totalVentas()).isEqualByComparingTo("0");
-        assertThat(response.productosVendidos()).isZero();
-        assertThat(response.ventasPorCategoria()).isEmpty();
-        assertThat(response.demandaDetalle()).isEmpty();
-        assertThat(response.productosPopulares()).isEmpty();
+        assertThat(r.totalVentas()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(r.totalPedidos()).isZero();
+        assertThat(r.ticketPromedio()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(r.productosVendidos()).isZero();
+        assertThat(r.stockTotal()).isZero();
+        assertThat(r.stockBajo()).isZero();
+        assertThat(r.ventasPorCategoria()).isEmpty();
+        assertThat(r.productosPopulares()).isEmpty();
+        assertThat(r.productosMasConsultados()).isEmpty();
+        assertThat(r.busquedasMasFrecuentes()).isEmpty();
     }
 
     @Test
-    void elAlcanceYLaCategoriaSeEmpujanALasConsultas() {
-        LocalDate startDate = LocalDate.of(2026, 10, 1);
-        LocalDate endDate = LocalDate.of(2026, 10, 30);
-        LocalDateTime inicio = startDate.atStartOfDay();
-        LocalDateTime fin = endDate.plusDays(1).atStartOfDay();
+    void unaFallaDeBaseDeDatosSubeEnLugarDeMostrarDatosFalsos() {
+        when(repository.sumTotalVentas(any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("BD caída"));
 
-        when(dashboardAnalyticsRepository.sumTotalVentas(inicio, fin, null, 7L)).thenReturn(BigDecimal.ZERO);
-        when(dashboardAnalyticsRepository.countPedidos(inicio, fin, null, 7L)).thenReturn(0L);
-        when(dashboardAnalyticsRepository.sumUnidadesVendidas(inicio, fin, null, 7L)).thenReturn(BigDecimal.ZERO);
-        when(dashboardAnalyticsRepository.ventasPorCategoria(inicio, fin, null, 7L)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.demandaPorTalla(inicio, fin, null, 7L)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.demandaPorPrendaTalla(inicio, fin, null, 7L)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.productosMasVendidos(inicio, fin, null, 7L)).thenReturn(List.of());
-        when(dashboardAnalyticsRepository.stockTotal(null, 7L)).thenReturn(BigDecimal.ZERO);
-        when(dashboardAnalyticsRepository.tallasBajoStock(null, 7L)).thenReturn(0L);
+        assertThatThrownBy(() -> service.obtenerResumen(DESDE, HASTA, null, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("BD caída");
+    }
 
-        dashboardAnalyticsService.obtenerResumen(startDate, endDate, null, 7L);
-        dashboardAnalyticsService.obtenerProductosMasConsultados(startDate, endDate, null, 7L);
-        dashboardAnalyticsService.obtenerProductosMasVendidos(startDate, endDate, null, 7L);
+    @Test
+    void sinVendedorSeConsultaAlcanceGlobal() {
+        service.obtenerResumen(DESDE, HASTA, null, null);
 
-        verify(dashboardAnalyticsRepository).sumTotalVentas(inicio, fin, null, 7L);
-        verify(dashboardAnalyticsRepository).productosMasConsultados(inicio, fin, null, 7L);
-        verify(dashboardAnalyticsRepository, atLeastOnce()).productosMasVendidos(inicio, fin, null, 7L);
+        verify(repository).sumTotalVentas(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, null, null);
+    }
+
+    @Test
+    void lasVentasContabilizanTodoPedidoPagadoYNoLosPendientesNiCancelados() {
+        assertThat(DashboardAnalyticsService.ESTADOS_VENTA).containsExactlyInAnyOrder(
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido.PAGADO,
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido.REGISTRADO,
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido.EN_PREPARACION,
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido.PARCIALMENTE_ENVIADO,
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido.ENVIADO);
+    }
+
+    @Test
+    void categoriaInvalidaLanza400SinConsultarLaBase() {
+        assertThatThrownBy(() -> service.obtenerResumen(DESDE, HASTA, "Zapatos", 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("categoría");
+        verifyNoInteractions(repository);
     }
 
     @Test
     void fechaInicialPosteriorALaFinalLanzaExcepcion() {
-        LocalDate startDate = LocalDate.of(2026, 10, 31);
-        LocalDate endDate = LocalDate.of(2026, 10, 30);
-
-        assertThatThrownBy(() -> dashboardAnalyticsService.obtenerResumen(startDate, endDate, null, null))
+        assertThatThrownBy(() -> service.obtenerResumen(HASTA, DESDE, null, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("fecha inicial");
+    }
+
+    @Test
+    void masConsultadosUsaVistasYRespetaVendedorYCategoria() {
+        when(repository.productosMasConsultados(eq(INICIO), eq(FIN), eq(3L), eq(CategoriaPrenda.VESTIDOS),
+                any(Pageable.class)))
+                .thenReturn(List.of(new DashboardSerieResponse("Vestido Rosa", 8L)));
+
+        List<DashboardSerieResponse> r = service.obtenerProductosMasConsultados(DESDE, HASTA, "VESTIDOS", 3L);
+
+        assertThat(r).hasSize(1);
+        assertThat(r.get(0).cantidad()).isEqualTo(8L);
+        assertThat(r.get(0).value()).isEqualByComparingTo("8");
+    }
+
+    @Test
+    void masVendidosRespetaVendedorYCategoria() {
+        service.obtenerProductosMasVendidos(DESDE, HASTA, null, 3L);
+
+        verify(repository).productosMasVendidos(eq(INICIO), eq(FIN), eq(DashboardAnalyticsService.ESTADOS_VENTA),
+                eq(3L), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void ventasPorDiaRespetaRangoVendedorCategoriaYEstados() {
+        List<DashboardVentasDiaResponse> ventas = List.of(
+                new DashboardVentasDiaResponse(DESDE, 2, new BigDecimal("125000")));
+        when(repository.ventasPorDia(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS)).thenReturn(ventas);
+
+        assertThat(service.obtenerVentasPorDia(DESDE, HASTA, "vestidos", 7L)).isEqualTo(ventas);
+        verify(repository).ventasPorDia(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS);
+    }
+
+    @Test
+    void demandaDetalleRespetaRangoVendedorCategoriaYEstados() {
+        List<DashboardDemandaDetalleResponse> detalle = List.of(
+                new DashboardDemandaDetalleResponse("Vestido floral", "4T", 12L, new BigDecimal("240000")));
+        when(repository.demandaDetalle(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS)).thenReturn(detalle);
+
+        assertThat(service.obtenerDemandaDetalle(DESDE, HASTA, "vestidos", 7L)).isEqualTo(detalle);
+        verify(repository).demandaDetalle(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS);
+    }
+
+    @Test
+    void productosVendidosCompletosSolicitaLimiteDeReporteMasUno() {
+        when(repository.productosMasVendidosCompleto(eq(INICIO), eq(FIN),
+                eq(DashboardAnalyticsService.ESTADOS_VENTA), eq(7L), eq(CategoriaPrenda.VESTIDOS),
+                any(Pageable.class))).thenReturn(List.of());
+
+        service.obtenerProductosVendidosCompleto(DESDE, HASTA, "vestidos", 7L);
+
+        verify(repository).productosMasVendidosCompleto(eq(INICIO), eq(FIN),
+                eq(DashboardAnalyticsService.ESTADOS_VENTA), eq(7L), eq(CategoriaPrenda.VESTIDOS),
+                org.mockito.ArgumentMatchers.argThat(pageable ->
+                        pageable.getPageSize() == DashboardAnalyticsService.MAX_FILAS_REPORTE + 1));
     }
 }

@@ -46,7 +46,7 @@ La fábrica vive en `src/main/java/co/edu/uniquindio/littlestyle/modules/reporte
 
 | Reporte | Fuente | Contenido |
 |---|---|---|
-| `VENTAS` | `DashboardAnalyticsService.obtenerResumen` + `obtenerVentasPorDia` | Indicadores (ventas, pedidos, ticket), serie diaria con nivel de barra, ventas por prenda y totales como parámetros. |
+| `VENTAS` | `DashboardAnalyticsService.obtenerResumen` + `obtenerVentasPorDia` + `obtenerProductosVendidosCompleto` | Indicadores (ventas, pedidos, ticket), serie diaria con nivel de barra, todas las prendas vendidas (hasta `MAX_FILAS + 1` para detectar exceso) y totales como parámetros. |
 | `DEMANDA` | `DashboardAnalyticsService.obtenerResumen` | Unidades y valor por prenda y talla. No confundir con búsquedas: aquí se mide lo vendido. |
 | `INVENTARIO` | `ReporteInventarioRepository` | Foto actual de prendas activas: prenda, tienda, categoría, talla, stock, mínimo y nivel. Ignora las fechas. |
 | `BUSQUEDAS` | `ReporteBusquedaRepository` | Término, número de búsquedas, búsquedas sin resultados y última fecha; totales como parámetros. |
@@ -143,12 +143,28 @@ El reporte de búsquedas necesita una fuente que antes no existía. Se creó la 
 al registrar no puede romper la búsqueda del cliente. `CatalogoClienteService.explorar` lo invoca
 también cuando el resultado es vacío, porque esa es la señal de demanda insatisfecha más valiosa.
 
+El reporte US-16 usa solo `busqueda_catalogo` como fuente de `BUSQUEDAS`; no mezcla resultados
+de `busquedas`. US-15 conserva `busquedas` para las métricas del dashboard: `TrackingAnalyticsService`
+descarta bots, eventos anónimos y repeticiones del mismo usuario/término dentro de 30 minutos, y
+almacena el término normalizado. En cambio, `busqueda_catalogo` registra también eventos anónimos,
+no filtra `User-Agent` ni deduplica y conserva categoría, resultados y término original para el
+reporte. Son dos mediciones con fines y poblaciones distintas; no se deben sumar ni comparar como
+si fueran una misma serie. `CatalogoClienteService` produce un registro en cada tabla para que cada
+función conserve su definición; cada reporte consulta solo su fuente, sin duplicar filas dentro de
+la tabla ni agregar resultados de la otra.
+
+La retención diaria de `RetencionAnalyticsService` elimina también las filas de `busqueda_catalogo`
+anteriores al mismo límite de `app.analytics.retencion-meses` aplicado a `busquedas` y
+`producto_vistas`.
+
 ## 7. Límite de filas
 
 `MAX_FILAS = 5 000`.
 
-- Ventas/demanda/búsquedas: se valida al construir las filas.
-- Búsquedas e inventario: se cuenta primero y se lee con `Pageable` de `MAX_FILAS + 1`, de modo que
+- Demanda: se valida al construir las filas.
+- Ventas e inventario consultan con `Pageable` de `MAX_FILAS + 1`; ambos rechazan el reporte si hay
+  más de 5 000 resultados.
+- Búsquedas se cuentan primero y se leen con `Pageable` de `MAX_FILAS + 1`, de modo que
   un crecimiento concurrente entre el conteo y la lectura también se rechaza.
 - Al superar el límite se responde `422` con un mensaje que invita a filtrar por categoría o
   período. Así se protege la memoria del servidor y el tiempo de respuesta.

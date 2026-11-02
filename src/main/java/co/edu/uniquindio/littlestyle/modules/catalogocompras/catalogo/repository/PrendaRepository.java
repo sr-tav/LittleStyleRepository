@@ -150,6 +150,9 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
             """)
     Optional<Prenda> findByIdAndEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
 
+    /** Si la prenda pertenece a ese vendedor; el dashboard lo usa para no contar las vistas del propio dueño. */
+    boolean existsByIdAndVendedorId(Long id, Long vendedorId);
+
     /**
      * Paso 2 de la paginación en dos pasos: trae las tallas de la página ya
      * calculada. La composición e imágenes quedan con {@code @BatchSize}

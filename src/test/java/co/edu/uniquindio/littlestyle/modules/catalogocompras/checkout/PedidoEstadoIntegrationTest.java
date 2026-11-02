@@ -150,7 +150,9 @@ class PedidoEstadoIntegrationTest {
         assertThat(resumen.totalVentas()).isGreaterThanOrEqualTo(new BigDecimal("65800"));
         assertThat(resumen.totalPedidos()).isGreaterThanOrEqualTo(1);
         assertThat(resumen.productosVendidos()).isGreaterThanOrEqualTo(2);
-        assertThat(resumen.demandaDetalle()).anySatisfy(detalle -> {
+        var demanda = dashboardAnalyticsService.obtenerDemandaDetalle(
+                LocalDate.now().minusDays(1), LocalDate.now().plusDays(1), null, null);
+        assertThat(demanda).anySatisfy(detalle -> {
             assertThat(detalle.prenda()).isEqualTo("Pantalón Jogger Azul");
             assertThat(detalle.talla()).isEqualTo("4");
             assertThat(detalle.unidades()).isEqualTo(2);

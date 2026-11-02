@@ -13,7 +13,7 @@ Los filtros principales se encuentran en la parte superior del panel:
 
 - Fecha inicial (`startDate`)
 - Fecha final (`endDate`)
-- Categoría (`categoria`)
+- Categoría (`categoria`): lista tomada del catálogo real; filtra ventas, inventario y rankings
 
 ### Cómo usarlo
 
@@ -22,8 +22,6 @@ Los filtros principales se encuentran en la parte superior del panel:
 3. Opcionalmente, filtra por categoría.
 4. El sistema recarga los indicadores automáticamente.
 
-Al elegir una categoría, las ventas se desglosan por prenda y la demanda por talla y por combinación de prenda/talla queda limitada a esa categoría. La misma lectura se aplica en el panel del vendedor dentro de su propia tienda.
-
 ## 3. Panel del administrador
 
 ### Indicadores principales
@@ -31,15 +29,13 @@ Al elegir una categoría, las ventas se desglosan por prenda y la demanda por ta
 - Ventas totales en el periodo.
 - Número de pedidos procesados.
 - Ticket promedio.
-- Ingresos del negocio.
 - Stock total y alertas de inventario.
 
 ### Gráficas disponibles
 
 - Ventas por categoría
 - Demanda por talla
-- Productos más vendidos
-- Principales búsquedas
+- Más consultados (vistas reales de la ficha), más vendidos y palabras más buscadas
 
 ### Recomendación operativa
 
@@ -52,10 +48,9 @@ Al elegir una categoría, las ventas se desglosan por prenda y la demanda por ta
 ### Indicadores principales
 
 - Ventas del vendedor.
-- Productos más vendidos de su negocio.
-- Tallas con mayor demanda.
-- Inventario crítico.
-- Búsquedas relevantes para su catálogo.
+- Ventas, unidades, ticket promedio y pedidos de su negocio (nunca de otras tiendas).
+- Inventario disponible y tallas con stock bajo (según el mínimo configurado en cada talla).
+- Demanda por talla y ventas por categoría.
 
 ### Recomendación operativa
 
@@ -107,15 +102,6 @@ Cuando no hay datos en el rango elegido, el sistema indica:
 - sin stock bajo en la categoría filtrada.
 
 Esto evita confusiones y facilita la acción del usuario.
-
-## 9. Exportación de reportes PDF
-
-Selecciona el tipo de reporte y usa el botón de descarga o impresión. Ventas y demanda aplican el período y la categoría visibles en los filtros; inventario presenta el corte actual.
-
-- El administrador obtiene el consolidado de toda la plataforma.
-- El vendedor obtiene únicamente la información de su tienda; el alcance se determina con su sesión.
-- Ventas incluye indicadores y detalle por categoría y prenda. Demanda incluye unidades e ingresos por talla y por prenda/talla. Inventario incluye stock, mínimo y nivel por prenda y talla.
-- Los importes se expresan explícitamente en pesos colombianos, por ejemplo `COP $ 12.000`.
 
 ## 9. Trazabilidad de uso por subtarea 
 
