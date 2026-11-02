@@ -22,6 +22,7 @@ import {
 } from '../../services/dashboard-analytics.service';
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ExportarReporte } from '../../../reportes/components/exportar-reporte';
 import {
   ETIQUETAS_CATEGORIAS,
   OPCIONES_CATEGORIAS,
@@ -47,7 +48,7 @@ const RESUMEN_VACIO: DashboardOverview = {
 @Component({
   selector: 'app-dashboard-analytics',
   standalone: true,
-  imports: [CommonModule, Navbar, FormsModule],
+  imports: [CommonModule, Navbar, FormsModule, ExportarReporte],
   template: `
     <app-navbar />
     <section class="dashboard-shell">
@@ -257,6 +258,17 @@ const RESUMEN_VACIO: DashboardOverview = {
               </article>
             </div>
           }
+        </section>
+        <section class="chart-card">
+          <div class="chart-header">
+            <h3>Exportar reporte</h3>
+          </div>
+          <p>Descarga en PDF, Excel o CSV con los filtros activos y el alcance de tu rol</p>
+          <app-exportar-reporte
+            [startDate]="startDate()"
+            [endDate]="endDate()"
+            [categoria]="categoriaSeleccionada === 'TODAS' ? null : categoriaSeleccionada"
+          />
         </section>
       }
     </section>

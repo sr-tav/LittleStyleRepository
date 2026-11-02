@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.admin.service;
 
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.admin.dto.CrearIncidenciaRequest;
+import co.edu.uniquindio.littlestyle.modules.admin.model.EstadoIncidencia;
 import co.edu.uniquindio.littlestyle.modules.admin.model.Incidencia;
 import co.edu.uniquindio.littlestyle.modules.admin.model.TipoIncidencia;
 import co.edu.uniquindio.littlestyle.modules.admin.model.TipoReferenciaIncidencia;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,6 +99,41 @@ class IncidenciaServiceTest {
         verify(incidenciaRepository).save(incidencia.capture());
         assertThat(incidencia.getValue().getReferenciaId()).isEqualTo(44L);
         assertThat(incidencia.getValue().getReferenciaTipo()).isEqualTo(TipoReferenciaIncidencia.PRENDA);
+    }
+
+    @Test
+    void tasaResolucionSinIncidenciasCerradasNoReportaCero() {
+        LocalDateTime hasta = LocalDateTime.now();
+        LocalDateTime desde = hasta.minusDays(30);
+        when(incidenciaRepository.findByEstadoAndFechaResolucionBetween(EstadoIncidencia.RESUELTA, desde, hasta))
+                .thenReturn(List.of());
+        when(incidenciaRepository.findByEstadoAndFechaResolucionBetween(EstadoIncidencia.RECHAZADA, desde, hasta))
+                .thenReturn(List.of());
+
+        assertThat(servicio.tasaResolucion(desde, hasta)).isNull();
+    }
+
+    @Test
+    void tasaResolucionCuentaLasResueltasEnMenosDe24HorasSobreLasCerradas() {
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime desde = ahora.minusDays(30);
+        Incidencia rapida = cerrada(EstadoIncidencia.RESUELTA, ahora.minusHours(20), ahora.minusHours(4));
+        Incidencia lenta = cerrada(EstadoIncidencia.RESUELTA, ahora.minusHours(50), ahora.minusHours(2));
+        Incidencia rechazada = cerrada(EstadoIncidencia.RECHAZADA, ahora.minusHours(10), ahora.minusHours(1));
+        when(incidenciaRepository.findByEstadoAndFechaResolucionBetween(EstadoIncidencia.RESUELTA, desde, ahora))
+                .thenReturn(List.of(rapida, lenta));
+        when(incidenciaRepository.findByEstadoAndFechaResolucionBetween(EstadoIncidencia.RECHAZADA, desde, ahora))
+                .thenReturn(List.of(rechazada));
+
+        assertThat(servicio.tasaResolucion(desde, ahora)).isEqualTo(33.3);
+    }
+
+    private static Incidencia cerrada(EstadoIncidencia estado, LocalDateTime creacion, LocalDateTime resolucion) {
+        return Incidencia.builder()
+                .estado(estado)
+                .fechaCreacion(creacion)
+                .fechaResolucion(resolucion)
+                .build();
     }
 
     private static void autenticar(Long id, Rol rol) {

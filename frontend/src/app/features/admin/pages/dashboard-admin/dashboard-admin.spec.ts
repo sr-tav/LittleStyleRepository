@@ -47,6 +47,22 @@ describe('DashboardAdmin (US-14)', () => {
     for (const ruta of ['/admin/usuarios', '/admin/moderacion', '/admin/auditoria', '/admin/incidencias']) {
       expect(el.querySelector<HTMLAnchorElement>(`a[href="${ruta}"]`)).not.toBeNull();
     }
+    expect(el.querySelector<HTMLAnchorElement>('.kpi-card[href="/admin/usuarios"]')).not.toBeNull();
+    expect(el.querySelector<HTMLAnchorElement>('.kpi-card[href="/admin/moderacion"]')).not.toBeNull();
+    expect(el.querySelector<HTMLAnchorElement>('.kpi-card[href="/admin/incidencias"]:last-of-type')).not.toBeNull();
+    expect(el.querySelector('.home-tile-moderacion h2')?.textContent?.trim()).toBe('6 pendientes de revisión');
+  });
+
+  it('no reporta 0 % cuando no hay incidencias cerradas en la ventana', () => {
+    respuesta = { ...respuesta!, tasaResolucionPorcentaje: null };
+    const fixture = TestBed.createComponent(DashboardAdmin);
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    const tarjetaTasa = Array.from(el.querySelectorAll<HTMLAnchorElement>('.kpi-card'))
+      .find((a) => a.textContent?.includes('Tasa de resolución'));
+    expect(tarjetaTasa?.textContent).toContain('Sin incidencias cerradas en 30 días');
+    expect(tarjetaTasa?.textContent).not.toContain('null%');
   });
 
   it('muestra un error amable y permite reintentar la carga', () => {

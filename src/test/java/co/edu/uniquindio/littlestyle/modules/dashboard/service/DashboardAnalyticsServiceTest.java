@@ -2,8 +2,10 @@ package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.DashboardAnalyticsRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -166,5 +168,43 @@ class DashboardAnalyticsServiceTest {
 
         verify(repository).productosMasVendidos(eq(INICIO), eq(FIN), eq(DashboardAnalyticsService.ESTADOS_VENTA),
                 eq(3L), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void ventasPorDiaRespetaRangoVendedorCategoriaYEstados() {
+        List<DashboardVentasDiaResponse> ventas = List.of(
+                new DashboardVentasDiaResponse(DESDE, 2, new BigDecimal("125000")));
+        when(repository.ventasPorDia(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS)).thenReturn(ventas);
+
+        assertThat(service.obtenerVentasPorDia(DESDE, HASTA, "vestidos", 7L)).isEqualTo(ventas);
+        verify(repository).ventasPorDia(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS);
+    }
+
+    @Test
+    void demandaDetalleRespetaRangoVendedorCategoriaYEstados() {
+        List<DashboardDemandaDetalleResponse> detalle = List.of(
+                new DashboardDemandaDetalleResponse("Vestido floral", "4T", 12L, new BigDecimal("240000")));
+        when(repository.demandaDetalle(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS)).thenReturn(detalle);
+
+        assertThat(service.obtenerDemandaDetalle(DESDE, HASTA, "vestidos", 7L)).isEqualTo(detalle);
+        verify(repository).demandaDetalle(INICIO, FIN, DashboardAnalyticsService.ESTADOS_VENTA, 7L,
+                CategoriaPrenda.VESTIDOS);
+    }
+
+    @Test
+    void productosVendidosCompletosSolicitaLimiteDeReporteMasUno() {
+        when(repository.productosMasVendidosCompleto(eq(INICIO), eq(FIN),
+                eq(DashboardAnalyticsService.ESTADOS_VENTA), eq(7L), eq(CategoriaPrenda.VESTIDOS),
+                any(Pageable.class))).thenReturn(List.of());
+
+        service.obtenerProductosVendidosCompleto(DESDE, HASTA, "vestidos", 7L);
+
+        verify(repository).productosMasVendidosCompleto(eq(INICIO), eq(FIN),
+                eq(DashboardAnalyticsService.ESTADOS_VENTA), eq(7L), eq(CategoriaPrenda.VESTIDOS),
+                org.mockito.ArgumentMatchers.argThat(pageable ->
+                        pageable.getPageSize() == DashboardAnalyticsService.MAX_FILAS_REPORTE + 1));
     }
 }

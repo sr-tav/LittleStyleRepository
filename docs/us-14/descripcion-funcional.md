@@ -137,6 +137,13 @@ cliente o vendedor.
 Las respuestas paginadas siguen `PaginaResponse`: `contenido`, `pagina`, `tamano`,
 `totalElementos`, `totalPaginas`.
 
+En `/api/admin/resumen`, `prendasPublicadas` cuenta las prendas `ACTIVA` cuya moderación
+no es `DESACTIVADA`: incluye `SIN_REVISAR` y la moderación nula previa a US-14, igual que
+la regla de visibilidad del catálogo, y no exige vendedor activo porque mide el estado de
+publicación. `tasaResolucionPorcentaje` (RNF-17) es el porcentaje de incidencias cerradas
+en los últimos 30 días resueltas en menos de 24 horas; si no hubo incidencias cerradas en
+la ventana devuelve `null` y la UI muestra «—» en lugar de un 0 % sin evidencia.
+
 ### Ejemplos
 
 Suspender una cuenta:

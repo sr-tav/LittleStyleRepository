@@ -45,6 +45,9 @@ class CatalogoClienteServiceTest {
     private co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.PerfilBiometricoPort perfiles;
     @Mock
     private co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.MotorRecomendacionService motor;
+    // Registro asíncrono de términos: se verifica, no se ejecuta.
+    @Mock
+    private RegistradorBusquedaCatalogo registradorBusquedas;
 
     @InjectMocks
     private CatalogoClienteService service;
@@ -260,5 +263,32 @@ class CatalogoClienteServiceTest {
                 null, null, 0, 12, "novedades"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    // US-16: la búsqueda se registra aunque no tenga resultados, porque esa es la señal de
+    // demanda insatisfecha que alimenta el reporte de búsquedas.
+    @Test
+    void registraLaBusquedaAunqueNoHayaResultados() {
+        when(prendaRepository.buscarIdsVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.explorar("  Vestido azul  ", "VESTIDOS", null, null, null, null, null, null, 0, 12, "novedades");
+
+        verify(registradorBusquedas).registrar("Vestido azul",
+                co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda.VESTIDOS,
+                0L, null);
+    }
+
+    // Sin término de búsqueda no hay nada que registrar: navegar la vitrina no es una búsqueda.
+    @Test
+    void navegarSinTextoNoRegistraBusquedas() {
+        when(prendaRepository.buscarIdsVitrina(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.explorar(null, null, null, null, null, null, null, null, 0, 12, "novedades");
+
+        verifyNoInteractions(registradorBusquedas);
     }
 }

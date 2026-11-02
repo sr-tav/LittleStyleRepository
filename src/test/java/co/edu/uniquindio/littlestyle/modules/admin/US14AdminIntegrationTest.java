@@ -77,6 +77,7 @@ class US14AdminIntegrationTest {
         String sufijo = UUID.randomUUID().toString();
         Usuario admin = crearAdmin("admin-" + sufijo + "@correo.com");
         String tokenAdmin = token(admin);
+        int publicadasAntes = leerPrendasPublicadas(tokenAdmin);
         String tokenCliente = registrar("cliente-" + sufijo + "@correo.com", "CLIENTE", null);
         String tokenVendedorSuspendido = registrar("vendedor-suspendido-" + sufijo + "@correo.com",
                 "VENDEDOR", "Tienda suspendida");
@@ -188,6 +189,7 @@ class US14AdminIntegrationTest {
         mockMvc.perform(get("/api/admin/resumen").header("Authorization", tokenAdmin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prendasSinRevisar").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)))
+                .andExpect(jsonPath("$.prendasPublicadas").value(publicadasAntes + 2))
                 .andExpect(jsonPath("$.incidenciasAbiertas").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
 
         assertThat(registroAuditoriaRepository.findAllByOrderByIdAsc())
@@ -274,6 +276,17 @@ class US14AdminIntegrationTest {
                 .andExpect(jsonPath("$.estadoModeracion").value("SIN_REVISAR"))
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.id");
+    }
+
+    /**
+     * Lee el KPI de prendas publicadas. La prueba lo captura antes de crear sus prendas para no depender
+     * de los datos que otros tests hayan dejado en el contexto H2 compartido.
+     */
+    private int leerPrendasPublicadas(String token) throws Exception {
+        String cuerpo = mockMvc.perform(get("/api/admin/resumen").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(cuerpo, "$.prendasPublicadas");
     }
 
     private Usuario crearAdmin(String email) {

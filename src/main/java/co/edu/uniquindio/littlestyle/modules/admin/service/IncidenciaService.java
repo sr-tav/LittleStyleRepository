@@ -256,18 +256,19 @@ public class IncidenciaService {
 
     /**
      * Metrica RNF-17: porcentaje de incidencias cerradas en la ventana [desde, hasta] que se resolvieron
-     * en menos de 24 horas desde su creacion. Sin incidencias cerradas devuelve 0.0; el conteo va por
-     * fechaResolucion, de modo que una ventana vacia no rompe.
+     * en menos de 24 horas desde su creacion. Sin incidencias cerradas devuelve {@code null} porque no
+     * hay evidencia para afirmar un 0 %; el conteo va por fechaResolucion, de modo que una ventana
+     * vacia no rompe.
      */
     @Transactional(readOnly = true)
-    public double tasaResolucion(LocalDateTime desde, LocalDateTime hasta) {
+    public Double tasaResolucion(LocalDateTime desde, LocalDateTime hasta) {
         List<Incidencia> resueltas = incidenciaRepository
                 .findByEstadoAndFechaResolucionBetween(EstadoIncidencia.RESUELTA, desde, hasta);
         List<Incidencia> rechazadas = incidenciaRepository
                 .findByEstadoAndFechaResolucionBetween(EstadoIncidencia.RECHAZADA, desde, hasta);
         long total = resueltas.size() + rechazadas.size();
         if (total == 0) {
-            return 0.0;
+            return null;
         }
         long dentroDe24h = resueltas.stream()  // el RNF exige resoluciones de menos de 24 horas
                 .filter(i -> Duration.between(i.getFechaCreacion(), i.getFechaResolucion())

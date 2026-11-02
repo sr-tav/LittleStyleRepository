@@ -3,8 +3,10 @@ package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.DashboardAnalyticsRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +46,7 @@ public class DashboardAnalyticsService {
             EstadoPedido.ENVIADO);
 
     static final int TAMANO_TOP = 10;
+    public static final int MAX_FILAS_REPORTE = 5_000;
     private static final int DIAS_POR_DEFECTO = 30;
 
     private final DashboardAnalyticsRepository repository;
@@ -79,6 +82,22 @@ public class DashboardAnalyticsService {
     }
 
     @Transactional(readOnly = true)
+    public List<DashboardVentasDiaResponse> obtenerVentasPorDia(LocalDate startDate, LocalDate endDate,
+                                                                String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.ventasPorDia(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DashboardDemandaDetalleResponse> obtenerDemandaDetalle(LocalDate startDate, LocalDate endDate,
+                                                                       String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.demandaDetalle(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria));
+    }
+
+    @Transactional(readOnly = true)
     public List<DashboardSerieResponse> obtenerProductosMasConsultados(LocalDate startDate, LocalDate endDate,
                                                                        String categoria, Long vendedorId) {
         Rango rango = Rango.de(startDate, endDate);
@@ -92,6 +111,14 @@ public class DashboardAnalyticsService {
         Rango rango = Rango.de(startDate, endDate);
         return repository.productosMasVendidos(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
                 parsearCategoria(categoria), top());
+    }
+
+    @Transactional(readOnly = true)
+    public List<DashboardSerieResponse> obtenerProductosVendidosCompleto(LocalDate startDate, LocalDate endDate,
+                                                                         String categoria, Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return repository.productosMasVendidosCompleto(rango.inicio, rango.fin, ESTADOS_VENTA, vendedorId,
+                parsearCategoria(categoria), PageRequest.of(0, MAX_FILAS_REPORTE + 1));
     }
 
     private static Pageable top() {

@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.BusquedaCatalogoRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.BusquedaRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.ProductoVistaRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -24,11 +25,13 @@ public class RetencionAnalyticsService {
 
     private final BusquedaRepository busquedaRepository;
     private final ProductoVistaRepository productoVistaRepository;
+    private final BusquedaCatalogoRepository busquedaCatalogoRepository;
     private final Clock clock;
     private final int retencionMeses;
 
     public RetencionAnalyticsService(BusquedaRepository busquedaRepository,
                                      ProductoVistaRepository productoVistaRepository,
+                                     BusquedaCatalogoRepository busquedaCatalogoRepository,
                                      Clock clock,
                                      @Value("${app.analytics.retencion-meses:12}") int retencionMeses) {
         // Con 0 o negativo el límite caería en el presente y se borraría todo el historial: se rechaza al arrancar.
@@ -37,6 +40,7 @@ public class RetencionAnalyticsService {
         }
         this.busquedaRepository = busquedaRepository;
         this.productoVistaRepository = productoVistaRepository;
+        this.busquedaCatalogoRepository = busquedaCatalogoRepository;
         this.clock = clock;
         this.retencionMeses = retencionMeses;
     }
@@ -47,8 +51,9 @@ public class RetencionAnalyticsService {
         LocalDateTime limite = LocalDateTime.now(clock).minusMonths(retencionMeses);
         try {
             Resultado resultado = purgarAnterioresA(limite);
-            log.info("Depuración de analíticas: {} búsquedas y {} vistas anteriores a {} eliminadas",
-                    resultado.busquedas(), resultado.vistas(), limite);
+            log.info("Depuración de analíticas: {} búsquedas dashboard, {} búsquedas catálogo y {} vistas "
+                            + "anteriores a {} eliminadas",
+                    resultado.busquedas(), resultado.busquedasCatalogo(), resultado.vistas(), limite);
         } catch (RuntimeException ex) {
             log.error("No se pudo depurar las tablas de analíticas (límite {})", limite, ex);
         }
@@ -58,10 +63,11 @@ public class RetencionAnalyticsService {
     public Resultado purgarAnterioresA(LocalDateTime limite) {
         int busquedas = busquedaRepository.eliminarAnterioresA(limite);
         int vistas = productoVistaRepository.eliminarAnterioresA(limite);
-        return new Resultado(busquedas, vistas);
+        int busquedasCatalogo = busquedaCatalogoRepository.eliminarAnterioresA(limite);
+        return new Resultado(busquedas, vistas, busquedasCatalogo);
     }
 
     /** Cantidad de filas eliminadas en cada tabla. */
-    public record Resultado(int busquedas, int vistas) {
+    public record Resultado(int busquedas, int vistas, int busquedasCatalogo) {
     }
 }

@@ -1,13 +1,12 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.controller;
 
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
+import co.edu.uniquindio.littlestyle.config.security.AlcanceDatos;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -64,18 +63,10 @@ public class DashboardController {
     }
 
     /**
-     * Vendedor al que se limitan los datos: el propio id si es vendedor, {@code null} (global) si es
-     * administrador. Cualquier otro caso se rechaza, de modo que un fallo de configuración nunca abre el
-     * alcance global por accidente.
+     * Resuelve el mismo alcance seguro que los reportes: vendedor propio, global para administradores,
+     * y rechazo para clientes o usuarios no autenticados.
      */
     static Long alcance(AuthenticatedUser usuario) {
-        if (usuario == null || usuario.rol() == null) {
-            throw new AccessDeniedException("Usuario no autenticado");
-        }
-        return switch (usuario.rol()) {
-            case VENDEDOR -> usuario.id();
-            case ADMINISTRADOR -> null;
-            case CLIENTE -> throw new AccessDeniedException("El dashboard no está disponible para clientes");
-        };
+        return AlcanceDatos.vendedorId(usuario);
     }
 }

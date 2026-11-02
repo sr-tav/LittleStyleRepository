@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.BusquedaCatalogoRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.BusquedaRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.ProductoVistaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,11 +33,15 @@ class RetencionAnalyticsServiceTest {
     @Mock
     private ProductoVistaRepository productoVistaRepository;
 
+    @Mock
+    private BusquedaCatalogoRepository busquedaCatalogoRepository;
+
     private RetencionAnalyticsService retencion;
 
     @BeforeEach
     void setUp() {
-        retencion = new RetencionAnalyticsService(busquedaRepository, productoVistaRepository, RELOJ, 12);
+        retencion = new RetencionAnalyticsService(busquedaRepository, productoVistaRepository,
+                busquedaCatalogoRepository, RELOJ, 12);
     }
 
     @Test
@@ -47,13 +52,16 @@ class RetencionAnalyticsServiceTest {
 
         verify(busquedaRepository).eliminarAnterioresA(limite);
         verify(productoVistaRepository).eliminarAnterioresA(limite);
+        verify(busquedaCatalogoRepository).eliminarAnterioresA(limite);
     }
 
     @Test
     void laRetencionSeConfiguraEnMeses() {
-        new RetencionAnalyticsService(busquedaRepository, productoVistaRepository, RELOJ, 6).purgarProgramado();
+        new RetencionAnalyticsService(busquedaRepository, productoVistaRepository, busquedaCatalogoRepository,
+                RELOJ, 6).purgarProgramado();
 
         verify(busquedaRepository).eliminarAnterioresA(LocalDateTime.of(2026, 4, 28, 10, 0));
+        verify(busquedaCatalogoRepository).eliminarAnterioresA(LocalDateTime.of(2026, 4, 28, 10, 0));
     }
 
     @Test
@@ -61,11 +69,13 @@ class RetencionAnalyticsServiceTest {
         LocalDateTime limite = LocalDateTime.of(2025, 10, 28, 10, 0);
         when(busquedaRepository.eliminarAnterioresA(limite)).thenReturn(7);
         when(productoVistaRepository.eliminarAnterioresA(limite)).thenReturn(120);
+        when(busquedaCatalogoRepository.eliminarAnterioresA(limite)).thenReturn(9);
 
         RetencionAnalyticsService.Resultado resultado = retencion.purgarAnterioresA(limite);
 
         assertThat(resultado.busquedas()).isEqualTo(7);
         assertThat(resultado.vistas()).isEqualTo(120);
+        assertThat(resultado.busquedasCatalogo()).isEqualTo(9);
     }
 
     @Test
@@ -77,9 +87,11 @@ class RetencionAnalyticsServiceTest {
 
     @Test
     void unaRetencionMenorAUnMesSeRechazaParaNoBorrarTodoElHistorial() {
-        assertThatThrownBy(() -> new RetencionAnalyticsService(busquedaRepository, productoVistaRepository, RELOJ, 0))
+        assertThatThrownBy(() -> new RetencionAnalyticsService(busquedaRepository, productoVistaRepository,
+                busquedaCatalogoRepository, RELOJ, 0))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new RetencionAnalyticsService(busquedaRepository, productoVistaRepository, RELOJ, -3))
+        assertThatThrownBy(() -> new RetencionAnalyticsService(busquedaRepository, productoVistaRepository,
+                busquedaCatalogoRepository, RELOJ, -3))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

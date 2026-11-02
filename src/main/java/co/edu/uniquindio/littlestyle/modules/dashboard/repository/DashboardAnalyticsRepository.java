@@ -4,7 +4,9 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Cate
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -112,6 +114,44 @@ public interface DashboardAnalyticsRepository extends JpaRepository<Pedido, Long
                                                  @Param("categoria") CategoriaPrenda categoria);
 
     @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse(
+                     cast(p.fechaCreacion as LocalDate), count(distinct p.id), sum(li.subtotal))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
+              and (:categoria is null or pr.categoria = :categoria)
+            group by cast(p.fechaCreacion as LocalDate)
+            order by cast(p.fechaCreacion as LocalDate)
+            """)
+    List<DashboardVentasDiaResponse> ventasPorDia(@Param("inicio") LocalDateTime inicio,
+                                                  @Param("fin") LocalDateTime fin,
+                                                  @Param("estados") Collection<EstadoPedido> estados,
+                                                  @Param("vendedorId") Long vendedorId,
+                                                  @Param("categoria") CategoriaPrenda categoria);
+
+    @Query("""
+            select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse(
+                     pr.nombre, li.talla, sum(li.cantidad), sum(li.subtotal))
+            from LineaPedido li
+              join li.pedido p
+              join Prenda pr on pr.id = li.prendaId
+            where p.fechaCreacion >= :inicio and p.fechaCreacion < :fin
+              and p.estado in :estados
+              and (:vendedorId is null or pr.vendedor.id = :vendedorId)
+              and (:categoria is null or pr.categoria = :categoria)
+            group by pr.id, pr.nombre, li.talla
+            order by sum(li.cantidad) desc, pr.nombre asc, li.talla asc
+            """)
+    List<DashboardDemandaDetalleResponse> demandaDetalle(@Param("inicio") LocalDateTime inicio,
+                                                         @Param("fin") LocalDateTime fin,
+                                                         @Param("estados") Collection<EstadoPedido> estados,
+                                                         @Param("vendedorId") Long vendedorId,
+                                                         @Param("categoria") CategoriaPrenda categoria);
+
+    @Query("""
             select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
                      pr.nombre, sum(li.subtotal), sum(li.cantidad))
             from LineaPedido li
@@ -130,6 +170,13 @@ public interface DashboardAnalyticsRepository extends JpaRepository<Pedido, Long
                                                       @Param("vendedorId") Long vendedorId,
                                                       @Param("categoria") CategoriaPrenda categoria,
                                                       Pageable limite);
+
+    default List<DashboardSerieResponse> productosMasVendidosCompleto(LocalDateTime inicio, LocalDateTime fin,
+                                                                       Collection<EstadoPedido> estados,
+                                                                       Long vendedorId, CategoriaPrenda categoria,
+                                                                       Pageable limite) {
+        return productosMasVendidos(inicio, fin, estados, vendedorId, categoria, limite);
+    }
 
     /** Vistas reales de la ficha de cada prenda (no ventas). */
     @Query("""

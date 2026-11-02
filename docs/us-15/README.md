@@ -35,11 +35,12 @@ Campos de `DashboardOverviewResponse`: `totalVentas`, `totalPedidos`, `ticketPro
 - **Stock bajo:** tallas activas con `stock <= stockMinimo`. Una talla sin mínimo configurado no alerta (regla del modelo `TallaPrenda`).
 - **Inventario** es la foto actual; no depende del rango de fechas.
 - **Palabras más buscadas** es una señal de toda la plataforma: una búsqueda no pertenece a ningún vendedor, por eso no se filtra por vendedor ni categoría. Solo se guarda el término normalizado (sin identificar al cliente).
+- **Fuente de búsquedas del dashboard:** `TrackingAnalyticsService` alimenta exclusivamente `busquedas` para el top del dashboard. El reporte US-16 consulta exclusivamente `busqueda_catalogo`; no combina ni vuelve a contar ambas tablas. Son registros deliberadamente distintos: `busquedas` filtra bots y anónimos y aplica anti-repetición por usuario/término; `busqueda_catalogo` guarda también usuarios anónimos, no filtra bots ni deduplica, y conserva categoría y número de resultados para el reporte. Por ello, sus totales no son comparables ni deben sumarse.
 - **Baja rotación** no existe en el backend y se retiró del frontend (antes mostraba una lista fija).
 
 ## 3. Métricas de comportamiento (tracking)
 
-`TrackingAnalyticsService` (`@Async`, nunca propaga errores) guarda en `busquedas` cada búsqueda de texto de la primera página del catálogo y en `producto_vistas` cada consulta de la ficha de una prenda publicada. Se invoca desde `CatalogoClienteController`.
+`TrackingAnalyticsService` (`@Async`, nunca propaga errores) guarda en `busquedas` cada búsqueda de texto de la primera página del catálogo y en `producto_vistas` cada consulta de la ficha de una prenda publicada. Se invoca desde `CatalogoClienteController`. En la misma exploración, `CatalogoClienteService` también envía el evento a `RegistradorBusquedaCatalogo`, que escribe en `busqueda_catalogo` para el reporte US-16. Cada consumidor tiene una única fuente: el dashboard lee `busquedas` y el reporte lee `busqueda_catalogo`; las tablas no se consultan juntas ni sus métricas se suman.
 
 ### Qué NO cuenta como vista o búsqueda
 
@@ -57,7 +58,7 @@ Límites conocidos:
 
 ### Retención
 
-`RetencionAnalyticsService` borra cada día a las 03:30 las búsquedas y vistas anteriores a **12 meses**, para que las tablas no crezcan sin límite (RNF-04). El borrado usa `fecha < límite`, que aprovecha los índices por fecha. Un fallo se registra en el log y no detiene la aplicación; con varias instancias es seguro (borrar dos veces lo mismo no tiene efecto).
+`RetencionAnalyticsService` borra cada día a las 03:30 las búsquedas del dashboard (`busquedas`), las búsquedas del catálogo (`busqueda_catalogo`) y las vistas (`producto_vistas`) anteriores a **12 meses**, para que las tablas no crezcan sin límite (RNF-04). El borrado usa `fecha < límite`, que aprovecha los índices por fecha. Un fallo se registra en el log y no detiene la aplicación; con varias instancias es seguro (borrar dos veces lo mismo no tiene efecto).
 
 | Propiedad (variable de entorno) | Por defecto | Efecto |
 |---|---|---|
@@ -69,8 +70,8 @@ La primera depuración sobre tablas que ya acumularon mucho historial puede tard
 
 ## 4. Base de datos
 
-- En dev/local Hibernate (`ddl-auto=update`) crea las tablas `busquedas` y `producto_vistas` y los índices declarados en las entidades.
-- En **prod** (`ddl-auto=validate`) hay que ejecutar antes del despliegue `migracion-analiticas.sql`. Incluye los índices `idx_pedidos_fecha_estado` y `idx_pedido_items_prenda`, que usan todas las consultas del dashboard (RNF-04).
+- En dev/local Hibernate (`ddl-auto=update`) crea las tablas `busquedas`, `producto_vistas` y `busqueda_catalogo` y los índices declarados en las entidades.
+- En **prod** (`ddl-auto=validate`) hay que ejecutar antes del despliegue `migracion-analiticas.sql` y `docs/us-16/migracion-busquedas.sql`. La primera incluye los índices `idx_pedidos_fecha_estado` y `idx_pedido_items_prenda`, que usan las consultas del dashboard (RNF-04); la segunda crea `busqueda_catalogo`, consumida por el reporte US-16.
 
 ## 5. Documentación técnica
 

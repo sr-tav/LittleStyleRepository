@@ -16,8 +16,11 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedi
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.model.Busqueda;
 import co.edu.uniquindio.littlestyle.modules.dashboard.model.ProductoVista;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.BusquedaRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.ProductoVistaRepository;
+import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -56,6 +60,7 @@ class DashboardIntegrationTest {
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private ProductoVistaRepository productoVistaRepository;
     @Autowired private BusquedaRepository busquedaRepository;
+    @Autowired private DashboardAnalyticsService dashboardAnalyticsService;
 
     private Usuario vendedorA;
     private Usuario vendedorB;
@@ -195,6 +200,49 @@ class DashboardIntegrationTest {
     }
 
     @Test
+    void ventasPorDiaYDemandaDetalleAgrupanYFiltranPorVendedorYCategoria() {
+        LocalDate diaUno = LocalDate.of(2024, 5, 10);
+        LocalDate diaDos = diaUno.plusDays(1);
+        Prenda vestidoA = prendaRepository.findAll().stream()
+                .filter(p -> p.getNombre().equals("Vestido Rosa")).findFirst().orElseThrow();
+        Prenda buzoA = prendaRepository.findAll().stream()
+                .filter(p -> p.getNombre().equals("Buzo Azul")).findFirst().orElseThrow();
+        Prenda vestidoB = prendaRepository.findAll().stream()
+                .filter(p -> p.getNombre().equals("Vestido Verde")).findFirst().orElseThrow();
+
+        pedido(EstadoPedido.REGISTRADO, diaUno.atTime(9, 0),
+                linea(vestidoA, 2, "60000"), linea(buzoA, 1, "40000"));
+        pedido(EstadoPedido.REGISTRADO, diaUno.atTime(15, 0), linea(vestidoB, 1, "20000"));
+        pedido(EstadoPedido.ENVIADO, diaDos.atTime(10, 0), linea(vestidoA, 1, "30000"));
+        pedido(EstadoPedido.REGISTRADO, diaDos.atTime(16, 0), linea(vestidoB, 1, "10000"));
+
+        List<DashboardVentasDiaResponse> global = dashboardAnalyticsService.obtenerVentasPorDia(
+                diaUno, diaDos, null, null);
+        assertThat(global).extracting(DashboardVentasDiaResponse::fecha).containsExactly(diaUno, diaDos);
+        assertThat(global).extracting(DashboardVentasDiaResponse::pedidos).containsExactly(2L, 2L);
+        assertThat(global).extracting(DashboardVentasDiaResponse::total)
+                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .containsExactly(new BigDecimal("120000"), new BigDecimal("40000"));
+
+        List<DashboardVentasDiaResponse> vendedorCategoria = dashboardAnalyticsService.obtenerVentasPorDia(
+                diaUno, diaDos, "VESTIDOS", vendedorA.getId());
+        assertThat(vendedorCategoria).extracting(DashboardVentasDiaResponse::fecha).containsExactly(diaUno, diaDos);
+        assertThat(vendedorCategoria).extracting(DashboardVentasDiaResponse::pedidos).containsExactly(1L, 1L);
+        assertThat(vendedorCategoria).extracting(DashboardVentasDiaResponse::total)
+                .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .containsExactly(new BigDecimal("60000"), new BigDecimal("30000"));
+
+        List<DashboardDemandaDetalleResponse> detalle = dashboardAnalyticsService.obtenerDemandaDetalle(
+                diaUno, diaDos, "VESTIDOS", vendedorA.getId());
+        assertThat(detalle).singleElement().satisfies(item -> {
+            assertThat(item.prenda()).isEqualTo("Vestido Rosa");
+            assertThat(item.talla()).isEqualTo("4");
+            assertThat(item.unidades()).isEqualTo(3);
+            assertThat(item.valor()).isEqualByComparingTo("90000");
+        });
+    }
+
+    @Test
     void clienteNoPuedeVerElDashboard() throws Exception {
         mockMvc.perform(get(OVERVIEW).header("Authorization", bearer(cliente)))
                 .andExpect(status().isForbidden());
@@ -262,6 +310,10 @@ class DashboardIntegrationTest {
     }
 
     private void pedido(EstadoPedido estado, LineaPedido... lineas) {
+        pedido(estado, LocalDateTime.now(), lineas);
+    }
+
+    private void pedido(EstadoPedido estado, LocalDateTime fecha, LineaPedido... lineas) {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (LineaPedido l : lineas) {
             subtotal = subtotal.add(l.getSubtotal());
@@ -270,7 +322,7 @@ class DashboardIntegrationTest {
                 .cliente(cliente).perfilInfantilId(1L).estado(estado)
                 .destinatario("Ana").direccion("Calle 1").ciudad("Armenia").telefono("3001234567")
                 .subtotal(subtotal).costoEnvio(new BigDecimal("7000")).total(subtotal.add(new BigDecimal("7000")))
-                .fechaCreacion(LocalDateTime.now()).fechaActualizacion(LocalDateTime.now())
+                .fechaCreacion(fecha).fechaActualizacion(fecha)
                 .build();
         for (LineaPedido l : lineas) {
             pedido.agregar(l);

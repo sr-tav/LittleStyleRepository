@@ -84,7 +84,7 @@ La vigencia se configura con `app.jwt.expiration-ms` (variable `JWT_EXPIRATION_M
 
 Las respuestas de seguridad se devuelven en JSON con el formato común `ErrorResponse`: `RestAuthenticationEntryPoint` produce HTTP 401 y `RestAccessDeniedHandler` produce HTTP 403 (“No tiene permisos para acceder a este recurso”). `@EnableMethodSecurity` queda habilitado para reglas por método en historias posteriores.
 
-CORS se limita a `/api/**`, a los orígenes de `app.cors.allowed-origins` (`CORS_ALLOWED_ORIGINS`; por defecto `http://localhost:4200`), a los métodos `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` y a los encabezados `Authorization` y `Content-Type`.
+CORS se limita a `/api/**`, a los orígenes de `app.cors.allowed-origins` (`CORS_ALLOWED_ORIGINS`; por defecto `http://localhost:4200`), a los métodos `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, a los encabezados `Authorization` y `Content-Type`, y expone `Content-Disposition` y `Content-Length` para las descargas de reportes.
 
 ### Administrador inicial
 

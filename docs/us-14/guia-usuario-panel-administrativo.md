@@ -13,6 +13,10 @@ rutas administrativas.
 
 El dashboard muestra usuarios por estado, publicaciones activas, prendas sin revisar,
 incidencias abiertas/en revisión y la tasa calculada de resolución en menos de 24 horas.
+«Prendas publicadas» incluye las que están sin revisar: la moderación es posterior a la
+publicación. Si no hay incidencias cerradas en los últimos 30 días, la tasa se muestra
+como «—» y no como 0 %.
+
 Si el resumen no carga, usa **Reintentar**. La tasa refleja los datos registrados en el
 sistema; el panel no promete por sí mismo el cumplimiento futuro del objetivo RNF-17.
 
