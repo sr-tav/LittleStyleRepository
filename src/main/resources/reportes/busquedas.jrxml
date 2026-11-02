@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="busquedas" language="java" pageWidth="595" pageHeight="842" columnWidth="555"
+              leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
+              whenNoDataType="AllSectionsNoDetail">
+    <style name="base" default="true" fontName="DejaVu Sans" fontSize="8.5"/>
+    <parameter name="TITULO" class="java.lang.String"/>
+    <parameter name="SUBTITULO" class="java.lang.String"/>
+    <parameter name="ALCANCE" class="java.lang.String"/>
+    <parameter name="GENERADO_EN" class="java.lang.String"/>
+    <parameter name="GENERADO_POR" class="java.lang.String"/>
+    <parameter name="TOTAL_REGISTROS" class="java.lang.String"/>
+    <parameter name="TOTAL_BUSQUEDAS" class="java.lang.String"/>
+    <parameter name="TOTAL_SIN_RESULTADOS" class="java.lang.String"/>
+    <field name="termino" class="java.lang.String"/>
+    <field name="busquedas" class="java.lang.String"/>
+    <field name="sinResultados" class="java.lang.String"/>
+    <field name="ultima" class="java.lang.String"/>
+    <title height="112">
+        <element kind="textField" x="0" y="0" width="180" height="32" fontSize="14.0" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle">
+            <expression><![CDATA["  LittleStyle"]]></expression>
+        </element>
+        <element kind="textField" x="180" y="0" width="375" height="32" fontSize="11.0" bold="true" forecolor="#FFFFFF" backcolor="#15803D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <expression><![CDATA[$P{TITULO} + "  "]]></expression>
+        </element>
+        <element kind="textField" x="0" y="38" width="555" height="14" fontSize="9.0" forecolor="#374151">
+            <expression><![CDATA[$P{SUBTITULO}]]></expression>
+        </element>
+        <element kind="textField" x="0" y="54" width="555" height="12" fontSize="8.0" forecolor="#6B7280">
+            <expression><![CDATA["Alcance: " + $P{ALCANCE} + "   ·   Generado: " + $P{GENERADO_EN} + "   ·   Por: " + $P{GENERADO_POR}]]></expression>
+        </element>
+        <element kind="rectangle" x="0" y="72" width="272" height="32" backcolor="#F0FDF4" mode="Opaque">
+            <pen lineWidth="0.5" lineColor="#D1FAE5"/>
+        </element>
+        <element kind="rectangle" x="283" y="72" width="272" height="32" backcolor="#FFF7ED" mode="Opaque">
+            <pen lineWidth="0.5" lineColor="#FED7AA"/>
+        </element>
+        <element kind="staticText" x="8" y="75" width="256" height="10" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Búsquedas registradas]]></text>
+        </element>
+        <element kind="textField" x="8" y="85" width="256" height="16" fontSize="10.0" bold="true" forecolor="#14532D">
+            <expression><![CDATA[$P{TOTAL_BUSQUEDAS}]]></expression>
+        </element>
+        <element kind="staticText" x="291" y="75" width="256" height="10" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Búsquedas sin resultados]]></text>
+        </element>
+        <element kind="textField" x="291" y="85" width="256" height="16" fontSize="10.0" bold="true" forecolor="#9A3412">
+            <expression><![CDATA[$P{TOTAL_SIN_RESULTADOS}]]></expression>
+        </element>
+        <element kind="line" x="0" y="110" width="555" height="1">
+            <pen lineWidth="1.0" lineColor="#14532D"/>
+        </element>
+    </title>
+    <columnHeader height="24">
+        <element kind="staticText" x="0" y="0" width="300" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle">
+            <text><![CDATA[  Término buscado]]></text>
+        </element>
+        <element kind="staticText" x="300" y="0" width="70" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <text><![CDATA[Búsquedas  ]]></text>
+        </element>
+        <element kind="staticText" x="370" y="0" width="85" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <text><![CDATA[Sin resultados  ]]></text>
+        </element>
+        <element kind="staticText" x="455" y="0" width="100" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <text><![CDATA[Última  ]]></text>
+        </element>
+    </columnHeader>
+    <detail>
+        <band height="17">
+            <element kind="textField" x="0" y="0" width="300" height="17" fontSize="8.5" textAdjust="StretchHeight" vTextAlign="Middle">
+                <expression><![CDATA["  " + $F{termino}]]></expression>
+            </element>
+            <element kind="textField" x="300" y="0" width="70" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
+                <expression><![CDATA[$F{busquedas} + "  "]]></expression>
+            </element>
+            <element kind="textField" x="370" y="0" width="85" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
+                <expression><![CDATA[$F{sinResultados} + "  "]]></expression>
+            </element>
+            <element kind="textField" x="455" y="0" width="100" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
+                <expression><![CDATA[$F{ultima} + "  "]]></expression>
+            </element>
+            <element kind="line" x="0" y="16" width="555" height="1">
+                <pen lineWidth="0.3" lineColor="#E7E5E4"/>
+            </element>
+        </band>
+    </detail>
+    <summary height="52">
+        <element kind="line" x="0" y="2" width="555" height="1">
+            <pen lineWidth="1.0" lineColor="#14532D"/>
+        </element>
+        <element kind="textField" x="0" y="8" width="555" height="14" fontSize="8.5" bold="true" forecolor="#14532D">
+            <expression><![CDATA["Términos distintos incluidos en el reporte: " + $P{TOTAL_REGISTROS}]]></expression>
+        </element>
+        <element kind="staticText" x="0" y="26" width="555" height="12" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Documento generado automáticamente por LittleStyle · Información confidencial para uso interno]]></text>
+        </element>
+    </summary>
+    <pageFooter height="24">
+        <element kind="staticText" x="0" y="6" width="300" height="12" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[LittleStyle · Reporte corporativo]]></text>
+        </element>
+        <element kind="textField" x="450" y="6" width="80" height="12" fontSize="7.5" forecolor="#6B7280" hTextAlign="Right">
+            <expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de "]]></expression>
+        </element>
+        <element kind="textField" x="530" y="6" width="25" height="12" fontSize="7.5" forecolor="#6B7280" evaluationTime="Report">
+            <expression><![CDATA["" + $V{PAGE_NUMBER}]]></expression>
+        </element>
+    </pageFooter>
+</jasperReport>

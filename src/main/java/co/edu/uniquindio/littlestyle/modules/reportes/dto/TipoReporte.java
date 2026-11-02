@@ -12,7 +12,13 @@ import java.util.Arrays;
 public enum TipoReporte {
     VENTAS("ventas", "Reporte de ventas"),
     INVENTARIO("inventario", "Reporte de inventario"),
-    DEMANDA("demanda", "Reporte de demanda");
+    /** Unidades vendidas por prenda y talla (demanda comercial). No confundir con BUSQUEDAS. */
+    DEMANDA("demanda", "Reporte de demanda"),
+    /**
+     * Intención de búsqueda del catálogo: qué términos se buscaron, cuántas veces y cuántos no
+     * arrojaron resultados. Es un reporte distinto de {@link #DEMANDA}, que mide unidades vendidas.
+     */
+    BUSQUEDAS("busquedas", "Reporte de búsquedas");
 
     private final String ruta;
     private final String titulo;
@@ -21,6 +27,6 @@ public enum TipoReporte {
         String v = valor == null ? "" : valor.trim();
         return Arrays.stream(values()).filter(t -> t.ruta.equalsIgnoreCase(v)).findFirst()
                 .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
-                        "Tipo de reporte no válido. Usa: ventas, inventario o demanda", "tipo"));
+                        "Tipo de reporte no válido. Usa: ventas, inventario, demanda o busquedas", "tipo"));
     }
 }

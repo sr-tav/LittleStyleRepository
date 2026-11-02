@@ -2,6 +2,7 @@
 <jasperReport name="inventario" language="java" pageWidth="842" pageHeight="595" columnWidth="802"
               leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
               whenNoDataType="AllSectionsNoDetail">
+    <style name="base" default="true" fontName="DejaVu Sans" fontSize="8.5"/>
     <parameter name="TITULO" class="java.lang.String"/>
     <parameter name="SUBTITULO" class="java.lang.String"/>
     <parameter name="ALCANCE" class="java.lang.String"/>
@@ -17,7 +18,7 @@
     <field name="stock" class="java.lang.String"/>
     <field name="minimo" class="java.lang.String"/>
     <field name="nivel" class="java.lang.String"/>
-    <group name="Tienda">
+    <group name="Tienda" reprintHeaderOnEachPage="true">
         <expression><![CDATA[$F{tienda}]]></expression>
         <groupHeader>
             <band height="24">
@@ -81,7 +82,7 @@
     </summary>
     <pageFooter height="24">
         <element kind="staticText" x="0" y="6" width="400" height="12" fontSize="7.5" forecolor="#6B7280"><text><![CDATA[LittleStyle · Reporte corporativo]]></text></element>
-        <element kind="textField" x="722" y="6" width="60" height="12" fontSize="7.5" forecolor="#6B7280" hTextAlign="Right"><expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de"]]></expression></element>
-        <element kind="textField" x="782" y="6" width="20" height="12" fontSize="7.5" forecolor="#6B7280" evaluationTime="Report"><expression><![CDATA[" " + $V{PAGE_NUMBER}]]></expression></element>
+        <element kind="textField" x="682" y="6" width="90" height="12" fontSize="7.5" forecolor="#6B7280" hTextAlign="Right"><expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de "]]></expression></element>
+        <element kind="textField" x="772" y="6" width="30" height="12" fontSize="7.5" forecolor="#6B7280" evaluationTime="Report"><expression><![CDATA["" + $V{PAGE_NUMBER}]]></expression></element>
     </pageFooter>
 </jasperReport>

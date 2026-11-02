@@ -108,7 +108,7 @@ const COMPACTO_CO = new Intl.NumberFormat('es-CO', { notation: 'compact', maximu
       <section class="panel" aria-labelledby="exportar-titulo">
         <div class="panel-head">
           <h2 id="exportar-titulo">Exportar reporte</h2>
-          <span class="panel-hint">Se genera en PDF con los filtros activos y el alcance de tu rol</span>
+          <span class="panel-hint">Descarga en PDF, Excel o CSV con los filtros activos y el alcance de tu rol</span>
         </div>
         <app-exportar-reporte
           [startDate]="startDate()"

@@ -56,8 +56,13 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V4M4 20h17M7 16l4-5 3 2 6-8M16 5h4v4" /></svg>
         </span>
         <span class="kpi-label">Tasa de resolución</span>
-        <strong class="kpi-value">{{ res.tasaResolucionPorcentaje }}%</strong>
-        <span class="kpi-hint">Incidencias resueltas o rechazadas</span>
+        @if (res.tasaResolucionPorcentaje !== null) {
+          <strong class="kpi-value">{{ res.tasaResolucionPorcentaje }}%</strong>
+          <span class="kpi-hint">Resueltas en menos de 24 h sobre las cerradas (30 días)</span>
+        } @else {
+          <strong class="kpi-value">—</strong>
+          <span class="kpi-hint">Sin incidencias cerradas en 30 días</span>
+        }
       </a>
     </section>
 

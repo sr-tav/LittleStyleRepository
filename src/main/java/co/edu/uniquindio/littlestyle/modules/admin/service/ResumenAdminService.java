@@ -6,7 +6,6 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.modules.admin.repository.IncidenciaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,8 +37,7 @@ public class ResumenAdminService {
                 usuarioRepository.countByEstado(EstadoUsuario.BLOQUEADO),
                 usuarioRepository.countByEstado(EstadoUsuario.ELIMINADO),
                 prendaRepository.countByEstadoModeracion(EstadoModeracion.SIN_REVISAR),
-                prendaRepository.countByEstadoAndEstadoModeracion(
-                        EstadoPrenda.ACTIVA, EstadoModeracion.APROBADA),
+                prendaRepository.countPrendasPublicadas(),
                 prendaRepository.countByEstadoModeracion(EstadoModeracion.DESACTIVADA),
                 incidenciaRepository.countByEstado(EstadoIncidencia.ABIERTA),
                 incidenciaRepository.countByEstado(EstadoIncidencia.EN_REVISION),

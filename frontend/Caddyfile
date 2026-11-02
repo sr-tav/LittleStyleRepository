@@ -1,7 +1,13 @@
 # SITE_ADDRESS=":80" sirve HTTP plano (local).
 # SITE_ADDRESS="littlestyle.duckdns.org" activa HTTPS con Let's Encrypt (producción).
 {$SITE_ADDRESS::80} {
-	encode zstd gzip
+	# Las descargas de reportes quedan fuera de la compresión: Caddy elimina Content-Length de las
+	# respuestas comprimidas y el cliente pierde la barra de progreso real (visible sobre todo en
+	# CSV, que es texto). PDF y XLSX ya son binarios comprimidos: tampoco ganan nada.
+	@comprimible {
+		not path /api/v1/reportes/*
+	}
+	encode @comprimible zstd gzip
 
 	header {
 		X-Content-Type-Options nosniff

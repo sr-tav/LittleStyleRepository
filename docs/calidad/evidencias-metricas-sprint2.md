@@ -1,4 +1,4 @@
-# Evidencias de métricas: Sprint 2 (procesos 1 y 2)
+# Evidencias de métricas: Sprints 2 y 3 (procesos 1, 2 y 3)
 
 Dónde se obtiene la evidencia de cada métrica de las secciones 3.3 y 3.4 del *Plan de Gestión de la
 Calidad*, para registrarla en la sección 5.
@@ -107,6 +107,90 @@ Resultado esperado: una sola línea, `N 200`. Cualquier otro código es una imag
 
 ---
 
+## Proceso 3: Reportes analíticos y exportación (US-16)
+
+### 3.4.3 Métricas de calidad
+
+#### RNF-24 — Tasa de éxito en la exportación de reportes (> 98 %)
+
+La métrica se mide **de punta a punta**, no solo con el código HTTP del backend: un archivo que se
+descarga con `200` pero no se puede abrir en el equipo del usuario también es un fallo de
+interoperabilidad.
+
+| Dato | De dónde sale | Cómo se captura |
+|------|---------------|-----------------|
+| Éxitos del servidor | `reporte.exportaciones{resultado="ok"}` | `GET /actuator/metrics/reporte.exportaciones?tag=resultado:ok` (administrador) o `GET /api/v1/reportes/metricas/exito` |
+| Fallos del servidor | `reporte.exportaciones{resultado="error"}` | Igual que el anterior |
+| Rechazos de validación | `reporte.exportaciones{resultado="rechazado"}` | Se registran, pero **no** entran en la tasa: son errores del usuario (filtros inválidos) |
+| Éxitos/fallos del cliente | `reporte.exportaciones.cliente{resultado=ok\|error_red\|blob_vacio\|error_cliente\|cancelado}` alimentado por `POST /api/v1/reportes/telemetria` | El navegador lo envía al guardar, abrir, imprimir o cancelar; se consulta en `/actuator/metrics/reporte.exportaciones.cliente` |
+| Duración de generación | `reporte.exportacion.duracion{tipo,formato}` | `GET /actuator/metrics/reporte.exportacion.duracion` (count, total y max; percentiles si se habilitan) |
+| Detalle por intento | Log `reporte.exportacion resultado=OK\|RECHAZADO\|ERROR tipo=... formato=... filas=... bytes=... ms=... usuarioId=...` | `docker compose logs backend \| grep reporte.exportacion` |
+
+Cálculo del requisito (tasa del servidor):
+
+```text
+total = count(resultado="ok") + count(resultado="error")
+tasa  = total == 0 ? 1.0 : ok / total
+cumpleRnf24 = total == 0 || tasa > 0.98
+```
+
+> El umbral es **estrictamente mayor** que 0,98. Un `49 OK + 1 error = 0,98` **no cumple**.
+> Los `rechazado` y los `cancelado` quedan fuera del denominador.
+
+`GET /api/v1/reportes/metricas/exito` devuelve la foto ya calculada:
+
+```json
+{
+  "ok": 120,
+  "error": 1,
+  "rechazado": 4,
+  "tasaExito": 0.9917,
+  "cumpleRnf24": true,
+  "desde": "2026-10-31T10:00:00Z"
+}
+```
+
+Comandos para la captura en producción:
+
+```bash
+# 1. Tasa calculada (requiere token de administrador)
+curl -s -H "Authorization: Bearer $TOKEN_ADMIN" \
+  https://littlestyle.duckdns.org/api/v1/reportes/metricas/exito
+
+# 2. Contadores del servidor y del cliente
+curl -s -H "Authorization: Bearer $TOKEN_ADMIN" \
+  "https://littlestyle.duckdns.org/actuator/metrics/reporte.exportaciones?tag=resultado:ok"
+curl -s -H "Authorization: Bearer $TOKEN_ADMIN" \
+  "https://littlestyle.duckdns.org/actuator/metrics/reporte.exportaciones.cliente"
+
+# 3. Últimos intentos en el log
+cd ~/littlestyle && docker compose logs backend \
+  | grep 'reporte.exportacion' | tail -n 50
+```
+
+Prueba automatizada de la lógica: `ReporteMetricasTest` cubre sin evidencia, exportación exitosa,
+rechazos excluidos, `49/50 = 0,98` sin cumplir, telemetría en su propio contador, cancelación y límite
+de 30 eventos por usuario y minuto. `ReporteServiceTest` cubre que un `5xx` sí resta y un `4xx` no.
+`ReporteControllerSecurityTest` valida el contrato HTTP real. Detalle:
+[`docs/us-16/metricas-rnf24.md`](../us-16/metricas-rnf24.md).
+
+> ⚠ Los contadores viven en memoria del proceso: se reinician con cada despliegue. Para conservar el
+> histórico entre builds hay que **persistir los contadores o conectar un registro externo**
+> (`MeterRegistry` remoto). Mientras no exista ese registro, la captura del endpoint es una foto del
+> proceso actual.
+>
+> ⚠ El límite de telemetría es por instancia. Con varias réplicas, el límite efectivo se multiplica
+> por el número de instancias.
+
+Evidencia mínima recomendada para la sección 5:
+
+1. Captura de `GET /api/v1/reportes/metricas/exito` después de una sesión de exportaciones.
+2. Captura de `/actuator/metrics` con los contadores del servidor y del cliente por formato.
+3. Captura del log con al menos una línea `OK` y una `ERROR`/`RECHAZADO`.
+4. Resultado de `ReporteMetricasTest` en Jenkins.
+
+---
+
 ## Pendientes para completar las evidencias
 
 | Pendiente | Para qué métricas |
@@ -115,3 +199,4 @@ Resultado esperado: una sola línea, `N 200`. Cualquier otro código es una imag
 | SonarCloud o SonarQube | Densidad de defectos |
 | UptimeRobot 24–48 h | Disponibilidad |
 | Sesiones de TestRail en producción | Generan los datos de las consultas de la fuente A, plataformas compatibles y error de captura |
+| Registro persistente de métricas | Histórico del RNF-24 entre despliegues (hoy los contadores viven en memoria) |

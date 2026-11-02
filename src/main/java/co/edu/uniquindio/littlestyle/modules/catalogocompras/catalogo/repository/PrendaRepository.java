@@ -225,8 +225,20 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
     @Query("select p from Prenda p join fetch p.vendedor where p.id = :id")
     Optional<Prenda> buscarParaNotificacion(@Param("id") Long id);
 
-    /** KPIs del resumen: prendas por estado de moderacion y publicadas (ACTIVA + APROBADA). */
+    /** KPIs del resumen: prendas por estado de moderacion. */
     long countByEstadoModeracion(EstadoModeracion estadoModeracion);
 
-    long countByEstadoAndEstadoModeracion(EstadoPrenda estado, EstadoModeracion estadoModeracion);
+    /**
+     * KPIs del resumen: prendas publicadas con la misma regla de visibilidad que
+     * {@code findAllByEstado}, pero sin exigir vendedor activo porque el KPI mide el estado de
+     * publicacion. Incluye las {@code SIN_REVISAR} (la moderacion es posterior a la publicacion)
+     * y las de moderacion nula previas a US-14; solo excluye las {@code DESACTIVADA}.
+     */
+    @Query("""
+            select count(p) from Prenda p
+            where p.estado = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda.ACTIVA
+              and (p.estadoModeracion is null or
+                   p.estadoModeracion <> co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion.DESACTIVADA)
+            """)
+    long countPrendasPublicadas();
 }

@@ -210,7 +210,8 @@ export interface ResumenAdmin {
   prendasRechazadas: number;
   incidenciasAbiertas: number;
   incidenciasEnRevision: number;
-  tasaResolucionPorcentaje: number;
+  /** RNF-17 en porcentaje; `null` cuando no hubo incidencias cerradas en los últimos 30 días. */
+  tasaResolucionPorcentaje: number | null;
 }
 
 /** Etiquetas en español para los estados de usuario. */

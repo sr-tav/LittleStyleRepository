@@ -66,6 +66,12 @@ describe('DashboardAnalyticsPage', () => {
     expect(serviceSpy.consultar).toHaveBeenCalled();
   });
 
+  it('anuncia la exportación en los tres formatos, no solo en PDF', () => {
+    const texto: string = fixture.nativeElement.textContent;
+    expect(texto).toContain('Descarga en PDF, Excel o CSV con los filtros activos');
+    expect(texto).not.toContain('Se genera en PDF');
+  });
+
   it('no ofrece período personalizado y mantiene funcional el rango de fechas', () => {
     const opcionesPeriodo = Array.from(
       fixture.nativeElement.querySelectorAll('select option'),

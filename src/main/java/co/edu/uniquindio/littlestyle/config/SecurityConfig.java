@@ -82,6 +82,10 @@ public class SecurityConfig {
                     if (h2ConsoleEnabled) {
                         auth.requestMatchers("/h2-console/**").permitAll();
                     }
+                    // RNF-24: /actuator/health es público para el balanceador; el resto de las
+                    // métricas de Actuator solo las consulta un administrador.
+                    auth.requestMatchers("/actuator/health").permitAll();
+                    auth.requestMatchers("/actuator/**").hasRole("ADMINISTRADOR");
                     auth.requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR");
                     auth.requestMatchers("/api/vendedor/**").hasRole("VENDEDOR");
                     auth.requestMatchers("/api/cliente/**").hasRole("CLIENTE");
@@ -113,7 +117,8 @@ public class SecurityConfig {
 
     /**
      * Permite al frontend de los orígenes configurados llamar a {@code /api/**} con los métodos y cabeceras
-     * necesarios.
+     * necesarios, y expone {@code Content-Disposition} y {@code Content-Length} para que el navegador
+     * nombre el archivo descargado y muestre progreso real.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -121,7 +126,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setExposedHeaders(List.of("Content-Disposition"));
+        config.setExposedHeaders(List.of("Content-Disposition", "Content-Length"));
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

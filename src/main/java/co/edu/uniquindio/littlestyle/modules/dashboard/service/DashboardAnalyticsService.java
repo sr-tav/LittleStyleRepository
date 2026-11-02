@@ -4,6 +4,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Cate
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
+import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.DashboardAnalyticsRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -119,6 +120,23 @@ public class DashboardAnalyticsService {
                 .toList();
     }
 
+    /**
+     * Serie diaria de ventas del período (US-16). Reutiliza las mismas reglas de alcance,
+     * categoría y estados de pedido que el resto del dashboard.
+     */
+    @Transactional(readOnly = true)
+    public List<DashboardVentasDiaResponse> obtenerVentasPorDia(LocalDate startDate,
+                                                                 LocalDate endDate,
+                                                                 CategoriaPrenda categoria,
+                                                                 Long vendedorId) {
+        Rango rango = Rango.de(startDate, endDate);
+        return dashboardAnalyticsRepository
+                .ventasPorDia(rango.inicio(), rango.fin(), filtro(categoria), vendedorId)
+                .stream()
+                .map(this::mapVentasDia)
+                .toList();
+    }
+
     private static String filtro(CategoriaPrenda categoria) {
         return categoria == null ? null : categoria.name();
     }
@@ -137,6 +155,23 @@ public class DashboardAnalyticsService {
 
     private DashboardDemandaDetalleResponse mapDemandaDetalle(Object[] fila) {
         return new DashboardDemandaDetalleResponse(texto(fila[0]), texto(fila[1]), largo(fila[2]), decimal(fila[3]));
+    }
+
+    private DashboardVentasDiaResponse mapVentasDia(Object[] fila) {
+        return new DashboardVentasDiaResponse(fecha(fila[0]), largo(fila[1]), decimal(fila[2]));
+    }
+
+    /** Convierte la fecha que devuelve la consulta nativa en {@link LocalDate}. */
+    private static LocalDate fecha(Object valor) {
+        return switch (valor) {
+            case null -> null;
+            case LocalDate d -> d;
+            case java.sql.Date d -> d.toLocalDate();
+            case LocalDateTime dt -> dt.toLocalDate();
+            case java.util.Date d -> d.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            case String s -> LocalDate.parse(s);
+            default -> LocalDate.parse(valor.toString());
+        };
     }
 
     private static String texto(Object valor) {

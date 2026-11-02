@@ -171,6 +171,27 @@ public interface DashboardAnalyticsRepository extends JpaRepository<Pedido, Long
                                         @Param("categoria") String categoria,
                                         @Param("vendedorId") Long vendedorId);
 
+    /** Serie diaria de ventas del período: fecha, pedidos distintos y total vendido. */
+    @Query(value = """
+            select cast(p.fecha_creacion as date) as dia,
+                   count(distinct p.id) as pedidos,
+                   coalesce(sum(li.subtotal), 0) as total
+            from pedidos p
+            join pedido_items li on li.pedido_id = p.id
+            join prendas pr on pr.id = li.prenda_id
+            where p.fecha_creacion >= :inicio
+              and p.fecha_creacion < :fin
+              and p.estado in ('PAGADO', 'REGISTRADO', 'EN_PREPARACION', 'PARCIALMENTE_ENVIADO', 'ENVIADO')
+              and (:categoria is null or pr.categoria = :categoria)
+              and (:vendedorId is null or pr.vendedor_id = :vendedorId)
+            group by cast(p.fecha_creacion as date)
+            order by dia asc
+            """, nativeQuery = true)
+    List<Object[]> ventasPorDia(@Param("inicio") LocalDateTime inicio,
+                                @Param("fin") LocalDateTime fin,
+                                @Param("categoria") String categoria,
+                                @Param("vendedorId") Long vendedorId);
+
     @Query(value = """
             select coalesce(sum(t.stock), 0)
             from prenda_tallas t

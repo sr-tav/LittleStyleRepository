@@ -19,6 +19,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +36,7 @@ class ReporteServiceTest {
     private ConstructorDatosReporte constructor;
     @Mock private GeneradorReporteFactory factory;
     @Mock private CreadorGeneradorReporte creador;
+    @Mock private ReporteMetricas metricas;
     @InjectMocks
     private ReporteService service;
 
@@ -62,11 +64,25 @@ class ReporteServiceTest {
     }
 
     @Test
+    void unaExportacionExitosaAlimentaLaMetricaDeRnf24() {
+        AuthenticatedUser admin = new AuthenticatedUser(1L, "a@t.com", "Admin", Rol.ADMINISTRADOR);
+        when(constructor.construir(SOLICITUD, null, admin)).thenReturn(DATOS);
+        when(factory.obtener(FormatoReporte.PDF)).thenReturn(creador);
+        when(creador.exportar(DATOS)).thenReturn(ARCHIVO);
+
+        service.exportar(SOLICITUD, admin);
+
+        verify(metricas).exito(eq(TipoReporte.VENTAS), eq(FormatoReporte.PDF), anyLong());
+        verify(metricas, never()).fallo(any(), any());
+        verify(metricas, never()).rechazo(any(), any());
+    }
+
+    @Test
     void clienteOAnonimoSonRechazadosSinTocarDatos() {
         AuthenticatedUser cliente = new AuthenticatedUser(2L, "c@t.com", "Cliente", Rol.CLIENTE);
         assertThatThrownBy(() -> service.exportar(SOLICITUD, cliente)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> service.exportar(SOLICITUD, null)).isInstanceOf(AccessDeniedException.class);
-        verifyNoInteractions(constructor, factory);
+        verifyNoInteractions(constructor, factory, metricas);
     }
 
     @Test
@@ -81,14 +97,28 @@ class ReporteServiceTest {
                     assertThat(e.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
                     assertThat(e.getMessage()).doesNotContain("detalle interno");
                 });
+        verify(metricas).fallo(TipoReporte.VENTAS, FormatoReporte.PDF);
     }
 
     @Test
-    void loserroresDeFiltrosSePropaganTalCual() {
+    void loserroresDeFiltrosSePropaganTalCualYNoCuentanComoFalloDelSistema() {
         AuthenticatedUser admin = new AuthenticatedUser(1L, "a@t.com", "Admin", Rol.ADMINISTRADOR);
         BusinessException invalido = new BusinessException(HttpStatus.BAD_REQUEST, "fechas", "startDate");
         when(constructor.construir(any(), any(), any())).thenThrow(invalido);
 
         assertThatThrownBy(() -> service.exportar(SOLICITUD, admin)).isSameAs(invalido);
+        verify(metricas).rechazo(TipoReporte.VENTAS, FormatoReporte.PDF);
+        verify(metricas, never()).fallo(any(), any());
+    }
+
+    @Test
+    void unErrorDeNegocioConEstado5xxSiRestaEnLaTasa() {
+        AuthenticatedUser admin = new AuthenticatedUser(1L, "a@t.com", "Admin", Rol.ADMINISTRADOR);
+        BusinessException interno = new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "fallo interno");
+        when(constructor.construir(any(), any(), any())).thenThrow(interno);
+
+        assertThatThrownBy(() -> service.exportar(SOLICITUD, admin)).isSameAs(interno);
+        verify(metricas).fallo(TipoReporte.VENTAS, FormatoReporte.PDF);
+        verify(metricas, never()).rechazo(any(), any());
     }
 }

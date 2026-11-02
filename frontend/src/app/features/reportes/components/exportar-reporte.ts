@@ -6,14 +6,16 @@ import { Subscription } from 'rxjs';
 import {
   AccionReporte,
   EstadoExportacion,
+  FormatoReporte,
+  OPCIONES_FORMATO,
   OPCIONES_REPORTE,
   TipoReporte,
 } from '../models/reporte.models';
-import { ReportesService } from '../services/reportes.service';
+import { ErrorReporte, ReportesService } from '../services/reportes.service';
 
 /**
- * Exporta o imprime un reporte PDF según el período y la categoría que recibe del dashboard.
- * El reporte de inventario es una foto actual: ignora las fechas.
+ * Exporta o imprime un reporte según el período, la categoría, el tipo y el formato elegidos.
+ * El reporte de inventario es una foto actual: ignora las fechas. La impresión solo aplica a PDF.
  */
 @Component({
   selector: 'app-exportar-reporte',
@@ -35,14 +37,38 @@ import { ReportesService } from '../services/reportes.service';
         </select>
       </div>
 
+      <div class="export-field">
+        <label for="formato-reporte">Formato</label>
+        <select
+          id="formato-reporte"
+          [ngModel]="formato()"
+          (ngModelChange)="formato.set($event)"
+          [disabled]="ocupado()"
+        >
+          @for (op of formatos; track op.valor) {
+            <option [value]="op.valor">{{ op.etiqueta }}</option>
+          }
+        </select>
+      </div>
+
       <div class="export-actions">
         <button type="button" class="btn-primary" (click)="exportar('descargar')" [disabled]="ocupado()">
-          Descargar PDF
+          Descargar {{ formato() }}
         </button>
-        <button type="button" class="btn-secondary" (click)="exportar('imprimir')" [disabled]="ocupado()">
+        <button
+          type="button"
+          class="btn-secondary"
+          (click)="exportar('imprimir')"
+          [disabled]="ocupado() || !puedeImprimir()"
+          [attr.title]="puedeImprimir() ? null : 'La impresión está disponible solo en PDF'"
+        >
           Imprimir
         </button>
       </div>
+
+      @if (!puedeImprimir()) {
+        <p class="hint">Excel y CSV se descargan para analizarlos; la impresión está disponible solo en PDF.</p>
+      }
 
       @if (ocupado()) {
         <div class="progress-wrap" role="status" aria-live="polite">
@@ -72,7 +98,7 @@ import { ReportesService } from '../services/reportes.service';
     `
       .export-box {
         display: grid;
-        grid-template-columns: minmax(190px, 1fr) minmax(0, 2fr);
+        grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.7fr) minmax(0, 1.6fr);
         align-items: end;
         gap: 1.25rem;
       }
@@ -211,6 +237,13 @@ import { ReportesService } from '../services/reportes.service';
         color: #166534;
       }
 
+      .hint {
+        grid-column: 1 / -1;
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.78rem;
+      }
+
       @media (max-width: 640px) {
         .export-box {
           grid-template-columns: 1fr;
@@ -239,13 +272,16 @@ export class ExportarReporte implements OnDestroy {
   readonly categoria = input<string | null>(null);
 
   readonly opciones = OPCIONES_REPORTE;
+  readonly formatos = OPCIONES_FORMATO;
   readonly tipo = signal<TipoReporte>('ventas');
+  readonly formato = signal<FormatoReporte>('PDF');
   readonly fase = signal<'inactiva' | 'generando' | 'descargando'>('inactiva');
   readonly progreso = signal<number | null>(null);
   readonly error = signal('');
   readonly exito = signal('');
 
   readonly ocupado = computed(() => this.fase() !== 'inactiva');
+  readonly puedeImprimir = computed(() => this.formato() === 'PDF');
   readonly mensajeFase = computed(() => {
     if (this.fase() === 'generando') return 'Generando el reporte…';
     const p = this.progreso();
@@ -257,6 +293,10 @@ export class ExportarReporte implements OnDestroy {
 
   exportar(accion: AccionReporte): void {
     if (this.ocupado()) return;
+    if (accion === 'imprimir' && !this.puedeImprimir()) {
+      this.error.set('Solo puedes imprimir reportes en PDF. Elige el formato PDF o descarga el archivo.');
+      return;
+    }
     this.error.set('');
     this.exito.set('');
     this.progreso.set(null);
@@ -266,32 +306,47 @@ export class ExportarReporte implements OnDestroy {
     this.ventanaImpresion = accion === 'imprimir' ? (this.ventanaGlobal?.open('', '_blank') ?? null) : null;
 
     this.suscripcion = this.reportes
-      .exportar(this.tipo(), {
-        startDate: this.startDate() || undefined,
-        endDate: this.endDate() || undefined,
-        categoria: this.categoria() ?? undefined,
-      })
+      .exportar(
+        this.tipo(),
+        {
+          startDate: this.startDate() || undefined,
+          endDate: this.endDate() || undefined,
+          categoria: this.categoria() ?? undefined,
+        },
+        this.formato(),
+      )
       .subscribe({
-        next: (estado) => this.aplicar(estado, accion),
+        next: (estado) => void this.aplicar(estado, accion),
         error: (err: Error) => {
           this.ventanaImpresion?.close();
           this.terminar();
           this.error.set(err.message);
+          const resultado = err instanceof ErrorReporte ? err.resultado : 'ERROR_CLIENTE';
+          this.reportes.reportarExportacion(this.tipo(), this.formato(), resultado, err.message);
         },
       });
   }
 
   cancelar(): void {
+    if (!this.ocupado()) return;
     this.suscripcion?.unsubscribe();
     this.ventanaImpresion?.close();
     this.terminar();
+    this.reportes.reportarExportacion(
+      this.tipo(),
+      this.formato(),
+      'CANCELADO',
+      'El usuario canceló la exportación',
+    );
   }
 
   ngOnDestroy(): void {
     this.suscripcion?.unsubscribe();
+    this.ventanaImpresion?.close();
+    this.ventanaImpresion = null;
   }
 
-  private aplicar(estado: EstadoExportacion, accion: AccionReporte): void {
+  private async aplicar(estado: EstadoExportacion, accion: AccionReporte): Promise<void> {
     switch (estado.fase) {
       case 'generando':
         this.fase.set('generando');
@@ -300,15 +355,59 @@ export class ExportarReporte implements OnDestroy {
         this.fase.set('descargando');
         this.progreso.set(estado.progreso);
         break;
-      case 'listo':
-        this.reportes.entregar(estado.archivo, accion, this.ventanaImpresion);
-        this.exito.set(
-          accion === 'imprimir'
-            ? 'Reporte listo: imprímelo desde la pestaña que se abrió.'
-            : `Reporte descargado: ${estado.archivo.nombre}`,
-        );
+      case 'listo': {
+        const ventana = this.ventanaImpresion;
         this.terminar();
+        try {
+          if (accion === 'imprimir') {
+            const resultado = await this.reportes.imprimir(estado.archivo, ventana);
+            if (resultado === 'sin-ventana') {
+              this.reportes.reportarExportacion(
+                this.tipo(),
+                this.formato(),
+                'ERROR_CLIENTE',
+                'No se pudo abrir la impresión',
+              );
+            } else {
+              // El motivo deja rastro de qué significa "OK": archivo validado y entregado, no
+              // confirmación de guardado en disco (el navegador no expone ese dato).
+              this.reportes.reportarExportacion(
+                this.tipo(),
+                this.formato(),
+                'OK',
+                'archivo_validado_impreso',
+              );
+            }
+            this.exito.set(
+              resultado === 'impreso'
+                ? 'Reporte listo: abrimos el diálogo de impresión del navegador.'
+                : resultado === 'pestana'
+                  ? 'Reporte listo: imprímelo desde la pestaña que se abrió.'
+                  : 'No pudimos abrir la impresión. Descarga el PDF e imprímelo desde tu equipo.',
+            );
+          } else {
+            this.reportes.descargar(estado.archivo);
+            this.reportes.reportarExportacion(
+              this.tipo(),
+              this.formato(),
+              'OK',
+              'archivo_validado_entregado',
+            );
+            this.exito.set(`Reporte ${this.formato()} descargado: ${estado.archivo.nombre}`);
+          }
+        } catch {
+          this.error.set(
+            'No pudimos guardar el archivo. Revisa los permisos de descarga e inténtalo de nuevo.',
+          );
+          this.reportes.reportarExportacion(
+            this.tipo(),
+            this.formato(),
+            'ERROR_CLIENTE',
+            'El navegador no pudo entregar el archivo',
+          );
+        }
         break;
+      }
     }
   }
 

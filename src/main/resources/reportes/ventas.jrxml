@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport name="ventas" language="java" pageWidth="595" pageHeight="842" columnWidth="555"
+              leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20"
+              whenNoDataType="AllSectionsNoDetail">
+    <style name="base" default="true" fontName="DejaVu Sans" fontSize="8.5"/>
+    <parameter name="TITULO" class="java.lang.String"/>
+    <parameter name="SUBTITULO" class="java.lang.String"/>
+    <parameter name="ALCANCE" class="java.lang.String"/>
+    <parameter name="GENERADO_EN" class="java.lang.String"/>
+    <parameter name="GENERADO_POR" class="java.lang.String"/>
+    <parameter name="TOTAL_REGISTROS" class="java.lang.String"/>
+    <parameter name="TOTAL_VENTAS" class="java.lang.String"/>
+    <parameter name="TOTAL_PEDIDOS" class="java.lang.String"/>
+    <parameter name="TICKET_PROMEDIO" class="java.lang.String"/>
+    <field name="seccion" class="java.lang.String"/>
+    <field name="etiqueta" class="java.lang.String"/>
+    <field name="cantidad" class="java.lang.String"/>
+    <field name="valor" class="java.lang.String"/>
+    <field name="nivelBarra" class="java.lang.Integer"/>
+    <group name="Seccion" reprintHeaderOnEachPage="true">
+        <expression><![CDATA[$F{seccion}]]></expression>
+        <groupHeader>
+            <band height="24">
+                <element kind="textField" x="0" y="2" width="555" height="18" fontSize="9.5" bold="true" forecolor="#14532D" vTextAlign="Middle">
+                    <expression><![CDATA[$F{seccion}]]></expression>
+                </element>
+                <element kind="line" x="0" y="22" width="555" height="1">
+                    <pen lineWidth="0.8" lineColor="#15803D"/>
+                </element>
+            </band>
+        </groupHeader>
+    </group>
+    <title height="112">
+        <element kind="textField" x="0" y="0" width="180" height="32" fontSize="14.0" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle">
+            <expression><![CDATA["  LittleStyle"]]></expression>
+        </element>
+        <element kind="textField" x="180" y="0" width="375" height="32" fontSize="11.0" bold="true" forecolor="#FFFFFF" backcolor="#15803D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <expression><![CDATA[$P{TITULO} + "  "]]></expression>
+        </element>
+        <element kind="textField" x="0" y="38" width="555" height="14" fontSize="9.0" forecolor="#374151">
+            <expression><![CDATA[$P{SUBTITULO}]]></expression>
+        </element>
+        <element kind="textField" x="0" y="54" width="555" height="12" fontSize="8.0" forecolor="#6B7280">
+            <expression><![CDATA["Alcance: " + $P{ALCANCE} + "   ·   Generado: " + $P{GENERADO_EN} + "   ·   Por: " + $P{GENERADO_POR}]]></expression>
+        </element>
+        <element kind="rectangle" x="0" y="72" width="180" height="32" backcolor="#F0FDF4" mode="Opaque">
+            <pen lineWidth="0.5" lineColor="#D1FAE5"/>
+        </element>
+        <element kind="rectangle" x="187" y="72" width="181" height="32" backcolor="#F0FDF4" mode="Opaque">
+            <pen lineWidth="0.5" lineColor="#D1FAE5"/>
+        </element>
+        <element kind="rectangle" x="375" y="72" width="180" height="32" backcolor="#F0FDF4" mode="Opaque">
+            <pen lineWidth="0.5" lineColor="#D1FAE5"/>
+        </element>
+        <element kind="staticText" x="8" y="75" width="164" height="10" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Ventas totales]]></text>
+        </element>
+        <element kind="textField" x="8" y="85" width="164" height="16" fontSize="10.0" bold="true" forecolor="#14532D">
+            <expression><![CDATA[$P{TOTAL_VENTAS}]]></expression>
+        </element>
+        <element kind="staticText" x="195" y="75" width="165" height="10" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Pedidos]]></text>
+        </element>
+        <element kind="textField" x="195" y="85" width="165" height="16" fontSize="10.0" bold="true" forecolor="#14532D">
+            <expression><![CDATA[$P{TOTAL_PEDIDOS}]]></expression>
+        </element>
+        <element kind="staticText" x="383" y="75" width="164" height="10" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Ticket promedio]]></text>
+        </element>
+        <element kind="textField" x="383" y="85" width="164" height="16" fontSize="10.0" bold="true" forecolor="#14532D">
+            <expression><![CDATA[$P{TICKET_PROMEDIO}]]></expression>
+        </element>
+        <element kind="line" x="0" y="110" width="555" height="1">
+            <pen lineWidth="1.0" lineColor="#14532D"/>
+        </element>
+    </title>
+    <columnHeader height="24">
+        <element kind="staticText" x="0" y="0" width="300" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" vTextAlign="Middle">
+            <text><![CDATA[  Concepto / participación diaria]]></text>
+        </element>
+        <element kind="staticText" x="300" y="0" width="90" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <text><![CDATA[Cantidad  ]]></text>
+        </element>
+        <element kind="staticText" x="390" y="0" width="165" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+            <text><![CDATA[Valor  ]]></text>
+        </element>
+    </columnHeader>
+    <detail>
+        <band height="17">
+            <!-- Barra proporcional en 10 tramos: un solo carácter de bloque U+2588 repetido según
+                 nivelBarra (0-10). Reemplaza los diez rectángulos con printWhenExpression. El
+                 tamaño 10 cabe en la banda de 17 px sin que Jasper recorte el glifo. -->
+            <element kind="textField" x="0" y="1" width="300" height="15" fontSize="10.0" forecolor="#4ADE80" vTextAlign="Middle">
+                <expression><![CDATA["█".repeat($F{nivelBarra} == null ? 0 : $F{nivelBarra})]]></expression>
+            </element>
+            <element kind="textField" x="4" y="0" width="292" height="17" fontSize="8.5" textAdjust="StretchHeight" vTextAlign="Middle">
+                <expression><![CDATA[$F{etiqueta}]]></expression>
+            </element>
+            <element kind="textField" x="300" y="0" width="90" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
+                <expression><![CDATA[$F{cantidad} + "  "]]></expression>
+            </element>
+            <element kind="textField" x="390" y="0" width="165" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
+                <expression><![CDATA[$F{valor} + "  "]]></expression>
+            </element>
+            <element kind="line" x="0" y="16" width="555" height="1">
+                <pen lineWidth="0.3" lineColor="#E7E5E4"/>
+            </element>
+        </band>
+    </detail>
+    <summary height="52">
+        <element kind="line" x="0" y="2" width="555" height="1">
+            <pen lineWidth="1.0" lineColor="#14532D"/>
+        </element>
+        <element kind="textField" x="0" y="8" width="555" height="14" fontSize="8.5" bold="true" forecolor="#14532D">
+            <expression><![CDATA["Filas incluidas en el reporte: " + $P{TOTAL_REGISTROS}]]></expression>
+        </element>
+        <element kind="staticText" x="0" y="26" width="555" height="12" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[Documento generado automáticamente por LittleStyle · Información confidencial para uso interno]]></text>
+        </element>
+    </summary>
+    <pageFooter height="24">
+        <element kind="staticText" x="0" y="6" width="300" height="12" fontSize="7.5" forecolor="#6B7280">
+            <text><![CDATA[LittleStyle · Reporte corporativo]]></text>
+        </element>
+        <element kind="textField" x="450" y="6" width="80" height="12" fontSize="7.5" forecolor="#6B7280" hTextAlign="Right">
+            <expression><![CDATA["Página " + $V{PAGE_NUMBER} + " de "]]></expression>
+        </element>
+        <element kind="textField" x="530" y="6" width="25" height="12" fontSize="7.5" forecolor="#6B7280" evaluationTime="Report">
+            <expression><![CDATA["" + $V{PAGE_NUMBER}]]></expression>
+        </element>
+    </pageFooter>
+</jasperReport>

@@ -10,7 +10,9 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
+import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +36,7 @@ import java.util.Objects;
  * de datos con paginación, nunca trayendo todo el catálogo a memoria.
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CatalogoClienteService {
 
@@ -42,6 +45,7 @@ public class CatalogoClienteService {
     private final PrendaRepository prendaRepository;
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.PerfilBiometricoPort perfiles;
     private final co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.MotorRecomendacionService motor;
+    private final RegistradorBusquedaCatalogo registradorBusquedas;
 
     /** Búsqueda sin lista de ids, perfil ni edad. */
     @Transactional(readOnly = true)
@@ -111,19 +115,24 @@ public class CatalogoClienteService {
         String q = texto == null || texto.isBlank() ? null : texto.trim();
         String t = talla == null || talla.isBlank() ? null : talla.trim();
         List<MaterialTextil> materiales = materiales(material);
+        CategoriaPrenda categoriaFiltro = categoria(categoria);
         Page<Long> paginaIds;
         if (idsEfectivos != null) {
             if (idsEfectivos.isEmpty()) {
+                registrarBusqueda(q, categoriaFiltro, 0);
                 return PaginaResponse.from(Page.empty(paginable));
             }
             paginaIds = prendaRepository.buscarIdsVitrinaPorIds(EstadoPrenda.ACTIVA, idsEfectivos,
-                    categoria(categoria), genero(genero), min, max, q, disponibilidad(disponible),
+                    categoriaFiltro, genero(genero), min, max, q, disponibilidad(disponible),
                     materiales, t, edadMeses, paginable);
         } else {
             paginaIds = prendaRepository.buscarIdsVitrina(EstadoPrenda.ACTIVA,
-                    categoria(categoria), genero(genero), min, max, q, disponibilidad(disponible),
+                    categoriaFiltro, genero(genero), min, max, q, disponibilidad(disponible),
                     materiales, t, edadMeses, paginable);
         }
+        // Se registra aunque no haya resultados: las búsquedas sin coincidencias son la señal
+        // de demanda insatisfecha más valiosa del reporte de búsquedas (US-16).
+        registrarBusqueda(q, categoriaFiltro, paginaIds.getTotalElements());
         if (paginaIds.isEmpty()) {
             return PaginaResponse.from(Page.empty(paginable));
         }
@@ -145,6 +154,23 @@ public class CatalogoClienteService {
         Prenda prenda = prendaRepository.findByIdAndEstado(id, EstadoPrenda.ACTIVA)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
         return PrendaDetalleResponse.from(prenda);
+    }
+
+    /**
+     * Dispara el registro asíncrono de la búsqueda. Se guarda en un try/catch porque, aunque el
+     * método es {@code @Async}, un rechazo del ejecutor podría propagarse; la búsqueda del
+     * cliente debe responder siempre.
+     */
+    private void registrarBusqueda(String termino, CategoriaPrenda categoria, long resultados) {
+        if (termino == null || termino.isBlank()) {
+            return;
+        }
+        try {
+            registradorBusquedas.registrar(termino, categoria, resultados,
+                    SecurityUtils.usuarioActual().map(u -> u.id()).orElse(null));
+        } catch (RuntimeException ex) {
+            log.warn("busqueda.registro resultado=ERROR motivo={}", ex.getClass().getSimpleName());
+        }
     }
 
     /** Convierte el filtro de categoría; nulo si no se envió y 400 si no es válido. */

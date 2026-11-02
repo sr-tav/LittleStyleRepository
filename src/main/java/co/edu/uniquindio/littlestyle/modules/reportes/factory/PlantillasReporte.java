@@ -16,8 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlantillasReporte {
 
     private static final Map<TipoReporte, String> RUTAS = Map.of(
-            TipoReporte.VENTAS, "/reportes/series.jrxml",
-            TipoReporte.DEMANDA, "/reportes/series.jrxml",
+            TipoReporte.VENTAS, "/reportes/ventas.jrxml",
+            TipoReporte.DEMANDA, "/reportes/demanda.jrxml",
+            TipoReporte.BUSQUEDAS, "/reportes/busquedas.jrxml",
             TipoReporte.INVENTARIO, "/reportes/inventario.jrxml");
 
     private final Map<String, JasperReport> compiladas = new ConcurrentHashMap<>();
