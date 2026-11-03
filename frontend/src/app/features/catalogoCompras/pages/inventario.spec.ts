@@ -46,14 +46,28 @@ describe('Inventario (UI-21)', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  it('lista stock actual, mínimos por talla, estado y el número de alertas activas', () => {
+  it('muestra la matriz por variante con talla, color, stock y mínimo', () => {
     const { el } = crear();
 
-    const fila = el.querySelector('tbody tr')!;
-    expect(fila.querySelector('.stock-number')?.textContent?.trim()).toBe('3');
-    expect(fila.querySelectorAll('td')[2]?.textContent?.trim()).toBe('5 · 3');
-    expect(fila.querySelectorAll('td')[2]?.textContent).not.toMatch(/talla\s*4/i);
-    expect(fila.querySelector('.stock-badge')?.textContent).toContain('Stock bajo');
+    const filas = el.querySelectorAll<HTMLTableRowElement>(
+      '.inventory-matrix tbody tr',
+    );
+    expect(filas).toHaveLength(2);
+
+    const azul = filas[0];
+    expect(azul.textContent).toContain('4');
+    expect(azul.textContent).toContain('Azul');
+    expect(azul.textContent).toContain('2');
+    expect(azul.textContent).toContain('5');
+    expect(azul.querySelector('.color-swatch')).not.toBeNull();
+
+    const rosa = filas[1];
+    expect(rosa.textContent).toContain('6');
+    expect(rosa.textContent).toContain('Rosa');
+    expect(rosa.textContent).toContain('1');
+    expect(rosa.textContent).toContain('3');
+
+    expect(el.querySelector('.stock-badge')?.textContent).toContain('Stock bajo');
     expect(el.querySelector('.btn-alerts-count')?.textContent?.trim()).toBe('1');
   });
 
@@ -62,26 +76,28 @@ describe('Inventario (UI-21)', () => {
     el.querySelector<HTMLButtonElement>('.btn-soft')!.click();
     fixture.detectChanges();
 
-    const entradas = el.querySelectorAll<HTMLInputElement>('.stock-editor input');
-    escribir(entradas[0], '10');
+    const entradas = el.querySelectorAll<HTMLInputElement>(
+      '.inventory-matrix input',
+    );    escribir(entradas[0], '10');
     escribir(entradas[1], '4');
     fixture.detectChanges();
     expect(el.querySelector('.stock-editor-footer')?.textContent).toContain('11');
 
-    el.querySelector<HTMLButtonElement>('.stock-editor .btn-primary')!.click();
-    const req = http.expectOne('/api/vendedor/inventario/7');
+    el.querySelector<HTMLButtonElement>(
+      '.inventory-variants .btn-primary',
+    )!.click();    const req = http.expectOne('/api/vendedor/inventario/7');
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual({
       tallas: [
-        { talla: '4', stock: 10, stockMinimo: 4 },
-        { talla: '6', stock: 1, stockMinimo: 3 },
+        { talla: '4', color: 'AZUL', nuevoColor: null, stock: 10, stockMinimo: 4 },
+        { talla: '6', color: 'ROSA', nuevoColor: null, stock: 1, stockMinimo: 3 },
       ],
     });
     req.flush(crearItemInventario({ stockTotal: 11, nivel: 'DISPONIBLE' }));
     http.expectOne('/api/vendedor/inventario/alertas').flush([]);
     fixture.detectChanges();
 
-    expect(el.querySelector('.stock-editor')).toBeNull();
+    expect(el.querySelector('.inventory-matrix input')).toBeNull();
     expect(el.querySelector('tbody .stock-badge')?.textContent).toContain('Disponible');
     expect(el.querySelector('.btn-alerts-count')).toBeNull();
   });
@@ -91,13 +107,15 @@ describe('Inventario (UI-21)', () => {
     el.querySelector<HTMLButtonElement>('.btn-soft')!.click();
     fixture.detectChanges();
 
-    const entradas = el.querySelectorAll<HTMLInputElement>('.stock-editor input');
-    escribir(entradas[0], '0');
+    const entradas = el.querySelectorAll<HTMLInputElement>(
+      '.inventory-matrix input',
+    );    escribir(entradas[0], '0');
     escribir(entradas[1], '0');
     fixture.detectChanges();
 
-    el.querySelector<HTMLButtonElement>('.stock-editor .btn-primary')!.click();
-    const req = http.expectOne('/api/vendedor/inventario/7');
+    el.querySelector<HTMLButtonElement>(
+      '.inventory-variants .btn-primary',
+    )!.click();    const req = http.expectOne('/api/vendedor/inventario/7');
     req.flush(crearItemInventario({ stockTotal: 0, nivel: 'AGOTADO' }));
     http.expectOne('/api/vendedor/inventario/alertas').flush([crearAlerta()]);
     fixture.detectChanges();
@@ -107,14 +125,26 @@ describe('Inventario (UI-21)', () => {
 
   it('no envía valores inválidos', () => {
     const { fixture, el } = crear();
+
     el.querySelector<HTMLButtonElement>('.btn-soft')!.click();
     fixture.detectChanges();
 
-    escribir(el.querySelectorAll<HTMLInputElement>('.stock-editor input')[0], '-3');
-    el.querySelector<HTMLButtonElement>('.stock-editor .btn-primary')!.click();
+    const entradas = el.querySelectorAll<HTMLInputElement>(
+      '.inventory-matrix input',
+    );
+    expect(entradas.length).toBeGreaterThan(0);
+
+    escribir(entradas[0], '-3');
+
+    el.querySelector<HTMLButtonElement>(
+      '.inventory-variants .btn-primary',
+    )!.click();
     fixture.detectChanges();
 
-    expect(el.querySelector('.stock-editor .field-error')?.textContent).toContain('números enteros');
+    expect(
+      el.querySelector('.inventory-variants .field-error')?.textContent,
+    ).toContain('números enteros');
+
     http.expectNone('/api/vendedor/inventario/7');
   });
 
@@ -122,9 +152,70 @@ describe('Inventario (UI-21)', () => {
     prendaRuta = '7';
     const { el } = crear();
 
-    expect(el.querySelector('.stock-editor')).not.toBeNull();
+    expect(el.querySelector('.inventory-matrix input')).not.toBeNull();
   });
+
+  it('abre directamente la edición de la prenda indicada desde las alertas', () => {
+    prendaRuta = '7';
+    const { el } = crear();
+
+    expect(el.querySelector('.inventory-matrix input')).not.toBeNull();
+  });
+
+  it('asigna color a una variante sin color desde Inventario y conserva su stock', () => {
+    const varianteSinColor = {
+      talla: '4',
+      color: null,
+      stock: 2,
+      stockMinimo: 5,
+    };
+    const fixture = TestBed.createComponent(Inventario);
+    fixture.detectChanges();
+
+    http.expectOne('/api/vendedor/inventario').flush([
+      crearItemInventario({ tallas: [varianteSinColor], stockTotal: 2 }),
+    ]);
+    http.expectOne('/api/vendedor/inventario/alertas').flush([]);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('.btn-soft')!.click();
+    fixture.detectChanges();
+
+    const opcionAzul = [...el.querySelectorAll<HTMLButtonElement>(
+      '.inventory-variant-color-picker .stock-color-option',
+    )].find((opcion) => opcion.textContent?.includes('Azul'));
+
+    expect(opcionAzul).toBeDefined();
+    opcionAzul!.click();
+    fixture.detectChanges();
+
+    el.querySelector<HTMLButtonElement>('.inventory-variants .btn-primary')!.click();
+
+    const req = http.expectOne('/api/vendedor/inventario/7');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({
+      tallas: [{
+        talla: '4',
+        color: null,
+        nuevoColor: 'AZUL',
+        stock: 2,
+        stockMinimo: 5,
+      }],
+    });
+
+    req.flush(crearItemInventario({
+      stockTotal: 2,
+      tallas: [{ talla: '4', color: 'AZUL', stock: 2, stockMinimo: 5 }],
+    }));
+    http.expectOne('/api/vendedor/inventario/alertas').flush([]);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.inventory-matrix tbody')?.textContent).toContain('Azul');
+  });
+
 });
+
 
 describe('AlertasStock (UI-22)', () => {
   it('muestra talla, actual, mínimo, diferencia y el mensaje según el nivel', async () => {
@@ -153,3 +244,5 @@ describe('AlertasStock (UI-22)', () => {
     http.verify();
   });
 });
+
+

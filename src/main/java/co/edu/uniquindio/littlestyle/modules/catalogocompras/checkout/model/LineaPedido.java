@@ -1,15 +1,8 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -66,5 +59,13 @@ public class LineaPedido {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ColorPreferido color;
+
+    public String etiquetaTalla() {
+        return TallaPrenda.etiqueta(talla, color);
+    }
 
 }

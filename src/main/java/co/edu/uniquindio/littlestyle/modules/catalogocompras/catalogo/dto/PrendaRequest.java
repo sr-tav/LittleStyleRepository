@@ -8,11 +8,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -21,16 +20,19 @@ import java.util.Set;
 
 /**
  * Datos de la prenda para crearla o editarla. El {@code stock} de cada talla solo se toma para tallas
- * nuevas; el stock de las tallas existentes se modifica desde el inventario.
+ * nuevas; el stock de las tallas existentes se modifica desde el inventario. Las fotos viajan aparte
+ * (parte multipart {@code archivos}) y son obligatorias al crear.
  */
 public record PrendaRequest(
         @NotBlank(message = "El nombre es obligatorio")
         @Size(min = 3, max = 120, message = "El nombre debe tener entre 3 y 120 caracteres")
+        @Pattern(regexp = "^(?=.*\\p{L}).+$", message = "El nombre debe contener al menos una letra")
         String nombre,
 
         @NotNull(message = "La categoría es obligatoria")
         CategoriaPrenda categoria,
 
+        @NotBlank(message = "La descripción es obligatoria")
         @Size(max = 2000, message = "La descripción admite máximo 2000 caracteres")
         String descripcion,
 
@@ -48,7 +50,9 @@ public record PrendaRequest(
         @Digits(integer = 10, fraction = 2, message = "El precio admite máximo dos decimales")
         BigDecimal precio,
 
-        @Size(max = 10, message = "Selecciona máximo 10 colores")
+        /** Colores que ofrece la prenda; cada uno debe tener al menos una variante en las tallas. */
+        @NotNull(message = "Selecciona al menos un color")
+        @Size(min = 1, max = 10, message = "Selecciona entre 1 y 10 colores")
         Set<ColorPreferido> colores,
 
         Estampado estampado,
@@ -66,7 +70,7 @@ public record PrendaRequest(
         List<@Valid @NotNull ComponenteRequest> composicion,
 
         @NotEmpty(message = "Agrega al menos una talla")
-        @Size(max = 15, message = "La tabla de tallas admite máximo 15 tallas")
+        @Size(max = 60, message = "La tabla admite máximo 60 combinaciones de talla y color")
         List<@Valid @NotNull TallaRequest> tallas
 ) {
 }

@@ -10,6 +10,7 @@ export interface ItemCarrito {
   subtotal: number;
   disponible: boolean;
   tallaSugerida?: string | null;
+  color?: string | null;
 }
 
 /** Contenido y totales calculados del carrito de compras. */
@@ -40,6 +41,7 @@ export interface AgregarItemCarritoRequest {
    * PRENDA_EXCLUIDA_ALERGIA si la prenda choca con una alergia grave.
    */
   perfilInfantilId?: number | null;
+  color?: string | null;
 }
 
 /** Cambio de cantidad solicitado para una línea del carrito. */

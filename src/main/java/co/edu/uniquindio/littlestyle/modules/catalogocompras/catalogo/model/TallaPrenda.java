@@ -1,21 +1,9 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import jakarta.persistence.*;
+import lombok.*;
+import java.util.Locale;
 import java.math.BigDecimal;
 
 /**
@@ -23,7 +11,8 @@ import java.math.BigDecimal;
  * (los usa el motor de recomendaciones de US-07) y las existencias disponibles de esa talla.
  */
 @Entity
-@Table(name = "prenda_tallas", uniqueConstraints = @UniqueConstraint(columnNames = {"prenda_id", "talla"}))
+@Table(name = "prenda_tallas", uniqueConstraints = @UniqueConstraint(
+        name = "uk_prenda_talla_color", columnNames = {"prenda_id", "talla", "color"}))
 @Getter
 @Setter
 @Builder
@@ -73,4 +62,18 @@ public class TallaPrenda {
 
     @Column(nullable = false)
     private int stock;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ColorPreferido color;
+
+    public static String etiqueta(String talla, ColorPreferido color) {
+        if (color == null) return talla;
+        String nombre = color.name();
+        return talla + " · " + nombre.charAt(0) + nombre.substring(1).toLowerCase(Locale.ROOT);
+    }
+
+    public String etiqueta() {
+        return etiqueta(talla, color);
+    }
 }

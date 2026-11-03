@@ -2,10 +2,12 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.service
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.event.AlertaReabastecimientoEmitida;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.AlertaReabastecimiento;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.repository.AlertaReabastecimientoRepository;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +23,7 @@ import java.util.Optional;
 
 import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.VENDEDOR_ID;
 import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prenda;
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.talla;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -67,9 +70,9 @@ class AlertasInventarioServiceTest {
     @Test
     void emiteAlertaDeStockBajoPorTallaAlAlcanzarElMinimo() {
         Prenda p = prenda(10L, 5, 5, 8);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.empty());
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         List<AlertaReabastecimiento> emitidas = service.evaluar(p);
@@ -88,13 +91,37 @@ class AlertasInventarioServiceTest {
         assertThat(evento.getValue().alertaId()).isEqualTo(900L);
     }
 
+    @Test
+    void evaluaAlertasPorCombinacionDeTallaYColor() {
+        Prenda p = prenda(10L, 5, 0, 9);
+        TallaPrenda azul = p.getTallas().getFirst();
+        azul.setColor(ColorPreferido.AZUL);
+        TallaPrenda rosa = talla(p, "4", 100, 110, 9, 5);
+        rosa.setColor(ColorPreferido.ROSA);
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(
+                10L, "4", ColorPreferido.AZUL)).thenReturn(Optional.empty());
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(
+                10L, "4", ColorPreferido.ROSA)).thenReturn(Optional.empty());
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(
+                10L, "6", null)).thenReturn(Optional.empty());
+
+        List<AlertaReabastecimiento> emitidas = service.evaluar(p);
+
+        assertThat(emitidas).singleElement()
+                .satisfies(alerta -> {
+                    assertThat(alerta.getTalla()).isEqualTo("4");
+                    assertThat(alerta.getColor()).isEqualTo(ColorPreferido.AZUL);
+                    assertThat(alerta.getStockAlEmitir()).isZero();
+                });
+    }
+
     // Una talla sin stock mínimo configurado no genera alertas aunque se agote.
     @Test
     void tallaSinMinimoNuncaAlerta() {
         Prenda p = prenda(10L, 5, 0, 8);
         p.getTallas().stream().filter(t -> t.getTalla().equals("6")).findFirst().orElseThrow()
                 .setStockMinimo(null);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.empty());
 
         List<AlertaReabastecimiento> emitidas = service.evaluar(p);
@@ -107,9 +134,9 @@ class AlertasInventarioServiceTest {
     @Test
     void noRepiteLaAlertaMientrasElNivelNoCambie() {
         Prenda p = prenda(10L, 5, 1, 8);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.of(activa(p, "4", NivelStock.STOCK_BAJO)));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         assertThat(service.evaluar(p)).isEmpty();
@@ -123,9 +150,9 @@ class AlertasInventarioServiceTest {
     void escalaAAgotadoResolviendoLaAlertaAnteriorYNotificando() {
         Prenda p = prenda(10L, 5, 0, 8);
         AlertaReabastecimiento previa = activa(p, "4", NivelStock.STOCK_BAJO);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.of(previa));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         List<AlertaReabastecimiento> emitidas = service.evaluar(p);
@@ -142,9 +169,9 @@ class AlertasInventarioServiceTest {
     void reabastecerParcialmenteReemplazaLaAlertaSinVolverANotificar() {
         Prenda p = prenda(10L, 5, 2, 8);
         AlertaReabastecimiento previa = activa(p, "4", NivelStock.AGOTADO);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.of(previa));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         assertThat(service.evaluar(p)).isEmpty();
@@ -162,9 +189,9 @@ class AlertasInventarioServiceTest {
     void superarElMinimoResuelveLaAlertaActiva() {
         Prenda p = prenda(10L, 5, 9, 9);
         AlertaReabastecimiento previa = activa(p, "4", NivelStock.STOCK_BAJO);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.of(previa));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         assertThat(service.evaluar(p)).isEmpty();
@@ -179,9 +206,9 @@ class AlertasInventarioServiceTest {
         Prenda p = prenda(10L, 5, 0, 0);
         p.setEstado(EstadoPrenda.INACTIVA);
         AlertaReabastecimiento previa = activa(p, "4", NivelStock.AGOTADO);
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.of(previa));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         assertThat(service.evaluar(p)).isEmpty();
@@ -197,9 +224,9 @@ class AlertasInventarioServiceTest {
         Prenda p = prenda(10L, 5, 9, 9);
         AlertaReabastecimiento huerfana = activa(p, "8", NivelStock.AGOTADO);
         when(alertaRepository.findAllByPrendaIdAndFechaResolucionIsNull(10L)).thenReturn(List.of(huerfana));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.empty());
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         service.evaluar(p);
@@ -215,9 +242,9 @@ class AlertasInventarioServiceTest {
                 .stockAlEmitir(3).stockMinimoAlEmitir(5).fechaEmision(LocalDateTime.now().minusDays(1)).build();
         when(alertaRepository.findAllByPrendaIdAndTallaIsNullAndFechaResolucionIsNull(10L))
                 .thenReturn(List.of(heredada));
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "4"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "4", null))
                 .thenReturn(Optional.empty());
-        when(alertaRepository.findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(10L, "6"))
+        when(alertaRepository.findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(10L, "6", null))
                 .thenReturn(Optional.empty());
 
         service.evaluar(p);

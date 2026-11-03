@@ -30,6 +30,6 @@ public record PrendaVitrinaResponse(
                 p.getId(), p.getNombre(), p.getCategoria(), p.getGenero(), p.getMarca(), p.getPrecio(),
                 p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null),
                 p.stockTotal() > 0,
-                p.getTallas().stream().filter(talla -> talla.getStock() > 0).map(talla -> talla.getTalla()).toList());
+                p.getTallas().stream().filter(talla -> talla.getStock() > 0).map(talla -> talla.getTalla()).distinct().toList());
     }
 }

@@ -22,6 +22,8 @@ public enum AccionAuditoria {
     RESOLVER_INCIDENCIA,
     /** Incidencia RECHAZADA sin atender la petición */
     RECHAZAR_INCIDENCIA,
+    /** Eliminación definitiva de una cuenta y sus datos por el administrador */
+    ELIMINAR_USUARIO,
     /** Acción administrativa que termino en error: puede reintentarse sin perder trazabilidad */
     ACCION_FALLIDA
 }

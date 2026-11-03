@@ -35,6 +35,7 @@ export interface PrendaAgotadaPago {
   prendaId: number;
   nombre: string;
   talla: string;
+  color?: string | null;
   cantidadSolicitada: number;
   stockDisponible: number;
 }
@@ -44,6 +45,7 @@ export interface LineaRecompra {
   prendaId: number;
   nombre: string;
   talla: string;
+  color?: string | null;
   cantidad: number;
 }
 

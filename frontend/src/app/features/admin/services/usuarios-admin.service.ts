@@ -51,4 +51,14 @@ export class UsuariosAdminService {
   cambiarEstado(id: number, cuerpo: CambioEstadoUsuario): Observable<UsuarioAdmin> {
     return this.http.put<UsuarioAdmin>(`${this.base}/${id}/estado`, cuerpo);
   }
+
+  /**
+   * Elimina definitivamente una cuenta; si es vendedor, también su tienda y productos
+   * @param id Identificador de la cuenta.
+   * @param motivo Motivo (10 a 500 caracteres) que queda en auditoría.
+   * @param Flujo que finaliza sin contenido
+   */
+  eliminar(id: number, motivo: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}`, { body: { motivo }})
+  }
 }

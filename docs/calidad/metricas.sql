@@ -2,6 +2,8 @@
 -- Ver docs/calidad/evidencias-metricas-sprint2.md. Solo lectura: no modifican datos.
 
 -- [P1-A] Tasa de adopción de recomendación de tallas (meta > 80 %)
+-- La recomendación sugiere talla, no color: compara `talla_sugerida` con la talla elegida.
+-- El color se conserva en la misma línea, pero no participa en esta métrica.
 SELECT COUNT(*) AS lineas_con_sugerencia, SUM(i.talla = i.talla_sugerida) AS con_talla_sugerida, ROUND(100 * SUM(i.talla = i.talla_sugerida) / COUNT(*), 1) AS porcentaje FROM pedido_items i JOIN pedidos p ON p.id = i.pedido_id WHERE i.talla_sugerida IS NOT NULL AND p.estado NOT IN ('PENDIENTE_PAGO', 'CANCELADO');
 -- [P1-B] Completitud del perfil infantil (meta > 90 %). Completo = medición + colores + estampados
 SELECT COUNT(*) AS perfiles, SUM(EXISTS (SELECT 1 FROM mediciones_crecimiento m WHERE m.perfil_id = p.id) AND EXISTS (SELECT 1 FROM perfil_colores_preferidos c WHERE c.perfil_id = p.id) AND EXISTS (SELECT 1 FROM perfil_estampados_preferidos e WHERE e.perfil_id = p.id)) AS completos, ROUND(100 * SUM(EXISTS (SELECT 1 FROM mediciones_crecimiento m WHERE m.perfil_id = p.id) AND EXISTS (SELECT 1 FROM perfil_colores_preferidos c WHERE c.perfil_id = p.id) AND EXISTS (SELECT 1 FROM perfil_estampados_preferidos e WHERE e.perfil_id = p.id)) / COUNT(*), 1) AS porcentaje FROM perfiles_infantiles p;
@@ -16,8 +18,10 @@ SELECT (SELECT COUNT(DISTINCT carrito_id) FROM carrito_items) AS carritos_sin_co
 SELECT p.id AS pedido, ROUND(ABS(TIMESTAMPDIFF(MICROSECOND, t.fecha_actualizacion, h.fecha_cambio)) / 1000, 1) AS ms FROM transacciones_pago t JOIN pedidos p ON p.id = t.pedido_id JOIN pedido_estados h ON h.pedido_id = p.id AND h.estado_nuevo = 'PAGADO' WHERE t.estado = 'APROBADA' ORDER BY p.id DESC LIMIT 20;
 -- [P2-C] Trazabilidad de estados (meta > 98 %) = correctos / pedidos_pagados
 SELECT COUNT(*) AS pedidos_pagados, SUM(EXISTS (SELECT 1 FROM pedido_estados h WHERE h.pedido_id = p.id AND h.estado_nuevo = 'PAGADO') AND (p.estado NOT IN ('ENVIADO', 'PARCIALMENTE_ENVIADO') OR EXISTS (SELECT 1 FROM despachos d WHERE d.pedido_id = p.id AND d.numero_guia IS NOT NULL))) AS correctos FROM pedidos p WHERE p.estado NOT IN ('PENDIENTE_PAGO', 'CANCELADO');
--- [P2-D] Precisión de alertas de reabastecimiento (meta > 99 %) = con_alerta_previa / tallas_agotadas
-SELECT COUNT(*) AS tallas_agotadas, SUM(EXISTS (SELECT 1 FROM alertas_reabastecimiento a WHERE a.prenda_id = t.prenda_id AND a.talla = t.talla)) AS con_alerta_previa FROM prenda_tallas t WHERE t.stock = 0 AND t.stock_minimo IS NOT NULL;
+-- [P2-D] Precisión de alertas de reabastecimiento (meta > 99 %) = con_alerta_previa / variantes_agotadas
+-- La unidad es la variante `prenda + talla + color`: una talla con dos colores produce dos
+-- variantes y cada una debe tener su propia alerta. Se comparan nulos para filas heredadas.
+SELECT COUNT(*) AS variantes_agotadas, SUM(EXISTS (SELECT 1 FROM alertas_reabastecimiento a WHERE a.prenda_id = t.prenda_id AND a.talla = t.talla AND (a.color = t.color OR (a.color IS NULL AND t.color IS NULL)))) AS con_alerta_previa FROM prenda_tallas t WHERE t.stock = 0 AND t.stock_minimo IS NOT NULL;
 -- [P2-E] Pagos: estado de la transacción vs. estado del pedido (webhooks y preservación ante fallos)
 SELECT t.estado AS transaccion, COALESCE(p.estado, '(sin pedido)') AS pedido, COUNT(*) AS cantidad FROM transacciones_pago t LEFT JOIN pedidos p ON p.id = t.pedido_id GROUP BY t.estado, p.estado ORDER BY t.estado;
 -- [P2-G] RNF-28 Preservación transaccional ante fallos externos (meta >= 99 %) = preservadas / afectadas.

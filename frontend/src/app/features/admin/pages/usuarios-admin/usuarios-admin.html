@@ -83,6 +83,7 @@
                 <td class="celda-accion">
                   @if (admiteAcciones(u)) {
                     <button type="button" class="btn-soft" (click)="abrirDialogo(u)">Cambiar estado</button>
+                    <button type="button" class="btn-ghost" (click)="abrirEliminar(u)">Eliminar cuenta</button>
                   } @else {
                     <span class="muted-cell" aria-label="Sin acciones disponibles">—</span>
                   }
@@ -148,6 +149,35 @@
             <button type="button" class="btn-ghost" (click)="cerrarDialogo()">Cerrar</button>
           </div>
         }
+      </div>
+    </div>
+  }
+
+  @if (eliminarUsuario(); as objetivo) {
+    <div class="confirm-backdrop">
+      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialogo-eliminar-titulo">
+        <h2 id="dialogo-eliminar-titulo">Eliminar cuenta</h2>
+        <p>{{ objetivo.nombre }} {{ objetivo.apellido }} — {{ objetivo.email }} ({{ etiquetasRol[objetivo.rol] }})</p>
+        <p role="alert">
+          Esta acción es permanente: se borran los datos personales de la cuenta
+          @if (objetivo.rol === 'VENDEDOR') { , su tienda, sus productos e imágenes }
+          y no se puede deshacer.
+        </p>
+        @if (errorEliminar(); as fallo) {
+          <p class="alert alert-error" role="alert">{{ fallo }}</p>
+        }
+        <div class="field">
+          <label for="motivo-eliminacion">Motivo</label>
+          <textarea id="motivo-eliminacion" rows="3" [value]="motivoEliminar()"
+                    (input)="motivoEliminar.set($any($event.target).value)"
+                    placeholder="Describe la razón (mínimo 10 caracteres)"></textarea>
+        </div>
+        <div class="confirm-actions">
+          <button type="button" class="btn-ghost" (click)="cerrarEliminar()">Cancelar</button>
+          <button type="button" class="btn-primary btn-inline" [disabled]="eliminando()" (click)="confirmarEliminar()">
+            @if (eliminando()) { <span class="spinner"></span> } Eliminar definitivamente
+          </button>
+        </div>
       </div>
     </div>
   }

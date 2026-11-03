@@ -78,15 +78,15 @@ Wompi no invoca el callback del Widget cuando el cliente cierra el modal sin pag
 
 ### Estados de la transacción
 
-| Wompi | `EstadoTransaccionPago` | Efecto sobre el pedido |
-|---|---|---|
-| — | `CREADA` | No se ha creado pedido; carrito intacto. |
-| `PENDING` | `PENDIENTE` | No se crea pedido y no se permite iniciar otro checkout mientras siga activo. |
-| `APPROVED` | `APROBADA` | Crea pedido `PAGADO`, descuenta stock y quita del carrito las cantidades pagadas. |
-| `APPROVED` sin stock | `REEMBOLSO_PENDIENTE` | Crea pedido `CANCELADO`, registra motivo y prendas agotadas; conserva el carrito. |
-| `DECLINED` | `RECHAZADA` | No crea pedido y conserva el carrito; puede iniciar un nuevo intento. |
-| `VOIDED` | `ANULADA` | No crea pedido y conserva el carrito. |
-| `ERROR` | `ERROR` | No crea pedido y conserva el carrito; puede reintentar. |
+| Wompi | `EstadoTransaccionPago` | Efecto sobre el pedido                                                                                                               |
+|---|---|--------------------------------------------------------------------------------------------------------------------------------------|
+| — | `CREADA` | No se ha creado pedido; carrito intacto.                                                                                             |
+| `PENDING` | `PENDIENTE` | No se crea pedido y no se permite iniciar otro checkout mientras siga activo.                                                        |
+| `APPROVED` | `APROBADA` | Crea pedido `PAGADO`, descuenta las cantidades de cada combinación 'prenda + talla + color' y quita del carrito las unidades pagadas |
+| `APPROVED` sin stock | `REEMBOLSO_PENDIENTE` | Crea pedido `CANCELADO`, registra la combinación 'prenda + talla + color sin existencias suficientes; conserva el carrito.           |
+| `DECLINED` | `RECHAZADA` | No crea pedido y conserva el carrito; puede iniciar un nuevo intento.                                                                |
+| `VOIDED` | `ANULADA` | No crea pedido y conserva el carrito.                                                                                                |
+| `ERROR` | `ERROR` | No crea pedido y conserva el carrito; puede reintentar.                                                                              |
 
 `APROBADA`, `ANULADA` y `REEMBOLSO_PENDIENTE` son finales: eventos repetidos o fuera de orden no los modifican, de modo que un reenvío del webhook nunca descuenta stock dos veces.
 
@@ -96,7 +96,7 @@ Wompi no invoca el callback del Widget cuando el cliente cierra el modal sin pag
 
 ### Prendas agotadas al pagar (resuelve CP-US10-26)
 
-UI-15 lista nombre, talla, cantidad solicitada y existencia actual de cada prenda agotada. Como el carrito no se vacía antes de aprobar, el cliente puede revisar/ajustar directamente las cantidades conservadas y volver al checkout; el pedido cancelado no se reabre. La pantalla también ofrece volver al catálogo.
+UI-15 lista el nombre de la prenda, talla, color, cantidad solicitada y stock actual de cada variante que no puedo comprarse. Como el carrito no se vacía antes de aprobar, el cliente puede revisar/ajustar directamente las cantidades conservadas y volver al checkout; el pedido cancelado no se reabre. La pantalla también ofrece volver al catálogo.
 
 ## Contratos backend
 

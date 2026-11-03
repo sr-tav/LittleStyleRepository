@@ -1,11 +1,13 @@
-import { Component, input, inject, signal } from '@angular/core';
+import { Component, computed, input, inject, signal } from '@angular/core';
 
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { CarritoService } from '../services/carrito.service';
 import { VitrinaService } from '../../vitrina/services/vitrina.service';
+import { VitrinaTalla } from '../../vitrina/models/vitrina.models';
+import { ETIQUETAS_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
 
 /**
- * Permite consultar tallas y agregar una prenda disponible al carrito desde una vista compacta.
+ * Permite seleccionar una variante exacta y agregarla al carrito desde una vista compacta.
  * @see US-10
  * @see UI-6
  * @see UI-8
@@ -36,7 +38,19 @@ import { VitrinaService } from '../../vitrina/services/vitrina.service';
         } @else if (error(); as mensaje) {
           <p class="producto-acceso-error" role="alert">{{ mensaje }}</p>
         }
-        @if (tallas().length > 0) {
+        @if (colores().length > 0) {
+          <label class="producto-acceso-color">
+            Color
+            <select [value]="colorSeleccionado()" (change)="seleccionarColor($event)" [disabled]="agregando()">
+              <option value="">Elige un color</option>
+              @for (color of colores(); track color) {
+                <option [value]="color">{{ colorDe(color) }}</option>
+              }
+            </select>
+          </label>
+        }
+        @if (colores().length === 0 || colorSeleccionado()) {
+          @if (tallas().length > 0) {
           <div class="producto-acceso-tallas" role="group" [attr.aria-label]="'Tallas disponibles para ' + nombre()">
             @for (talla of tallas(); track talla) {
               <button
@@ -49,8 +63,9 @@ import { VitrinaService } from '../../vitrina/services/vitrina.service';
               >{{ talla }}</button>
             }
           </div>
-        } @else if (!cargando() && !error()) {
+          } @else if (!cargando() && !error()) {
           <p class="producto-acceso-mensaje">No hay tallas disponibles.</p>
+          }
         }
       }
     </div>
@@ -64,13 +79,31 @@ export class AccesoRapidoPrenda {
   readonly nombre = input.required<string>();
   readonly disponible = input(true);
   readonly tallasDisponibles = input<readonly string[] | null>(null);
-
   protected readonly abierto = signal(false);
   protected readonly cargando = signal(false);
-  protected readonly tallas = signal<string[]>([]);
+  protected readonly variantes = signal<VitrinaTalla[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly tallaSeleccionada = signal<string | null>(null);
+  protected readonly colorSeleccionado = signal<string>('');
   protected readonly agregando = signal(false);
+  protected readonly colores = computed(() => {
+    const tallasDisponibles = this.tallasDisponibles();
+    const disponibles = this.variantes()
+      .filter((t) => t.stockDisponible > 0
+        && (tallasDisponibles === null || tallasDisponibles.includes(t.talla)))
+      .map((t) => t.color)
+      .filter((color): color is string => !!color);
+    return [...new Set(disponibles)];
+  });
+  protected readonly tallas = computed(() => {
+    const disponibles = this.variantes().filter((t) => t.stockDisponible > 0);
+    const tallasDisponibles = this.tallasDisponibles();
+    const porColor = this.colores().length > 0
+      ? disponibles.filter((t) => t.color === this.colorSeleccionado())
+      : disponibles.filter((t) => !t.color);
+    return [...new Set(porColor.map((t) => t.talla)
+      .filter((talla) => tallasDisponibles === null || tallasDisponibles.includes(talla)))];
+  });
   private cargado = false;
 
   /**
@@ -80,18 +113,12 @@ export class AccesoRapidoPrenda {
   protected mostrarTallas(): void {
     this.abierto.set(true);
     if (!this.disponible() || this.cargado || this.cargando()) return;
-    const tallasDisponibles = this.tallasDisponibles();
-    if (tallasDisponibles !== null) {
-      this.tallas.set([...tallasDisponibles]);
-      this.cargado = true;
-      return;
-    }
-
     this.cargando.set(true);
     this.error.set(null);
     this.vitrina.detalle(this.prendaId()).subscribe({
       next: (detalle) => {
-        this.tallas.set(detalle.tallas.filter((talla) => talla.disponible).map((talla) => talla.talla));
+        this.variantes.set(detalle.tallas);
+        this.colorSeleccionado.set('');
         this.cargado = true;
         this.cargando.set(false);
       },
@@ -117,6 +144,17 @@ export class AccesoRapidoPrenda {
     this.agregar(talla);
   }
 
+  protected seleccionarColor(event: Event): void {
+    if (!(event.target instanceof HTMLSelectElement)) return;
+    this.colorSeleccionado.set(event.target.value);
+    this.tallaSeleccionada.set(null);
+    this.error.set(null);
+  }
+
+  protected colorDe(color: string): string {
+    return ETIQUETAS_COLORES[color as keyof typeof ETIQUETAS_COLORES] ?? color;
+  }
+
   /**
    * Cierra el selector solo si el foco salió del contenedor.
    * @param event Evento de cambio de foco.
@@ -137,7 +175,9 @@ export class AccesoRapidoPrenda {
     const talla = this.tallaSeleccionada();
     if (!talla) {
       this.mostrarTallas();
-      this.error.set('Selecciona una talla.');
+      this.error.set(this.colores().length > 0 && !this.colorSeleccionado()
+        ? 'Selecciona un color.'
+        : 'Selecciona una talla.');
       return;
     }
     this.agregar(talla);
@@ -152,7 +192,12 @@ export class AccesoRapidoPrenda {
     if (this.agregando() || !this.disponible()) return;
     this.agregando.set(true);
     this.error.set(null);
-    this.carrito.agregar({ prendaId: this.prendaId(), talla, cantidad: 1 }).subscribe({
+    this.carrito.agregar({
+      prendaId: this.prendaId(),
+      talla,
+      cantidad: 1,
+      color: this.colorSeleccionado() || null,
+    }).subscribe({
       next: () => {
         this.agregando.set(false);
         this.tallaSeleccionada.set(null);

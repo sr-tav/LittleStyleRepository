@@ -13,6 +13,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.Resume
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.ValidadorAlergiaCompra;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilResponse;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.AlergiaTextil;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service.PerfilInfantilService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -69,17 +70,18 @@ public class CheckoutFacade {
                             "Prenda no encontrada")));
 
             validarCompatibilidad(perfil.id(), alergias, prenda);
-            TallaPrenda talla = prenda.buscarTalla(item.talla())
+            TallaPrenda talla = prenda.buscarVariante(item.talla(), item.color())
                     .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
-                            "La talla no está disponible para esta prenda", "talla"));
-            ClaveTalla clave = new ClaveTalla(prenda.getId(), normalizarTalla(talla.getTalla()));
+                            item.color() == null ? "Elige un color para esta talla"
+                                    : "La combinación de talla y color no está disponible para esta prenda", "talla"));
+            ClaveTalla clave = new ClaveTalla(prenda.getId(), normalizarTalla(talla.getTalla()), talla.getColor());
             cantidadesSolicitadas.merge(clave, (long) item.cantidad(), Long::sum);
 
             BigDecimal subtotalLinea = prenda.getPrecio().multiply(BigDecimal.valueOf(item.cantidad()));
             subtotal = subtotal.add(subtotalLinea);
             lineas.add(new LineaResumenCheckoutResponse(prenda.getId(), prenda.getNombre(),
                     talla.getTalla(), item.cantidad(), prenda.getPrecio(), subtotalLinea,
-                    item.tallaSugerida()));
+                    item.tallaSugerida(), talla.getColor()));
         }
 
         validarStockDisponible(prendas, cantidadesSolicitadas);
@@ -124,7 +126,7 @@ public class CheckoutFacade {
     private void validarStockDisponible(Map<Long, Prenda> prendas,
                                         Map<ClaveTalla, Long> cantidadesSolicitadas) {
         cantidadesSolicitadas.forEach((clave, cantidad) -> {
-            TallaPrenda talla = prendas.get(clave.prendaId()).buscarTalla(clave.talla())
+            TallaPrenda talla = prendas.get(clave.prendaId()).buscarVariante(clave.talla(), clave.color())
                     .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
                             "La talla no está disponible para esta prenda", "talla"));
             disponibilidadStockService.validarDisponibilidad(talla.getStock(), cantidad);
@@ -137,6 +139,5 @@ public class CheckoutFacade {
     }
 
     /** Identifica una talla de una prenda. */
-    private record ClaveTalla(Long prendaId, String talla) {
-    }
+    private record ClaveTalla(Long prendaId, String talla, ColorPreferido color) { }
 }

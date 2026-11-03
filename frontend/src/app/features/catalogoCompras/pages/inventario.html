@@ -37,7 +37,10 @@
 
   <section class="catalog-card">
     @if (cargando()) {
-      <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando inventario...</div>
+      <div class="catalog-state" role="status">
+        <span class="spinner spinner-dark"></span>
+        Cargando inventario...
+      </div>
     } @else if (items().length === 0) {
       <div class="catalog-state">
         <p>Aún no tienes productos para controlar.</p>
@@ -45,83 +48,227 @@
       </div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table inventory-table tabla-tarjetas">
-          <caption class="visually-hidden">Inventario con existencias actuales, mínimos por talla y estado por producto</caption>
+        <table class="catalog-table inventory-table">
+          <caption class="visually-hidden">
+            Inventario por producto y detalle de stock por variante de talla y color
+          </caption>
           <thead>
-            <tr>
-              <th scope="col">Producto</th>
-              <th scope="col">Stock actual</th>
-              <th scope="col">Mínimos por talla</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Acción</th>
-            </tr>
+          <tr>
+            <th scope="col">Producto</th>
+            <th scope="col">Unidades totales</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acción</th>
+          </tr>
           </thead>
           <tbody>
             @for (item of items(); track item.prendaId) {
-              <tr [class.is-editing]="edicion()?.prendaId === item.prendaId">
+              <tr>
                 <td>
                   <div class="product-cell">
                     <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
                     <div>
                       <strong>{{ item.nombre }}</strong>
                       <span class="product-meta">
-                        {{ categoria(item) }}@if (item.estado === 'INACTIVA') { · Inactivo }
-                      </span>
+                      {{ categoria(item) }}@if (item.estado === 'INACTIVA') { · Inactivo }
+                    </span>
                     </div>
                   </div>
                 </td>
-                <td data-label="Stock actual">
-                  <span class="stock-number" [class]="'stock-number stock-number-' + item.nivel">{{ item.stockTotal }}</span>
+                <td data-label="Unidades totales">
+                <span [class]="'stock-number stock-number-' + item.nivel">
+                  {{ item.stockTotal }}
+                </span>
                 </td>
-                <td class="muted-cell" data-label="Mínimos por talla">{{ minimosDe(item) }}</td>
-                <td data-label="Estado"><app-nivel-stock-badge [nivel]="item.nivel" /></td>
+                <td data-label="Estado">
+                  <app-nivel-stock-badge [nivel]="item.nivel" />
+                </td>
                 <td class="celda-accion">
                   @if (edicion()?.prendaId !== item.prendaId) {
-                    <button type="button" class="btn-soft" (click)="editar(item)">Actualizar stock</button>
+                    <button type="button" class="btn-soft" (click)="editar(item)">
+                      Actualizar inventario
+                    </button>
+                  } @else {
+                    <button type="button" class="btn-ghost" (click)="cancelar()">Cancelar</button>
                   }
                 </td>
               </tr>
-              @if (edicion(); as e) {
-                @if (e.prendaId === item.prendaId) {
-                  <tr class="stock-editor-row">
-                    <td colspan="5">
-                      <div class="stock-editor" role="group" [attr.aria-label]="'Actualizar stock de ' + item.nombre">
-                        <div class="stock-editor-sizes">
-                          @for (t of e.tallas; track t.talla; let i = $index) {
-                            <label class="stock-editor-field">
-                              <span>Talla {{ t.talla }} (stock)</span>
-                              <input type="number" min="0" inputmode="numeric" [value]="t.stock ?? ''"
-                                [attr.aria-invalid]="errorEdicion() ? 'true' : null"
-                                aria-describedby="error-edicion"
-                                (input)="cambiarStock(i, $any($event.target).value)" />
-                            </label>
-                            <label class="stock-editor-field">
-                              <span>Talla {{ t.talla }} (mínimo)</span>
-                              <input type="number" min="0" inputmode="numeric" [value]="t.stockMinimo ?? ''"
-                                placeholder="Sin alerta"
-                                [attr.aria-invalid]="errorEdicion() ? 'true' : null"
-                                aria-describedby="error-edicion"
-                                (input)="cambiarMinimo(i, $any($event.target).value)" />
-                            </label>
+
+              <tr class="inventory-variants-row">
+                <td colspan="4">
+                  <div class="inventory-variants">
+                    <h3>Variantes de {{ item.nombre }}</h3>
+
+                    @if (coloresDe(item).length > 0) {
+                      <div class="inventory-color-filter">
+                        <label [for]="'color-filter-' + item.prendaId">Filtrar por color</label>
+                        <div class="inventory-color-filter-control">
+                          @if (muestraColorFiltro(item.prendaId); as muestra) {
+                            <span
+                              class="color-swatch"
+                              [style.background-color]="muestra"
+                              aria-hidden="true"
+                            ></span>
                           }
+                          <select
+                            [id]="'color-filter-' + item.prendaId"
+                            [value]="colorFiltro()[item.prendaId] ?? ''"
+                            (change)="filtrarColor(item.prendaId, $any($event.target).value)"
+                          >
+                            <option value="">Todos los colores</option>
+                            @for (color of coloresDe(item); track color) {
+                              <option [value]="color">{{ etiquetaColor(color) }}</option>
+                            }
+                          </select>
                         </div>
-                        <div class="stock-editor-footer">
-                          <span class="field-hint">Total: <strong>{{ totalEdicion() }}</strong> unidades</span>
-                          <div class="stock-editor-actions">
-                            <button type="button" class="btn-primary btn-inline btn-small" (click)="guardar()" [disabled]="guardando()">
-                              @if (guardando()) { <span class="spinner"></span> } Guardar
-                            </button>
-                            <button type="button" class="icon-button" (click)="cancelar()" aria-label="Cancelar edición" title="Cancelar">✕</button>
-                          </div>
-                        </div>
-                        @if (errorEdicion()) {
-                          <p class="field-error" id="error-edicion" role="alert">{{ errorEdicion() }}</p>
-                        }
                       </div>
-                    </td>
-                  </tr>
-                }
-              }
+                    }
+
+                    <div class="catalog-table-wrap inventory-matrix-wrap">
+                      <table class="catalog-table inventory-matrix">
+                        <caption class="visually-hidden">
+                          Talla, color, stock actual y mínimo de alerta para {{ item.nombre }}
+                        </caption>
+                        <thead>
+                        <tr>
+                          <th scope="col">Talla</th>
+                          <th scope="col">Color</th>
+                          <th scope="col">Stock</th>
+                          <th scope="col">Alerta: stock mínimo</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                          @for (
+                            variante of variantesFiltradas(item);
+                            track variante.talla + '-' + (variante.color ?? 'sin-color');
+                            let i = $index
+                            ) {
+                            <tr>
+                              <td data-label="Talla">{{ variante.talla }}</td>
+                              <td data-label="Color">
+                                @if (edicion()?.prendaId === item.prendaId && !variante.color) {
+                                  <details class="stock-color-picker inventory-variant-color-picker">
+                                    <summary>
+                                      @if (colorVisible(variante); as color) {
+                                        <span
+                                          class="color-swatch"
+                                          [style.background-color]="muestraColor(color)"
+                                          aria-hidden="true"
+                                        ></span>
+                                        <span>{{ etiquetaColor(color) }}</span>
+                                      } @else {
+                                        <span>Asignar color</span>
+                                      }
+                                    </summary>
+                                    <div
+                                      class="stock-color-options"
+                                      role="listbox"
+                                      aria-label="Asignar color a la variante"
+                                    >
+                                      @for (color of coloresOpciones; track color.valor) {
+                                        <button
+                                          type="button"
+                                          class="stock-color-option"
+                                          role="option"
+                                          [attr.aria-selected]="variante.nuevoColor === color.valor"
+                                          [disabled]="!puedeAsignarColor(item, variante, color.valor)"
+                                          (click)="asignarColor(item, variante, color.valor)"
+                                        >
+                                        <span
+                                          class="color-swatch"
+                                          [style.background-color]="color.muestra"
+                                          aria-hidden="true"
+                                        ></span>
+                                          <span class="stock-color-label">{{ color.etiqueta }}</span>
+                                        </button>
+                                      }
+                                    </div>
+                                  </details>
+                                } @else {
+                                  <span class="inventory-color">
+                                  <span
+                                    class="color-swatch"
+                                    [style.background-color]="muestraColor(colorVisible(variante))"
+                                    aria-hidden="true"
+                                  ></span>
+                                    {{ etiquetaColor(colorVisible(variante)) }}
+                                </span>
+                                }
+                              </td>
+
+                              @if (edicion()?.prendaId === item.prendaId) {
+                                <td data-label="Stock">
+                                  <label
+                                    class="visually-hidden"
+                                    [for]="'stock-' + item.prendaId + '-' + i"
+                                  >
+                                    Stock para talla {{ variante.talla }},
+                                    {{ etiquetaColor(colorVisible(variante)) }}
+                                  </label>
+                                  <input
+                                    [id]="'stock-' + item.prendaId + '-' + i"
+                                    type="number"
+                                    min="0"
+                                    inputmode="numeric"
+                                    [value]="variante.stock ?? ''"
+                                    [attr.aria-invalid]="errorEdicion() ? 'true' : null"
+                                    (input)="cambiarStock(variante.talla, variante.color, $any($event.target).value)"
+                                  />
+                                </td>
+                                <td data-label="Alerta: stock mínimo">
+                                  <label
+                                    class="visually-hidden"
+                                    [for]="'minimo-' + item.prendaId + '-' + i"
+                                  >
+                                    Mínimo de alerta para talla {{ variante.talla }},
+                                    {{ etiquetaColor(colorVisible(variante)) }}
+                                  </label>
+                                  <input
+                                    [id]="'minimo-' + item.prendaId + '-' + i"
+                                    type="number"
+                                    min="0"
+                                    inputmode="numeric"
+                                    placeholder="Sin alerta"
+                                    [value]="variante.stockMinimo ?? ''"
+                                    [attr.aria-invalid]="errorEdicion() ? 'true' : null"
+                                    (input)="cambiarMinimo(variante.talla, variante.color, $any($event.target).value)"
+                                  />
+                                </td>
+                              } @else {
+                                <td data-label="Stock">{{ variante.stock }}</td>
+                                <td data-label="Alerta: stock mínimo">
+                                  {{ variante.stockMinimo ?? 'Sin alerta' }}
+                                </td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+
+                    @if (edicion()?.prendaId === item.prendaId) {
+                      <div class="stock-editor-footer">
+                      <span class="field-hint">
+                        Total de esta prenda: <strong>{{ totalEdicion() }}</strong> unidades
+                      </span>
+                        <div class="stock-editor-actions">
+                          <button
+                            type="button"
+                            class="btn-primary btn-inline btn-small"
+                            (click)="guardar()"
+                            [disabled]="guardando()"
+                          >
+                            @if (guardando()) { <span class="spinner"></span> }
+                            Guardar
+                          </button>
+                        </div>
+                      </div>
+                      @if (errorEdicion()) {
+                        <p class="field-error" role="alert">{{ errorEdicion() }}</p>
+                      }
+                    }
+                  </div>
+                </td>
+              </tr>
             }
           </tbody>
         </table>

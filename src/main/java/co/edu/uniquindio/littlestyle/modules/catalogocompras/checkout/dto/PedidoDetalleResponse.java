@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,17 +21,17 @@ public record PedidoDetalleResponse(Long id, EstadoPedido estado, BigDecimal sub
     /** Línea del pedido con los precios congelados al comprar. */
     public record Item(Long prendaId, String nombre, String talla, int cantidad,
                        BigDecimal precioUnitario, BigDecimal subtotal, String tallaSugerida,
-                       String imagenUrl) {
+                       String imagenUrl, ColorPreferido color) {
         /** Construye la línea sin imagen. */
         public static Item from(LineaPedido l) {
             return new Item(l.getPrendaId(), l.getNombre(), l.getTalla(), l.getCantidad(),
-                    l.getPrecioUnitario(), l.getSubtotal(), l.getTallaSugerida(), null);
+                    l.getPrecioUnitario(), l.getSubtotal(), l.getTallaSugerida(), null, l.getColor());
         }
 
-        /** Construye la línea con la imagen actual de la prenda. */
+        /** Construye la línea con la imagen actual de la prenda y el color comprado. */
         public static Item from(LineaPedido l, String imagenUrl) {
             return new Item(l.getPrendaId(), l.getNombre(), l.getTalla(), l.getCantidad(),
-                    l.getPrecioUnitario(), l.getSubtotal(), l.getTallaSugerida(), imagenUrl);
+                    l.getPrecioUnitario(), l.getSubtotal(), l.getTallaSugerida(), imagenUrl, l.getColor());
         }
     }
 

@@ -6,17 +6,13 @@ import co.edu.uniquindio.littlestyle.modules.admin.service.AdminUsuarioService;
 import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
+import co.edu.uniquindio.littlestyle.modules.admin.dto.EliminarCuentaRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 
 /**
  * Bandeja de gestion de cuentas del administrador (US-14): lista, detalle y cambio de estado
@@ -52,5 +48,12 @@ public class UsuarioAdminController {
     public UsuarioAdminResponse cambiarEstado(@PathVariable Long id,
                                               @Valid @RequestBody CambioEstadoCuentaRequest request) {
         return service.cambiarEstado(id, request.estado(), request.motivo());
+    }
+
+    /** Elimina definitivamente la cuenta */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id, @Valid @RequestBody EliminarCuentaRequest request) {
+        service.eliminar(id, request.motivo());
+        return ResponseEntity.noContent().build();
     }
 }

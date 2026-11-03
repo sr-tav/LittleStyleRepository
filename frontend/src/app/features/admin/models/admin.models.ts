@@ -1,4 +1,5 @@
 import { Rol } from '../../../core/models/auth.models';
+import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
 
 /** Tipo genérico para las respuestas paginadas del backend. */
 export type Pagina<T> = {
@@ -90,6 +91,7 @@ export interface TallaAdmin {
   edadMinMeses: number | null;
   edadMaxMeses: number | null;
   stockMinimo: number | null;
+  color?: ColorPreferido | null;
 }
 
 /** Detalle completo de una prenda para evaluar su moderación. */

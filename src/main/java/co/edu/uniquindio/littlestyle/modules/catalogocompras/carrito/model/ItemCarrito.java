@@ -1,25 +1,13 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Column;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import jakarta.persistence.*;
+import lombok.*;
 
 /** Línea del carrito: una prenda en una talla, única por carrito. */
 @Entity
 @Table(name = "carrito_items", uniqueConstraints = @UniqueConstraint(
-        columnNames = {"carrito_id", "prenda_id", "talla"}))
+        name = "uk_carrito_item_color", columnNames = {"carrito_id", "prenda_id", "talla", "color"}))
 @Getter
 @Setter
 @Builder
@@ -47,5 +35,9 @@ public class ItemCarrito {
     /** Talla sugerida por el motor al agregar; nula si se eligió sin sugerencia (RNF-11). */
     @Column(name = "talla_sugerida", length = 10)
     private String tallaSugerida;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ColorPreferido color;
 
 }

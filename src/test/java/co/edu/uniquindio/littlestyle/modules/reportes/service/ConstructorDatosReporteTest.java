@@ -9,6 +9,7 @@ import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResp
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.reportes.dto.*;
 import co.edu.uniquindio.littlestyle.modules.reportes.repository.ReporteBusquedaRepository;
 import co.edu.uniquindio.littlestyle.modules.reportes.repository.ReporteInventarioRepository;
@@ -203,16 +204,20 @@ class ConstructorDatosReporteTest {
         when(inventarioRepository.countFilasInventario(eq(EstadoPrenda.ACTIVA), eq(7L), isNull())).thenReturn(2L);
         when(inventarioRepository.filasInventario(eq(EstadoPrenda.ACTIVA), eq(7L), isNull(), any(Pageable.class)))
                 .thenReturn(List.of(
-                        new InventarioFila("Vestido", "Mi tienda", "VESTIDOS", "4T", 2, 5),
-                        new InventarioFila("Pijama", "Mi tienda", "PIJAMAS", "6T", 50, null)));
+                        new InventarioFila("Vestido", "Mi tienda", "VESTIDOS", "4T", ColorPreferido.AZUL, 2, 5),
+                        new InventarioFila("Pijama", "Mi tienda", "PIJAMAS", "6T", ColorPreferido.ROSA, 50, null)));
 
         ReporteDatos datos = constructor.construir(
                 new SolicitudReporte(TipoReporte.INVENTARIO, FormatoReporte.PDF, null, null, null), 7L, vendedor);
 
         assertThat(datos.filas()).hasSize(2);
+        assertThat(datos.filas().getFirst().get("color")).isEqualTo("Azul");
         assertThat(datos.filas().get(1).get("nivel")).isEqualTo("Sin mínimo");
+        assertThat(datos.tabla().columnas()).extracting(ColumnaReporte::nombre)
+                .containsExactly("Prenda", "Tienda", "Categoría", "Talla", "Color", "Stock", "Mínimo", "Nivel");
+        assertThat(datos.tabla().filas().getFirst().get(4)).isEqualTo("Azul");
         assertThat((String) datos.parametros().get("SUBTITULO"))
-                .isEqualTo("Existencias activas por prenda y talla · Todas las categorías");
+                .isEqualTo("Existencias activas por prenda, talla y color · Todas las categorías");
         assertThat(datos.parametros()).containsEntry("TOTAL_UNIDADES", "52").containsEntry("TOTAL_BAJOS", "1");
     }
 
@@ -232,7 +237,8 @@ class ConstructorDatosReporteTest {
     @Test
     void inventarioQueCreceEntreElConteoYLaLecturaTambienSeRechaza() {
         List<InventarioFila> demasiadas = Collections.nCopies(
-                ConstructorDatosReporte.MAX_FILAS + 1, new InventarioFila("P", "T", "VESTIDOS", "4T", 1, 1));
+                ConstructorDatosReporte.MAX_FILAS + 1, new InventarioFila("P", "T", "VESTIDOS", "4T",
+                        ColorPreferido.AZUL, 1, 1));
         when(inventarioRepository.countFilasInventario(any(), any(), any())).thenReturn(1L);
         when(inventarioRepository.filasInventario(any(), any(), any(), any(Pageable.class))).thenReturn(demasiadas);
 

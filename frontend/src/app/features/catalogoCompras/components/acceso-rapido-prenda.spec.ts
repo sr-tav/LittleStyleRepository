@@ -6,13 +6,13 @@ import { VitrinaService } from '../../vitrina/services/vitrina.service';
 import { AccesoRapidoPrenda } from './acceso-rapido-prenda';
 
 describe('AccesoRapidoPrenda', () => {
-  it('muestra las tallas al pasar el cursor y exige seleccionar una antes de agregar', async () => {
+  it('exige elegir el color y agrega solo una talla con existencias en esa combinación', async () => {
     const vitrina = {
       detalle: vi.fn(() => of({
         tallas: [
-          { talla: '4', disponible: true },
-          { talla: '6', disponible: false },
-          { talla: '8', disponible: true },
+          { talla: '4', color: 'ROSA', stockDisponible: 2, disponible: true },
+          { talla: '4', color: 'AZUL', stockDisponible: 0, disponible: false },
+          { talla: '6', color: 'AZUL', stockDisponible: 1, disponible: true },
         ],
       })),
     };
@@ -31,28 +31,39 @@ describe('AccesoRapidoPrenda', () => {
     const fixture = TestBed.createComponent(AccesoRapidoPrenda);
     fixture.componentRef.setInput('prendaId', 10);
     fixture.componentRef.setInput('nombre', 'Vestido infantil');
-    fixture.componentRef.setInput('tallasDisponibles', ['4', '8']);
     fixture.detectChanges();
     expect(vitrina.detalle).not.toHaveBeenCalled();
 
     (fixture.nativeElement as HTMLElement).dispatchEvent(new Event('mouseenter'));
     fixture.detectChanges();
 
-    const tallas = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
-      '.producto-acceso-tallas button',
-    );
     expect(fixture.nativeElement.textContent).toContain('Agregar al carrito');
-    expect(Array.from(tallas).map((boton) => boton.textContent?.trim())).toEqual(['4', '8']);
+    expect(vitrina.detalle).toHaveBeenCalledOnce();
     (fixture.nativeElement as HTMLElement)
       .querySelector<HTMLButtonElement>('.producto-acceso-trigger')
       ?.click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Selecciona una talla.');
+    expect(fixture.nativeElement.textContent).toContain('Selecciona un color.');
     expect(carrito.agregar).not.toHaveBeenCalled();
 
+    const color = (fixture.nativeElement as HTMLElement).querySelector<HTMLSelectElement>(
+      '.producto-acceso-color select',
+    )!;
+    color.value = 'ROSA';
+    color.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const tallas = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+      '.producto-acceso-tallas button',
+    );
+    expect(Array.from(tallas).map((boton) => boton.textContent?.trim())).toEqual(['4']);
     tallas[0].click();
 
-    expect(carrito.agregar).toHaveBeenCalledWith({ prendaId: 10, talla: '4', cantidad: 1 });
+    expect(carrito.agregar).toHaveBeenCalledWith({
+      prendaId: 10,
+      talla: '4',
+      cantidad: 1,
+      color: 'ROSA',
+    });
     expect(carrito.abrirPanel).toHaveBeenCalledOnce();
   });
 });

@@ -50,6 +50,7 @@ public class CatalogoClienteController {
             @RequestParam(required = false) String disponible,
             @RequestParam(required = false) String material,
             @RequestParam(required = false) String talla,
+            @RequestParam(required = false) String color,
             @RequestParam(required = false) List<Long> ids,
             @RequestParam(required = false) Long perfilId,
             @RequestParam(required = false) Boolean soloMiTalla,
@@ -58,8 +59,11 @@ public class CatalogoClienteController {
             @RequestParam(defaultValue = "12") int tamano,
             @RequestParam(defaultValue = "novedades") String orden) {
         long ini = System.nanoTime();
-        PaginaResponse<PrendaVitrinaResponse> res = catalogo.explorar(texto, categoria, genero, precioMin,
-                precioMax, disponible, material, talla, ids, perfilId, soloMiTalla, edadMeses, pagina, tamano, orden);
+        PaginaResponse<PrendaVitrinaResponse> res = color == null || color.isBlank()
+                ? catalogo.explorar(texto, categoria, genero, precioMin, precioMax, disponible, material, talla,
+                        ids, perfilId, soloMiTalla, edadMeses, pagina, tamano, orden)
+                : catalogo.explorar(texto, categoria, genero, precioMin, precioMax, disponible, material, talla,
+                        color, ids, perfilId, soloMiTalla, edadMeses, pagina, tamano, orden);
         long ms = (System.nanoTime() - ini) / 1_000_000;
         // Solo la primera página: paginar la misma búsqueda no es una búsqueda nueva (métrica US-15).
         if (pagina == 0 && texto != null && !texto.isBlank()) {

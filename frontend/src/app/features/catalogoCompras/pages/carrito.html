@@ -38,6 +38,9 @@
             }
             <div class="carrito-item-info">
               <h2>{{ item.nombre }}</h2>
+              @if (item.color) {
+                <p>Color {{ item.color | colorEtiqueta }}</p>
+              }
               <p>Talla {{ item.talla }}</p>
               <p>{{ precio(item.precioUnitario) }}</p>
               @if (!item.disponible) {

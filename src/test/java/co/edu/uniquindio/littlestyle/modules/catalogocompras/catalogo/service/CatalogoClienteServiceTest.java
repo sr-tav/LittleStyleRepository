@@ -4,6 +4,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.Prenda
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaVitrinaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -153,6 +154,23 @@ class CatalogoClienteServiceTest {
 
         verify(prendaRepository).buscarIdsVitrina(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(), any(),
                 eq(List.of(MaterialTextil.ALGODON, MaterialTextil.POLIESTER)), any(), any(), any());
+    }
+
+    @Test
+    void colorSeNormalizaYFiltraEnLaConsultaDeVariantes() {
+        when(prendaRepository.buscarIdsVitrinaConColor(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(),
+                any(), any(), eq("4"), eq(ColorPreferido.AZUL), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.explorar(null, null, null, null, null, null, null, "4", "azul", null,
+                null, null, null, 0, 12, "novedades");
+
+        verify(prendaRepository).buscarIdsVitrinaConColor(eq(EstadoPrenda.ACTIVA), any(), any(), any(), any(), any(),
+                any(), any(), eq("4"), eq(ColorPreferido.AZUL), any(), any());
+        assertThatThrownBy(() -> service.explorar(null, null, null, null, null, null, null, null, "turquesa", null,
+                null, null, null, 0, 12, "novedades"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     // Cada filtro malformado (categoría, rango de precios, orden, página negativa) debe reventar en 400

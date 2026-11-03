@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
+import { ColorEtiquetaPipe } from '../../../shared/pipes/color-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { formatearPrecio } from '../models/prenda-opciones';
 import { ItemCarrito } from '../models/carrito.models';
@@ -14,7 +15,7 @@ import { CarritoService } from '../services/carrito.service';
  */
 @Component({
   selector: 'app-carrito',
-  imports: [Navbar, RouterLink],
+  imports: [Navbar, RouterLink, ColorEtiquetaPipe],
   templateUrl: './carrito.html',
 })
 export class CarritoPage {

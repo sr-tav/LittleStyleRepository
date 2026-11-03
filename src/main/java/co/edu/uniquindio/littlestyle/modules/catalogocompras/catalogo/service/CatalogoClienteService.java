@@ -8,6 +8,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Gene
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
@@ -91,6 +92,17 @@ public class CatalogoClienteService {
                                                           String material, String talla, List<Long> ids,
                                                           Long perfilId, Boolean soloMiTalla,
                                                           Integer edadMeses, int pagina, int tamano, String orden) {
+        return explorar(texto, categoria, genero, precioMin, precioMax, disponible, material, talla, null, ids,
+                perfilId, soloMiTalla, edadMeses, pagina, tamano, orden);
+    }
+
+    /** Búsqueda con filtro opcional de color de variante. */
+    @Transactional(readOnly = true)
+    public PaginaResponse<PrendaVitrinaResponse> explorar(String texto, String categoria, String genero,
+                                                          String precioMin, String precioMax, String disponible,
+                                                          String material, String talla, String color, List<Long> ids,
+                                                          Long perfilId, Boolean soloMiTalla,
+                                                          Integer edadMeses, int pagina, int tamano, String orden) {
         List<Long> idsEfectivos = ids;
         if (Boolean.TRUE.equals(soloMiTalla)) {
             if (perfilId == null) {
@@ -114,6 +126,7 @@ public class CatalogoClienteService {
         Pageable paginable = PageRequest.of(pagina, Math.min(Math.max(tamano, 1), TAMANO_MAXIMO), orden(orden));
         String q = texto == null || texto.isBlank() ? null : texto.trim();
         String t = talla == null || talla.isBlank() ? null : talla.trim();
+        ColorPreferido colorFiltro = color(color);
         List<MaterialTextil> materiales = materiales(material);
         CategoriaPrenda categoriaFiltro = categoria(categoria);
         Page<Long> paginaIds;
@@ -122,13 +135,19 @@ public class CatalogoClienteService {
                 registrarBusqueda(q, categoriaFiltro, 0);
                 return PaginaResponse.from(Page.empty(paginable));
             }
-            paginaIds = prendaRepository.buscarIdsVitrinaPorIds(EstadoPrenda.ACTIVA, idsEfectivos,
-                    categoriaFiltro, genero(genero), min, max, q, disponibilidad(disponible),
-                    materiales, t, edadMeses, paginable);
+            paginaIds = colorFiltro == null
+                    ? prendaRepository.buscarIdsVitrinaPorIds(EstadoPrenda.ACTIVA, idsEfectivos,
+                            categoriaFiltro, genero(genero), min, max, q, disponibilidad(disponible),
+                            materiales, t, edadMeses, paginable)
+                    : prendaRepository.buscarIdsVitrinaPorIdsConColor(EstadoPrenda.ACTIVA, idsEfectivos,
+                            categoriaFiltro, genero(genero), min, max, q, disponibilidad(disponible),
+                            materiales, t, colorFiltro, edadMeses, paginable);
         } else {
-            paginaIds = prendaRepository.buscarIdsVitrina(EstadoPrenda.ACTIVA,
-                    categoriaFiltro, genero(genero), min, max, q, disponibilidad(disponible),
-                    materiales, t, edadMeses, paginable);
+            paginaIds = colorFiltro == null
+                    ? prendaRepository.buscarIdsVitrina(EstadoPrenda.ACTIVA, categoriaFiltro, genero(genero),
+                            min, max, q, disponibilidad(disponible), materiales, t, edadMeses, paginable)
+                    : prendaRepository.buscarIdsVitrinaConColor(EstadoPrenda.ACTIVA, categoriaFiltro, genero(genero),
+                            min, max, q, disponibilidad(disponible), materiales, t, colorFiltro, edadMeses, paginable);
         }
         // Se registra aunque no haya resultados: las búsquedas sin coincidencias son la señal
         // de demanda insatisfecha más valiosa del reporte de búsquedas (US-16).
@@ -211,6 +230,16 @@ public class CatalogoClienteService {
             return GeneroPrenda.valueOf(valor.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "El género no es válido", "genero");
+        }
+    }
+
+    /** Convierte el filtro de color; nulo si no se envió y 400 si no es válido. */
+    private static ColorPreferido color(String valor) {
+        if (valor == null || valor.isBlank()) return null;
+        try {
+            return ColorPreferido.valueOf(valor.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "El color no es válido", "color");
         }
     }
 

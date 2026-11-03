@@ -197,9 +197,8 @@ describe('Cuenta (US-06)', () => {
       .click();
     fixture.detectChanges();
 
-    expect(element.textContent).toContain(
-      'Se borrarán permanentemente tus datos personales y los datos de los perfiles infantiles que hayas creado.',
-    );
+    expect(element.textContent).toContain('Eliminar cuenta');
+    expect(element.textContent).toContain('los datos de los perfiles infantiles que hayas creado');
     httpMock.expectNone({ method: 'DELETE', url: '/api/auth/me' });
   });
 

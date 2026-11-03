@@ -21,7 +21,7 @@ mensajes más comunes. Está dirigida a administradores y vendedores.
 |---|---|---|
 | **Ventas** | Ventas totales, pedidos, ticket promedio, serie diaria y ventas por prenda | Sí |
 | **Demanda** | Unidades y valor vendidos por prenda y talla | Sí |
-| **Inventario** | Foto actual de stock por prenda, tienda, categoría y talla, con nivel y stock mínimo | No |
+| **Inventario** | Foto actual de stock por prenda, tienda, categoría, talla y color, con nivel y stock mínimo | No |
 | **Búsquedas** | Términos buscados, veces buscados, búsquedas sin resultados y última fecha | Sí |
 
 El reporte de **búsquedas** mide qué busca la gente; el de **demanda** mide qué se vendió. No son
@@ -61,7 +61,9 @@ cierran al terminar.
 - **Rango de fechas:** si no eliges fechas, se usan los últimos 30 días.
 - **Categoría:** limita ventas, demanda y búsquedas a una categoría del catálogo. Inventario también
   la respeta.
-- **Inventario:** ignora las fechas porque siempre muestra el estado actual del stock.
+- **Inventario:** la foto es por variante. Cada fila corresponde a una combinación
+  `prenda + talla + color`; dos colores de la misma talla aparecen como filas distintas con su
+  propio stock. Si una variante no tiene color, la columna queda vacía.
 
 ## 6. Mensajes y qué hacer
 

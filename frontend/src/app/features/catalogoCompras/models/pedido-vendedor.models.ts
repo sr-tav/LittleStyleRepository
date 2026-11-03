@@ -1,3 +1,4 @@
+import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
 import { EstadoPedido } from '../../pedidos/models/pedido.models';
 
 /**
@@ -27,6 +28,7 @@ export interface PedidoVendedorItem {
   prendaId: number;
   nombre: string;
   talla: string;
+  color?: ColorPreferido | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;

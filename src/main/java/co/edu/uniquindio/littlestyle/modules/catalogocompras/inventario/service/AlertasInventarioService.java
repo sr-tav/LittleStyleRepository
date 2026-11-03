@@ -65,7 +65,7 @@ public class AlertasInventarioService {
                                                          boolean publicada, LocalDateTime ahora) {
         Integer minimo = talla.getStockMinimo();
         Optional<AlertaReabastecimiento> activa = alertaRepository
-                .findFirstByPrendaIdAndTallaAndFechaResolucionIsNull(prenda.getId(), talla.getTalla());
+                .findFirstByPrendaIdAndTallaAndColorAndFechaResolucionIsNull(prenda.getId(), talla.getTalla(), talla.getColor());
         if (!publicada || minimo == null) {
             activa.ifPresent(alerta -> alerta.setFechaResolucion(ahora));
             return Optional.empty();
@@ -82,6 +82,7 @@ public class AlertasInventarioService {
         AlertaReabastecimiento nueva = alertaRepository.save(AlertaReabastecimiento.builder()
                 .prenda(prenda)
                 .talla(talla.getTalla())
+                .color(talla.getColor())
                 .nivel(nivel)
                 .stockAlEmitir(talla.getStock())
                 .stockMinimoAlEmitir(minimo)
@@ -93,7 +94,7 @@ public class AlertasInventarioService {
             return Optional.empty();
         }
         eventos.publishEvent(new AlertaReabastecimientoEmitida(nueva.getId(), prenda.getId(),
-                prenda.getVendedor().getId(), prenda.getNombre(), talla.getTalla(), nivel,
+                prenda.getVendedor().getId(), prenda.getNombre(), talla.etiqueta(), nivel,
                 talla.getStock(), minimo));
         return Optional.of(nueva);
     }
@@ -103,10 +104,11 @@ public class AlertasInventarioService {
      * evaluar y quedarían activas apuntando a una talla inexistente.
      */
     private void resolverDeTallasQuitadas(Prenda prenda, LocalDateTime ahora) {
-        Set<String> vigentes = prenda.getTallas().stream().map(TallaPrenda::getTalla).collect(Collectors.toSet());
+        Set<String> vigentes = prenda.getTallas().stream()
+                .map(t -> t.getTalla() + "|" + t.getColor()).collect(Collectors.toSet());
         alertaRepository.findAllByPrendaIdAndFechaResolucionIsNull(prenda.getId()).stream()
-                .filter(alerta -> alerta.getTalla() != null && !vigentes.contains(alerta.getTalla()))
-                .forEach(alerta -> alerta.setFechaResolucion(ahora));
+                .filter(a -> a.getTalla() != null && !vigentes.contains(a.getTalla() + "|" + a.getColor()))
+                .forEach(a -> a.setFechaResolucion(ahora));
     }
 
     /**

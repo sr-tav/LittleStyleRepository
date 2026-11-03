@@ -133,7 +133,7 @@ public class PedidoEstadoService {
                                 + " del pedido " + pedido.getId() + " ya no existe");
             }
             String tallaNombre = linea.getTalla().trim().toUpperCase(Locale.ROOT);
-            TallaPrenda talla = prenda.buscarTalla(tallaNombre).orElse(null);
+            TallaPrenda talla = prenda.buscarVariante(tallaNombre, linea.getColor()).orElse(null);
             if (talla == null) {
                 throw new BusinessException(HttpStatus.CONFLICT,
                         "No se pudo reponer el stock: la talla " + tallaNombre + " de la prenda "

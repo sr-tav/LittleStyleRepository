@@ -1,3 +1,5 @@
+import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
+
 /** Estados utilizados para representar el ciclo de vida de un pedido. */
 export type EstadoPedido =
   | 'PENDIENTE_PAGO'
@@ -44,6 +46,7 @@ export interface PedidoItem {
   prendaId: number;
   nombre: string;
   talla: string;
+  color?: ColorPreferido | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;

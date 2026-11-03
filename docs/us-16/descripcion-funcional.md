@@ -48,7 +48,7 @@ La fábrica vive en `src/main/java/co/edu/uniquindio/littlestyle/modules/reporte
 |---|---|---|
 | `VENTAS` | `DashboardAnalyticsService.obtenerResumen` + `obtenerVentasPorDia` + `obtenerProductosVendidosCompleto` | Indicadores (ventas, pedidos, ticket), serie diaria con nivel de barra, todas las prendas vendidas (hasta `MAX_FILAS + 1` para detectar exceso) y totales como parámetros. |
 | `DEMANDA` | `DashboardAnalyticsService.obtenerResumen` | Unidades y valor por prenda y talla. No confundir con búsquedas: aquí se mide lo vendido. |
-| `INVENTARIO` | `ReporteInventarioRepository` | Foto actual de prendas activas: prenda, tienda, categoría, talla, stock, mínimo y nivel. Ignora las fechas. |
+| `INVENTARIO` | `ReporteInventarioRepository` | Foto actual de prendas activas por **variante**: prenda, tienda, categoría, talla, color, stock, mínimo y nivel. Cada fila es una combinación única `prenda + talla + color`. Ignora las fechas. |
 | `BUSQUEDAS` | `ReporteBusquedaRepository` | Término, número de búsquedas, búsquedas sin resultados y última fecha; totales como parámetros. |
 
 Parámetros comunes del PDF: `TITULO`, `SUBTITULO`, `ALCANCE`, `GENERADO_EN`, `GENERADO_POR` y
@@ -238,10 +238,15 @@ Evidencia operativa:
    (`ENTERO`, `MONEDA`, `FECHA`) se escriben crudas y tipadas para no romper las sumas.
 8. **Inventario sin fechas.** Es una foto del estado actual; los parámetros de fecha se ignoran a
    propósito y el nombre del archivo usa la fecha de generación.
-9. **Límite de 5 000 filas.** No viene de la historia: se fijó para proteger memoria y tiempos de
+9. **Inventario por variante.** El stock se lleva por `prenda + talla + color`; por eso el reporte
+   incluye la columna Color y ordena por `vendedor, prenda, talla, color`. Sumar solo por talla
+   mezclaría existencias de colores distintos y ocultaría un agotado parcial. `TOTAL_UNIDADES` suma
+   todas las variantes y `TOTAL_BAJOS` cuenta variantes con `stock <= stockMinimo` (las que no tienen
+   mínimo no alertan).
+10. **Límite de 5 000 filas.** No viene de la historia: se fijó para proteger memoria y tiempos de
    respuesta. Está documentado aquí y en el mensaje de error para que el usuario sepa cómo
    reducir el reporte.
-10. **Tabla de búsquedas nueva.** El repositorio no tenía histórico de búsquedas. Se agregó
+11. **Tabla de búsquedas nueva.** El repositorio no tenía histórico de búsquedas. Se agregó
     `busqueda_catalogo` con datos anónimos; la escritura es asíncrona y tolerante a fallos.
 
 ## 10. Riesgos y pendientes

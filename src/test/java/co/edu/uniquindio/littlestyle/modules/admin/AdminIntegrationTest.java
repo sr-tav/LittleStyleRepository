@@ -4,16 +4,11 @@ import co.edu.uniquindio.littlestyle.config.security.JwtService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.Carrito;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.ItemCarrito;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.repository.CarritoRepository;
-import co.edu.uniquindio.littlestyle.modules.admin.model.AccionAuditoria;
-import co.edu.uniquindio.littlestyle.modules.admin.model.RegistroAuditoria;
 import co.edu.uniquindio.littlestyle.modules.admin.repository.RegistroAuditoriaRepository;
-import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.auth.model.*;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.port.CatalogoRecomendacionPort;
-import co.edu.uniquindio.littlestyle.modules.admin.model.EstadoIncidencia;
-import co.edu.uniquindio.littlestyle.modules.admin.model.TipoIncidencia;
+import co.edu.uniquindio.littlestyle.modules.admin.model.*;
 import co.edu.uniquindio.littlestyle.modules.admin.repository.IncidenciaRepository;
 import co.edu.uniquindio.littlestyle.modules.admin.service.AuditoriaService;
 import com.jayway.jsonpath.JsonPath;
@@ -27,15 +22,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaMultipart;
+
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class US14AdminIntegrationTest {
+class AdminIntegrationTest {
 
     private static final String PRENDA = """
             {"nombre":"Buzo US14","categoria":"PANTALONES","descripcion":"Prenda de prueba de moderacion",
@@ -269,8 +262,7 @@ class US14AdminIntegrationTest {
     }
 
     private int crearPrenda(String tokenVendedor) throws Exception {
-        String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", tokenVendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
+        String json = mockMvc.perform(prendaMultipart(PRENDA).header("Authorization", tokenVendedor))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.estado").value("ACTIVA"))
                 .andExpect(jsonPath("$.estadoModeracion").value("SIN_REVISAR"))

@@ -63,7 +63,7 @@ erDiagram
         VARCHAR telefono
         VARCHAR nombre_tienda
         VARCHAR rol "CLIENTE|VENDEDOR|ADMINISTRADOR"
-        VARCHAR estado "ACTIVO|SUSPENDIDO|ELIMINADO"
+        VARCHAR estado "ACTIVO|SUSPENDIDO|BLOQUEADO|ELIMINADO"
         DATETIME fecha_registro
         VARCHAR version_terminos
         DATETIME fecha_aceptacion_terminos
@@ -77,6 +77,7 @@ erDiagram
         BIGINT carrito_id FK
         BIGINT prenda_id
         VARCHAR talla
+        VARCHAR color
         INT cantidad
         VARCHAR talla_sugerida
     }
@@ -103,6 +104,7 @@ erDiagram
         BIGINT id PK
         BIGINT prenda_id FK
         VARCHAR talla
+        VARCHAR color
         DECIMAL estatura_min_cm
         DECIMAL estatura_max_cm
         DECIMAL peso_min_kg
@@ -133,6 +135,7 @@ erDiagram
         BIGINT id PK
         BIGINT prenda_id FK
         VARCHAR talla
+        VARCHAR color
         VARCHAR nivel "DISPONIBLE|STOCK_BAJO|AGOTADO"
         INT stock_al_emitir
         INT stock_minimo_al_emitir
@@ -206,6 +209,7 @@ erDiagram
         BIGINT prenda_id
         VARCHAR nombre
         VARCHAR talla
+        VARCHAR color
         INT cantidad
         VARCHAR talla_sugerida
         DECIMAL precio_unitario
@@ -255,6 +259,7 @@ erDiagram
         BIGINT prenda_id
         VARCHAR nombre
         VARCHAR talla
+        VARCHAR color
         INT cantidad_solicitada
         INT stock_disponible
     }
@@ -290,21 +295,21 @@ Leyenda: línea continua = llave foránea física; línea punteada = referencia 
 | Tabla | Propósito | Claves y restricciones |
 |---|---|---|
 | `prendas` | Prenda publicada por un vendedor | PK `id`; FK `vendedor_id → usuarios.id` NOT NULL; índices por vendedor, estado, género, categoría, precio y fecha de actualización |
-| `prenda_tallas` | Tallas de cada prenda con rangos de estatura/peso/edad y stock | PK `id`; FK `prenda_id` NOT NULL; UNIQUE (`prenda_id`, `talla`) |
+| `prenda_tallas` | Variantes de cada prenda: talla, color, rangos de estatura/peso/edad y stock | PK `id`; FK `prenda_id` NOT NULL; UNIQUE `uk_prenda_talla_color` (`prenda_id`, `talla`, `color`). Cada color de una misma talla es una variante con stock propio |
 | `prenda_imagenes` | Imágenes (S3 o disco local) | PK `id`; FK `prenda_id` NOT NULL |
 | `prenda_colores` | Colores de la prenda | FK `prenda_id` |
 | `prenda_composicion` | Materiales y porcentaje | FK `prenda_id`; `material` y `porcentaje` NOT NULL |
-| `alertas_reabastecimiento` | Alertas de stock bajo/agotado; abierta mientras `fecha_resolucion` es NULL | PK `id`; FK `prenda_id` NOT NULL; índice (`prenda_id`, `fecha_resolucion`) |
+| `alertas_reabastecimiento` | Alertas de stock bajo/agotado por variante (`talla + color`); abierta mientras `fecha_resolucion` es NULL | PK `id`; FK `prenda_id` NOT NULL; índice (`prenda_id`, `fecha_resolucion`) |
 
 ### 2.4 Carrito, checkout y despachos (`carrito`, `checkout`)
 
 | Tabla | Propósito | Claves y restricciones |
 |---|---|---|
 | `carritos` | Un carrito por cliente | PK `id`; FK `cliente_id → usuarios.id` NOT NULL UNIQUE (relación 1:1) |
-| `carrito_items` | Prendas en el carrito | PK `id`; FK `carrito_id` NOT NULL; UNIQUE (`carrito_id`, `prenda_id`, `talla`) |
+| `carrito_items` | Prendas en el carrito | PK `id`; FK `carrito_id` NOT NULL; UNIQUE `uk_carrito_item_color` (`carrito_id`, `prenda_id`, `talla`, `color`) |
 | `direcciones_cliente` | Última dirección de envío del cliente | PK `id`; FK `cliente_id` NOT NULL UNIQUE (1:1) |
 | `pedidos` | Pedido del cliente con dirección de envío y totales | PK `id`; FK `cliente_id` NOT NULL |
-| `pedido_items` | Líneas del pedido | PK `id`; FK `pedido_id` NOT NULL; FK `despacho_id` (nullable) |
+| `pedido_items` | Líneas del pedido | PK `id`; FK `pedido_id` NOT NULL; FK `despacho_id` (nullable); `talla` y `color` conservan la variante comprada |
 | `despachos` | Parte del pedido que atiende cada vendedor | PK `id`; FK `pedido_id`, FK `vendedor_id` NOT NULL; UNIQUE (`pedido_id`, `vendedor_id`) |
 | `pedido_estados` | Historial (auditoría) de cambios de estado | PK `id`; FK `pedido_id` NOT NULL; FK `despacho_id` nullable; índice por `pedido_id` |
 | `pedido_idempotencia` | Evita pedidos duplicados por reintentos | PK `clave`; registro con fecha de expiración |
@@ -320,14 +325,15 @@ Leyenda: línea continua = llave foránea física; línea punteada = referencia 
 
 - **Entidad:** todas las tablas tienen PK; las tablas de colección (`prenda_colores`, `prenda_composicion`, etc.) se identifican por su FK más el valor.
 - **Referencial:** 23 llaves foráneas físicas (todas las relaciones `@ManyToOne` / `@OneToOne` / `@ElementCollection`).
-- **Unicidad:** `usuarios.email`, `carritos.cliente_id`, `direcciones_cliente.cliente_id`, `transacciones_pago.referencia`, (`prenda_id`,`talla`), (`carrito_id`,`prenda_id`,`talla`), (`pedido_id`,`vendedor_id`), (`cliente_id`,`clave_idempotencia`), (`perfil_id`,`color`), (`perfil_id`,`estampado`).
+- **Unicidad:** `usuarios.email`, `carritos.cliente_id`, `direcciones_cliente.cliente_id`, `transacciones_pago.referencia`, (`prenda_id`,`talla`,`color`), (`carrito_id`,`prenda_id`,`talla`,`color`), (`pedido_id`,`vendedor_id`), (`cliente_id`,`clave_idempotencia`), (`perfil_id`,`color`), (`perfil_id`,`estampado`).
 - **Dominio:** `NOT NULL`, longitudes máximas, `DECIMAL` con precisión fija y enumeraciones cerradas en la aplicación. Las validaciones de rango (stock ≥ 0, porcentajes que suman 100, transiciones de estado válidas) se hacen en la capa de servicio y en métodos de dominio (`Pedido.transicionarA`, `Despacho.transicionarA`).
 - **Concurrencia:** bloqueo pesimista (`SELECT … FOR UPDATE`) al descontar stock y editar prendas o perfiles; claves de idempotencia en pedidos y pagos.
 
 ## 4. Decisiones de diseño y redundancia controlada
 
 - **Referencias lógicas sin FK física:** `carrito_items.prenda_id`, `pedido_items.prenda_id`, `pedidos.perfil_infantil_id`, `pedido_idempotencia.*` y `transacciones_pago_agotadas.prenda_id`. Se guarda solo el id para que borrar o desactivar una prenda o perfil no rompa pedidos históricos; la existencia se valida en el servicio.
-- **Copias intencionales (snapshot):** `pedidos` guarda la dirección de envío y `pedido_items` guarda nombre y precio unitario de la prenda en el momento de la compra. Así el pedido no cambia si el cliente edita su dirección o el vendedor cambia el precio.
+- **Copias intencionales (snapshot):** `pedidos` guarda la dirección de envío y `pedido_items` guarda nombre, talla, color y precio unitario de la prenda en el momento de la compra. Así el pedido no cambia si el cliente edita su dirección, el vendedor cambia el precio o se reorganizan los colores.
+- **Variante como unidad de inventario:** `prenda_tallas`, `carrito_items`, `pedido_items`, `alertas_reabastecimiento` y `transacciones_pago_agotadas` llevan `color` además de `talla`. El stock, la alerta y la disponibilidad se resuelven por la combinación `prenda + talla + color`; una talla sin color explícito solo es válida cuando la prenda declara un único color.
 - **Campos derivados:** `pedido_items.subtotal`, `pedidos.subtotal` y `pedidos.total` se calculan al crear el pedido y no se modifican después; se guardan por trazabilidad contable.
 - **Estado del pedido derivado de despachos:** `pedidos.estado` se recalcula a partir de los `despachos` de cada vendedor (por ejemplo, `PARCIALMENTE_ENVIADO`).
 - **Datos sensibles de menores y direcciones:** se cifran en la aplicación con AES/GCM (`CifradoPerfil`, converters en `perfilesinfantiles/repository/converter`) antes de llegar a la base de datos. Por eso esas columnas son `VARCHAR`/`TEXT` aunque el dato original sea fecha o número.

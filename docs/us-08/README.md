@@ -11,7 +11,7 @@ y controlar la disponibilidad en tiempo real.
   dueño (`findByIdAndVendedorId`, 404 si es ajena) y `ValidadorPrenda` exige composición
   que sume 100 % sin materiales repetidos y tallas sin repetir ni rangos invertidos.
   Las prendas no se borran: se desactivan.
-- **Modelo:** `Prenda` → `TallaPrenda` (rangos de estatura/peso + **stock por talla**)
+- **Modelo:** `Prenda` → `TallaPrenda` (rangos de estatura/peso + **stock por variante `talla + color`**)
   → `ImagenPrenda` (URL + clave del objeto). Colores, estampado y flags textiles
   (tintes, broches, níquel, formaldehído) alimentan el filtro de alergias de US-07.
 - **Imágenes en S3 (tarea 2, ADR-10):** SDK de AWS v2 (`software.amazon.awssdk:s3`).
@@ -20,20 +20,20 @@ y controlar la disponibilidad en tiempo real.
   petición multipart, todo o nada: se validan todos los archivos por su firma (JPG,
   PNG, WEBP) antes de subir, y si la transacción no se confirma se borran los objetos
   ya subidos. La BD solo guarda URL y clave.
-- **Stock mínimo por talla y alertas (tarea 3):** `InventarioService` bloquea la prenda
-  (`PESSIMISTIC_WRITE`), aplica stock y mínimos por talla y llama a
-  `AlertasInventarioService` en la misma transacción. Cada talla con mínimo
+- **Stock mínimo por variante y alertas (tarea 3):** `InventarioService` bloquea la prenda
+  (`PESSIMISTIC_WRITE`), aplica stock y mínimos por variante (`talla + color`) y llama a
+  `AlertasInventarioService` en la misma transacción. Cada variante con mínimo
   alerta por su cuenta (stock ≤ mínimo → `STOCK_BAJO`; 0 → `AGOTADO`); sin
-  mínimo no alerta. Una alerta activa por prenda y talla; escalar a agotado
+  mínimo no alerta. Una alerta activa por prenda, talla y color; escalar a agotado
   notifica de nuevo; superar el mínimo la resuelve. Se publica
-  `AlertaReabastecimientoEmitida` (con talla) y
+  `AlertaReabastecimientoEmitida` (con talla y color) y
   `NotificadorAlertasReabastecimiento` la procesa tras el commit (ADR-14)
   con correo al vendedor.
 - **Integración con US-07:** `CatalogoRecomendacionAdapter` reemplaza al catálogo de
   ejemplo. `CatalogoEjemploAdapter` queda solo con `app.recomendacion.catalogo=ejemplo`.
 - **Panel del vendedor (tarea 4):** UI-18 con KPIs reales de productos y stock bajo,
-  UI-19 Mis productos, UI-20 Crear/editar producto con fotos, UI-21 Inventario con
-  edición en línea por talla y UI-22 Alertas de inventario.
+  UI-19 Mis productos, UI-20 Crear/editar producto con fotos y tabla de variantes, UI-21
+  Inventario con edición en línea por `talla + color` y UI-22 Alertas de inventario.
 - **Pruebas (tarea 5):** 49 pruebas JUnit/Mockito nuevas (incluida una de integración
   con H2) + 16 pruebas de Angular.
 

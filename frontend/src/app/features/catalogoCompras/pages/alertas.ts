@@ -6,6 +6,7 @@ import { procesarErrorApi } from '../../auth/auth.validators';
 import { NivelStockBadge } from '../components/nivel-stock-badge';
 import { PrendaMiniatura } from '../components/prenda-miniatura';
 import { ETIQUETAS_CATEGORIAS } from '../models/prenda-opciones';
+import { ETIQUETAS_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
 import { AlertaInventario } from '../models/prenda.models';
 import { InventarioService } from '../services/inventario.service';
 
@@ -53,7 +54,10 @@ import { InventarioService } from '../services/inventario.service';
                 <app-nivel-stock-badge [nivel]="alerta.nivel" />
               </div>
               <dl class="alert-card-stats">
-                <div><dt>Talla</dt><dd class="stat-actual">{{ alerta.talla ?? '—' }}</dd></div>
+                <div><dt>Variante</dt><dd class="stat-actual">
+                  {{ alerta.talla ? 'Talla ' + alerta.talla : '—' }}
+                  @if (alerta.color) { · {{ ETIQUETAS_COLORES[alerta.color] }} }
+                </dd></div>
                 <div><dt>Actual</dt><dd class="stat-actual">{{ alerta.stockActual }}</dd></div>
                 <div><dt>Mínimo</dt><dd>{{ alerta.stockMinimo }}</dd></div>
                 <div><dt>Diferencia</dt><dd class="stat-diff">{{ alerta.diferencia }} ({{ textoDiferencia(alerta) }})</dd></div>
@@ -79,6 +83,7 @@ export class AlertasStock implements OnInit {
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly categoria = (a: AlertaInventario) => ETIQUETAS_CATEGORIAS[a.categoria];
+  protected readonly ETIQUETAS_COLORES = ETIQUETAS_COLORES;
 
   /**
    * Formatea la fecha de emisión para mostrarla en la tarjeta de alerta.

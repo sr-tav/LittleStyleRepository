@@ -70,7 +70,7 @@ apelaciones de vendedor y solicitudes de soporte.
 | `GET` | `/api/admin/usuarios/{id}` | Administrador | Detalle de cuenta. |
 | `PUT` | `/api/admin/usuarios/{id}/estado` | Administrador | Habilitar/suspender/bloquear con motivo. |
 | `GET` | `/api/admin/moderacion/prendas` | Administrador | Cola post-publicación con filtros. |
-| `GET` | `/api/admin/moderacion/prendas/{id}` | Administrador | Detalle de prenda. |
+| `GET` | `/api/admin/moderacion/prendas/{id}` | Administrador | Detalle de prenda con stock por variante `talla + color`; la decisión de moderación afecta a la prenda completa. |
 | `POST` | `/api/admin/moderacion/prendas/{id}/aprobar` | Administrador | Aprobar publicación. |
 | `POST` | `/api/admin/moderacion/prendas/{id}/desactivar` | Administrador | Ocultar del catálogo con motivo. |
 | `POST` | `/api/admin/moderacion/prendas/{id}/restaurar` | Administrador | Restaurar prenda desactivada. |
@@ -93,8 +93,13 @@ La vista `/dashboard` está habilitada para `ADMINISTRADOR` y `VENDEDOR` con fil
 
 - Backend: `GET /api/v1/dashboard/overview`
 - Autorización: la ruta y el endpoint usan `@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'VENDEDOR')")`
-- Payload principal: `totalVentas`, `totalPedidos`, `ticketPromedio`, `ventasPorCategoria`, `demandaPorTalla`, `productosPopulares`
-- Frontend: `frontend/src/app/features/dashboard/pages/dashboard-analytics/dashboard-analytics.ts` renderiza gráficos con Chart.js
+- Payload principal: `totalVentas`, `totalPedidos`, `ticketPromedio`,
+  `productosVendidos`, `stockTotal`, `stockBajo`, `ventasPorCategoria`,
+  `demandaPorTalla`, `productosPopulares`, `productosMasConsultados` y
+  `busquedasMasFrecuentes`.
+- `stockTotal` suma las variantes activas; `stockBajo` cuenta combinaciones
+  `prenda + talla + color` que alcanzan el mínimo. La demanda del gráfico se
+  agrupa por talla y no se separa por color.- Frontend: `frontend/src/app/features/dashboard/pages/dashboard-analytics/dashboard-analytics.ts` renderiza gráficos con Chart.js
 
 Documentación específica:
 - `docs/us-15/README.md`

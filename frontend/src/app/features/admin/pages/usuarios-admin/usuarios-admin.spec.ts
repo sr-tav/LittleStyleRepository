@@ -12,6 +12,7 @@ describe('UsuariosAdminPage (US-14)', () => {
   const listar = vi.fn((_filtros: FiltrosUsuarios) => of(respuesta));
   const cambiarEstado = vi.fn(() => of({ ...respuesta.contenido[0] }));
   const detalle = vi.fn(() => of(respuesta.contenido[0]));
+  const eliminar = vi.fn(() => of(void 0));
 
   function crearUsuario(extra: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
     return {
@@ -52,13 +53,14 @@ describe('UsuariosAdminPage (US-14)', () => {
     listar.mockClear();
     cambiarEstado.mockClear();
     detalle.mockClear();
+    eliminar.mockClear();
     await TestBed.configureTestingModule({
       imports: [UsuariosAdminPage],
       providers: [
         provideRouter([]),
         {
           provide: UsuariosAdminService,
-          useFactory: () => ({ listar, cambiarEstado, detalle }),
+          useFactory: () => ({ listar, cambiarEstado, detalle, eliminar }),
         },
       ],
     }).compileComponents();
@@ -136,5 +138,28 @@ describe('UsuariosAdminPage (US-14)', () => {
     });
     expect(el.textContent).toContain('se actualizó correctamente');
     expect(listar).toHaveBeenCalledTimes(2);
+  });
+
+  it('elimina una cuenta con un motivo válido y no ofrece eliminar a admins ni eliminadas', () => {
+    const { fixture, el } = crear();
+    const botones = Array.from(el.querySelectorAll('button')).filter(
+      (b) => b.textContent?.trim() === 'Eliminar cuenta',
+    ) as HTMLButtonElement[];
+    expect(botones).toHaveLength(1); // solo el CLIENTE activo (id 3)
+
+    botones[0].click();
+    fixture.detectChanges();
+    cambiar(el.querySelector('#motivo-eliminacion') as HTMLElement, 'corto');
+    (Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Eliminar definitivamente'),
+    ) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(eliminar).not.toHaveBeenCalled();
+
+    cambiar(el.querySelector('#motivo-eliminacion') as HTMLElement, 'Solicitud verificada por soporte');
+    (Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Eliminar definitivamente'),
+    ) as HTMLButtonElement).click();
+    expect(eliminar).toHaveBeenCalledWith(3, 'Solicitud verificada por soporte');
   });
 });

@@ -9,19 +9,19 @@ no se distorsiona con errores del usuario.
 
 ## 2. Casos de prueba principales
 
-| ID | Precondición | Pasos | Resultado esperado | Tipo | Estado |
-|---|---|---|---|---|---|
-| CP-01 | Backend arrancado con las cuatro plantillas JRXML compiladas | Exportar cada tipo en `PDF` con 0, 3 y 500 filas | PDF válido, texto extraíble, fuentes embebidas, varias páginas y pie «Página 1 de N» con N real | Automatizada | Aprobado |
-| CP-02 | Reporte con datos y una celda que empieza por `=` | Exportar en `XLSX` y abrir con Apache POI | Hojas `Datos` y `Resumen`, tipos numéricos/fecha, panel congelado, autofiltro y fórmulas neutralizadas | Automatizada | Aprobado |
-| CP-03 | Textos con tildes, eñes, `;`, comillas y saltos | Exportar en `CSV` | BOM UTF-8, separador `;`, CRLF y escape RFC 4180 | Automatizada | Aprobado |
-| CP-04 | Fábrica con los tres formatos | Pedir cada formato y uno inexistente | Un creador y un generador por formato; sin `switch` en controller/service; `400` si no existe | Automatizada | Aprobado |
-| CP-05 | Sesiones anónima, `CLIENTE`, `VENDEDOR` y `ADMINISTRADOR` | Descargar, pedir tipo/formato inválido, enviar telemetría inválida y consultar métricas | Cabeceras de adjunto y `nosniff`/`no-store`; `401`, `403`, `400`; extensión por formato | Automatizada | Aprobado |
-| CP-06 | Vendedor con datos propios y administrador | Exportar los cuatro reportes con cada rol | Vendedor solo su tienda; administrador consolidado; sin alcance por query param | Automatizada | Aprobado |
-| CP-07 | Más de 5 000 filas o crecimiento entre conteo y lectura | Exportar inventario/búsquedas | `422` antes de cargar los datos en memoria | Automatizada | Aprobado |
-| CP-08 | Búsquedas con resultados, sin resultados y fallo del repositorio | Buscar en el catálogo | Se registra término normalizado/original, categoría, conteo y usuario; el fallo no rompe la búsqueda | Automatizada | Aprobado |
-| CP-09 | Sin exportaciones, luego OK, error, rechazo y cancelación | Consultar `/metricas/exito` y Actuator | Dos contadores separados; rechazos y cancelaciones fuera de la tasa; `49/50 = 0,98` no cumple; `429` al exceder telemetría | Automatizada | Aprobado |
-| CP-10 | Panel de reportes en Angular | Descargar, imprimir, cancelar, simular error de red y popup bloqueado | Progreso, mensajes, impresión solo PDF, iframe primero y telemetría clasificada | Automatizada | Aprobado |
-| CP-11 | Base H2 con búsquedas sembradas | Ejecutar la consulta JPQL global, por categoría, por fecha y por vendedor sin prendas | Agrupación por término, conteo de sin-resultados, filtros y alcance correctos | Automatizada | Aprobado |
+| ID | Precondición | Pasos | Resultado esperado                                                                                                                                                                                 | Tipo | Estado |
+|---|---|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
+| CP-01 | Backend arrancado con las cuatro plantillas JRXML compiladas | Exportar cada tipo en `PDF` con 0, 3 y 500 filas | PDF válido, texto extraíble, fuentes embebidas, varias páginas y pie «Página 1 de N» con N real                                                                                                    | Automatizada | Aprobado |
+| CP-02 | Reporte con datos y una celda que empieza por `=` | Exportar en `XLSX` y abrir con Apache POI | Hojas `Datos` y `Resumen`, tipos numéricos/fecha, panel congelado, autofiltro y fórmulas neutralizadas                                                                                             | Automatizada | Aprobado |
+| CP-03 | Textos con tildes, eñes, `;`, comillas y saltos | Exportar en `CSV` | BOM UTF-8, separador `;`, CRLF y escape RFC 4180. Para inventario, el CSV conserva la columna 'Color' y dos colores de una misma talla aparecen en filas diferentes, cada uno con su propio stock. | Automatizada | Aprobado |
+| CP-04 | Fábrica con los tres formatos | Pedir cada formato y uno inexistente | Un creador y un generador por formato; sin `switch` en controller/service; `400` si no existe                                                                                                      | Automatizada | Aprobado |
+| CP-05 | Sesiones anónima, `CLIENTE`, `VENDEDOR` y `ADMINISTRADOR` | Descargar, pedir tipo/formato inválido, enviar telemetría inválida y consultar métricas | Cabeceras de adjunto y `nosniff`/`no-store`; `401`, `403`, `400`; extensión por formato                                                                                                            | Automatizada | Aprobado |
+| CP-06 | Vendedor con datos propios y administrador | Exportar los cuatro reportes con cada rol | Vendedor solo su tienda; administrador consolidado; sin alcance por query param                                                                                                                    | Automatizada | Aprobado |
+| CP-07 | Más de 5 000 filas o crecimiento entre conteo y lectura | Exportar inventario/búsquedas | `422` antes de cargar los datos en memoria                                                                                                                                                         | Automatizada | Aprobado |
+| CP-08 | Búsquedas con resultados, sin resultados y fallo del repositorio | Buscar en el catálogo | Se registra término normalizado/original, categoría, conteo y usuario; el fallo no rompe la búsqueda                                                                                               | Automatizada | Aprobado |
+| CP-09 | Sin exportaciones, luego OK, error, rechazo y cancelación | Consultar `/metricas/exito` y Actuator | Dos contadores separados; rechazos y cancelaciones fuera de la tasa; `49/50 = 0,98` no cumple; `429` al exceder telemetría                                                                         | Automatizada | Aprobado |
+| CP-10 | Panel de reportes en Angular | Descargar, imprimir, cancelar, simular error de red y popup bloqueado | Progreso, mensajes, impresión solo PDF, iframe primero y telemetría clasificada                                                                                                                    | Automatizada | Aprobado |
+| CP-11 | Base H2 con búsquedas sembradas | Ejecutar la consulta JPQL global, por categoría, por fecha y por vendedor sin prendas | Agrupación por término, conteo de sin-resultados, filtros y alcance correctos                                                                                                                      | Automatizada | Aprobado |
 
 ## 3. Casos detallados
 
@@ -34,6 +34,8 @@ no se distorsiona con errores del usuario.
   - el texto contiene el título del reporte, «Camisa niña ñandú» y «Categoría»;
   - con 500 filas hay más de una página y el pie dice «Página 1 de N» con el N real;
   - la barra de participación se dibuja repitiendo el bloque `█` según `nivelBarra` (0–10);
+  - el inventario trae una fila por `prenda + talla + color` y una columna **Color** legible;
+    dos colores de la misma talla no se colapsan en una sola fila;
   - todas las fuentes que usa el PDF están embebidas.
 - Evidencia: `GeneradorReportePdfTest` (`@EnumSource(TipoReporte.class)`,
   `elTextoEsExtraibleYLasFuentesEstanEmbebidas` y
@@ -51,7 +53,8 @@ no se distorsiona con errores del usuario.
   - la hoja `Datos` tiene panel congelado en la fila de encabezados y autofiltro sobre el rango;
   - todo texto, encabezado o título que empieza por `=`, `+`, `-`, `@`, tabulador o retorno de carro
     se escribe neutralizado con apóstrofo;
-  - los enteros y montos negativos siguen siendo celdas numéricas, sin apóstrofo.
+  - los enteros y montos negativos siguen siendo celdas numéricas, sin apóstrofo;
+  - el inventario conserva la columna **Color** y una fila por variante.
 - Evidencia: `GeneradorReporteXlsxTest` (`laHojaDatosTienePanelCongeladoYAutofiltro`).
 
 ### CP-03 — CSV para Excel en configuración regional colombiana
@@ -189,7 +192,7 @@ no se distorsiona con errores del usuario.
 |---|---|---|
 | 1 | Exportar ventas en XLSX y abrirlo en Excel/LibreOffice | Dos hojas; montos sumables; filtros y panel congelado en `Datos` |
 | 2 | Exportar búsquedas en CSV y abrirlo en Excel | Tildes y eñes correctas; una columna por campo; fechas reconocidas |
-| 3 | Exportar inventario en PDF e imprimirlo | Encabezado repetido por página y pie “Página X de Y” |
+| 3 | Exportar inventario en PDF e imprimirlo | Una fila por prenda, talla y color, con la columna **Color**; encabezado repetido por página y pie “Página X de Y” |
 | 4 | Exportar con un vendedor y con un administrador | El vendedor no ve datos de otras tiendas |
 | 5 | Exportar sin resultados | El archivo se genera con una fila explicativa, sin error |
 | 6 | Forzar más de 5 000 filas | Mensaje `422` que invita a filtrar |

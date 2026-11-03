@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.dto;
 
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -16,11 +17,10 @@ import java.util.List;
  */
 public record ActualizarStockRequest(
         @NotEmpty(message = "Indica el stock de al menos una talla")
-        @Size(max = 15, message = "Se admiten máximo 15 tallas")
+        @Size(max = 60, message = "Se admiten máximo 60 tallas")
         List<@Valid @NotNull StockTalla> tallas
 ) {
 
-    /** Stock absoluto y mínimo opcional de una talla. */
     public record StockTalla(
             @NotBlank(message = "La talla es obligatoria")
             String talla,
@@ -32,7 +32,18 @@ public record ActualizarStockRequest(
 
             @Min(value = 0, message = "El stock mínimo no puede ser negativo")
             @Max(value = 10000, message = "El stock mínimo debe ser máximo 10000")
-            Integer stockMinimo
+            Integer stockMinimo,
+
+            ColorPreferido color,
+
+            ColorPreferido nuevoColor
     ) {
+        public StockTalla(String talla, Integer stock, Integer stockMinimo) {
+            this(talla, stock, stockMinimo, null, null);
+        }
+
+        public StockTalla(String talla, Integer stock, Integer stockMinimo, ColorPreferido color) {
+            this(talla, stock, stockMinimo, color, null);
+        }
     }
 }

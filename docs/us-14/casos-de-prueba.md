@@ -27,7 +27,7 @@ existentes. Los casos con llamadas HTTP están cubiertos también por `US14Admin
 | CP-US14-20 | Login de cuentas deshabilitadas | Suspensión y bloqueo responden 403 con mensajes distintos que indican la apertura automática de la apelación y la respuesta por correo. | `AuthSecurityIntegrationTest.loginExplicaLaSuspensionOBloqueoYLaApelacionAutomatica` |
 | CP-US14-21 | Auditoría de moderación fallida | Transición ilegal y motivo vacío generan intento fallido de auditoría. | `ModeracionProductoServiceTest.decisionIlegalQuedaRegistradaComoIntentoFallido`, `motivoDeDesactivacionVacioQuedaRegistradoComoIntentoFallido` |
 | CP-US14-22 | Disponibilidad en checkout | Si una prenda se desactiva antes de completar la compra, el checkout muestra que debe volver al carrito para retirarla o elegir otra. | `checkout.spec.ts` |
-
+| CP-US14-23 | Detalle de variantes en moderación | El detalle lista una fila por combinación `talla + color` con el stock propio de esa variante; dos colores de una misma talla no se agrupan. La tabla no presenta el stock mínimo. Aprobar, desactivar y restaurar siguen afectando a la prenda completa. En móvil, la tabla se recorre sin desbordar el resto de la página. | `moderacion.spec.ts`; `PrendaAdminDetalleResponse.from` |
 ## Evidencia agregada
 
 - Backend: `.\mvnw.cmd test` — 404 pruebas, 0 fallos/errores.

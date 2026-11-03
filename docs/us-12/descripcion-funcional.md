@@ -55,10 +55,12 @@ transportadora. El panel administrativo de pedidos (UI) queda para US-14.
   pedido.
 - El CLIENTE solo cancela antes del pago (`PENDIENTE_PAGO`).
 - Cancelar con stock descontado (`PAGADO`, `REGISTRADO`, `EN_PREPARACION`,
-  `PARCIALMENTE_ENVIADO`) repone las unidades talla por talla; si una línea
-  falla, la transacción completa falla (rollback): dejar el pedido `CANCELADO`
-  con stock repuesto a medias y solo un log es peor que reintentar. El
-  reembolso del dinero NO es automático (pendiente del dueño).
+  `PARCIALMENTE_ENVIADO`) repone las unidades variante por variante
+  (`talla + color`); la línea del pedido conserva ambos datos para devolver
+  exactamente lo comprado. Si una línea falla, la transacción completa falla
+  (rollback): dejar el pedido `CANCELADO` con stock repuesto a medias y solo
+  un log es peor que reintentar. El reembolso del dinero NO es automático
+  (pendiente del dueño).
 - Concurrencia: el avance de despachos usa bloqueo pesimista (`bloquearPorId`
   de pedido y despacho en la misma transacción); dos vendedores no pisan el
   estado ni duplican la reposición.

@@ -9,6 +9,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
+import { ColorEtiquetaPipe } from '../../../shared/pipes/color-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
@@ -27,7 +28,7 @@ import { PagoWompi } from '../components/pago-wompi';
  */
 @Component({
   selector: 'app-checkout',
-  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi],
+  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi, ColorEtiquetaPipe],
   templateUrl: './checkout.html',
 })
 export class CheckoutPage implements OnInit {

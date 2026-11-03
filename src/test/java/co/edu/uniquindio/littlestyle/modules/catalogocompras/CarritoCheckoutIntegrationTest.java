@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaMultipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -511,8 +512,7 @@ class CarritoCheckoutIntegrationTest {
     }
 
     private int crearPrenda(String vendedor, String cuerpoPrenda) throws Exception {
-        String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content(cuerpoPrenda))
+        String json = mockMvc.perform(prendaMultipart(cuerpoPrenda).header("Authorization", vendedor))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.id");
     }

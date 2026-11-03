@@ -214,4 +214,23 @@ describe('PerfilesLista (UI-4)', () => {
     expect(el.textContent).toContain('Dibujos animados');
     expect(el.textContent).not.toContain('DIBUJOS_ANIMADOS');
   });
+
+  it('oculta el alta y muestra un aviso cuando alcanza el máximo de perfiles', () => {
+    const perfiles = Array.from({ length: 10 }, (_, indice) => ({
+      ...perfilEjemplo,
+      id: indice + 1,
+      nombre: `Perfil ${indice + 1}`,
+    }));
+
+    const { fixture, el } = crear();
+    httpMock.expectOne('/api/cliente/perfiles').flush(perfiles);
+    fixture.detectChanges();
+
+    expect(el.querySelector('a[routerLink="/cliente/hijos/nuevo"]')).toBeNull();
+    expect(el.textContent).toContain(
+      'Alcanzaste el máximo de 10 perfiles infantiles.',
+    );
+  });
 });
+
+

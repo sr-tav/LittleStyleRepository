@@ -63,7 +63,7 @@ export const OPCIONES_GENERO = Object.entries(ETIQUETAS_GENERO).map(([valor, eti
 
 /** Mismos límites que el backend (PrendaRequest y AlmacenamientoProperties). */
 export const LIMITES_PRENDA = {
-  maxTallas: 15,
+  maxTallas: 60,
   maxMateriales: 6,
   maxImagenesPorPrenda: 8,
   maxImagenesPorCarga: 10,

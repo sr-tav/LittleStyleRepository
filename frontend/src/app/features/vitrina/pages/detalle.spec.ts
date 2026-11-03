@@ -38,8 +38,26 @@ function detalle(cambios: Partial<VitrinaDetalle> = {}): VitrinaDetalle {
     estampado: 'LISO',
     composicion: [{ material: 'ALGODON', porcentaje: 100 }],
     tallas: [
-      { talla: '4', estaturaMinCm: 100, estaturaMaxCm: 110, pesoMinKg: 15, pesoMaxKg: 20, stockDisponible: 3, disponible: true },
-      { talla: '6', estaturaMinCm: 111, estaturaMaxCm: 122, pesoMinKg: 21, pesoMaxKg: 26, stockDisponible: 0, disponible: false },
+      {
+        talla: '4',
+        color: 'AZUL',
+        estaturaMinCm: 100,
+        estaturaMaxCm: 110,
+        pesoMinKg: 15,
+        pesoMaxKg: 20,
+        stockDisponible: 3,
+        disponible: true,
+      },
+      {
+        talla: '6',
+        color: 'AZUL',
+        estaturaMinCm: 111,
+        estaturaMaxCm: 122,
+        pesoMinKg: 21,
+        pesoMaxKg: 26,
+        stockDisponible: 0,
+        disponible: false,
+      },
     ],
     fechaActualizacion: new Date().toISOString(),
     ...cambios,
@@ -145,51 +163,185 @@ describe('DetalleProducto (US-09)', () => {
 
     expect(el.textContent).toContain('Nuevo');
     expect(el.textContent).toContain('100 – 110');
-    expect(el.textContent).toContain('Agotada');
-    expect(el.querySelector('.tabla-medidas caption')).not.toBeNull();
+    const tabla = el.querySelector<HTMLTableElement>('.tabla-medidas');
+    expect(tabla?.querySelectorAll('thead th')).toHaveLength(5);
+    expect(tabla?.textContent).not.toContain('Color');
+    expect(tabla?.textContent).not.toContain('Estado');
+
+    const filas = tabla?.querySelectorAll('tbody tr');
+    expect(filas).toHaveLength(2);
+    expect(filas?.[0].textContent).toContain('3');
+    expect(filas?.[1].textContent).toContain('0');    expect(el.querySelector('.tabla-medidas caption')).not.toBeNull();
   });
 
-  it('muestra el stock por talla y limita la cantidad con los controles +/-', () => {
+  it('muestra el stock de la variante seleccionada y limita la cantidad', () => {
     carritoMock.agregar.mockClear();
     carritoMock.abrirPanel.mockClear();
+
     const { fixture, el, http } = crear(detalle());
     http.verify();
 
-    expect(el.textContent).toContain('3');
-    const selector = el.querySelector<HTMLSelectElement>('#talla-carrito')!;
-    selector.value = '4';
-    selector.dispatchEvent(new Event('change'));
+    const botonColor = el.querySelector<HTMLButtonElement>(
+      '.detalle-color[role="radio"]',
+    )!;
+    botonColor.click();
     fixture.detectChanges();
 
-    const aumentar = el.querySelector<HTMLButtonElement>('[aria-label="Aumentar cantidad"]')!;
+    const botonTalla = el.querySelector<HTMLButtonElement>(
+      '.detalle-talla[aria-label^="Talla 4"]',
+    )!;
+    botonTalla.click();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('3 disponibles');
+
+    const aumentar = el.querySelector<HTMLButtonElement>(
+      '[aria-label="Aumentar cantidad"]',
+    )!;
     aumentar.click();
     aumentar.click();
     fixture.detectChanges();
+
     expect(el.querySelector('output')?.textContent).toBe('3');
     expect(aumentar.disabled).toBe(true);
 
-    el.querySelector<HTMLButtonElement>('[aria-label="Disminuir cantidad"]')!.click();
+    el.querySelector<HTMLButtonElement>(
+      '[aria-label="Disminuir cantidad"]',
+    )!.click();
     fixture.detectChanges();
+
     expect(el.querySelector('output')?.textContent).toBe('2');
 
-    el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!.click();
-    expect(carritoMock.agregar).toHaveBeenCalledWith({ prendaId: 10, talla: '4', cantidad: 2, tallaSugerida: null });
+    el.querySelector<HTMLButtonElement>(
+      '.detalle-agregar-carrito > .btn-primary',
+    )!.click();
+
+    expect(carritoMock.agregar).toHaveBeenCalledWith({
+      prendaId: 10,
+      talla: '4',
+      cantidad: 2,
+      tallaSugerida: null,
+      color: 'AZUL',
+    });
     expect(carritoMock.abrirPanel).toHaveBeenCalledOnce();
   });
 
-  it('deshabilita la compra y avisa cuando no hay unidades disponibles', () => {
-    const agotada = detalle({
-      disponible: false,
+  it('mantiene separadas las tallas y el stock de cada color y agrega la variante elegida', () => {
+    carritoMock.agregar.mockClear();
+    carritoMock.abrirPanel.mockClear();
+
+    const prendaConVariantes = detalle({
+      colores: ['AZUL', 'ROSA'],
       tallas: [
-        { talla: '4', estaturaMinCm: 100, estaturaMaxCm: 110, pesoMinKg: 15, pesoMaxKg: 20, stockDisponible: 0, disponible: false },
+        {
+          talla: '4',
+          color: 'AZUL',
+          estaturaMinCm: 100,
+          estaturaMaxCm: 110,
+          pesoMinKg: 15,
+          pesoMaxKg: 20,
+          stockDisponible: 0,
+          disponible: false,
+        },
+        {
+          talla: '4',
+          color: 'ROSA',
+          estaturaMinCm: 100,
+          estaturaMaxCm: 110,
+          pesoMinKg: 15,
+          pesoMaxKg: 20,
+          stockDisponible: 2,
+          disponible: true,
+        },
+        {
+          talla: '6',
+          color: 'ROSA',
+          estaturaMinCm: 111,
+          estaturaMaxCm: 122,
+          pesoMinKg: 21,
+          pesoMaxKg: 26,
+          stockDisponible: 0,
+          disponible: false,
+        },
       ],
     });
+
+    const { fixture, el, http } = crear(prendaConVariantes);
+    http.verify();
+
+    const botonRosa = el.querySelector<HTMLButtonElement>(
+      '.detalle-color[aria-label^="Rosa"]',
+    )!;
+    expect(botonRosa.disabled).toBe(false);
+    botonRosa.click();
+    fixture.detectChanges();
+
+    const tallas = Array.from(
+      el.querySelectorAll<HTMLButtonElement>('.detalle-talla'),
+    );
+    expect(tallas).toHaveLength(2);
+    expect(tallas[0].getAttribute('aria-label')).toContain('Talla 4');
+    expect(tallas[0].disabled).toBe(false);
+    expect(tallas[1].getAttribute('aria-label')).toContain('Talla 6');
+    expect(tallas[1].disabled).toBe(true);
+
+    tallas[0].click();
+    fixture.detectChanges();
+
+    el.querySelector<HTMLButtonElement>(
+      '.detalle-agregar-carrito > .btn-primary',
+    )!.click();
+
+    expect(carritoMock.agregar).toHaveBeenCalledWith({
+      prendaId: 10,
+      talla: '4',
+      cantidad: 1,
+      tallaSugerida: null,
+      color: 'ROSA',
+    });
+    expect(carritoMock.abrirPanel).toHaveBeenCalledOnce();
+  });
+
+  it('deshabilita la selección y la compra cuando el producto está agotado', () => {
+    carritoMock.agregar.mockClear();
+
+    const agotada = detalle({
+      disponible: false,
+      colores: ['AZUL'],
+      tallas: [
+        {
+          talla: '4',
+          color: 'AZUL',
+          estaturaMinCm: 100,
+          estaturaMaxCm: 110,
+          pesoMinKg: 15,
+          pesoMaxKg: 20,
+          stockDisponible: 0,
+          disponible: false,
+        },
+      ],
+    });
+
     const { el, http } = crear(agotada);
     http.verify();
 
-    expect(el.textContent).toContain('En este momento no hay unidades disponibles.');
-    expect(el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')?.disabled).toBe(true);
-    expect(el.querySelector<HTMLSelectElement>('#talla-carrito')?.disabled).toBe(true);
+    expect(el.textContent).toContain(
+      'En este momento no hay unidades disponibles.',
+    );
+
+    const botonColor = el.querySelector<HTMLButtonElement>('.detalle-color');
+    expect(botonColor).not.toBeNull();
+    expect(botonColor?.disabled).toBe(true);
+
+    const botonAgregar = el.querySelector<HTMLButtonElement>(
+      '.detalle-agregar-carrito > .btn-primary',
+    );
+    expect(botonAgregar?.disabled).toBe(true);
+
+    const botonTalla = el.querySelector<HTMLButtonElement>('.detalle-talla');
+    expect(botonTalla).not.toBeNull();
+    expect(botonTalla?.disabled).toBe(true);
+    expect(carritoMock.agregar).not.toHaveBeenCalled();
   });
 
   it('muestra el motivo de exclusión cuando el 422 trae código PRENDA_EXCLUIDA_ALERGIA (US-07)', () => {

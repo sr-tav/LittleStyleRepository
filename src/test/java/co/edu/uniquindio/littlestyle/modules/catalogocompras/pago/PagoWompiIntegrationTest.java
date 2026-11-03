@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaMultipart;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -355,8 +356,7 @@ class PagoWompiIntegrationTest {
     private Compra crearCompra(int cantidad) throws Exception {
         String vendedor = registrar("pago-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
         String cliente = registrar("pago-cliente-" + System.nanoTime() + "@correo.com", "CLIENTE");
-        String prendaJson = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
+        String prendaJson = mockMvc.perform(prendaMultipart(PRENDA).header("Authorization", vendedor))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         int prendaId = JsonPath.read(prendaJson, "$.id");
         String perfilJson = mockMvc.perform(post("/api/cliente/perfiles").header("Authorization", cliente)

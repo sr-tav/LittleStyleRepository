@@ -23,6 +23,13 @@ No incluye carrito, ni ML.
   stock de la talla resultante no se decide en la estrategia (no conoce
   inventario): el motor lo informa con `tieneStock` y el checkout lo valida
   antes de vender (RNF-03).
+- Variantes: `CatalogoRecomendacionAdapter` considera una talla disponible si
+  **algún color** de esa talla tiene stock; el motor no elige color porque su
+  objetivo es la talla (RNF-11). La combinación exacta `talla + color` se
+  resuelve después, en la ficha y en el carrito, con
+  `Prenda.buscarVariante(talla, color)`. Consecuencia documentada: la
+  recomendación puede sugerir una talla cuyo color preferido esté agotado;
+  el cliente ve el stock real por variante al elegir el color.
 - Alergias (decisión documentada: solo lo desconocido o lo grave excluye):
   níquel, formaldehído y FIBRAS_SINTETICAS >= 30% = EXCLUIDA; lana, látex/
   elastano, cuero, algodón, tintes y broches metálicos = ADVERTENCIA (se
@@ -32,10 +39,12 @@ No incluye carrito, ni ML.
   se perdía y ahora se agrega como motivo de ADVERTENCIA en todas las
   prendas cuando se declaró OTRA.
 - Preferencias (Definición, proceso 1): +5 si un color de la prenda está
-  entre los preferidos, +5 si coincide el estampado, con tope 10. Van en el
-  campo aparte `afinidad`: solo reordenan a igualdad de compatibilidad;
-  nunca excluyen ni compensan una advertencia. La contextura se captura en
-  el perfil pero no puntúa (el ajuste lo cubre la holgura).
+  entre los preferidos, +5 si coincide el estampado, con tope 10. La afinidad
+  es de la **prenda**, no de la variante: suma al orden, no garantiza que ese
+  color tenga stock. Van en el campo aparte `afinidad`: solo reordenan a
+  igualdad de compatibilidad; nunca excluyen ni compensan una advertencia. La
+  contextura se captura en el perfil pero no puntúa (el ajuste lo cubre la
+  holgura).
 - Estrategia configurable (ADR-12): `app.recomendacion.estrategia-por-defecto`,
   `estrategia-por-categoria.*` y `estrategia-por-marca.*` (la marca manda);
   nombre desconocido o ausente usa el bean `@Primary` sin romper.
@@ -46,8 +55,10 @@ No incluye carrito, ni ML.
   de servidor de la vitrina (`GET /catalogo?ids=` pagina en BD, sin falsos
   negativos).
 - RNF-11 medible: `tallaSugerida` viaja del carrito (`carrito_items`) a la
-  línea del pedido (`pedido_items`); nula si se compró sin sugerencia. Ver
-  `migracion-talla-sugerida.sql` (prod usa `ddl-auto=validate`).
+  línea del pedido (`pedido_items`); nula si se compró sin sugerencia. La
+  línea conserva además `color`, de modo que la métrica se puede auditar
+  contra la variante realmente comprada. Ver `migracion-talla-sugerida.sql`
+  (prod usa `ddl-auto=validate`).
 - Degradación RNF-29: tabla vacía se salta, prenda rota se aísla,
   catálogo caído devuelve vacío; parámetros ausentes o mal tipados
   responden 400 (no 500).

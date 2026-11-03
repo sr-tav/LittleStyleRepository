@@ -1,7 +1,10 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model;
 
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,4 +30,12 @@ public class PrendaAgotadaPago {
 
     @Column(name = "stock_disponible", nullable = false)
     private int stockDisponible;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ColorPreferido color;
+
+    public PrendaAgotadaPago(Long prendaId, String nombre, String talla, int cantidadSolicitada, int stockDisponible) {
+        this(prendaId, nombre, talla, cantidadSolicitada, stockDisponible, null);
+    }
 }

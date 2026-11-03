@@ -32,11 +32,12 @@ Campos de `DashboardOverviewResponse`: `totalVentas`, `totalPedidos`, `ticketPro
 ### Decisiones y límites conocidos
 
 - **`margenBruto` es `null`:** las prendas no guardan su costo, así que no se puede calcular. El frontend lo explica en vez de mostrar 0.
-- **Stock bajo:** tallas activas con `stock <= stockMinimo`. Una talla sin mínimo configurado no alerta (regla del modelo `TallaPrenda`).
+- **Stock bajo:** la unidad es la **variante** (`talla + color`) activa con `stock <= stockMinimo`. Una talla con dos colores puede aportar dos variantes y dos alertas; una variante sin mínimo configurado no alerta (regla del modelo `TallaPrenda`). La UI rotula el KPI como «Variantes con stock bajo».
 - **Inventario** es la foto actual; no depende del rango de fechas.
 - **Palabras más buscadas** es una señal de toda la plataforma: una búsqueda no pertenece a ningún vendedor, por eso no se filtra por vendedor ni categoría. Solo se guarda el término normalizado (sin identificar al cliente).
 - **Fuente de búsquedas del dashboard:** `TrackingAnalyticsService` alimenta exclusivamente `busquedas` para el top del dashboard. El reporte US-16 consulta exclusivamente `busqueda_catalogo`; no combina ni vuelve a contar ambas tablas. Son registros deliberadamente distintos: `busquedas` filtra bots y anónimos y aplica anti-repetición por usuario/término; `busqueda_catalogo` guarda también usuarios anónimos, no filtra bots ni deduplica, y conserva categoría y número de resultados para el reporte. Por ello, sus totales no son comparables ni deben sumarse.
 - **Baja rotación** no existe en el backend y se retiró del frontend (antes mostraba una lista fija).
+- **Demanda por talla** agrupa solo por `talla`; el color se conserva en la línea del pedido pero no se separa en el gráfico. El stock, en cambio, sí se mide por variante.
 
 ## 3. Métricas de comportamiento (tracking)
 
@@ -79,7 +80,7 @@ La primera depuración sobre tablas que ya acumularon mucho historial puede tard
 |---|---|
 | `descripcion-funcional.md` | Alcance funcional, API, DTOs, reglas, decisiones y validaciones. |
 | `casos-de-prueba.md` | Casos de prueba CP-01 a CP-05 con resultado esperado. |
-| `consultas-analiticas-dashboard.sql` | Consultas SQL de referencia, **desactualizadas** (usan `categoria_id`, que no existe). La implementación vigente es el JPQL de `DashboardAnalyticsRepository`. |
+| `consultas-analiticas-dashboard.sql` | Consultas SQL de referencia contra el esquema vigente (`categoria` como texto, stock por variante). La implementación ejecutable es el JPQL de `DashboardAnalyticsRepository`. |
 | `migracion-analiticas.sql` | Tablas e índices nuevos para producción. |
 | `guia-usuario-dashboard.md` | Instrucciones operativas para administrador y vendedor. |
 

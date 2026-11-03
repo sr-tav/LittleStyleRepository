@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaMultipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -82,8 +83,7 @@ class PedidoEstadoIntegrationTest {
 
     // Helper: crea la prenda de prueba como vendedor y devuelve su id
     private int crearPrenda(String token) throws Exception {
-        String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", token)
-                        .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
+        String json = mockMvc.perform(prendaMultipart(PRENDA).header("Authorization", token))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.id");

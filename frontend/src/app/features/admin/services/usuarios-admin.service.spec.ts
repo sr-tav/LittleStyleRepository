@@ -75,4 +75,14 @@ describe('UsuariosAdminService (US-14)', () => {
     expect(req.request.body).toEqual(cuerpo);
     req.flush({ ...usuario, estado: 'SUSPENDIDO' });
   });
+
+  describe('UsuariosAdminService.eliminar', () => {
+    it('envía DELETE con el motivo en el cuerpo', () => {
+      servicio.eliminar(7, 'Cierre solicitado por soporte').subscribe();
+
+      const req = http.expectOne((r) => r.method === 'DELETE' && r.url.endsWith('/admin/usuarios/7'));
+      expect(req.request.body).toEqual({ motivo: 'Cierre solicitado por soporte' });
+      req.flush(null);
+    });
+  });
 });

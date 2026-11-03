@@ -52,7 +52,7 @@
               <div><dt>Guía del paquete</dt><dd><strong>{{ d.numeroGuia }}</strong></dd></div>
             }
             <ul class="pedido-items">
-              @for (item of d.items; track item.prendaId + '-' + item.talla) {
+              @for (item of d.items; track item.prendaId + '-' + item.talla + '-' + (item.color ?? 'sin-color')) {
                 <li>
                   @if (item.imagenUrl) {
                     <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
@@ -61,7 +61,10 @@
                   }
                   <div class="pedido-item-info">
                     <strong>{{ item.nombre }}</strong>
-                    <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u</span>
+                    <span class="product-meta">
+                      @if (item.color) { {{ colorDe(item.color) }} · }
+                      Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u
+                    </span>
                   </div>
                   <span class="price-cell">{{ precio(item.subtotal) }}</span>
                 </li>
@@ -75,7 +78,7 @@
     <section class="vitrina-seccion" aria-label="Productos del pedido">
       <h3>Productos</h3>
       <ul class="pedido-items">
-        @for (item of p.items; track item.prendaId + '-' + item.talla) {
+        @for (item of p.items; track item.prendaId + '-' + item.talla + '-' + (item.color ?? 'sin-color')) {
           <li>
             @if (item.imagenUrl) {
               <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
@@ -84,7 +87,10 @@
             }
             <div class="pedido-item-info">
               <strong>{{ item.nombre }}</strong>
-              <span class="product-meta">Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u</span>
+              <span class="product-meta">
+                @if (item.color) { {{ colorDe(item.color) }} · }
+                Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u
+              </span>
             </div>
             <span class="price-cell">{{ precio(item.subtotal) }}</span>
           </li>

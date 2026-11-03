@@ -17,9 +17,10 @@ las prendas adecuadas para mis hijos.
 - **DTO vitrina sin datos internos:** `PrendaVitrinaResponse` (precio, foto
   principal, disponibilidad booleana, nombres de tallas) y `PrendaDetalleResponse`
   (galería, composición, colores, estampado, cuidado, tabla de tallas con rangos,
-  edad y disponibilidad por talla). Nunca se exponen stock mínimo, stock total
-  ni datos del vendedor; las existencias por talla sí son exactas porque el
-  cliente las necesita para elegir la cantidad (decisión documentada en §3).
+  edad y disponibilidad por variante de talla y color). Nunca se exponen stock
+  mínimo, stock total ni datos del vendedor; las existencias por variante sí son
+  exactas porque el cliente las necesita para elegir la cantidad (decisión
+  documentada en §3).
 - **Paginación propia:** `PaginaResponse` en `shared.dto`, porque `Page` de
   Spring Data no tiene representación JSON estable y además evita exponer
   objetos del framework (ADR-13). La página se calcula en BD en dos pasos

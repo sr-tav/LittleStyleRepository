@@ -9,6 +9,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.dto.Inve
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.AlertaReabastecimiento;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.repository.AlertaReabastecimientoRepository;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,6 +99,31 @@ class InventarioServiceTest {
     }
 
     @Test
+    void asignaColorAVarianteSinColorYConservaStockYMinimo() {
+        Prenda p = prenda(10L, 5, 3, 4);
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(p));
+
+        InventarioItemResponse respuesta = service.actualizarStock(
+                10L,
+                new ActualizarStockRequest(List.of(
+                        new StockTalla("4", 3, null, null, ColorPreferido.AZUL)
+                ))
+        );
+
+        assertThat(respuesta.tallas())
+                .filteredOn(talla -> talla.talla().equals("4"))
+                .singleElement()
+                .satisfies(talla -> {
+                    assertThat(talla.color()).isEqualTo(ColorPreferido.AZUL);
+                    assertThat(talla.stock()).isEqualTo(3);
+                    assertThat(talla.stockMinimo()).isEqualTo(5);
+                });
+
+        assertThat(p.getColores()).contains(ColorPreferido.AZUL);
+        verify(alertas).evaluar(p);
+    }
+
+    @Test
     void rechazaUnaTallaQueLaPrendaNoTieneSinEvaluarAlertas() {
         Prenda p = prenda(10L, 5, 3, 3);
         when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(p));
@@ -105,7 +131,7 @@ class InventarioServiceTest {
         assertThatThrownBy(() -> service.actualizarStock(10L,
                 new ActualizarStockRequest(List.of(new StockTalla("12", 3, null)))))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("La prenda no tiene la talla 12");
+                .hasMessage("La prenda no tiene la variante 12");
         verify(alertas, never()).evaluar(any());
     }
 
@@ -115,7 +141,7 @@ class InventarioServiceTest {
 
         assertThatThrownBy(() -> service.actualizarStock(10L, new ActualizarStockRequest(
                 List.of(new StockTalla("4", 1, null), new StockTalla("4", 2, null)))))
-                .hasMessage("La talla 4 está repetida");
+                .hasMessage("La variante 4 está repetida");
     }
 
     @Test

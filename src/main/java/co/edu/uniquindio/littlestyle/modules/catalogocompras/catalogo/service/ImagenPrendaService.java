@@ -38,20 +38,24 @@ public class ImagenPrendaService {
     private final AlmacenamientoImagenes almacenamiento;
     private final AlmacenamientoProperties props;
 
-    /** Sube todas las imágenes o ninguna: primero valida cada archivo y luego las envía al almacenamiento. */
+    /** Sube todas las imágenes o ninguna a una prenda propia existente. */
     @Transactional
     public List<PrendaResponse.Imagen> subir(Long prendaId, List<MultipartFile> archivos) {
-        AlmacenamientoProperties.Imagenes limites = props.imagenes();
-        if (archivos == null || archivos.isEmpty()) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecciona al menos una imagen", "archivos");
-        }
-        if (archivos.size() > limites.maxPorCarga()) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST,
-                    "Puedes subir máximo " + limites.maxPorCarga() + " imágenes a la vez", "archivos");
-        }
+        validarCantidadPorCarga(archivos);
         // Bloqueo pesimista: dos cargas concurrentes no pueden superar el máximo por prenda
         Prenda prenda = prendaRepository.bloquearPropia(prendaId, PrendaService.vendedorActual())
                 .orElseThrow(PrendaService::noEncontrada);
+        return agregar(prenda, archivos);
+    }
+
+    /**
+     * Valida y sube las imágenes a una prenda ya persistida, dentro de la transacción actual. También la usa
+     * el alta de prendas, para que la prenda y sus fotos se confirmen o se reviertan juntas.
+     */
+    @Transactional
+    public List<PrendaResponse.Imagen> agregar(Prenda prenda, List<MultipartFile> archivos) {
+        AlmacenamientoProperties.Imagenes limites = props.imagenes();
+        validarCantidadPorCarga(archivos);
         int actuales = prenda.getImagenes().size();
         if (actuales + archivos.size() > limites.maxPorPrenda()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "Una prenda admite máximo " + limites.maxPorPrenda()
@@ -81,6 +85,18 @@ public class ImagenPrendaService {
         return prenda.getImagenes().stream().map(PrendaResponse.Imagen::from).toList();
     }
 
+    /** Exige al menos una imagen y no más de las permitidas por carga. */
+    private void validarCantidadPorCarga(List<MultipartFile> archivos) {
+        AlmacenamientoProperties.Imagenes limites = props.imagenes();
+        if (archivos == null || archivos.isEmpty()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecciona al menos una imagen", "archivos");
+        }
+        if (archivos.size() > limites.maxPorCarga()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "Puedes subir máximo " + limites.maxPorCarga() + " imágenes a la vez", "archivos");
+        }
+    }
+
     /**
      * Quita la foto de una prenda propia; el archivo se borra del almacenamiento solo si la transacción se
      * confirma.
@@ -90,6 +106,10 @@ public class ImagenPrendaService {
         Prenda prenda = prendaRepository.bloquearPropia(prendaId, PrendaService.vendedorActual())
                 .orElseThrow(PrendaService::noEncontrada);
         ImagenPrenda imagen = buscarImagen(prenda, imagenId);
+        if (prenda.getImagenes().size() <= 1) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "La prenda debe conservar al menos una foto. Sube otra antes de eliminar esta", "imagenes");
+        }
         prenda.getImagenes().remove(imagen);
         prenda.setFechaActualizacion(LocalDateTime.now());
         alFinalizarTransaccion(confirmada -> {

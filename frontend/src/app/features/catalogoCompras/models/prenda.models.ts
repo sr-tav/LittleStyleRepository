@@ -55,6 +55,7 @@ export interface Talla {
   edadMaxMeses?: number | null;
   stock: number;
   stockMinimo?: number | null;
+  color?: ColorPreferido | null;
 }
 
 /** Imagen asociada a una prenda y su orden de presentación. */
@@ -107,6 +108,7 @@ export interface TallaRequest {
   stock: number | null;
   /** Mínimo de alerta de esta talla; nulo si no alerta. */
   stockMinimo?: number | null;
+  color?: ColorPreferido | null;
 }
 
 /** Datos de producto enviados para crear o actualizar una prenda. */
@@ -114,7 +116,7 @@ export interface PrendaRequest {
   nombre: string;
   categoria: CategoriaPrenda;
   genero: GeneroPrenda | null;
-  descripcion: string | null;
+  descripcion: string;
   instruccionesCuidado: string | null;
   marca: string | null;
   precio: number;
@@ -137,12 +139,18 @@ export interface InventarioItem {
   estado: EstadoPrenda;
   stockTotal: number;
   nivel: NivelStock;
-  tallas: { talla: string; stock: number; stockMinimo: number | null }[];
+  tallas: { talla: string; color?: ColorPreferido | null; stock: number; stockMinimo: number | null }[];
 }
 
 /** Existencias y mínimos solicitados para actualizar el inventario. */
 export interface ActualizarStockRequest {
-  tallas: { talla: string; stock: number; stockMinimo: number | null }[];
+  tallas: {
+    talla: string;
+    color?: ColorPreferido | null;
+    nuevoColor?: ColorPreferido | null;
+    stock: number;
+    stockMinimo: number | null;
+  }[];
 }
 
 /** Alerta de inventario emitida para una prenda o talla. */
@@ -158,4 +166,5 @@ export interface AlertaInventario {
   stockMinimo: number;
   diferencia: number;
   fechaEmision: string;
+  color?: ColorPreferido | null;
 }

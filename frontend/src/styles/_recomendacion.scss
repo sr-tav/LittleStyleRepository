@@ -47,16 +47,25 @@
 .reco-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-items: stretch;
   gap: 1.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
+
+  > li {
+    display: flex;
+    min-width: 0;
+  }
 }
 
 .reco-card {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
   border: 1px solid var(--ls-border);
   border-radius: 18px;
@@ -74,6 +83,7 @@
 /* Ancla visual: todas las fotos con la misma proporción 4/5 */
 .reco-card-media {
   position: relative;
+  flex: none;
   aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--ls-bg);
@@ -133,6 +143,27 @@ app-acceso-rapido-prenda {
   cursor: not-allowed;
 }
 
+.producto-acceso-color {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.25rem auto;
+  color: var(--ls-muted);
+  font-size: 0.78rem;
+  text-align: left;
+
+  select {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--ls-border);
+    border-radius: 8px;
+    background: var(--ls-surface);
+    color: var(--ls-ink);
+    font: inherit;
+  }
+}
+
 .producto-acceso-tallas {
   display: flex;
   justify-content: center;
@@ -181,6 +212,7 @@ app-acceso-rapido-prenda {
 
 .reco-card-body {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.6rem;
   padding: 1rem 1.1rem 1.15rem;
@@ -188,8 +220,8 @@ app-acceso-rapido-prenda {
 
 .reco-card-title {
   display: -webkit-box;
-  overflow: hidden;
   min-height: 2.6em;
+  overflow: hidden;
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.3;

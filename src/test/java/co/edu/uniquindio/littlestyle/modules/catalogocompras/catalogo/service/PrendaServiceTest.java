@@ -11,34 +11,25 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.Ni
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.service.AlertasInventarioService;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.*;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.util.List;
-import java.util.Optional;
-
-import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.VENDEDOR_ID;
-import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.autenticarVendedor;
-import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prenda;
-import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaRequest;
-import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaRequestValida;
-import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.tallaRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Test unitario del CRUD de prendas del vendedor: repositorio y alertas mockeados,
@@ -59,6 +50,11 @@ class PrendaServiceTest {
     private AlertasInventarioService alertas;
     @InjectMocks
     private PrendaService service;
+    @Mock
+    private ImagenPrendaService imagenService;
+
+    private static final List<org.springframework.web.multipart.MultipartFile> FOTOS = List.of(
+            new org.springframework.mock.web.MockMultipartFile("archivos", "f.png", "image/png", new byte[]{1}));
 
     // Composición simplificada (100 % algodón) que usan varios test casos
     private static final List<ComponenteRequest> ALGODON = List.of(new ComponenteRequest(MaterialTextil.ALGODON, 100));
@@ -81,7 +77,7 @@ class PrendaServiceTest {
     void creaLaPrendaDelVendedorAutenticadoConTallasNormalizadasYEvaluaAlertas() {
         when(usuarioRepository.getReferenceById(VENDEDOR_ID)).thenReturn(Usuario.builder().id(VENDEDOR_ID).build());
 
-        PrendaResponse respuesta = service.crear(prendaRequestValida());
+        PrendaResponse respuesta = service.crear(prendaRequestValida(), FOTOS);
 
         ArgumentCaptor<Prenda> guardada = ArgumentCaptor.forClass(Prenda.class);
         verify(prendaRepository).save(guardada.capture());
@@ -103,7 +99,7 @@ class PrendaServiceTest {
         var request = prendaRequest(List.of(new ComponenteRequest(MaterialTextil.ALGODON, 60)),
                 List.of(tallaRequest("4", 100, 110, 15, 20, 1)));
 
-        assertThatThrownBy(() -> service.crear(request)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.crear(request, FOTOS)).isInstanceOf(BusinessException.class);
         verifyNoInteractions(prendaRepository, alertas);
     }
 
@@ -177,5 +173,31 @@ class PrendaServiceTest {
         assertThat(service.listar("PANTALÓN")).extracting(PrendaResponse::id).containsExactly(10L);
         assertThat(service.listar("camisas")).extracting(PrendaResponse::id).containsExactly(11L);
         assertThat(service.listar("  ")).hasSize(2);
+    }
+
+    @Test
+    void crearSinFotosRechazaConBadRequestYNoGuarda() {
+        assertThatThrownBy(() -> service.crear(prendaRequestValida(), List.of()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("foto")
+                .extracting("campo").isEqualTo("archivos");
+        verifyNoInteractions(prendaRepository);
+    }
+
+    @Test
+    void crearConFotosLasSubeAlaPrendaCreada() {
+        service.crear(prendaRequestValida(), FOTOS);
+        verify(imagenService).agregar(any(Prenda.class), eq(FOTOS));
+    }
+
+    @Test
+    void noPermitePublicarUnaPrendaSinFotos() {
+        Prenda sinFotos = prenda(10L, 5, 3, 3);
+        sinFotos.setEstado(EstadoPrenda.INACTIVA);
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(sinFotos));
+
+        assertThatThrownBy(() -> service.cambiarEstado(10L, EstadoPrenda.ACTIVA))
+                .isInstanceOf(BusinessException.class)
+                .extracting("status").isEqualTo(HttpStatus.CONFLICT);
     }
 }

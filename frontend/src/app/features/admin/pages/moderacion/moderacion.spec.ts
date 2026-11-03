@@ -128,8 +128,9 @@ describe('ModeracionPage (US-14)', () => {
     expect(el.textContent).toContain('Algodón · 100%');
     const celdas = el.querySelectorAll('.detalle-tabla tbody tr:first-child td');
     expect(celdas[0].textContent?.trim()).toBe('4');
-    expect(celdas[1].textContent?.trim()).toBe('3');
-    expect(celdas[2].textContent).toContain('98–104 cm');
+    expect(celdas[1].textContent?.trim()).toBe('—');
+    expect(celdas[2].textContent?.trim()).toBe('3');
+    expect(celdas[3].textContent).toContain('98–104 cm');
     expect(el.textContent).toContain('Broches metálicos');
   });
 
@@ -169,5 +170,46 @@ describe('ModeracionPage (US-14)', () => {
 
     expect(desactivar).toHaveBeenCalledWith(9, 'Falta la composición del material');
     expect(el.textContent).toContain('fue desactivada');
+  });
+
+  it('mantiene separadas las existencias de colores distintos para una misma talla', () => {
+    const { fixture, el } = crear();
+
+    detalle.mockReturnValueOnce(of({
+      ...detallePrenda,
+      tallas: [
+        {
+          ...detallePrenda.tallas[0],
+          talla: '4',
+          color: 'AZUL',
+          stock: 3,
+        },
+        {
+          ...detallePrenda.tallas[0],
+          talla: '4',
+          color: 'ROJO',
+          stock: 8,
+        },
+      ],
+    }));
+
+    el.querySelector<HTMLButtonElement>('tbody .btn-soft')!.click();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Existencias por variante');
+    expect(el.textContent).toContain('Cada fila corresponde a una combinación de talla y color');
+
+    const filas = el.querySelectorAll<HTMLTableRowElement>('.detalle-tabla tbody tr');
+    expect(filas).toHaveLength(2);
+
+    const azul = filas[0].querySelectorAll('td');
+    expect(azul[0].textContent?.trim()).toBe('4');
+    expect(azul[1].textContent?.trim()).toBe('Azul');
+    expect(azul[2].textContent?.trim()).toBe('3');
+
+    const rojo = filas[1].querySelectorAll('td');
+    expect(rojo[0].textContent?.trim()).toBe('4');
+    expect(rojo[1].textContent?.trim()).toBe('Rojo');
+    expect(rojo[2].textContent?.trim()).toBe('8');
   });
 });

@@ -43,14 +43,14 @@ public interface ReporteInventarioRepository extends Repository<TallaPrenda, Lon
     @Query("""
             select new co.edu.uniquindio.littlestyle.modules.reportes.dto.InventarioFila(
                      pr.nombre, coalesce(v.nombreTienda, v.nombre), cast(pr.categoria as string),
-                     t.talla, t.stock, t.stockMinimo)
+                     t.talla, t.color, t.stock, t.stockMinimo)
             from TallaPrenda t
               join t.prenda pr
               join pr.vendedor v
             where pr.estado = :estado
               and (:vendedorId is null or v.id = :vendedorId)
               and (:categoria is null or pr.categoria = :categoria)
-            order by v.id, pr.nombre, t.talla
+            order by v.id, pr.nombre, t.talla, t.color
             """)
     List<InventarioFila> filasInventario(@Param("estado") EstadoPrenda estado,
                                          @Param("vendedorId") Long vendedorId,

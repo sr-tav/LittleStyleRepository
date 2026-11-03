@@ -700,6 +700,18 @@
   }
 }
 
+.detalle-agregar-carrito > .btn-primary {
+  width: min(100%, 22rem);
+  min-height: 48px;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .detalle-agregar-carrito > .btn-primary {
+    width: 100%;
+  }
+}
+
 .detalle-stock {
   margin: 0;
   color: var(--ls-muted);

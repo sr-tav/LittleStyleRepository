@@ -129,6 +129,12 @@ export class UsuariosAdminPage implements OnInit {
   protected readonly enviando = signal(false);
   protected readonly motivoInput = viewChild<ElementRef<HTMLTextAreaElement>>('motivoCampo');
 
+  /** Usuario seleccionado para el dialogo de eliminación; null lo cierra. */
+  protected readonly eliminarUsuario = signal<UsuarioAdmin | null>(null);
+  protected readonly motivoEliminar = signal('');
+  protected readonly errorEliminar = signal<string | null>(null);
+  protected readonly eliminando = signal(false);
+
   /** Acciones visibles para el estado actual del usuario del diálogo. */
   protected readonly accionesDisponibles = computed<AccionEstado[]>(() => {
     const usuario = this.dialogo();
@@ -280,5 +286,52 @@ export class UsuariosAdminPage implements OnInit {
           this.errorDialogo.set(procesarErrorApi(err));
         },
       });
+  }
+
+  /**
+   * Abre el diálogo de eliminación definitiva de una cuenta.
+   * @param usuario Cuenta que se va a eliminar.
+   * @returns No devuelve un valor.
+   */
+  protected abrirEliminar(usuario: UsuarioAdmin): void {
+    this.eliminarUsuario.set(usuario);
+    this.motivoEliminar.set('');
+    this.errorEliminar.set(null);
+  }
+
+  /**
+   * Cierra el diálogo de eliminación sin aplicar cambios.
+   * @returns No devuelve un valor.
+   */
+  protected cerrarEliminar(): void {
+    this.eliminarUsuario.set(null);
+  }
+
+  /**
+   * Confirma la eliminación con motivo obligatorio; recarga el listado al éxito
+   * @returns No devuelve un valor.
+   */
+  protected confirmarEliminar(): void {
+    const usuario = this.eliminarUsuario();
+    const motivo = this.motivoEliminar().trim();
+    if (!usuario) return;
+    if (motivo.length < 10) {
+      this.errorEliminar.set('Escribe un motivo de al menos 10 caracteres.');
+      return;
+    }
+    this.eliminando.set(true);
+    this.errorEliminar.set(null);
+    this.usuarios.eliminar(usuario.id, motivo).subscribe({
+      next: () => {
+        this.eliminando.set(false);
+        this.eliminarUsuario.set(null);
+        this.mensaje.set(`La cuenta de ${usuario.nombre} se eliminó correctamente.`);
+        this.cargar();
+      },
+      error: (err: unknown) => {
+        this.eliminando.set(false);
+        this.errorEliminar.set(procesarErrorApi(err));
+      },
+    });
   }
 }

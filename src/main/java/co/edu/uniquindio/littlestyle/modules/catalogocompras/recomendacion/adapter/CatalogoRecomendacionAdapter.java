@@ -66,14 +66,15 @@ public class CatalogoRecomendacionAdapter implements CatalogoRecomendacionPort {
      * talla. Sin marca usa el nombre de la tienda o "Sin marca".
      */
     static PrendaRecomendable convertir(Prenda p) {
-        List<RangoTalla> rangos = p.getTallas().stream()
-                .map(t -> new RangoTalla(t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
-                        t.getPesoMinKg(), t.getPesoMaxKg()))
-                .toList();
+        Map<String, RangoTalla> rangosPorTalla = new LinkedHashMap<>();
         Map<String, Integer> stockPorTalla = new LinkedHashMap<>();
         for (TallaPrenda t : p.getTallas()) {
-            stockPorTalla.put(t.getTalla(), t.getStock());
+            rangosPorTalla.putIfAbsent(t.getTalla(), new RangoTalla(t.getTalla(), t.getEstaturaMinCm(),
+                    t.getEstaturaMaxCm(), t.getPesoMinKg(), t.getPesoMaxKg()));
+            // Una talla está disponible si algún color tiene stock
+            stockPorTalla.merge(t.getTalla(), t.getStock(), Integer::sum);
         }
+        List<RangoTalla> rangos = List.copyOf(rangosPorTalla.values());
         String marca = p.getMarca();
         if (marca == null && p.getVendedor() != null && p.getVendedor().getNombreTienda() != null) {
             marca = p.getVendedor().getNombreTienda();

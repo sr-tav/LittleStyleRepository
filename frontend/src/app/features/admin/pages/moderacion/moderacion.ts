@@ -1,6 +1,7 @@
 import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 
 import { Navbar } from '../../../../shared/components/navbar/navbar';
+import { ColorEtiquetaPipe } from '../../../../shared/pipes/color-etiqueta.pipe';
 import { procesarErrorApi } from '../../../auth/auth.validators';
 import {
   ETIQUETAS_ESTADO_PRENDA,
@@ -25,7 +26,7 @@ const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESA
  */
 @Component({
   selector: 'app-moderacion',
-  imports: [Navbar],
+  imports: [Navbar, ColorEtiquetaPipe],
   templateUrl: './moderacion.html',
   styles: `
     .admin-filtros {
@@ -150,11 +151,17 @@ const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESA
       flex-direction: column;
       gap: 1.5rem;
     }
+
+    .detallle-bloque {
+      min-width: 0;
+    }
+
     .detalle-bloque h3 {
       margin-bottom: 0.6rem;
       font-size: 1rem;
       font-weight: 800;
     }
+
     .detalle-bloque p {
       font-size: 0.95rem;
       line-height: 1.55;
@@ -214,6 +221,7 @@ const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESA
       margin: 0;
       padding: 0;
       list-style: none; }
+
     .detalle-composicion li {
       padding: 0.3rem 0.8rem;
       border-radius: 999px;
@@ -223,9 +231,32 @@ const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESA
       font-weight: 700;
     }
 
+    .detalle-tabla-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--ls-border);
+      border-radius: 10px;
+    }
+
     .detalle-tabla { width: 100%;
+      min-width: 600px;
       border-collapse: collapse;
-      font-size: 0.92rem; }
+      font-size: 0.92rem;
+    }
+
+    .detalle-tabla caption {
+      padding: 0.6rem 0.75rem;
+      color: var(--ls-muted);
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .detalle-tabla-wrap:focus-visible {
+      outline: 3px solid var(--ls-primary-dark);
+      outline-offset: 3px;
+    }
+
     .detalle-tabla th {
       padding: 0.5rem 0.75rem;
       border-bottom: 1px solid var(--ls-border);

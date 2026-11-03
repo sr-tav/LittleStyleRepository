@@ -15,7 +15,8 @@ es independiente del estado comercial. No existe cola de aprobación previa.
 | Tabla / entidad | Campos y relación relevante |
 |---|---|
 | `usuarios` | Se amplía `estado` con `BLOQUEADO` (`VARCHAR`); valores vigentes: `ACTIVO`, `SUSPENDIDO`, `BLOQUEADO`, `ELIMINADO`. Migrador compatible con H2 y MySQL. |
-| `prendas` | `estado` comercial (`ACTIVA`/`INACTIVA`) independiente de `estado_moderacion` (`SIN_REVISAR`/`APROBADA`/`DESACTIVADA`), `motivo_moderacion`, `fecha_moderacion` y `admin_moderacion_id`. Las prendas existentes quedan `APROBADA` por defecto; nulos históricos se normalizan a `APROBADA`, y los estados heredados `PENDIENTE`/`RECHAZADA` se traducen a `SIN_REVISAR`/`DESACTIVADA`. |
+| `prendas` | `estado` comercial (`ACTIVA`/`INACTIVA`) independiente de `estado_moderacion` (`SIN_REVISAR`/`APROBADA`/`DESACTIVADA`), `motivo_moderacion`, `fecha_moderacion` y `admin_moderacion_id`. Las prendas existentes quedan `APROBADA` por defecto; nulos históricos se normalizan a `APROBADA`, y los estados heredados `PENDIENTE`/`RECHAZADA` se traducen a `SIN_REVISAR`/`DESACTIVADA`. El inventario no vive en la prenda: vive en `prenda_tallas`. |
+| `prenda_tallas` | Una fila por variante `prenda + talla + color`, con `stock`, `stock_minimo` y los rangos de estatura/peso/edad. La unicidad es `uk_prenda_talla_color (prenda_id, talla, color)`. Dos colores de la misma talla son dos variantes independientes. |
 | `auditoria_admin` | `id`, `fecha_hora` (`Instant` truncado a microsegundos para concordar con la precisión de almacenamiento), `admin_id`, `admin_email`, `rol`, `accion`, `tipo_entidad`, `entidad_id`, `valor_anterior`, `valor_nuevo`, `motivo`, `ip_origen` (dirección remota HTTP), `resultado`, `hash_anterior`, `hash_sha256`. Índices por fecha, admin, acción y entidad. |
 | `auditoria_admin_candado` | Fila única que se bloquea al serializar escrituras concurrentes de la cadena, incluso antes de la primera entrada. La última entrada también se carga con bloqueo pesimista. |
 | `incidencias` | `reportante_id`, email y rol, tipo, referencia polimórfica (`referencia_tipo`/`referencia_id`/detalle), asunto, descripción, estado, respuesta, admin asignado, fecha de creación y fecha de resolución. Índices para estado, reportante, fechas y referencia. |
@@ -84,6 +85,17 @@ La prenda se ofrece a clientes solo si `EstadoPrenda.ACTIVA`, moderación distin
 `DESACTIVADA` y vendedor `ACTIVO`. `SIN_REVISAR` es visible y comprable. El migrador
 conserva la visibilidad de las prendas existentes convirtiéndolas a `APROBADA`.
 
+Visibilidad de la prenda y disponibilidad de la variante son dos decisiones distintas:
+
+- la **prenda** se oculta o se muestra completa por estado comercial, moderación y estado del
+  vendedor;
+- una **variante** (`talla + color`) solo se puede comprar si su propio `stock > 0`. El catálogo
+  marca una talla como disponible cuando al menos uno de sus colores tiene stock; el color exacto
+  se resuelve en la ficha y en el carrito con `Prenda.buscarVariante(talla, color)`.
+
+Por eso el detalle de moderación muestra el stock **por variante** y no un total único de la prenda:
+el administrador necesita ver qué color específico está agotado o en el mínimo.
+
 Cuando un artículo deja de ser visible, se mantiene en el carrito pero se indica como
 no disponible; no se permite iniciar ni confirmar un checkout nuevo con él. No se
 alteran pedidos ya pagados ni se modifica el estado comercial por moderación.
@@ -113,26 +125,26 @@ cliente o vendedor.
 
 ### Administración, moderación, auditoría
 
-| Método | Ruta | Acceso | Propósito |
-|---|---|---|---|
-| `GET` | `/api/admin/usuarios?pagina=0&tamano=10&rol=&estado=&texto=` | Administrador | Lista paginada y filtrada. |
-| `GET` | `/api/admin/usuarios/{id}` | Administrador | Detalle de cuenta. |
-| `PUT` | `/api/admin/usuarios/{id}/estado` | Administrador | Estado destino y motivo. |
-| `GET` | `/api/admin/moderacion/prendas?pagina=0&tamano=10&vendedorEmail=&estadoPrenda=&estadoModeracion=&texto=` | Administrador | Cola de publicaciones; la ruta `/api/admin/moderacion` se conserva como alias. |
-| `GET` | `/api/admin/moderacion/prendas/{id}` | Administrador | Detalle, fotos, composición y tallas. |
-| `POST` | `/api/admin/moderacion/prendas/{id}/aprobar` | Administrador | Marca `APROBADA`. |
-| `POST` | `/api/admin/moderacion/prendas/{id}/desactivar` | Administrador | `{"motivo":"..."}`; `/rechazar` es alias heredado. |
-| `POST` | `/api/admin/moderacion/prendas/{id}/restaurar` | Administrador | Restaura a `APROBADA`. |
-| `GET` | `/api/admin/auditoria` | Administrador | Filtra/pagina por admin, acción, entidad, rango fecha y resultado. |
-| `GET` | `/api/admin/auditoria/integridad` | Administrador | Recalcula la cadena completa. |
-| `GET` | `/api/admin/incidencias` | Administrador | Bandeja por estado, tipo, rol y texto. |
-| `GET` | `/api/admin/incidencias/{id}` | Administrador | Detalle. |
-| `POST` | `/api/admin/incidencias/{id}/tomar` | Administrador | Asigna y cambia a `EN_REVISION`. |
-| `POST` | `/api/admin/incidencias/{id}/resolver` | Administrador | Resuelve con `{"respuesta":"..."}`. |
-| `POST` | `/api/admin/incidencias/{id}/rechazar` | Administrador | Rechaza con `{"respuesta":"..."}`. |
-| `GET` | `/api/admin/resumen` | Administrador | KPIs de usuarios, prendas e incidencias. |
-| `GET/POST` | `/api/cliente/incidencias` | Cliente | Consulta propias y crea soporte/reporte. |
-| `GET/POST` | `/api/vendedor/incidencias` | Vendedor | Consulta propias y crea soporte/apelación de producto. |
+| Método | Ruta | Acceso | Propósito                                                                                                                                                                  |
+|---|---|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GET` | `/api/admin/usuarios?pagina=0&tamano=10&rol=&estado=&texto=` | Administrador | Lista paginada y filtrada.                                                                                                                                                 |
+| `GET` | `/api/admin/usuarios/{id}` | Administrador | Detalle de cuenta.                                                                                                                                                         |
+| `PUT` | `/api/admin/usuarios/{id}/estado` | Administrador | Estado destino y motivo.                                                                                                                                                   |
+| `GET` | `/api/admin/moderacion/prendas?pagina=0&tamano=10&vendedorEmail=&estadoPrenda=&estadoModeracion=&texto=` | Administrador | Cola de publicaciones; la ruta `/api/admin/moderacion` se conserva como alias.                                                                                             |
+| `GET` | `/api/admin/moderacion/prendas/{id}` | Administrador | Detalle, fotos, composición y existencias: una fila por 'talla + color' con stock y medidas. El stock mínimo se incluye en el DTO , pero no se muestra en la tabla actual. |
+| `POST` | `/api/admin/moderacion/prendas/{id}/aprobar` | Administrador | Marca `APROBADA`.                                                                                                                                                          |
+| `POST` | `/api/admin/moderacion/prendas/{id}/desactivar` | Administrador | `{"motivo":"..."}`; `/rechazar` es alias heredado.                                                                                                                         |
+| `POST` | `/api/admin/moderacion/prendas/{id}/restaurar` | Administrador | Restaura a `APROBADA`.                                                                                                                                                     |
+| `GET` | `/api/admin/auditoria` | Administrador | Filtra/pagina por admin, acción, entidad, rango fecha y resultado.                                                                                                         |
+| `GET` | `/api/admin/auditoria/integridad` | Administrador | Recalcula la cadena completa.                                                                                                                                              |
+| `GET` | `/api/admin/incidencias` | Administrador | Bandeja por estado, tipo, rol y texto.                                                                                                                                     |
+| `GET` | `/api/admin/incidencias/{id}` | Administrador | Detalle.                                                                                                                                                                   |
+| `POST` | `/api/admin/incidencias/{id}/tomar` | Administrador | Asigna y cambia a `EN_REVISION`.                                                                                                                                           |
+| `POST` | `/api/admin/incidencias/{id}/resolver` | Administrador | Resuelve con `{"respuesta":"..."}`.                                                                                                                                        |
+| `POST` | `/api/admin/incidencias/{id}/rechazar` | Administrador | Rechaza con `{"respuesta":"..."}`.                                                                                                                                         |
+| `GET` | `/api/admin/resumen` | Administrador | KPIs de usuarios, prendas e incidencias.                                                                                                                                   |
+| `GET/POST` | `/api/cliente/incidencias` | Cliente | Consulta propias y crea soporte/reporte.                                                                                                                                   |
+| `GET/POST` | `/api/vendedor/incidencias` | Vendedor | Consulta propias y crea soporte/apelación de producto.                                                                                                                     |
 
 Las respuestas paginadas siguen `PaginaResponse`: `contenido`, `pagina`, `tamano`,
 `totalElementos`, `totalPaginas`.
@@ -223,6 +235,15 @@ el tipo de apelación de producto; el vendedor puede seleccionarlo. La página d
 incidencias de usuarios autenticados no es una solución al flujo seguro de apelación
 si el JWT ya se ha invalidado por suspensión/bloqueo.
 
+El detalle de moderación (`/admin/moderacion`) presenta las existencias con las
+columnas **Talla · Color · Stock de la variante · Estatura · Peso**. El color se
+traduce a una etiqueta legible con `ColorEtiquetaPipe`; si la variante no declara
+color, se muestra `—`. Cada fila representa una combinación independiente: el
+stock mostrado no equivale a la disponibilidad total de la prenda. La tabla puede
+desplazarse horizontalmente dentro de su contenedor en pantallas estrechas y se
+puede recorrer con teclado. La decisión de aprobar, desactivar o restaurar sigue
+siendo sobre la **prenda completa**; no existe una acción de moderación por color.
+
 ## 6. Configuración y despliegue
 
 - No se añadieron dependencias frontend ni backend.
@@ -254,6 +275,8 @@ si el JWT ya se ha invalidado por suspensión/bloqueo.
    privilegiados podrían reescribir tabla y cadena.
 6. La UI no cancela órdenes ni pedidos pagados al desactivar un artículo, por decisión
    de negocio; solo evita nuevas compras.
+7. La moderación decide sobre la prenda, no sobre cada variante. El stock por color se
+   muestra para diagnosticar, pero no existe una acción de “desactivar solo el color azul”.
 
 ## 8. Diagramas
 
@@ -328,6 +351,14 @@ erDiagram
     varchar motivo_moderacion
     datetime fecha_moderacion
     bigint admin_moderacion_id
+  }
+  PRENDA_TALLAS {
+    bigint id
+    bigint prenda_id
+    varchar talla
+    varchar color
+    int stock
+    int stock_minimo
   }
   AUDITORIA_ADMIN {
     bigint id

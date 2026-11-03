@@ -32,7 +32,11 @@ public class FiltroAlergiaEstandar implements FiltroAlergia{
             new Regla(AlergiaTextil.BROCHES_METALICOS, false, p -> p.brochesMetalicos() ? Optional.of("Broches metálicos") : Optional.empty()),
             new Regla(AlergiaTextil.NIQUEL, true, p -> p.contieneNiquel() ? Optional.of("Contiene níquel") : Optional.empty()),
             new Regla(AlergiaTextil.FORMALDEHIDO, true, p -> p.tratamientoFormaldehido() ? Optional.of("Tratamiento con formaldehído") : Optional.empty()),
-            new Regla(AlergiaTextil.OTRA, false, p -> !p.tieneComposicion() ? Optional.of("Composición no declarada, verificar otra alergia") : Optional.empty())
+            new Regla(AlergiaTextil.OTRA, false, p -> {
+                if (!p.tieneComposicion()) return Optional.of("Composición no declarada, verificar otra alergia");
+                if (contiene(p, MaterialTextil.OTRO)) return Optional.of("Contiene un material no especificado, verificar otra alergia");
+                return Optional.empty();
+            })
     );
 
     /**

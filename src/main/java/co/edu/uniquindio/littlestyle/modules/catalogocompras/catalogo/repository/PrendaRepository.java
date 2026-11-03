@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,15 +79,17 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
                    or lower(p.nombre) like lower(concat('%', :texto, '%'))
                    or lower(coalesce(p.marca, '')) like lower(concat('%', :texto, '%'))
                    or lower(coalesce(p.descripcion, '')) like lower(concat('%', :texto, '%')))
-              and (:disponible is null or :disponible = false
-                   or exists (select 1 from TallaPrenda t where t.prenda = p and t.stock > 0))
               and (:genero is null or p.genero is null or p.genero = :genero
                    or p.genero = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda.UNISEX)
               and (:materiales is null or exists (select 1 from Prenda p2 join p2.composicion c where p2 = p and c.material in :materiales))
-              and(:talla is null or :talla = '' or exists (select 1 from TallaPrenda  t where t.prenda = p and upper(t.talla) = upper(:talla) and t.stock > 0))
-              and(:edadMeses is null or exists (select 1 from TallaPrenda t where t.prenda = p and (t.edadMinMeses is null or t.edadMinMeses <= :edadMeses) and (t.edadMaxMeses is null or t.edadMaxMeses >= :edadMeses)))
+              and exists (select 1 from TallaPrenda t where t.prenda = p
+                          and (:disponible is null or :disponible = false or t.stock > 0)
+                          and (:color is null or (t.color = :color and t.stock > 0))
+                          and (:talla is null or :talla = '' or (upper(t.talla) = upper(:talla) and t.stock > 0))
+                          and (:edadMeses is null or ((t.edadMinMeses is null or t.edadMinMeses <= :edadMeses)
+                                   and (t.edadMaxMeses is null or t.edadMaxMeses >= :edadMeses))))
             """)
-    Page<Long> buscarIdsVitrina(@Param("estado") EstadoPrenda estado,
+    Page<Long> buscarIdsVitrinaConColor(@Param("estado") EstadoPrenda estado,
                                 @Param("categoria") CategoriaPrenda categoria,
                                 @Param("genero") GeneroPrenda genero,
                                 @Param("precioMin") BigDecimal precioMin,
@@ -95,8 +98,18 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
                                 @Param("disponible") Boolean disponible,
                                 @Param("materiales") List<MaterialTextil> materiales,
                                 @Param("talla") String talla,
+                                @Param("color") ColorPreferido color,
                                 @Param("edadMeses") Integer edadMeses,
                                 Pageable pageable);
+
+    /** Compatibilidad para búsquedas sin filtro de color. */
+    default Page<Long> buscarIdsVitrina(EstadoPrenda estado, CategoriaPrenda categoria, GeneroPrenda genero,
+                                        BigDecimal precioMin, BigDecimal precioMax, String texto, Boolean disponible,
+                                        List<MaterialTextil> materiales, String talla, Integer edadMeses,
+                                        Pageable pageable) {
+        return buscarIdsVitrinaConColor(estado, categoria, genero, precioMin, precioMax, texto, disponible,
+                materiales, talla, null, edadMeses, pageable);
+    }
 
     /**
      * Variante para "Solo mi talla sugerida" (US-07): mismos filtros más la
@@ -117,15 +130,17 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
                    or lower(p.nombre) like lower(concat('%', :texto, '%'))
                    or lower(coalesce(p.marca, '')) like lower(concat('%', :texto, '%'))
                    or lower(coalesce(p.descripcion, '')) like lower(concat('%', :texto, '%')))
-              and (:disponible is null or :disponible = false
-                   or exists (select 1 from TallaPrenda t where t.prenda = p and t.stock > 0))
               and (:genero is null or p.genero is null or p.genero = :genero
                    or p.genero = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda.UNISEX)
               and (:materiales is null or exists (select 1 from Prenda p2 join p2.composicion c where p2 = p and c.material in :materiales))
-              and(:talla is null or :talla = '' or exists (select 1 from TallaPrenda  t where t.prenda = p and upper(t.talla) = upper(:talla) and t.stock > 0))
-              and(:edadMeses is null or exists (select 1 from TallaPrenda t where t.prenda = p and (t.edadMinMeses is null or t.edadMinMeses <= :edadMeses) and (t.edadMaxMeses is null or t.edadMaxMeses >= :edadMeses)))
+              and exists (select 1 from TallaPrenda t where t.prenda = p
+                          and (:disponible is null or :disponible = false or t.stock > 0)
+                          and (:color is null or (t.color = :color and t.stock > 0))
+                          and (:talla is null or :talla = '' or (upper(t.talla) = upper(:talla) and t.stock > 0))
+                          and (:edadMeses is null or ((t.edadMinMeses is null or t.edadMinMeses <= :edadMeses)
+                                   and (t.edadMaxMeses is null or t.edadMaxMeses >= :edadMeses))))
             """)
-    Page<Long> buscarIdsVitrinaPorIds(@Param("estado") EstadoPrenda estado,
+    Page<Long> buscarIdsVitrinaPorIdsConColor(@Param("estado") EstadoPrenda estado,
                                       @Param("ids") List<Long> ids,
                                       @Param("categoria") CategoriaPrenda categoria,
                                       @Param("genero") GeneroPrenda genero,
@@ -135,8 +150,18 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
                                       @Param("disponible") Boolean disponible,
                                       @Param("materiales") List<MaterialTextil> materiales,
                                       @Param("talla") String talla,
+                                      @Param("color") ColorPreferido color,
                                       @Param("edadMeses") Integer edadMeses,
                                       Pageable pageable);
+
+    /** Compatibilidad para búsquedas recomendadas sin filtro de color. */
+    default Page<Long> buscarIdsVitrinaPorIds(EstadoPrenda estado, List<Long> ids, CategoriaPrenda categoria,
+                                              GeneroPrenda genero, BigDecimal precioMin, BigDecimal precioMax,
+                                              String texto, Boolean disponible, List<MaterialTextil> materiales,
+                                              String talla, Integer edadMeses, Pageable pageable) {
+        return buscarIdsVitrinaPorIdsConColor(estado, ids, categoria, genero, precioMin, precioMax, texto,
+                disponible, materiales, talla, null, edadMeses, pageable);
+    }
 
     /** Prenda si esta en el estado indicado y es visible (US-14: no desactivada y vendedor ACTIVO). */
     @EntityGraph(attributePaths = {"tallas", "vendedor"})
@@ -181,6 +206,11 @@ public interface PrendaRepository extends JpaRepository<Prenda, Long> {
               and p.vendedor.estado = co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario.ACTIVO
             """)
     Optional<Prenda> bloquearPorIdYEstado(@Param("id") Long id, @Param("estado") EstadoPrenda estado);
+
+    /** Bloquea (escritura, en orden de id) todas las prendas del vendedor; serializa la eliminación de su cuenta con los pagos. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Prenda p where p.vendedor.id = :vendedorId order by p.id")
+    List<Prenda> bloquearTodasDelVendedor(@Param("vendedorId") Long vendedorId);
 
     /** Prenda con bloqueo de escritura, sin importar su estado (pagos y reposición de stock). */
     /** Prenda con bloqueo de escritura, sin importar su estado (pagos y reposicion de stock). */

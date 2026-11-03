@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EMPTY, catchError, switchMap, take, takeWhile, throwError, timer } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
+import { ColorEtiquetaPipe } from '../../../shared/pipes/color-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { ResultadoPago } from '../models/pago.models';
 import { formatearPrecio } from '../models/prenda-opciones';
@@ -36,7 +37,7 @@ const esTransitorio = (error: unknown) =>
  */
 @Component({
   selector: 'app-pago-resultado',
-  imports: [Navbar, RouterLink],
+  imports: [Navbar, RouterLink, ColorEtiquetaPipe],
   templateUrl: './pago-resultado.html',
 })
 export class PagoResultadoPage implements OnInit {

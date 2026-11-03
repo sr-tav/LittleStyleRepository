@@ -1,110 +1,138 @@
-# US-15 — Guía de uso interactivo del dashboard
+# Guía de usuario — Dashboard y reportes
+
+Esta guía explica cómo usar el panel analítico de LittleStyle. Está dirigida a administradores y
+vendedores.
 
 ## 1. Acceso
 
-Desde la aplicación, el administrador o vendedor puede acceder al dashboard desde el menú principal o desde la vista de inicio de su rol.
+1. Inicia sesión como **administrador** o **vendedor**.
+2. Abre **Reportes** en el menú principal.
+3. El panel muestra el alcance de tu sesión: el vendedor ve su tienda; el administrador, toda la
+   plataforma.
+4. Un usuario con rol **cliente** no ve esta opción.
 
-- Administrador: menú de operación y analítica.
-- Vendedor: vista de desempeño de su catálogo.
+## 2. Filtros
 
-## 2. Filtros del dashboard
+En la cabecera del panel encontrarás cuatro controles:
 
-Los filtros principales se encuentran en la parte superior del panel:
+| Control | Para qué sirve |
+|---|---|
+| **Periodo** | Atajos: últimos 30 días, este mes o últimos 6 meses |
+| **Desde** | Fecha inicial del rango |
+| **Hasta** | Fecha final del rango |
+| **Categorías** | Limita ventas, inventario y rankings a una categoría |
 
-- Fecha inicial (`startDate`)
-- Fecha final (`endDate`)
-- Categoría (`categoria`): lista tomada del catálogo real; filtra ventas, inventario y rankings
+Cómo usarlo:
 
-### Cómo usarlo
+1. Elige un período o escribe las fechas manualmente.
+2. Opcionalmente, selecciona una categoría.
+3. El panel se actualiza solo; no hace falta recargar la página.
+4. Si la fecha inicial queda después de la final, el sistema no aplica el cambio y muestra un
+   mensaje para corregirlo.
 
-1. Selecciona la fecha de inicio.
-2. Selecciona la fecha final.
-3. Opcionalmente, filtra por categoría.
-4. El sistema recarga los indicadores automáticamente.
+> El **inventario** no depende de las fechas: siempre muestra la foto actual del stock.
 
-## 3. Panel del administrador
+## 3. Indicadores principales
 
-### Indicadores principales
+Las seis tarjetas de la parte superior responden a una lectura rápida:
 
-- Ventas totales en el periodo.
-- Número de pedidos procesados.
-- Ticket promedio.
-- Stock total y alertas de inventario.
+| Indicador | Qué significa |
+|---|---|
+| **Ventas totales** | Dinero vendido en el período, en COP |
+| **Unidades vendidas** | Prendas vendidas, sumando cantidades |
+| **Ticket promedio** | Ventas totales divididas entre pedidos |
+| **Pedidos** | Pedidos que cuentan como venta |
+| **Inventario disponible** | Unidades en stock de tus prendas activas |
+| **Variantes con stock bajo** | Combinaciones de talla y color que llegaron a su mínimo |
 
-### Gráficas disponibles
+Una **variante** es una combinación de prenda, talla y color. Si un buzo tiene la talla 4 en azul y
+en rojo, son dos variantes con stock propio. Por eso el contador de stock bajo puede subir más de
+una vez por la misma talla: cada color se repone por separado.
 
-- Ventas por categoría
-- Demanda por talla
-- Más consultados (vistas reales de la ficha), más vendidos y palabras más buscadas
+Una variante sin mínimo configurado no genera alerta. Si ves un número en ámbar, hay al menos una
+variante en el umbral.
 
-### Recomendación operativa
+El **margen bruto** no se muestra porque las prendas todavía no registran su costo. El panel lo
+explica en lugar de mostrar un cero engañoso.
 
-- Si las ventas por categoría bajan, revisar campañas y promociones.
-- Si el stock bajo crece, ajustar reposición.
-- Si las búsquedas muestran foco en un término, priorizar ese catálogo.
+## 4. Panel del administrador
 
-## 4. Panel del vendedor
+Además de los KPI, el administrador ve:
 
-### Indicadores principales
+- **Más consultados:** prendas cuya ficha se abrió más veces en el período.
+- **Más vendidos:** prendas con más unidades vendidas.
+- **Palabras más buscadas:** términos usados en el catálogo. Es una señal de toda la plataforma, no
+  de una tienda en particular.
+- **Demanda por talla:** unidades vendidas por tamaño. El color no se separa en este gráfico; se
+  conserva en el pedido para auditoría.
+- **Ventas por categoría:** monto vendido en cada categoría, en COP.
 
-- Ventas del vendedor.
-- Ventas, unidades, ticket promedio y pedidos de su negocio (nunca de otras tiendas).
-- Inventario disponible y tallas con stock bajo (según el mínimo configurado en cada talla).
-- Demanda por talla y ventas por categoría.
+Cada lista muestra hasta cinco ítems para mantener la lectura rápida; el resto se consulta en los
+reportes exportables.
 
-### Recomendación operativa
+## 5. Panel del vendedor
 
-- Revisar tallas con mayor salida para ajustar inventario.
-- Notificar stock bajo de modelos populares.
-- Mantener catálogo optimizado según búsquedas reales.
+El vendedor ve los mismos seis KPI, calculados solo con su catálogo, y los dos gráficos:
 
-## 5. Interpretación visual
+- **Demanda por talla (unidades)** de sus ventas.
+- **Ventas por categoría (COP)** de su tienda.
 
-- Las tarjetas KPI sirven para lectura rápida.
-- Los gráficos permiten detectar patrones por temporada, categoría o talla.
-- Los colores se deben interpretar como alertas de rendimiento y riesgo de inventario.
+No se muestran las listas de “más consultados”, “más vendidos” y “más buscadas”: el panel del
+vendedor prioriza la evolución de su catálogo y evita duplicar lo que ya puede exportar.
 
-## 6. Casos de uso comunes
+## 6. Interpretación visual
+
+- Las tarjetas KPI son para lectura rápida; los gráficos, para detectar patrones.
+- La línea de demanda por talla responde “qué tamaño se vende más”.
+- Las barras de categoría responden “dónde se concentra el ingreso”.
+- El color ámbar en la tarjeta de stock bajo indica riesgo de reposición; no es un error.
+- Los estados vacíos (“Sin ventas en el período seleccionado”) significan que no hay datos, no que
+  la pantalla haya fallado.
+
+## 7. Casos de uso comunes
 
 ### Caso 1 — Analizar el mes actual
 
-1. Seleccionar mes actual.
-2. Revisar total de ventas.
-3. Corroborar top categorías.
-4. Evaluar tallas con mayor demanda.
+1. Elige **Este mes**.
+2. Revisa ventas totales y ticket promedio.
+3. Identifica la categoría con más ingreso.
+4. Mira qué tallas concentran la demanda.
 
 ### Caso 2 — Revisar stock crítico
 
-1. Fijar rango de 30 días.
-2. Observa la métrica de stock bajo.
-3. Priorizar reposición en prendas con demanda sostenida.
+1. Deja el período en **Últimos 30 días**.
+2. Observa **Variantes con stock bajo**.
+3. Abre el inventario o el reporte de inventario para ver la talla y el color exactos.
+4. Prioriza la reposición de las variantes con más demanda.
 
-### Caso 3 — Confirmar impacto de una campaña
+### Caso 3 — Confirmar el impacto de una campaña
 
-1. Filtrar por la categoría promocionada.
-2. Compara ventas en el intervalo de campaña.
-3. Revisa búsquedas relevantes y productos más vendidos.
+1. Filtra por la categoría promocionada.
+2. Ajusta las fechas al intervalo de la campaña.
+3. Compara ventas por categoría y demanda por talla.
+4. Revisa las palabras más buscadas para entender el interés del momento.
 
-## 7. Buenas prácticas
+### Caso 4 — Exportar lo que estás viendo
 
-- Usar rangos cortos para análisis operativos diarios.
-- Usar rangos amplios para comparación mensual o trimestral.
-- Fijar una categoría para aislar la causa de cambios.
-- Verificar que la fecha final no sea anterior a la fecha inicial.
+1. Ajusta período y categoría.
+2. Baja hasta **Exportar reporte**.
+3. Elige PDF, Excel o CSV.
+4. La exportación usa los mismos filtros y el alcance de tu rol.
 
-## 8. Estado vacío
+## 8. Diseño y pantallas pequeñas
 
-Cuando no hay datos en el rango elegido, el sistema indica:
+- En escritorio, los KPI se ven en tres columnas y los gráficos en dos.
+- En pantallas de hasta 900 px, todo pasa a una columna y los filtros se acomodan en varias filas.
+- Los controles son táctiles (42 px de alto) y tienen foco visible para navegación con teclado.
+- Los gráficos conservan su proporción y no se desbordan de la tarjeta.
+- Si el panel no carga, aparece **Error al cargar datos** con un botón **Reintentar**.
 
-- sin ventas registradas,
-- sin búsquedas relevantes,
-- sin productos vendidos,
-- sin stock bajo en la categoría filtrada.
+## 9. Buenas prácticas
 
-Esto evita confusiones y facilita la acción del usuario.
-
-## 9. Trazabilidad de uso por subtarea 
-
--  la vista gráfica del dashboard está diseñada para administradores y vendedores con distintas métricas por rol.
-- `los filtros de fechas y categoría se aplican en tiempo real a la visualización del panel.
--  los indicadores que se muestran corresponden a las agregaciones definidas en SQL y validadas en la capa analítica.
+- Usa rangos cortos para la operación diaria y rangos amplios para comparar meses.
+- Fija una categoría cuando quieras aislar la causa de un cambio.
+- Verifica que la fecha final no sea anterior a la inicial.
+- Recuerda que las búsquedas y las vistas se conservan 12 meses: los rangos más largos no
+  reconstruyen historia anterior a la retención.
+- Para el detalle por color, usa el inventario o el reporte de inventario; el gráfico de demanda
+  solo separa por talla.

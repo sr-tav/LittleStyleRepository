@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Pren
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.AlertaReabastecimiento;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -25,7 +26,8 @@ public record AlertaResponse(
         int stockActual,
         int stockMinimo,
         int diferencia,
-        LocalDateTime fechaEmision
+        LocalDateTime fechaEmision,
+        ColorPreferido color
 ) {
 
     /**
@@ -35,14 +37,14 @@ public record AlertaResponse(
     public static AlertaResponse from(AlertaReabastecimiento alerta) {
         Prenda p = alerta.getPrenda();
         var tallaActual = alerta.getTalla() == null ? Optional.<TallaPrenda>empty()
-                : p.getTallas().stream().filter(t -> t.getTalla().equals(alerta.getTalla())).findFirst();
+                : p.getTallas().stream().filter(t -> t.getTalla().equals(alerta.getTalla()) && t.getColor() == alerta.getColor()).findFirst();
         if (tallaActual.isEmpty()) {
             return new AlertaResponse(
                     alerta.getId(), p.getId(), p.getNombre(), p.getCategoria(),
                     p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null), alerta.getTalla(),
                     alerta.getNivel(), alerta.getStockAlEmitir(), alerta.getStockMinimoAlEmitir(),
                     alerta.getStockAlEmitir() - alerta.getStockMinimoAlEmitir(),
-                    alerta.getFechaEmision());
+                    alerta.getFechaEmision(), alerta.getColor());
         }
         var talla = tallaActual.get();
         int minimo = talla.getStockMinimo() == null ? 0 : talla.getStockMinimo();
@@ -50,6 +52,6 @@ public record AlertaResponse(
                 alerta.getId(), p.getId(), p.getNombre(), p.getCategoria(),
                 p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null), talla.getTalla(),
                 alerta.getNivel(), talla.getStock(), minimo, talla.getStock() - minimo,
-                alerta.getFechaEmision());
+                alerta.getFechaEmision(), alerta.getColor());
     }
 }

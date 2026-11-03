@@ -1,4 +1,3 @@
-import { Location } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -46,12 +45,20 @@ describe('PrendaForm (UI-20)', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function completar(c: any) {
     c.form.patchValue({
-      nombre: 'Vestido Floral', categoria: 'VESTIDOS', precio: 45900,
+      nombre: 'Vestido Floral', categoria: 'VESTIDOS', descripcion: 'Vestido cómodo',
+      precio: 45900,
       instruccionesCuidado: '  Lavar a mano en agua fría ',
     });
     c.tallas.at(0).patchValue({
-      talla: ' xs ', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15,
-      edadMinMeses: 3, edadMaxMeses: 18, stock: 6,
+      talla: ' xs ',
+      color: 'AZUL',
+      estaturaMinCm: 90,
+      estaturaMaxCm: 99,
+      pesoMinKg: 12,
+      pesoMaxKg: 15,
+      edadMinMeses: 3,
+      edadMaxMeses: 18,
+      stock: 6,
       stockMinimo: 2,
     });
   }
@@ -74,9 +81,11 @@ describe('PrendaForm (UI-20)', () => {
   });
 
   it('detecta tallas repetidas sin distinguir mayúsculas ni espacios', () => {
-    const talla = (nombre: string) => new FormGroup({ talla: new FormControl(nombre) });
+    const talla = (nombre: string, color: string | null = null) =>
+      new FormGroup({ talla: new FormControl(nombre), color: new FormControl(color) });
     expect(tallasValidas(new FormArray([talla('xs'), talla(' XS ')]))).toEqual({ tallaRepetida: 'XS' });
     expect(tallasValidas(new FormArray([talla('4'), talla('6')]))).toBeNull();
+    expect(tallasValidas(new FormArray([talla('4', 'AZUL'), talla('4', 'ROSA')]))).toBeNull();
   });
 
   it('muestra el inventario por talla con sus casillas en la sección Inventario', () => {
@@ -84,7 +93,7 @@ describe('PrendaForm (UI-20)', () => {
     completar(c);
     fixture.detectChanges();
 
-    const inventario = el.querySelector('[aria-label="Inventario por talla"]');
+    const inventario = el.querySelector('[aria-label="Inventario por variante de talla y color"]');
     expect(inventario?.textContent).toContain('xs');
     const stock = inventario?.querySelector<HTMLInputElement>('#stock-0');
     const minimo = inventario?.querySelector<HTMLInputElement>('#minimo-0');
@@ -94,7 +103,9 @@ describe('PrendaForm (UI-20)', () => {
 
   it('no envía la prenda si el formulario es inválido', () => {
     const { fixture, c, el } = crear();
+
     c.form.patchValue({ nombre: 'Vestido', precio: 45900 });
+    c.tallas.at(0).patchValue({ color: 'AZUL' });
     c.composicion.at(0).patchValue({ porcentaje: 60 });
 
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
@@ -117,7 +128,7 @@ describe('PrendaForm (UI-20)', () => {
     http.expectNone('/api/vendedor/prendas');
   });
 
-  it('crea la prenda, sube las fotos en una sola petición y vuelve al catálogo', () => {
+  it('crea la prenda con sus fotos en una petición multipart y vuelve al catálogo', async () => {
     const navegar = vi.mocked(TestBed.inject(Router).navigate);
     const { fixture, c, el } = crear();
     completar(c);
@@ -128,45 +139,42 @@ describe('PrendaForm (UI-20)', () => {
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
     const crearReq = http.expectOne('/api/vendedor/prendas');
     expect(crearReq.request.method).toBe('POST');
-    expect(crearReq.request.body.tallas[0]).toEqual({
+    expect(crearReq.request.body).toBeInstanceOf(FormData);
+    const datos = crearReq.request.body as FormData;
+    const partePrenda = datos.get('prenda') as Blob;
+    expect(partePrenda.type).toBe('application/json');
+    const request = JSON.parse(await partePrenda.text());
+    expect(request.tallas[0]).toEqual({
       talla: 'XS', estaturaMinCm: 90, estaturaMaxCm: 99, pesoMinKg: 12, pesoMaxKg: 15,
       edadMinMeses: 3, edadMaxMeses: 18, stock: 6,
       stockMinimo: 2,
+      color: 'AZUL',
     });
-    expect(crearReq.request.body.composicion).toEqual([{ material: 'ALGODON', porcentaje: 100 }]);
-    expect(crearReq.request.body.instruccionesCuidado).toBe('Lavar a mano en agua fría');
+    expect(request.composicion).toEqual([{ material: 'ALGODON', porcentaje: 100 }]);
+    expect(request.instruccionesCuidado).toBe('Lavar a mano en agua fría');
+    expect(datos.getAll('archivos')).toHaveLength(1);
     crearReq.flush(crearPrenda({ id: 40 }));
-
-    const fotos = http.expectOne('/api/vendedor/prendas/40/imagenes');
-    expect((fotos.request.body as FormData).getAll('archivos').length).toBe(1);
-    fotos.flush([{ id: 1, url: '/media/x.png', orden: 0 }]);
+    http.expectNone('/api/vendedor/prendas/40/imagenes');
 
     expect(navegar).toHaveBeenCalledWith(['/vendedor/productos'], {
       state: { mensaje: 'Producto creado correctamente.' },
     });
   });
 
-  it('si fallan las fotos conserva la prenda creada y pasa a edición para reintentar', () => {
-    const location = TestBed.inject(Location);
-    const reemplazar = vi.spyOn(location, 'replaceState');
+  it('si falla el alta multipart conserva la foto pendiente para reintentar', () => {
     const { fixture, c, el } = crear();
     completar(c);
     seleccionarFoto(el, new File(['x'], 'frente.png', { type: 'image/png' }));
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
-    http.expectOne('/api/vendedor/prendas').flush(crearPrenda({ id: 40 }));
-    http
-      .expectOne('/api/vendedor/prendas/40/imagenes')
-      .flush({ mensaje: 'No fue posible guardar las imágenes' }, { status: 502, statusText: 'Bad Gateway' });
+    http.expectOne('/api/vendedor/prendas').flush(
+      { mensaje: 'No fue posible guardar la prenda y sus imágenes' },
+      { status: 502, statusText: 'Bad Gateway' },
+    );
     fixture.detectChanges();
 
-    expect(reemplazar).toHaveBeenCalledWith('/vendedor/productos/40');
-    expect(el.querySelector('h1')?.textContent).toContain('Editar producto');
-    expect(el.textContent).toContain('La prenda se guardó, pero las fotos no se pudieron subir');
+    expect(el.querySelector('h1')?.textContent).toContain('Crear producto');
+    expect(el.textContent).toContain('No fue posible guardar la prenda y sus imágenes');
     expect(c.pendientes().length).toBe(1);
-
-    el.querySelector<HTMLButtonElement>('.alert-error .link-button')!.click();
-    http.expectOne('/api/vendedor/prendas/40').flush(crearPrenda({ id: 40 }));
-    http.expectOne('/api/vendedor/prendas/40/imagenes').flush([]);
   });
 
   it('rechaza archivos que no son imágenes sin agregarlos', () => {
@@ -178,19 +186,20 @@ describe('PrendaForm (UI-20)', () => {
     expect(c.pendientes().length).toBe(0);
   });
 
-  it('en edición muestra el stock existente sin editarlo y no lo envía', () => {
+  it('en edición oculta el inventario inicial y conserva el stock fuera del request de producto', () => {
     idRuta = '7';
     const { fixture, c, el } = crear();
-    http.expectOne('/api/vendedor/prendas/7').flush(crearPrenda());
+    http.expectOne('/api/vendedor/prendas/7').flush(crearPrenda({ descripcion: 'Prenda cómoda' }));
     fixture.detectChanges();
 
-    const stock = el.querySelector<HTMLInputElement>('#stock-0')!;
-    expect(stock.disabled).toBe(true);
-    expect(stock.value).toBe('2');
-    expect(el.querySelector('.photo-badge')?.textContent).toContain('Principal');
+    expect(
+      el.querySelector('[aria-label="Inventario por variante de talla y color"]'),
+    ).toBeNull();
+    expect(el.textContent).toContain('El stock y el mínimo de alerta se administran en Inventario.');
 
     c.form.patchValue({ precio: 35000 });
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+
     const req = http.expectOne('/api/vendedor/prendas/7');
     expect(req.request.method).toBe('PUT');
     expect(req.request.body.precio).toBe(35000);

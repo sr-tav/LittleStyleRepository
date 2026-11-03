@@ -62,10 +62,6 @@
           <p class="product-meta">{{ p.marca }}</p>
         }
         <p class="reco-price reco-price-large">{{ precioDe(p) }}</p>
-        <button id="reportar-prenda" type="button" class="btn-ghost" (click)="abrirReporte()">Reportar producto</button>
-        @if (reporteMensaje(); as avisoReporte) {
-          <p class="alert alert-success" role="status">{{ avisoReporte }}</p>
-        }
         @if (sugerida(); as s) {
           <app-talla-sugerida [item]="s" />
         } @else {
@@ -73,50 +69,129 @@
             Si tienes alergias textiles, revisa la composición y consulta tu talla sugerida con tu perfil activo.
           </p>
         }
+        @if (coloresDisponibles().length > 0) {
+          <fieldset class="detalle-selector">
+            <legend>
+              Color:
+              <strong>{{ colorSeleccionado() ? colorDe(colorSeleccionado()) : 'Selecciona un color' }}</strong>
+            </legend>
+            <div class="detalle-colores" role="radiogroup" aria-label="Color de la prenda">
+              @for (c of coloresDisponibles(); track c) {
+                <button
+                  type="button"
+                  class="detalle-color"
+                  [class.is-selected]="colorSeleccionado() === c"
+                  [class.is-agotado]="!tieneStockColor(c)"
+                  role="radio"
+                  [attr.aria-checked]="colorSeleccionado() === c"
+                  [disabled]="!tieneStockColor(c) || agregandoAlCarrito()"
+                  [attr.aria-label]="colorDe(c) + (tieneStockColor(c) ? ', disponible' : ', agotado')"
+                  [title]="colorDe(c)"
+                  (click)="seleccionarColor(c)"
+                >
+          <span
+            class="detalle-color-muestra"
+            [style.background-color]="muestraColor(c)"
+            aria-hidden="true"
+          ></span>
+                </button>
+              }
+            </div>
+          </fieldset>
+        } @else {
+          <p class="alert alert-warning" role="status">
+            Esta prenda no tiene colores configurados para la venta.
+          </p>
+        }
+
         <div class="detalle-agregar-carrito">
           @if (!p.disponible) {
-            <p class="alert alert-error" role="status">En este momento no hay unidades disponibles.</p>
-          }
-          <label for="talla-carrito">Talla</label>
-          <select
-            id="talla-carrito"
-            [value]="tallaSeleccionada()"
-            [disabled]="!p.disponible || agregandoAlCarrito()"
-            (change)="seleccionarTalla($event)"
-          >
-            <option value="">Selecciona una talla</option>
-            @for (t of p.tallas; track t.talla) {
-              <option [value]="t.talla" [disabled]="!t.disponible">
-                {{ t.talla }} · {{ t.stockDisponible }} disponibles
-              </option>
-            }
-          </select>
-          @if (tallaSeleccionada()) {
-            <p class="detalle-stock" role="status">
-              Disponibles en talla {{ tallaSeleccionada() }}: {{ stockTallaSeleccionada() }}
+            <p class="alert alert-error" role="status">
+              En este momento no hay unidades disponibles.
             </p>
-            <div class="detalle-cantidad" role="group" aria-label="Seleccionar cantidad">
-              <span>Cantidad</span>
-              <button
-                type="button" class="btn-ghost"
-                aria-label="Disminuir cantidad"
-                [disabled]="cantidadSeleccionada() <= 1 || agregandoAlCarrito()"
-                (click)="cambiarCantidad(-1)"
-              >−</button>
-              <output aria-live="polite">{{ cantidadSeleccionada() }}</output>
-              <button
-                type="button" class="btn-ghost"
-                aria-label="Aumentar cantidad"
-                [disabled]="cantidadSeleccionada() >= stockTallaSeleccionada() || agregandoAlCarrito()"
-                (click)="cambiarCantidad(1)"
-              >+</button>
-            </div>
           }
+
+          <fieldset class="detalle-selector">
+            <legend>
+              Talla:
+              <strong>{{ tallaSeleccionada() || 'Selecciona una talla' }}</strong>
+            </legend>
+            <div class="detalle-tallas" role="radiogroup" aria-label="Tallas de la prenda">
+              @for (t of tallasDisponibles(); track t) {
+                <div class="detalle-talla-opcion">
+                  <button
+                    type="button"
+                    class="detalle-talla"
+                    [class.is-selected]="tallaSeleccionada() === t"
+                    role="radio"
+                    [attr.aria-checked]="tallaSeleccionada() === t"
+                    [disabled]="!tieneStockTalla(t) || agregandoAlCarrito()"
+                    [attr.aria-label]="'Talla ' + t"
+                    (click)="seleccionarTalla(t)"
+                  >
+                    <strong>{{ t }}</strong>
+                  </button>
+
+                  <span class="detalle-talla-disponibilidad">
+    {{ colorSeleccionado()
+                    ? stockVariante(t, colorSeleccionado())
+                    : stockTotalTalla(t) }}
+                    disponibles
+  </span>
+                </div>
+              }
+            </div>
+          </fieldset>
+
+          @if (colorSeleccionado() && tallaSeleccionada()) {
+            @if (stockTallaSeleccionada() > 0) {
+              <p class="detalle-stock" role="status">
+                {{ stockTallaSeleccionada() }} disponibles
+              </p>
+            } @else {
+              <p class="alert alert-warning" role="status">
+                La combinación de color y talla está agotada. Elige otro color o talla.
+              </p>
+            }
+          }
+
+          <div class="detalle-cantidad" role="group" aria-label="Seleccionar cantidad">
+            <span>Cantidad</span>
+            <button
+              type="button"
+              class="btn-ghost"
+              aria-label="Disminuir cantidad"
+              [disabled]="cantidadSeleccionada() <= 1 || agregandoAlCarrito()"
+              (click)="cambiarCantidad(-1)"
+            >−</button>
+            <output aria-live="polite">{{ cantidadSeleccionada() }}</output>
+            <button
+              type="button"
+              class="btn-ghost"
+              aria-label="Aumentar cantidad"
+              [disabled]="
+      !colorSeleccionado() ||
+      !tallaSeleccionada() ||
+      cantidadSeleccionada() >= stockTallaSeleccionada() ||
+      agregandoAlCarrito()
+    "
+              (click)="cambiarCantidad(1)"
+            >+</button>
+          </div>
+
           <button
-            type="button" class="btn-primary btn-inline"
-            [disabled]="!p.disponible || !tallaSeleccionada() || agregandoAlCarrito()"
+            type="button"
+            class="btn-primary btn-inline"
+            [disabled]="
+      !p.disponible ||
+      !colorSeleccionado() ||
+      !tallaSeleccionada() ||
+      stockTallaSeleccionada() < 1 ||
+      agregandoAlCarrito()
+    "
             (click)="agregarAlCarrito()"
           >{{ agregandoAlCarrito() ? 'Agregando…' : 'Agregar al carrito' }}</button>
+
           @if (mensajeCarrito(); as mensaje) {
             <p class="alert alert-success" role="status">
               {{ mensaje }} <a routerLink="/cliente/carrito">Ver carrito</a>
@@ -167,35 +242,63 @@
       <section class="vitrina-seccion" aria-label="Ficha técnica textil">
         <h3>Ficha técnica textil</h3>
         <dl class="detail-card">
-          <div><dt>Composición</dt><dd>{{ composicionDe(p) }}</dd></div>
-          <div><dt>Colores</dt><dd>{{ p.colores.map(colorDe).join(', ') || '—' }}</dd></div>
-          <div><dt>Estampado</dt><dd>{{ estampadoDe(p.estampado) }}</dd></div>
+          <div class="detail-card-item">
+            <dt>Composición</dt>
+            <dd>{{ composicionDe(p) }}</dd>
+          </div>
+          <div class="detail-card-item">
+            <dt>Colores</dt>
+            <dd>{{ p.colores.map(colorDe).join(', ') || '—' }}</dd>
+          </div>
+          <div class="detail-card-item">
+            <dt>Estampado</dt>
+            <dd>{{ estampadoDe(p.estampado) }}</dd>
+          </div>
+          <div class="detail-card-item detail-card-item-wide">
+            <dt>Información para alergias</dt>
+            <dd>
+              {{ alergenosDe(p).join(', ') || 'No declara tintes sintéticos, broches metálicos, níquel ni formaldehído' }}
+            </dd>
+          </div>
           @if (p.instruccionesCuidado) {
-            <div><dt>Cuidado</dt><dd>{{ p.instruccionesCuidado }}</dd></div>
+            <div class="detail-card-item">
+              <dt>Cuidado</dt>
+              <dd>{{ p.instruccionesCuidado }}</dd>
+            </div>
           }
           @if (p.descripcion) {
-            <div><dt>Descripción</dt><dd>{{ p.descripcion }}</dd></div>
+            <div class="detail-card-item detail-card-item-wide">
+              <dt>Descripción</dt>
+              <dd>{{ p.descripcion }}</dd>
+            </div>
           }
         </dl>
       </section>
 
       <section class="vitrina-seccion" aria-label="Tabla de medidas">
         <h3>Tabla de medidas</h3>
-        <div class="catalog-table-wrap">
-          <table class="catalog-table tabla-medidas">
-            <caption class="visually-hidden">Rangos de estatura y peso por talla</caption>
+        <p class="tabla-medidas-ayuda" id="ayuda-tabla-medidas">
+          En pantallas estrechas, desliza la tabla horizontalmente para ver todas las columnas.
+        </p>
+        <div
+          class="catalog-table-wrap tabla-medidas-wrap"
+          role="region"
+          aria-label="Tabla de medidas desplazable horizontalmente"
+          tabindex="0"
+        >
+          <table class="catalog-table tabla-medidas" aria-describedby="ayuda-tabla-medidas">
+            <caption class="visually-hidden">Medidas y existencias totales disponibles por talla</caption>
             <thead>
-              <tr>
-                <th scope="col">Talla</th>
-                <th scope="col">Estatura (cm)</th>
-                <th scope="col">Peso (kg)</th>
-                <th scope="col">Edad (meses)</th>
-                <th scope="col">Disponibles</th>
-                <th scope="col">Estado</th>
-              </tr>
+            <tr>
+              <th scope="col">Talla</th>
+              <th scope="col">Estatura (cm)</th>
+              <th scope="col">Peso (kg)</th>
+              <th scope="col">Edad (meses)</th>
+              <th scope="col">Disponibles</th>
+            </tr>
             </thead>
             <tbody>
-              @for (t of p.tallas; track t.talla) {
+              @for (t of tallasTablaMedidas(); track t.talla) {
                 <tr [class.is-sugerida]="sugerida()?.tallaSugerida === t.talla">
                   <td>
                     <strong>{{ t.talla }}</strong>
@@ -207,19 +310,26 @@
                   <td class="muted-cell">{{ t.pesoMinKg }} – {{ t.pesoMaxKg }}</td>
                   <td class="muted-cell">{{ edadDe(t) }}</td>
                   <td class="muted-cell">{{ t.stockDisponible }}</td>
-                  <td>
-                    @if (t.disponible) {
-                      <span class="state-chip">Disponible</span>
-                    } @else {
-                      <span class="state-chip is-off">Agotada</span>
-                    }
-                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
       </section>
+    </div>
+
+    <div class="detalle-reportar">
+      <button
+        id="reportar-prenda"
+        type="button"
+        class="btn-ghost btn-reportar"
+        (click)="abrirReporte()"
+      >
+        Reportar producto
+      </button>
+      @if (reporteMensaje(); as avisoReporte) {
+        <p class="alert alert-success" role="status">{{ avisoReporte }}</p>
+      }
     </div>
   }
 </main>

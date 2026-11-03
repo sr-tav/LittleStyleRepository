@@ -5,6 +5,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model.NivelStock;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 
 import java.util.List;
 
@@ -21,7 +22,10 @@ public record InventarioItemResponse(
 ) {
 
     /** Stock y mínimo (nulo si no se definió) de una talla. */
-    public record StockTalla(String talla, int stock, Integer stockMinimo) {
+    public record StockTalla(String talla, int stock, Integer stockMinimo, ColorPreferido color) {
+        public StockTalla(String talla, int stock, Integer stockMinimo) {
+            this(talla, stock, stockMinimo, null);
+        }
     }
 
     /** Construye la fila a partir de la prenda y sus tallas. */
@@ -31,7 +35,7 @@ public record InventarioItemResponse(
                 p.imagenPrincipal().map(ImagenPrenda::getUrl).orElse(null),
                 p.getEstado(), p.stockTotal(), nivelDe(p),
                 p.getTallas().stream()
-                        .map(t -> new StockTalla(t.getTalla(), t.getStock(), t.getStockMinimo())).toList());
+                        .map(t -> new StockTalla(t.getTalla(), t.getStock(), t.getStockMinimo(), t.getColor())).toList());
     }
 
     /** Peor nivel entre las tallas con mínimo; sin mínimos siempre disponible. */

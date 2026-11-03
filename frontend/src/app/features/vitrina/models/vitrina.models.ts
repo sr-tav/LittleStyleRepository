@@ -22,6 +22,7 @@ export interface VitrinaTalla {
   edadMaxMeses?: number | null;
   stockDisponible: number;
   disponible: boolean;
+  color?: string | null;
 }
 
 /** Ficha pública de un producto con composición, imágenes y tallas. */
@@ -41,6 +42,10 @@ export interface VitrinaDetalle {
   composicion: { material: string; porcentaje: number }[];
   tallas: VitrinaTalla[];
   fechaActualizacion: string;
+  tintesSinteticos?: boolean;
+  brochesMetalicos?: boolean;
+  contieneNiquel?: boolean;
+  tratamientoFormaldehido?: boolean;
 }
 
 /** Página de resultados con contenido y metadatos de paginación. */
@@ -66,6 +71,7 @@ export interface FiltrosVitrina {
   disponible?: boolean;
   material?: string;
   talla?: string;
+  color?: string;
   /** Edad en meses: coincide con tallas que declaran el rango (o no declaran). */
   edadMeses?: number;
   /**

@@ -32,8 +32,9 @@ class PrendaServiceModeracionTest {
     private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
     private final ValidadorPrenda validador = mock(ValidadorPrenda.class);
     private final AlertasInventarioService alertas = mock(AlertasInventarioService.class);
+    private final ImagenPrendaService imagenService = mock(ImagenPrendaService.class);
     private final PrendaService servicio =
-            new PrendaService(prendaRepository, usuarioRepository, validador, alertas);
+            new PrendaService(prendaRepository, usuarioRepository, validador, alertas, imagenService);
     private final Prenda desactivada = Prenda.builder()
             .id(27L)
             .vendedor(Usuario.builder().id(5L).rol(Rol.VENDEDOR).build())

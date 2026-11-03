@@ -133,7 +133,7 @@ describe('DashboardAnalyticsPage', () => {
     await crear('VENDEDOR', of(datos));
 
     expect(texto()).toContain('Inventario disponible');
-    expect(texto()).toContain('Tallas con stock bajo');
+    expect(texto()).toContain('Variantes con stock bajo');
     expect(texto()).toContain('Demanda por talla');
     expect(texto()).toContain('Ventas por categoría');
     expect(texto()).not.toContain('Ventas por período');

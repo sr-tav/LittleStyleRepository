@@ -138,6 +138,8 @@ ORDER BY unidades DESC;
 
 -- ---------------------------------------------------------------------------
 -- 7) Demanda por prenda y talla (reporte DEMANDA)
+--    El reporte agrupa por talla, sin separar color: la demanda se mide por
+--    talla. La línea del pedido conserva su color para auditoría.
 -- ---------------------------------------------------------------------------
 SELECT
     pr.nombre AS prenda,
@@ -157,13 +159,15 @@ ORDER BY unidades DESC, pr.nombre, li.talla;
 
 -- ---------------------------------------------------------------------------
 -- 8) Inventario: filas del reporte (reporte INVENTARIO)
---    Sirve además como verificación previa del límite de 5 000 filas.
+--    Una fila por variante: prenda + talla + color. Sirve además como
+--    verificación previa del límite de 5 000 filas.
 -- ---------------------------------------------------------------------------
 SELECT
     pr.nombre AS prenda,
     COALESCE(v.nombre_tienda, v.nombre) AS tienda,
     pr.categoria,
     t.talla,
+    t.color,
     t.stock,
     t.stock_minimo,
     CASE
@@ -178,10 +182,11 @@ JOIN usuarios v ON v.id = pr.vendedor_id
 WHERE pr.estado = 'ACTIVA'
   AND (:categoria IS NULL OR pr.categoria = :categoria)
   AND (:vendedorId IS NULL OR v.id = :vendedorId)
-ORDER BY v.id, pr.nombre, t.talla;
+ORDER BY v.id, pr.nombre, t.talla, t.color;
 
 -- ---------------------------------------------------------------------------
 -- 9) Inventario: cuántas filas tendría el reporte (debe ser <= 5000)
+--    Cuenta variantes (prenda + talla + color), no tallas distintas.
 -- ---------------------------------------------------------------------------
 SELECT COUNT(*) AS filas_reporte
 FROM prenda_tallas t
