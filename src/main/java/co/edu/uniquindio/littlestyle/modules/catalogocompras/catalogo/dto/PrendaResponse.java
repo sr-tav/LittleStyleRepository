@@ -60,12 +60,12 @@ public record PrendaResponse(
     /** Talla con sus rangos, stock y stock mínimo. */
     public record Talla(Long id, String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
                         BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses, Integer edadMaxMeses,
-                        int stock, Integer stockMinimo) {
+                        int stock, Integer stockMinimo, ColorPreferido color) {
         /** Construye la talla a partir de la entidad. */
         static Talla from(TallaPrenda t) {
             return new Talla(t.getId(), t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
                     t.getPesoMinKg(), t.getPesoMaxKg(), t.getEdadMinMeses(), t.getEdadMaxMeses(),
-                    t.getStock(), t.getStockMinimo());
+                    t.getStock(), t.getStockMinimo(), t.getColor());
         }
     }
 

@@ -46,10 +46,15 @@ public class PrendaVendedorController {
         return ResponseEntity.ok(prendaService.obtener(id));
     }
 
-    /** Crea una prenda publicada con su composición y tabla de tallas. Responde 201. */
-    @PostMapping
-    public ResponseEntity<PrendaResponse> crear(@Valid @RequestBody PrendaRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(prendaService.crear(request));
+    /**
+     * Crea una prenda publicada con su composición, tabla de tallas y fotos (multipart: parte JSON
+     * {@code prenda} y archivos {@code archivos}, mínimo uno). Responde 201.
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PrendaResponse> crear(
+            @RequestPart("prenda") @Valid PrendaRequest request,
+            @RequestPart(value = "archivos", required = false) List<MultipartFile> archivos) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(prendaService.crear(request, archivos));
     }
 
     /**

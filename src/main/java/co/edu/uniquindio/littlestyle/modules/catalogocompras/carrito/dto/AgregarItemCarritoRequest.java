@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto;
 
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -28,6 +29,11 @@ public record AgregarItemCarritoRequest(
          * evalúan contra todos los perfiles del cliente (por defecto seguro).
          */
         @Positive(message = "El identificador del perfil infantil debe ser positivo")
-        Long perfilInfantilId
+        Long perfilInfantilId,
+
+        ColorPreferido color
 ) {
+        public AgregarItemCarritoRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida, Long perfilInfantilId) {
+                this(prendaId, talla, cantidad, tallaSugerida, perfilInfantilId, null);
+        }
 }

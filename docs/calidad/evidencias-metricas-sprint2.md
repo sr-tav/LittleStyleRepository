@@ -54,7 +54,7 @@ Cada consulta tiene una etiqueta (`[P1-A]`, `[P2-C]`…) que coincide con las ta
 
 | Métrica | Meta | De dónde sale la evidencia |
 |---------|------|----------------------------|
-| **Adopción de recomendación de tallas** | > 80 % | Consulta **[P1-A]**. Compara la talla comprada (`pedido_items.talla`) con la que sugirió el motor (`talla_sugerida`). |
+| **Adopción de recomendación de tallas** | > 80 % | Consulta **[P1-A]**. Compara la talla comprada (`pedido_items.talla`) con la que sugirió el motor (`talla_sugerida`). La recomendación sugiere talla, no color: `pedido_items.color` se conserva para auditoría pero no entra en la métrica. |
 | **Completitud del perfil infantil** | > 90 % | Consulta **[P1-B]**. Los obligatorios no pueden quedar vacíos (la base lo impide), así que "completo" = tiene medición + colores + estampados. |
 | **Tiempo de carga de recomendaciones** | < 2 s | Igual que el *tiempo medio de respuesta del motor* (Artillery o Network). |
 | **Tasa de error en captura de medidas** | < 5 % | ⚠ El sistema no guarda los intentos fallidos. Opciones: (1) en las pruebas de usabilidad de TestRail, contar intentos con error ÷ intentos; (2) activar el log de accesos de Caddy y contar los `400` de `POST /api/cliente/perfiles`. |
@@ -85,7 +85,7 @@ Cada consulta tiene una etiqueta (`[P1-A]`, `[P2-C]`…) que coincide con las ta
 | **Sincronización de stock** | < 500 ms | Consulta **[P2-B]**: milisegundos entre la aprobación del pago y el cambio a `PAGADO`. El stock se descuenta en esa misma transacción (`PedidoPagoService`), por eso el tiempo es mínimo. |
 | **Trazabilidad de estados** | > 98 % | Consulta **[P2-C]**: pedidos pagados con historial de estados y, si fueron enviados, con número de guía. |
 | **Efectividad de filtros** | < 1.5 s | Artillery contra `GET /api/cliente/catalogo?...` con filtros. Rápido: pestaña Network al filtrar en *Explorar*. |
-| **Precisión de alertas de reabastecimiento** | > 99 % | Consulta **[P2-D]**: de las tallas agotadas con mínimo definido, cuántas tuvieron alerta antes. Respaldo: log `Alerta de reabastecimiento ... emitida` y la pantalla de alertas del vendedor. |
+| **Precisión de alertas de reabastecimiento** | > 99 % | Consulta **[P2-D]**: de las variantes agotadas con mínimo definido (`prenda + talla + color`), cuántas tuvieron alerta antes. Stock y alertas corresponden a esa combinación; una talla con dos colores cuenta como dos variantes. Respaldo: log `Alerta de reabastecimiento ... emitida` y la pantalla de alertas del vendedor. |
 | **Entrega de notificaciones** | > 98 % | Enviadas: carpeta **Enviados** del Gmail de `MAIL_USER`. Fallidas: `docker compose logs backend \| grep -c "No fue posible enviar"`. % = (enviadas − fallidas) ÷ enviadas. |
 | **Disponibilidad de recursos multimedia** | > 99 % | Comando de la sección *Imágenes* (abajo): intenta abrir cada imagen de S3. % = respuestas `200` ÷ total. Respaldo: S3 → bucket → carpeta `catalogo/` con el número de objetos. |
 | **Carga simultánea** | ≥ 99 % con 100 usuarios | Artillery con 100 usuarios virtuales sobre el catálogo: `http.codes.200` ÷ `http.requests` y `vusers.failed = 0`. |

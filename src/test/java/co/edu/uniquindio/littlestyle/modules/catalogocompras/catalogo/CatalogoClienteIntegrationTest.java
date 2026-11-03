@@ -10,6 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaMultipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -51,8 +52,7 @@ class CatalogoClienteIntegrationTest {
 
     // Helper: crea la prenda de prueba como vendedor y devuelve su id
     private int crearPrenda(String token) throws Exception {
-        String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", token)
-                        .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
+        String json = mockMvc.perform(prendaMultipart(PRENDA).header("Authorization", token))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(json, "$.id");

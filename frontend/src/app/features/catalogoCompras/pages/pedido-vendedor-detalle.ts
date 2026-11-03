@@ -5,6 +5,7 @@ import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
 import { formatearPrecio } from '../models/prenda-opciones';
+import { ETIQUETAS_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
 import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 
@@ -30,6 +31,8 @@ export class PedidoVendedorDetallePage implements OnInit {
 
   protected readonly estadoDe = (estado: DespachoVendedor['estado']) => ETIQUETAS_ESTADO[estado];
   protected readonly precio = (valor: number) => formatearPrecio(valor);
+  protected readonly colorDe = (color: NonNullable<DespachoVendedor['items'][number]['color']>) =>
+    ETIQUETAS_COLORES[color];
   protected readonly totalPropio = () =>
     (this.despacho()?.items ?? []).reduce((total, item) => total + item.subtotal, 0);
   protected readonly fechaActualizacion = () => {

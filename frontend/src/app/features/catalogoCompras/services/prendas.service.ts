@@ -32,12 +32,16 @@ export class PrendasService {
   }
 
   /**
-   * Crea una prenda con los datos proporcionados.
+   * Crea una prenda junto con sus fotos en una sola petición multipart (partes `prenda` y `archivos`).
    * @param request Datos del producto.
+   * @param archivos Fotos de la prenda (mínimo una).
    * @returns Flujo con la prenda creada.
    */
-  crear(request: PrendaRequest): Observable<Prenda> {
-    return this.http.post<Prenda>(this.baseUrl, request);
+  crear(request: PrendaRequest, archivos: File[]): Observable<Prenda> {
+    const datos = new FormData();
+    datos.append('prenda', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+    archivos.forEach((archivo) => datos.append('archivos', archivo, archivo.name));
+    return this.http.post<Prenda>(this.baseUrl, datos);
   }
 
   /**

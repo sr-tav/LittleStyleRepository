@@ -319,6 +319,21 @@ class AuthServiceTest {
         }
 
         @Test
+        void desactivarUnVendedorPublicaElEventoQueBorraSuCatalogoYLimpiaLaTienda() {
+            Usuario vendedor = usuario(12L, "tienda@correo.com", Rol.VENDEDOR, EstadoUsuario.ACTIVO);
+            vendedor.setNombreTienda("Tienda Sol");
+            when(usuarioRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(vendedor));
+            when(passwordEncoder.encode(any())).thenReturn("hash");
+            when(usuarioRepository.save(any(Usuario.class))).thenAnswer(i -> i.getArgument(0));
+
+            authService.desactivarCuenta(12L);
+
+            verify(eventPublisher).publishEvent(new CuentaEliminadaEvent(12L));
+            assertThat(vendedor.getNombreTienda()).isNull();
+            assertThat(vendedor.getEstado()).isEqualTo(EstadoUsuario.ELIMINADO);
+        }
+
+        @Test
         void impideEliminarLaCuentaAdministradora() {
             Usuario administrador = usuario(9L, "admin@correo.com", Rol.ADMINISTRADOR, EstadoUsuario.ACTIVO);
             when(usuarioRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(administrador));

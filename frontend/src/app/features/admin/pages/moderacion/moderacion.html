@@ -176,15 +176,42 @@
 
       <div class="detalle-info">
         <section class="detalle-bloque">
-          <h3>Información general</h3>
-          <dl class="detalle-datos">
-            <div><dt>Categoría</dt><dd>{{ d.categoria }}</dd></div>
-            <div><dt>Género</dt><dd>{{ d.genero ?? '—' }}</dd></div>
-            <div><dt>Marca</dt><dd>{{ d.marca ?? '—' }}</dd></div>
-            <div><dt>Estampado</dt><dd>{{ d.estampado ?? '—' }}</dd></div>
-            <div><dt>Precio</dt><dd class="dato-precio">{{ precio(d.precio) }}</dd></div>
-            <div><dt>Cuidado</dt><dd>{{ d.instruccionesCuidado ?? '—' }}</dd></div>
-          </dl>
+          <h3>Existencias por variante</h3>
+          <p id="ayuda-variantes">
+            Cada fila corresponde a una combinación de talla y color. El stock pertenece
+            únicamente a esa variante; aprobar, desactivar o restaurar afecta a toda la prenda.
+          </p>
+
+          <div
+            class="detalle-tabla-wrap"
+            role="region"
+            aria-label="Existencias por variante"
+            tabindex="0"
+          >
+            <table class="detalle-tabla" aria-describedby="ayuda-variantes">
+              <caption>Stock para cada combinación de talla y color</caption>
+              <thead>
+              <tr>
+                <th scope="col">Talla</th>
+                <th scope="col">Color</th>
+                <th scope="col">Stock de la variante</th>
+                <th scope="col">Estatura</th>
+                <th scope="col">Peso</th>
+              </tr>
+              </thead>
+              <tbody>
+                @for (t of d.tallas; track t.talla + '-' + (t.color ?? 'sin-color')) {
+                  <tr>
+                    <td>{{ t.talla }}</td>
+                    <td>{{ (t.color | colorEtiqueta) || '—' }}</td>
+                    <td>{{ t.stock }}</td>
+                    <td>{{ t.estaturaMinCm }}–{{ t.estaturaMaxCm }} cm</td>
+                    <td>{{ t.pesoMinKg }}–{{ t.pesoMaxKg }} kg</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section class="detalle-bloque">
@@ -209,30 +236,6 @@
               <li>{{ m.material }} · {{ m.porcentaje }}%</li>
             }
           </ul>
-        </section>
-
-        <section class="detalle-bloque">
-          <h3>Tallas</h3>
-          <table class="detalle-tabla">
-            <thead>
-            <tr>
-              <th scope="col">Talla</th>
-              <th scope="col">Stock</th>
-              <th scope="col">Estatura</th>
-              <th scope="col">Peso</th>
-            </tr>
-            </thead>
-            <tbody>
-              @for (t of d.tallas; track t.talla) {
-                <tr>
-                  <td>{{ t.talla }}</td>
-                  <td>{{ t.stock }}</td>
-                  <td>{{ t.estaturaMinCm }}–{{ t.estaturaMaxCm }} cm</td>
-                  <td>{{ t.pesoMinKg }}–{{ t.pesoMaxKg }} kg</td>
-                </tr>
-              }
-            </tbody>
-          </table>
         </section>
       </div>
     </div>

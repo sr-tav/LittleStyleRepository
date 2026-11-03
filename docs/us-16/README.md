@@ -23,6 +23,9 @@ límite de filas, la plantilla propia de cada reporte y la **medición auditable
 - Registro anónimo de búsquedas del catálogo (incluidas las que no arrojan resultados) para
   alimentar el reporte de búsquedas.
 - Límite de **5 000 filas** por reporte, validado antes de cargar los datos en memoria.
+- El inventario se exporta **por variante**: una fila por combinación `prenda + talla + color`, con
+  el color visible en PDF, XLSX y CSV. La demanda, en cambio, se agrupa por talla porque mide
+  unidades vendidas por tamaño.
 - Medición del RNF-24 con contadores del servidor, telemetría del cliente, endpoint de consulta y
   exposición en Actuator.
 
@@ -109,7 +112,9 @@ Cada formato es un valor de `FormatoReporte` con su `CreadorGeneradorX` y su `Ge
 - `RegistradorBusquedaCatalogo` + `CatalogoClienteService`
   - registran la búsqueda de forma asíncrona y tolerante a fallos, incluso con cero resultados.
 - `ReporteBusquedaRepository` y `ReporteInventarioRepository`
-  - agregaciones de solo lectura; el inventario cuenta antes de leer y pagina a `MAX_FILAS + 1`.
+  - agregaciones de solo lectura; el inventario cuenta y pagina por variante
+    (`prenda + talla + color`) antes de leer, y el repositorio selecciona `t.color` para que el
+    color llegue al PDF, al XLSX y al CSV.
 - `DashboardAnalyticsService.obtenerVentasPorDia`
   - serie diaria reutilizada por el reporte de ventas.
 

@@ -33,6 +33,10 @@ public record PrendaDetalleResponse(
         boolean disponible,
         Set<ColorPreferido> colores,
         Estampado estampado,
+        boolean tintesSinteticos,
+        boolean brochesMetalicos,
+        boolean contieneNiquel,
+        boolean tratamientoFormaldehido,
         List<Componente> composicion,
         List<TallaDisponible> tallas,
         LocalDateTime fechaActualizacion
@@ -46,12 +50,12 @@ public record PrendaDetalleResponse(
     public record TallaDisponible(String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
                                   BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses,
                                   Integer edadMaxMeses, int stockDisponible,
-                                  boolean disponible) {
+                                  boolean disponible, ColorPreferido color) {
         /** Construye la talla a partir de la entidad. */
         static TallaDisponible from(TallaPrenda t) {
             return new TallaDisponible(t.getTalla(), t.getEstaturaMinCm(), t.getEstaturaMaxCm(),
                     t.getPesoMinKg(), t.getPesoMaxKg(), t.getEdadMinMeses(), t.getEdadMaxMeses(),
-                    t.getStock(), t.getStock() > 0);
+                    t.getStock(), t.getStock() > 0, t.getColor());
         }
     }
 
@@ -62,6 +66,10 @@ public record PrendaDetalleResponse(
                 p.getImagenes().stream().map(ImagenPrenda::getUrl).toList(),
                 p.stockTotal() > 0,
                 new TreeSet<>(p.getColores()), p.getEstampado(),
+                p.isTintesSinteticos(),
+                p.isBrochesMetalicos(),
+                p.isContieneNiquel(),
+                p.isTratamientoFormaldehido(),
                 p.getComposicion().stream().map(c -> new Componente(c.getMaterial(), c.getPorcentaje())).toList(),
                 p.getTallas().stream().map(TallaDisponible::from).toList(),
                 p.getFechaActualizacion());

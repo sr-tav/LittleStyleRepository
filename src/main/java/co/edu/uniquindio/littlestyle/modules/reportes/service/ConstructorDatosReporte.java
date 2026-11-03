@@ -9,6 +9,7 @@ import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResp
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.reportes.dto.BusquedaResumenFila;
 import co.edu.uniquindio.littlestyle.modules.reportes.dto.ColumnaReporte;
 import co.edu.uniquindio.littlestyle.modules.reportes.dto.InventarioFila;
@@ -204,19 +205,21 @@ public class ConstructorDatosReporte {
             m.put("tienda", txt(f.tienda()));
             m.put("categoria", legible(f.categoria()));
             m.put("talla", txt(f.talla()));
+            m.put("color", color(f.color()));
             m.put("stock", entero(f.stock()));
             m.put("minimo", f.stockMinimo() == null ? "—" : entero(f.stockMinimo()));
             m.put("nivel", nivel);
             agregar(filas, crudas, m, f.producto(), f.tienda(), legible(f.categoria()), f.talla(),
-                    f.stock(), f.stockMinimo(), nivel);
+                    color(f.color()), f.stock(), f.stockMinimo(), nivel);
         }
         String cat = categoria == null ? "Todas las categorías" : legible(categoria.name());
-        String sub = "Existencias activas por prenda y talla · %s".formatted(cat);
+        String sub = "Existencias activas por prenda, talla y color · %s".formatted(cat);
         TablaReporte tabla = tabla(
                 new ColumnaReporte("Prenda", TipoColumna.TEXTO),
                 new ColumnaReporte("Tienda", TipoColumna.TEXTO),
                 new ColumnaReporte("Categoría", TipoColumna.TEXTO),
                 new ColumnaReporte("Talla", TipoColumna.TEXTO),
+                new ColumnaReporte("Color", TipoColumna.TEXTO),
                 new ColumnaReporte("Stock", TipoColumna.ENTERO),
                 new ColumnaReporte("Mínimo", TipoColumna.ENTERO),
                 new ColumnaReporte("Nivel", TipoColumna.TEXTO), crudas);
@@ -331,6 +334,12 @@ public class ConstructorDatosReporte {
         return new TablaReporte(List.of(c1, c2, c3, c4, c5, c6, c7), filas);
     }
 
+    private static TablaReporte tabla(ColumnaReporte c1, ColumnaReporte c2, ColumnaReporte c3,
+                                      ColumnaReporte c4, ColumnaReporte c5, ColumnaReporte c6,
+                                      ColumnaReporte c7, ColumnaReporte c8, List<List<Object>> filas) {
+        return new TablaReporte(List.of(c1, c2, c3, c4, c5, c6, c7, c8), filas);
+    }
+
     static CategoriaPrenda parsearCategoria(String valor) {
         if (valor == null || valor.isBlank()) {
             return null;
@@ -352,6 +361,11 @@ public class ConstructorDatosReporte {
         }
         String t = codigo.replace('_', ' ').toLowerCase(CO);
         return Character.toUpperCase(t.charAt(0)) + t.substring(1);
+    }
+
+    /** Nombre legible del color de la variante; vacío cuando la talla no declara color. */
+    static String color(ColorPreferido color) {
+        return color == null ? "" : legible(color.name());
     }
 
     /** Formato explícito de pesos colombianos con separador de miles (solo capa PDF). */

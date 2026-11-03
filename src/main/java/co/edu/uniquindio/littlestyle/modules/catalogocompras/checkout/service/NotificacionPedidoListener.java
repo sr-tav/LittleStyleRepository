@@ -196,7 +196,7 @@ public class NotificacionPedidoListener {
                 .flatMap(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda::imagenPrincipal)
                 .map(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda::getUrl)
                 .orElse(null);
-        return new CorreoService.ItemCorreo(linea.getNombre(), linea.getTalla(), linea.getCantidad(),
+        return new CorreoService.ItemCorreo(linea.getNombre(), linea.etiquetaTalla(), linea.getCantidad(),
                 linea.getPrecioUnitario().toPlainString(), linea.getSubtotal().toPlainString(), imagen);
     }
 }

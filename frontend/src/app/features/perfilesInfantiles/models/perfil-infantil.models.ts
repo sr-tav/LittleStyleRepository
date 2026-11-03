@@ -101,3 +101,5 @@ export interface CrearPerfilConMedicionRequest {
   perfil: PerfilRequest;
   medicionInicial: MedicionRequest;
 }
+
+export const MAXIMO_PERFILES_INFANTILES = 10;

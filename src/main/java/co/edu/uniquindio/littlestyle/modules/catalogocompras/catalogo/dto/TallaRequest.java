@@ -1,14 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 /** Fila de la tabla de tallas. Los límites de medidas coinciden con los del perfil infantil (US-06). */
@@ -55,6 +48,17 @@ public record TallaRequest(
         /** Mínimo de esta talla para alertas; nulo si la talla no alerta. */
         @Min(value = 0, message = "El stock mínimo no puede ser negativo")
         @Max(value = 10000, message = "El stock mínimo debe ser máximo 10000")
-        Integer stockMinimo
+        Integer stockMinimo,
+
+        /** Color de la variante. Opcional si la prenda tiene un solo color
+         */
+        ColorPreferido color
 ) {
+        /** Variante sin color explícito: toma el único color de la prenda. */
+        public TallaRequest(String talla, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm, BigDecimal pesoMinKg,
+                            BigDecimal pesoMaxKg, Integer stock, Integer edadMinMeses, Integer edadMaxMeses,
+                            Integer stockMinimo) {
+                this(talla, estaturaMinCm, estaturaMaxCm, pesoMinKg, pesoMaxKg, stock, edadMinMeses, edadMaxMeses,
+                        stockMinimo, null);
+        }
 }

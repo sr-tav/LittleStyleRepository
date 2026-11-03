@@ -120,6 +120,19 @@ class CatalogoClienteControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void filtroDeColorLlegaAlServicio() throws Exception {
+        when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), eq("AZUL"),
+                any(), any(), any(), any(), anyInt(), anyInt(), any()))
+                .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
+
+        mockMvc.perform(get("/api/cliente/catalogo").param("color", "AZUL"))
+                .andExpect(status().isOk());
+
+        verify(catalogo).explorar(any(), any(), any(), any(), any(), any(), any(), any(), eq("AZUL"),
+                any(), any(), any(), any(), anyInt(), anyInt(), any());
+    }
+
     // perfilId + soloMiTalla se mapean a los parámetros correctos sin necesitar ids en la URL
     @Test
     void filtroMiTallaViajaComoPerfilIdSinIdsEnLaUrl() throws Exception {

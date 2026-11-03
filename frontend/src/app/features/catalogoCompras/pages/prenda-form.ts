@@ -14,8 +14,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
-import { OPCIONES_COLORES, OPCIONES_ESTAMPADOS } from '../../perfilesInfantiles/models/perfil-opciones';
 import { ColorPreferido, Estampado } from '../../perfilesInfantiles/models/perfil-infantil.models';
+import { ETIQUETAS_ALERGIAS, OPCIONES_COLORES, OPCIONES_ESTAMPADOS } from '../../perfilesInfantiles/models/perfil-opciones';
 import { LIMITES_PRENDA, OPCIONES_CATEGORIAS, OPCIONES_GENERO, OPCIONES_MATERIALES } from '../models/prenda-opciones';
 import {
   CategoriaPrenda,
@@ -27,6 +27,7 @@ import {
   Talla,
 } from '../models/prenda.models';
 import { PrendasService } from '../services/prendas.service';
+import {pattern} from '@angular/forms/signals';
 
 interface FotoPendiente {
   archivo: File;
@@ -34,6 +35,14 @@ interface FotoPendiente {
 }
 
 const ENTERO = Validators.pattern(/^\d+$/);
+
+/**
+ * El nombre debe incluir al menos una letra: no se aceptan nombres solo numéricos o de símbolos.
+ * @param control Control del nombre.
+ * @returns Error `sinLetras` o `null`.
+ */
+export const nombreConLetra: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
+  /\p{L}/u.test(String(control.value ?? '')) ? null : { sinLetras: true };
 
 /**
  * Valida que los materiales de la composición no se repitan y sumen exactamente 100 %.
@@ -49,16 +58,18 @@ export const composicionValida: ValidatorFn = (control: AbstractControl): Valida
 };
 
 /**
- * Valida que la tabla no contenga nombres de talla repetidos tras normalizarlos.
+ * Valida que no se repita la misma combinación de talla y color.
  * @param control FormArray de tallas del producto.
  * @returns Error `tallaRepetida` si hay un duplicado; si no, `null`.
  */
 export const tallasValidas: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  const nombres = ((control as FormArray).getRawValue() as { talla: string }[])
-    .map((t) => normalizarTalla(t.talla))
-    .filter(Boolean);
-  const repetida = nombres.find((n, i) => nombres.indexOf(n) !== i);
-  return repetida ? { tallaRepetida: repetida } : null;
+  const claves = ((control as FormArray).getRawValue() as { talla: string; color: string | null }[])
+    .filter((t) => normalizarTalla(t.talla))
+    .map((t) => `${normalizarTalla(t.talla)}|${t.color ?? ''}`);
+  const repetida = claves.find((c, i) => claves.indexOf(c) !== i);
+  if (!repetida) return null;
+  const [talla, color] = repetida.split('|');
+  return { tallaRepetida: color ? `${talla} · ${color}` : talla };
 };
 
 /**
@@ -112,6 +123,7 @@ export class PrendaForm implements OnInit, OnDestroy {
   protected readonly colores = OPCIONES_COLORES;
   protected readonly estampados = OPCIONES_ESTAMPADOS;
   protected readonly limites = LIMITES_PRENDA;
+  protected readonly etiquetasAlergia = ETIQUETAS_ALERGIAS;
 
   protected readonly prendaId = signal<number | null>(null);
   protected readonly esNueva = computed(() => this.prendaId() === null);
@@ -120,7 +132,6 @@ export class PrendaForm implements OnInit, OnDestroy {
   protected readonly enviado = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly errorImagenes = signal<string | null>(null);
-  protected readonly coloresSeleccionados = signal<ColorPreferido[]>([]);
   protected readonly imagenes = signal<ImagenPrenda[]>([]);
   protected readonly pendientes = signal<FotoPendiente[]>([]);
   protected readonly confirmandoImagen = signal<number | null>(null);
@@ -137,10 +148,15 @@ export class PrendaForm implements OnInit, OnDestroy {
       Validators.required,
       Validators.minLength(3),
       Validators.maxLength(120),
+      nombreConLetra
     ]),
     categoria: this.fb.nonNullable.control<CategoriaPrenda>('VESTIDOS', Validators.required),
     genero: this.fb.nonNullable.control<GeneroPrenda>('UNISEX', Validators.required),
-    descripcion: this.fb.nonNullable.control('', Validators.maxLength(2000)),
+    descripcion: this.fb.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(2000),
+      Validators.pattern(/\S/),
+    ]),
     // Etiquetado obligatorio (Resolución Andina 2109): lavado, secado, planchado...
     instruccionesCuidado: this.fb.nonNullable.control('', [
       Validators.required,
@@ -172,6 +188,62 @@ export class PrendaForm implements OnInit, OnDestroy {
 
   protected sumaComposicion(): number {
     return this.composicion.getRawValue().reduce((t, f) => t + (Number(f['porcentaje']) || 0), 0);
+  }
+
+  protected tieneVariantesSinColor(): boolean {
+    return this.tallas.getRawValue().some(
+      (fila) => !this.colores.some((opcion) => opcion.valor === fila['color']),
+    );
+  }
+
+  protected seleccionarColorVariante(
+    fila: FormGroup,
+    color: ColorPreferido,
+    selector: HTMLDetailsElement,
+  ): void {
+    const valores = fila.getRawValue();
+    const colorActual = valores['color'] as ColorPreferido | null;
+    const esExistente = valores['existente'] === true;
+    const stockActual = Number(valores['stock'] ?? 0);
+
+    if (esExistente && colorActual !== color && stockActual > 0) {
+      this.errorGeneral.set(
+        'Para cambiar el color de una variante con existencias, primero deja su stock en 0 desde Inventario.',
+      );
+      selector.open = false;
+      return;
+    }
+
+    if (!this.puedeSeleccionarColor(fila, color)) {
+      this.errorGeneral.set(
+        `Ya existe la talla ${normalizarTalla(valores['talla'])} en ese color.`,
+      );
+      selector.open = false;
+      return;
+    }
+
+    fila.get('color')?.setValue(color);
+    fila.get('color')?.markAsTouched();
+    fila.get('color')?.markAsDirty();
+    this.errorGeneral.set(null);
+    selector.open = false;
+  }
+
+  protected puedeSeleccionarColor(fila: FormGroup, color: ColorPreferido): boolean {
+    const valores = fila.getRawValue();
+    const talla = normalizarTalla(valores['talla']);
+
+    if (!talla) return true;
+
+    return !this.tallas.controls.some((otra) => {
+      if (otra === fila) return false;
+
+      const valoresOtra = otra.getRawValue();
+      return (
+        normalizarTalla(valoresOtra['talla']) === talla &&
+        valoresOtra['color'] === color
+      );
+    });
   }
 
   /**
@@ -237,7 +309,6 @@ export class PrendaForm implements OnInit, OnDestroy {
     prenda.composicion.forEach((c) => this.composicion.push(this.componente(c.material, c.porcentaje)));
     this.tallas.clear();
     prenda.tallas.forEach((t) => this.tallas.push(this.talla(t)));
-    this.coloresSeleccionados.set([...prenda.colores]);
     this.imagenes.set(prenda.imagenes);
   }
 
@@ -274,6 +345,7 @@ export class PrendaForm implements OnInit, OnDestroy {
           Validators.maxLength(10),
           Validators.pattern(/^[\p{L}0-9 ./-]+$/u),
         ]),
+        color: this.fb.control<ColorPreferido | null>(existente?.color ?? null),
         estaturaMinCm: this.fb.control<number | null>(existente?.estaturaMinCm ?? null, medida(40, 200)),
         estaturaMaxCm: this.fb.control<number | null>(existente?.estaturaMaxCm ?? null, medida(40, 200)),
         pesoMinKg: this.fb.control<number | null>(existente?.pesoMinKg ?? null, medida(2, 120)),
@@ -355,21 +427,6 @@ export class PrendaForm implements OnInit, OnDestroy {
   }
 
   /**
-   * Alterna un color y limita la selección a diez valores.
-   * @param color Color que se activa o desactiva.
-   * @returns No devuelve un valor.
-   */
-  protected alternarColor(color: ColorPreferido): void {
-    this.coloresSeleccionados.update((actuales) =>
-      actuales.includes(color)
-        ? actuales.filter((c) => c !== color)
-        : actuales.length >= 10
-          ? actuales
-          : [...actuales, color],
-    );
-  }
-
-  /**
    * Valida y prepara fotos JPG, PNG o WEBP según el tamaño y los máximos configurados.
    * @param evento Evento de selección del control de archivos.
    * @returns No devuelve un valor.
@@ -410,6 +467,10 @@ export class PrendaForm implements OnInit, OnDestroy {
    * @returns No devuelve un valor.
    */
   protected quitarPendiente(indice: number): void {
+    if (this.totalFotos() <= 1) {
+      this.errorImagenes.set('La prenda debe tener al menos una foto. Agrega otra antes de quitar esta.');
+      return;
+    }
     const foto = this.pendientes()[indice];
     URL.revokeObjectURL(foto.vistaPrevia);
     this.pendientes.update((actuales) => actuales.filter((_, i) => i !== indice));
@@ -442,6 +503,10 @@ export class PrendaForm implements OnInit, OnDestroy {
    * @returns No devuelve un valor.
    */
   protected eliminarImagen(imagen: ImagenPrenda): void {
+    if (this.totalFotos() <= 1) {
+      this.errorImagenes.set('La prenda debe tener al menos una foto. Agrega otra antes de quitar esta.');
+      return;
+    }
     const id = this.prendaId();
     if (id === null || this.procesandoImagen()) return;
     this.procesandoImagen.set(true);
@@ -473,24 +538,41 @@ export class PrendaForm implements OnInit, OnDestroy {
    * @see UI-20
    */
   protected guardar(): void {
-    this.enviado.set(true);
-    this.errorGeneral.set(null);
-    if (this.guardando()) return;
-    if (this.form.invalid) {
+    const filas = this.tallas.getRawValue();
+    const colores = this.coloresDeVariantes();
+    const sinColor = colores.length === 0;
+    const filaSinColor = filas.some(
+      (fila) => !this.colores.some((opcion) => opcion.valor === fila['color']),
+    );
+    const sinFotos = this.totalFotos() === 0;
+
+    if (this.form.invalid || sinColor || filaSinColor || sinFotos) {
       this.form.markAllAsTouched();
-      this.errorGeneral.set('Revisa los campos marcados antes de guardar.');
+      if (sinFotos) this.errorImagenes.set('Agrega al menos una foto de la prenda.');
+      this.errorGeneral.set(
+        sinColor
+          ? 'Asigna al menos un color en Inventario.'
+          : filaSinColor
+            ? 'Asigna un color a cada variante desde Inventario.'
+            : 'Revisa los campos marcados antes de guardar.',
+      );
       return;
     }
     this.guardando.set(true);
     const id = this.prendaId();
     const request = this.construirRequest();
-    const operacion = id === null ? this.prendasService.crear(request) : this.prendasService.actualizar(id, request);
+    const archivos = this.pendientes().map((p) => p.archivo);
+    const operacion =
+      id === null ? this.prendasService.crear(request, archivos) : this.prendasService.actualizar(id, request);
     operacion.subscribe({
       next: (prenda) => {
         const eraNueva = id === null;
-        if (this.pendientes().length) {
-          this.subirPendientes(prenda, eraNueva);
+        if (!eraNueva && this.pendientes().length) {
+          this.subirPendientes(prenda, false);
         } else {
+          // En el alta las fotos ya viajaron con la prenda
+          this.pendientes().forEach((p) => URL.revokeObjectURL(p.vistaPrevia));
+          this.pendientes.set([]);
           this.finalizar(eraNueva);
         }
       },
@@ -585,11 +667,11 @@ export class PrendaForm implements OnInit, OnDestroy {
       nombre: v.nombre.trim(),
       categoria: v.categoria,
       genero: v.genero,
-      descripcion: texto(v.descripcion),
+      descripcion: v.descripcion.trim(),
       instruccionesCuidado: v.instruccionesCuidado.trim(),
       marca: texto(v.marca),
       precio: Number(v.precio),
-      colores: this.coloresSeleccionados(),
+      colores: this.coloresDeVariantes(),
       estampado: v.estampado || null,
       tintesSinteticos: v.tintesSinteticos,
       brochesMetalicos: v.brochesMetalicos,
@@ -609,7 +691,25 @@ export class PrendaForm implements OnInit, OnDestroy {
         edadMaxMeses: t['edadMaxMeses'] === null || t['edadMaxMeses'] === '' ? null : Number(t['edadMaxMeses']),
         stock: t['existente'] ? null : Number(t['stock']),
         stockMinimo: t['stockMinimo'] === null || t['stockMinimo'] === '' ? null : Number(t['stockMinimo']),
+        color: t['color'] as ColorPreferido,
       })),
     };
+  }
+
+  protected readonly etiquetaColor = (color: string | null): string =>
+    this.colores.find((opcion) => opcion.valor === color)?.etiqueta ?? '';
+
+  protected readonly muestraColor = (color: string | null): string =>
+    this.colores.find((opcion) => opcion.valor === color)?.muestra ?? '#ffffff';
+
+  private coloresDeVariantes(): ColorPreferido[] {
+    const colores = this.tallas
+      .getRawValue()
+      .map((fila) => fila['color'])
+      .filter((valor): valor is ColorPreferido =>
+        this.colores.some((opcion) => opcion.valor === valor),
+      );
+
+    return [...new Set(colores)];
   }
 }

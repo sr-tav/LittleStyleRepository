@@ -97,6 +97,20 @@ describe('Explorar (US-09)', () => {
     expect(el.textContent).toContain('Pantalón Jogger Azul');
   });
 
+  it('filtra prendas por un color con stock', () => {
+    const { fixture, el } = crear();
+
+    const color = el.querySelectorAll<HTMLSelectElement>('select')[4]!;
+    color.value = 'AZUL';
+    color.dispatchEvent(new Event('change'));
+    http
+      .expectOne((p) => p.url === '/api/cliente/catalogo' && p.params.get('color') === 'AZUL')
+      .flush(pagina([item()]));
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Pantalón Jogger Azul');
+  });
+
   it('muestra estado vacío cuando no hay coincidencias', () => {
     const { fixture, el } = crear();
 
@@ -163,5 +177,31 @@ describe('Explorar (US-09)', () => {
     fixture.detectChanges();
 
     expect(el.textContent).toContain('Pantalón Jogger Azul');
+  });
+
+  it('permite volver a filtrar después de un error del servidor', () => {
+    const { fixture, el } = crear();
+
+    const categoria = el.querySelector<HTMLSelectElement>('select')!;
+    categoria.value = 'VESTIDOS';
+    categoria.dispatchEvent(new Event('change'));
+
+    http
+      .expectOne((p) => p.url === '/api/cliente/catalogo' && p.params.get('categoria') === 'VESTIDOS')
+      .flush({ mensaje: 'Error temporal' }, { status: 500, statusText: 'Error del servidor' });
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Error temporal');
+
+    categoria.value = 'PANTALONES';
+    categoria.dispatchEvent(new Event('change'));
+
+    http
+      .expectOne((p) => p.url === '/api/cliente/catalogo' && p.params.get('categoria') === 'PANTALONES')
+      .flush(pagina([item()]));
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Pantalón Jogger Azul');
+    expect(el.textContent).not.toContain('Error temporal');
   });
 });

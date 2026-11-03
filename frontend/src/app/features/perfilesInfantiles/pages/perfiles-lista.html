@@ -19,12 +19,19 @@
         <a class="btn-ghost btn-inline" routerLink="/cliente" aria-label="Volver al inicio"
           >← Volver al inicio</a
         >
-        <a
-          class="btn-primary btn-inline"
-          routerLink="/cliente/hijos/nuevo"
-          aria-label="Agregar un perfil infantil"
-          >+ Agregar hijo</a
-        >
+        @if (perfiles().length < maximoPerfiles) {
+          <a
+            class="btn-primary btn-inline"
+            routerLink="/cliente/hijos/nuevo"
+            aria-label="Agregar un perfil infantil"
+          >
+            + Agregar hijo
+          </a>
+        } @else {
+          <p class="alert alert-info" role="status">
+            Alcanzaste el máximo de {{ maximoPerfiles }} perfiles infantiles.
+          </p>
+        }
       </div>
     }
   </header>

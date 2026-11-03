@@ -32,6 +32,7 @@ export interface LineaResumenCheckout {
   prendaId: number;
   nombre: string;
   talla: string;
+  color?: string | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;

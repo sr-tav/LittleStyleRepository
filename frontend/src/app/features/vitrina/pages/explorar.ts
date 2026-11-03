@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
@@ -13,6 +13,7 @@ import {
   OPCIONES_MATERIALES,
   formatearPrecio,
 } from '../../catalogoCompras/models/prenda-opciones';
+import { OPCIONES_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { RecomendacionItem } from '../../recomendacion/models/recomendacion.models';
 import { RecomendacionService } from '../../recomendacion/services/recomendacion.service';
@@ -46,6 +47,7 @@ export class Explorar {
   protected readonly categorias = OPCIONES_CATEGORIAS;
   protected readonly generos = OPCIONES_GENERO;
   protected readonly materiales = OPCIONES_MATERIALES;
+  protected readonly colores = OPCIONES_COLORES;
   protected readonly tallas = TALLAS;
   protected readonly ordenes = ORDENES;
 
@@ -55,6 +57,7 @@ export class Explorar {
   protected readonly precioMin = signal('');
   protected readonly precioMax = signal('');
   protected readonly talla = signal('');
+  protected readonly color = signal('');
   protected readonly edadAnos = signal('');
   protected readonly disponible = signal(false);
   protected readonly orden = signal('novedades');
@@ -82,7 +85,18 @@ export class Explorar {
     // (Se suscribe primero: el Subject no repite emisiones anteriores.)
     this.recargar
       .pipe(
-        switchMap(() => this.vitrina.explorar(this.filtrosActuales())),
+        switchMap(() =>
+          this.vitrina.explorar(this.filtrosActuales()).pipe(
+            catchError((err: unknown) => {
+              this.error.set(procesarErrorApi(err));
+              this.items.set([]);
+              this.totalElementos.set(0);
+              this.totalPaginas.set(0);
+              this.cargando.set(false);
+              return EMPTY;
+            }),
+          ),
+        ),
         takeUntilDestroyed(),
       )
       .subscribe({
@@ -90,10 +104,7 @@ export class Explorar {
           this.items.set(res.contenido);
           this.totalElementos.set(res.totalElementos);
           this.totalPaginas.set(res.totalPaginas);
-          this.cargando.set(false);
-        },
-        error: (err: unknown) => {
-          this.error.set(procesarErrorApi(err));
+          this.error.set(null);
           this.cargando.set(false);
         },
       });
@@ -134,6 +145,7 @@ export class Explorar {
     this.precioMin.set('');
     this.precioMax.set('');
     this.talla.set('');
+    this.color.set('');
     this.edadAnos.set('');
     this.disponible.set(false);
     this.orden.set('novedades');
@@ -240,6 +252,7 @@ export class Explorar {
       disponible: this.disponible() || undefined,
       material: this.material() || undefined,
       talla: this.talla() || undefined,
+      color: this.color() || undefined,
       edadMeses: Number.isNaN(edad) ? undefined : Math.max(0, Math.round(edad * 12)),
       perfilId: this.soloMiTalla() ? (this.activo.perfil()?.id ?? undefined) : undefined,
       soloMiTalla: this.soloMiTalla() || undefined,

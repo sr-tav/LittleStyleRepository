@@ -12,6 +12,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedi
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.HistorialEstadoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.service.AlertasInventarioService;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -124,5 +125,71 @@ class PedidoPagoServiceTest {
         service.confirmarPago(7L);
 
         verify(eventos).publishEvent(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.REGISTRADO));
+    }
+
+    // Si la prenda ya no existe, el pago no falla con 500: el pedido se cancela y la prenda se reporta
+    // como agotada para que la transacción quede en REEMBOLSO_PENDIENTE.
+    @Test
+    void siLaPrendaYaNoExisteCancelaElPedidoYLoReportaComoAgotado() {
+        Pedido pedido = pedidoPendiente();
+        when(pedidoRepository.bloquearPorId(7L)).thenReturn(Optional.of(pedido));
+        when(prendaRepository.bloquearPorId(20L)).thenReturn(Optional.empty());
+
+        var resultado = service.confirmarPago(7L);
+
+        assertThat(resultado.estado()).isEqualTo(ResultadoConfirmacionPago.Estado.STOCK_INSUFICIENTE);
+        assertThat(resultado.prendasAgotadas()).singleElement().satisfies(linea -> {
+            assertThat(linea.prendaId()).isEqualTo(20L);
+            assertThat(linea.nombre()).isEqualTo("Pantalón");
+            assertThat(linea.cantidadSolicitada()).isEqualTo(2);
+            assertThat(linea.stockDisponible()).isZero();
+        });
+        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.CANCELADO);
+        verify(despachoService, never()).crearDespachosAlPagar(any());
+    }
+
+    private Prenda prendaConVariantes(int stockAzul, int stockRojo) {
+        Prenda prenda = Prenda.builder().id(20L).build();
+        prenda.getTallas().add(TallaPrenda.builder().talla("4").color(ColorPreferido.AZUL).stock(stockAzul).prenda(prenda).build());
+        prenda.getTallas().add(TallaPrenda.builder().talla("4").color(ColorPreferido.ROJO).stock(stockRojo).prenda(prenda).build());
+        return prenda;
+    }
+
+    private Pedido pedidoDeColor(ColorPreferido color) {
+        Pedido pedido = Pedido.builder().id(7L).estado(EstadoPedido.PENDIENTE_PAGO)
+                .fechaCreacion(LocalDateTime.now(clock)).build();
+        pedido.agregar(LineaPedido.builder().prendaId(20L).nombre("Pantalón").talla("4").color(color)
+                .cantidad(2).precioUnitario(new BigDecimal("100")).build());
+        return pedido;
+    }
+
+    @Test
+    void descuentaSoloElStockDeLaVarianteComprada() {
+        Pedido pedido = pedidoDeColor(ColorPreferido.ROJO);
+        Prenda prenda = prendaConVariantes(5, 3);
+        when(pedidoRepository.bloquearPorId(7L)).thenReturn(Optional.of(pedido));
+        when(prendaRepository.bloquearPorId(20L)).thenReturn(Optional.of(prenda));
+
+        var resultado = service.confirmarPago(7L);
+
+        assertThat(resultado.estado()).isEqualTo(ResultadoConfirmacionPago.Estado.CONFIRMADO);
+        assertThat(prenda.buscarVariante("4", ColorPreferido.ROJO).orElseThrow().getStock()).isEqualTo(1);
+        assertThat(prenda.buscarVariante("4", ColorPreferido.AZUL).orElseThrow().getStock()).isEqualTo(5);
+    }
+
+    @Test
+    void cancelaSiElColorCompradoNoAlcanzaAunqueOtroColorTengaStock() {
+        Pedido pedido = pedidoDeColor(ColorPreferido.ROJO);
+        Prenda prenda = prendaConVariantes(50, 1);
+        when(pedidoRepository.bloquearPorId(7L)).thenReturn(Optional.of(pedido));
+        when(prendaRepository.bloquearPorId(20L)).thenReturn(Optional.of(prenda));
+
+        var resultado = service.confirmarPago(7L);
+
+        assertThat(resultado.estado()).isEqualTo(ResultadoConfirmacionPago.Estado.STOCK_INSUFICIENTE);
+        assertThat(resultado.prendasAgotadas()).singleElement()
+                .satisfies(l -> assertThat(l.color()).isEqualTo(ColorPreferido.ROJO));
+        assertThat(pedido.getEstado()).isEqualTo(EstadoPedido.CANCELADO);
+        assertThat(prenda.buscarVariante("4", ColorPreferido.AZUL).orElseThrow().getStock()).isEqualTo(50);
     }
 }

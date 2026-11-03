@@ -8,6 +8,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.dto.Actu
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.dto.AlertaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.dto.InventarioItemResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.repository.AlertaReabastecimientoRepository;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -50,13 +51,57 @@ public class InventarioService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
 
         Set<String> vistas = new HashSet<>();
+        Set<String> origenes = new HashSet<>();
+        Set<String> destinos = new HashSet<>();
+
         for (ActualizarStockRequest.StockTalla cambio : request.tallas()) {
             String nombre = ValidadorPrenda.normalizarTalla(cambio.talla());
-            if (!vistas.add(nombre)) {
-                throw new BusinessException(HttpStatus.BAD_REQUEST, "La talla " + nombre + " está repetida", "tallas");
+
+            if (!origenes.add(nombre + "|" + cambio.color())) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "La variante " + TallaPrenda.etiqueta(nombre, cambio.color()) + " está repetida", "tallas");
             }
-            TallaPrenda talla = prenda.buscarTalla(nombre).orElseThrow(() -> new BusinessException(
-                    HttpStatus.BAD_REQUEST, "La prenda no tiene la talla " + nombre, "tallas"));
+
+            TallaPrenda talla = prenda.buscarVariante(nombre, cambio.color())
+                    .orElseThrow(() -> new BusinessException(
+                            HttpStatus.BAD_REQUEST,
+                            "La prenda no tiene la variante "
+                                    + TallaPrenda.etiqueta(nombre, cambio.color()),
+                            "tallas"));
+
+            ColorPreferido colorDestino = cambio.nuevoColor() == null
+                    ? cambio.color()
+                    : cambio.nuevoColor();
+
+            if (!destinos.add(nombre + "|" + colorDestino)) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "La variante " + TallaPrenda.etiqueta(nombre, colorDestino) + " está repetida",
+                        "tallas");
+            }
+
+            if (cambio.nuevoColor() != null && cambio.color() != null
+                    && cambio.nuevoColor() != cambio.color()) {
+                throw new BusinessException(HttpStatus.CONFLICT,
+                        "Solo puedes asignar color a una variante que todavía no tiene color",
+                        "tallas");
+            }
+
+            if (cambio.color() == null && cambio.nuevoColor() != null) {
+                boolean destinoOcupado = prenda.getTallas().stream()
+                        .anyMatch(otra -> otra != talla
+                                && ValidadorPrenda.normalizarTalla(otra.getTalla()).equals(nombre)
+                                && otra.getColor() == colorDestino);
+
+                if (destinoOcupado) {
+                    throw new BusinessException(HttpStatus.CONFLICT,
+                            "La talla " + nombre + " ya tiene una variante en ese color",
+                            "tallas");
+                }
+
+                talla.setColor(colorDestino);
+                prenda.getColores().add(colorDestino);
+            }
+
             talla.setStock(cambio.stock());
             if (cambio.stockMinimo() != null) {
                 talla.setStockMinimo(cambio.stockMinimo());

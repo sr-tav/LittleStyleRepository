@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.model;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -66,6 +67,10 @@ public class AlertaReabastecimiento {
 
     @Column(name = "fecha_resolucion")
     private LocalDateTime fechaResolucion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ColorPreferido color;
 
     /** Indica si la alerta sigue sin resolver. */
     public boolean estaActiva() {

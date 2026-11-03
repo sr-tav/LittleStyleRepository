@@ -2,11 +2,11 @@
 
 ## 1. Objetivo
 Permitir al vendedor publicar prendas con fotos, tabla de tallas y composición textil,
-controlar su stock por talla y recibir alertas de reabastecimiento al llegar al mínimo.
+controlar su stock por variante (`talla + color`) y recibir alertas de reabastecimiento al llegar al mínimo.
 
 ## 2. Alcance
 Incluye CRUD de prendas (sin borrado físico), carga masiva de fotos a S3, stock por
-talla con mínimo de alerta por talla, alertas de reabastecimiento con historial, adaptador real
+talla + color con mínimo de alerta por variante, alertas de reabastecimiento con historial, adaptador real
 del catálogo para el motor de US-07 y las pantallas UI-18 a UI-22.
 No incluye catálogo público para clientes (US-09), descuento de stock por compras
 (US-10/US-11), envío de correos (ADR-07), categorías administrables (Proceso 3) ni
@@ -16,34 +16,37 @@ métricas de ventas del panel.
 | Tabla | Contenido |
 |---|---|
 | `prendas` | vendedor, nombre, categoría, descripción, `instrucciones_cuidado` (obligatorias por la Resolución Andina 2109), marca, precio, estado (`ACTIVA`/`INACTIVA`), estampado y flags textiles |
-| `prenda_tallas` | talla (única por prenda), estatura mín/máx, peso mín/máx, edad mín/máx en meses, `stock` y `stock_minimo` (nulo = sin alerta) |
+| `prenda_tallas` | variante `talla + color` (única por prenda), estatura mín/máx, peso mín/máx, edad mín/máx en meses, `stock` y `stock_minimo` (nulo = sin alerta) |
 | `prenda_composicion` | material + porcentaje |
-| `prenda_colores` | colores de la prenda |
+| `prenda_colores` | colores declarados de la prenda |
 | `prenda_imagenes` | URL pública, clave del objeto en el almacenamiento, orden (0 = principal) |
-| `alertas_reabastecimiento` | prenda, talla, nivel, stock y mínimo al emitir, fecha de emisión y de resolución |
+| `alertas_reabastecimiento` | prenda, talla, color, nivel, stock y mínimo al emitir, fecha de emisión y de resolución |
 
-El stock y su mínimo se llevan **por talla** (cada talla vende a su ritmo; el total
-ocultaba agotados). UI-19/UI-21 muestran el **total** como referencia y el peor nivel
-entre las tallas con mínimo. Al migrar, el antiguo mínimo del producto se reparte a
-sus tallas (`MinimoPorTallaSchemaMigrator`); en `prod` (`validate`) aplicar el
-equivalente manual: copiar `prendas.stock_minimo` a `prenda_tallas.stock_minimo`
-donde sea nulo y luego retirar la columna.
+El stock y su mínimo se llevan **por variante** `prenda + talla + color`: cada combinación vende a
+su ritmo y tiene su propio mínimo. La unicidad es `uk_prenda_talla_color (prenda_id, talla, color)`;
+dos colores de la misma talla son dos filas con stock independiente. UI-19/UI-21 muestran el
+**total** como referencia y el peor nivel entre las variantes con mínimo. Al migrar, el antiguo
+mínimo del producto se reparte a sus variantes (`MinimoPorTallaSchemaMigrator`); en `prod`
+(`validate`) aplicar el equivalente manual: copiar `prendas.stock_minimo` a
+`prenda_tallas.stock_minimo` donde sea nulo y luego retirar la columna.
 
 ## 4. Reglas
 - **Prenda:** nombre 3–120, precio $100–$10.000.000, máximo 10 colores,
-  1–6 materiales que suman exactamente 100 % sin repetir, 1–15 tallas. Cada talla
-  lleva su mínimo de alerta opcional (0–10000, nulo = sin alerta). Las tallas se
-  normalizan (`" xs "` → `XS`) y no pueden repetirse. Estatura 40–200 cm y peso 2–120 kg
-  (mismos límites que el perfil infantil); mínimo ≤ máximo.
-- **Edición:** cambia datos y rangos; el stock de tallas existentes **no** se toca (se
+  1–6 materiales que suman exactamente 100 % sin repetir, 1–15 tallas y máximo 60
+  combinaciones `talla + color`. Cada variante lleva su mínimo de alerta opcional
+  (0–10000, nulo = sin alerta). Las tallas se normalizan (`" xs "` → `XS`); una misma
+  talla no puede repetirse con el mismo color. Cada color declarado debe tener al menos
+  una talla y una talla debe mantener los mismos rangos en todos sus colores. Estatura
+  40–200 cm y peso 2–120 kg (mismos límites que el perfil infantil); mínimo ≤ máximo.
+- **Edición:** cambia datos y rangos; el stock de variantes existentes **no** se toca (se
   gestiona en el inventario, para que un formulario viejo no pise ventas recientes).
-  Las tallas nuevas toman su stock inicial. No se puede quitar una talla con unidades
+  Las variantes nuevas toman su stock inicial. No se puede quitar una variante con unidades
   (409).
-- **Nivel de stock (por talla):** stock = 0 → `AGOTADO`; stock ≤ mínimo → `STOCK_BAJO`;
-  si no, `DISPONIBLE`. Las tallas sin mínimo nunca alertan. El badge del producto
-  muestra el peor nivel entre sus tallas con mínimo.
-- **Alertas (RNF-14):** se evalúan por talla en la misma transacción que cambia stock,
-  mínimo, tallas o estado (una activa por prenda y talla):
+- **Nivel de stock (por variante):** stock = 0 → `AGOTADO`; stock ≤ mínimo → `STOCK_BAJO`;
+  si no, `DISPONIBLE`. Las variantes sin mínimo nunca alertan. El badge del producto
+  muestra el peor nivel entre sus variantes con mínimo.
+- **Alertas (RNF-14):** se evalúan por variante (`talla + color`) en la misma transacción
+  que cambia stock, mínimo, tallas o estado (una activa por prenda, talla y color):
   - Sin alerta activa y nivel ≠ disponible → se emite y se notifica.
   - Mismo nivel que la activa → no se repite.
   - Bajo → agotado → se resuelve la anterior y se emite otra notificada.
@@ -51,9 +54,9 @@ donde sea nulo y luego retirar la columna.
   - Disponible, sin mínimo o prenda inactiva → se resuelve la activa.
 - **Concurrencia:** stock, edición y estado bloquean la fila de la prenda
   (`PESSIMISTIC_WRITE`) hasta el commit.
-- **Notificación (ADR-14):** `AlertaReabastecimientoEmitida` (con talla) se procesa con
-  `@TransactionalEventListener(AFTER_COMMIT)`: deja una línea `INFO` en el log y envía
-  correo al vendedor con prenda, talla, nivel, stock y mínimo (plantilla
+- **Notificación (ADR-14):** `AlertaReabastecimientoEmitida` (con talla y color) se procesa
+  con `@TransactionalEventListener(AFTER_COMMIT)`: deja una línea `INFO` en el log y envía
+  correo al vendedor con prenda, talla, color, nivel, stock y mínimo (plantilla
   `correo/alerta-stock.html`; sin credenciales SMTP se omite sin error).
 
 ## 5. Imágenes (ADR-10, RNF-25)
@@ -87,9 +90,9 @@ es público (solo lectura, solo en almacenamiento local).
 | POST | `/api/vendedor/prendas/{id}/imagenes` | 201 lista de imágenes / 400 / 413 / 502 |
 | PUT | `/api/vendedor/prendas/{id}/imagenes/{imagenId}/principal` | 200 |
 | DELETE | `/api/vendedor/prendas/{id}/imagenes/{imagenId}` | 204 |
-| GET | `/api/vendedor/inventario` | 200 stock total, peor nivel y stock con mínimo por talla |
-| PUT | `/api/vendedor/inventario/{prendaId}` | 200 / 400 / 404 (`{"tallas":[{"talla","stock","stockMinimo"?}]}`, valores absolutos; mínimo nulo no cambia) |
-| GET | `/api/vendedor/inventario/alertas` | 200 alertas activas con talla, actual, mínimo y diferencia |
+| GET | `/api/vendedor/inventario` | 200 stock total, peor nivel y stock con mínimo por variante (`talla + color`) |
+| PUT | `/api/vendedor/inventario/{prendaId}` | 200 / 400 / 404 (`{"tallas":[{"talla","color","stock","stockMinimo"?}]}`, valores absolutos; mínimo nulo no cambia) |
+| GET | `/api/vendedor/inventario/alertas` | 200 alertas activas con talla, color, actual, mínimo y diferencia |
 
 ## 8. Frontend (`features/catalogoCompras`)
 - **UI-18 `/vendedor`:** KPIs de productos activos y stock bajo, accesos y vista previa
@@ -101,8 +104,9 @@ es público (solo lectura, solo en almacenamiento local).
   fotos se suben al guardar. Si la prenda se guarda pero las fotos fallan, pasa a modo
   edición con las fotos pendientes y botón de reintento.
 - **UI-21 `/vendedor/inventario`:** edición en línea del stock y el mínimo de cada
-  talla, con total en vivo y resumen de mínimos por talla; botón Alertas con contador.
-- **UI-22 `/vendedor/inventario/alertas`:** tarjetas con talla, actual, mínimo,
+  variante, identificada como `talla · color`, con total en vivo y resumen de mínimos;
+  botón Alertas con contador.
+- **UI-22 `/vendedor/inventario/alertas`:** tarjetas con talla, color, actual, mínimo,
   diferencia y acceso directo a la edición de stock.
 
 ## 9. Configuración

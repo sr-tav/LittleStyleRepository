@@ -8,6 +8,7 @@ import {
   ColorPreferido,
   Estampado,
   PerfilInfantil,
+  MAXIMO_PERFILES_INFANTILES,
 } from '../models/perfil-infantil.models';
 import { formatearEdadPerfil } from '../models/edad-perfil';
 import {
@@ -39,7 +40,7 @@ export class PerfilesLista implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly confirmacion = signal<string | null>(null);
   protected readonly modoSeleccion = signal(false);
-
+  protected readonly maximoPerfiles = MAXIMO_PERFILES_INFANTILES;
   /**
    * Lee el modo de selección y carga los perfiles, sincronizando el perfil activo.
    * @returns No devuelve un valor.

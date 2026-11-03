@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 
 /** Persistencia de las vistas de prendas; las lecturas analíticas viven en {@link DashboardAnalyticsRepository}. */
 public interface ProductoVistaRepository extends JpaRepository<ProductoVista, Long> {
@@ -17,4 +18,9 @@ public interface ProductoVistaRepository extends JpaRepository<ProductoVista, Lo
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from ProductoVista v where v.fecha < :limite")
     int eliminarAnterioresA(@Param("limite") LocalDateTime limite);
+
+    /** Borra todas las vistas registradas de las prendas indicadas. */
+    @Modifying(flushAutomatically = true)
+    @Query("delete from ProductoVista  v where v.prendaId in :ids")
+    int borrarPorPrendaIds(@Param("ids") Collection<Long> ids);
 }

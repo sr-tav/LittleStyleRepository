@@ -171,20 +171,32 @@ class ImagenPrendaServiceTest {
         verify(almacenamiento).eliminar(subida.getAllValues().getFirst());
     }
 
-    // La imagen se quita de la prenda en BD al instante, pero el objeto del storage solo
-    // se borra cuando la transacción se confirma de verdad
     @Test
     void alEliminarBorraElObjetoSoloDespuesDeConfirmar() {
         prenda.getImagenes().add(ImagenPrenda.builder().id(5L).orden(0).url("u").clave("prendas/10/a.png")
+                .fechaCarga(LocalDateTime.now()).build());
+        prenda.getImagenes().add(ImagenPrenda.builder().id(6L).orden(1).url("u2").clave("prendas/10/b.png")
                 .fechaCarga(LocalDateTime.now()).build());
         when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
 
         service.eliminar(10L, 5L);
 
-        assertThat(prenda.getImagenes()).isEmpty();
+        assertThat(prenda.getImagenes()).hasSize(1);
         verify(almacenamiento, never()).eliminar(anyString());
         finalizarTransaccion(TransactionSynchronization.STATUS_COMMITTED);
         verify(almacenamiento).eliminar(eq("prendas/10/a.png"));
+    }
+
+    @Test
+    void noPermiteEliminarLaUltimaFoto() {
+        prenda.getImagenes().add(ImagenPrenda.builder().id(5L).orden(0).url("u").clave("prendas/10/a.png")
+                .fechaCarga(LocalDateTime.now()).build());
+        when(prendaRepository.bloquearPropia(10L, VENDEDOR_ID)).thenReturn(Optional.of(prenda));
+
+        assertThatThrownBy(() -> service.eliminar(10L, 5L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("al menos una foto");
+        assertThat(prenda.getImagenes()).hasSize(1);
     }
 
     // Marcar una imagen como principal la reordena al frente y reasigna los órdenes

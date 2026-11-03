@@ -172,7 +172,10 @@
             <li>
               <div>
                 <strong>{{ item.nombre }}</strong>
-                <p>Talla {{ item.talla }} · Cantidad {{ item.cantidad }}</p>
+                <p>
+                  @if (item.color) { Color {{ item.color | colorEtiqueta }} · }
+                  Talla {{ item.talla }} · Cantidad {{ item.cantidad }}
+                </p>
                 <p>{{ precio(item.precioUnitario) }} c/u</p>
               </div>
               <strong>{{ precio(item.subtotal) }}</strong>

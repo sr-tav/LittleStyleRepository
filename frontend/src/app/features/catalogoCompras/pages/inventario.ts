@@ -6,13 +6,24 @@ import { procesarErrorApi } from '../../auth/auth.validators';
 import { NivelStockBadge } from '../components/nivel-stock-badge';
 import { PrendaMiniatura } from '../components/prenda-miniatura';
 import { ETIQUETAS_CATEGORIAS, ETIQUETAS_NIVEL } from '../models/prenda-opciones';
+import { ETIQUETAS_COLORES, OPCIONES_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
+import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
 import { InventarioItem } from '../models/prenda.models';
 import { InventarioService } from '../services/inventario.service';
 
 interface Edicion {
   prendaId: number;
-  tallas: { talla: string; stock: number | null; stockMinimo: number | null }[];
+  tallas: VarianteEdicion[];
 }
+
+interface VarianteEdicion {
+  talla: string;
+  color?: ColorPreferido | null;
+  nuevoColor?: ColorPreferido | null;
+  stock: number | null;
+  stockMinimo: number | null;
+}
+
 
 /**
  * UI-21: Inventario del vendedor con actualización de stock por talla en línea.
@@ -36,12 +47,104 @@ export class Inventario implements OnInit {
   protected readonly errorEdicion = signal<string | null>(null);
   /** Aviso de lo que pasó con las alertas tras guardar (generada, resuelta o sin cambios). */
   protected readonly mensaje = signal<{ tipo: 'exito' | 'alerta' | 'error'; texto: string } | null>(null);
-
+  protected readonly colorFiltro = signal<Record<number, string | undefined>>({});
   protected readonly categoria = (item: InventarioItem) => ETIQUETAS_CATEGORIAS[item.categoria];
+  protected readonly etiquetaVariante = (t: { talla: string; color?: ColorPreferido | null }) =>
+    `Talla ${t.talla}${t.color ? ` · ${ETIQUETAS_COLORES[t.color]}` : ''}`;
   protected readonly minimosDe = (item: InventarioItem) => {
-    const valores = item.tallas.map((t) => t.stockMinimo).filter((v): v is number => v != null);
+    const valores = item.tallas
+      .filter((t) => t.stockMinimo != null)
+      .map((t) => `${this.etiquetaVariante(t)}: ${t.stockMinimo}`);
     return valores.length === 0 ? '—' : valores.join(' · ');
   };
+  protected readonly etiquetaColor = (color: ColorPreferido | null | undefined): string =>
+    color ? ETIQUETAS_COLORES[color] : 'Sin color';
+
+  protected readonly muestraColor = (color: ColorPreferido | null | undefined): string =>
+    OPCIONES_COLORES.find((opcion) => opcion.valor === color)?.muestra ?? '#ffffff';
+
+  protected colorVisible(variante: VarianteEdicion): ColorPreferido | null {
+    return variante.nuevoColor ?? variante.color ?? null;
+  }
+
+  protected puedeAsignarColor(
+    item: InventarioItem,
+    variante: VarianteEdicion,
+    color: ColorPreferido,
+  ): boolean {
+    const edicion = this.edicion();
+    if (!edicion || edicion.prendaId !== item.prendaId) return false;
+
+    return !edicion.tallas.some(
+      (otra) =>
+        otra !== variante &&
+        otra.talla === variante.talla &&
+        this.colorVisible(otra) === color,
+    );
+  }
+
+  protected asignarColor(
+    item: InventarioItem,
+    variante: VarianteEdicion,
+    color: ColorPreferido,
+  ): void {
+    if (!this.puedeAsignarColor(item, variante, color)) {
+      this.errorEdicion.set('Ya existe una variante de esa talla en el color seleccionado.');
+      return;
+    }
+
+    this.edicion.update((edicion) =>
+      edicion && edicion.prendaId === item.prendaId
+        ? {
+          ...edicion,
+          tallas: edicion.tallas.map((actual) =>
+            actual === variante ? { ...actual, nuevoColor: color } : actual,
+          ),
+        }
+        : edicion,
+    );
+    this.errorEdicion.set(null);
+  }
+
+  protected readonly coloresOpciones = OPCIONES_COLORES;
+
+  protected coloresDe(item: InventarioItem): ColorPreferido[] {
+    const presentes = new Set(
+      item.tallas
+        .map((variante) => variante.color)
+        .filter((color): color is ColorPreferido => color != null),
+    );
+
+    return OPCIONES_COLORES
+      .filter((opcion) => presentes.has(opcion.valor))
+      .map((opcion) => opcion.valor);
+  }
+
+  protected variantesVisibles(item: InventarioItem): VarianteEdicion[] {
+    const edicion = this.edicion();
+
+    return edicion?.prendaId === item.prendaId
+      ? edicion.tallas
+      : item.tallas;
+  }
+
+  protected variantesFiltradas(item: InventarioItem): VarianteEdicion[] {
+    const variantes = this.variantesVisibles(item);
+    const color = this.colorFiltro()[item.prendaId];
+
+    return color
+      ? variantes.filter((variante) => this.colorVisible(variante) === color)
+      : variantes;
+  }
+
+  protected filtrarColor(prendaId: number, color: string): void {
+    this.colorFiltro.update((filtros) => ({ ...filtros, [prendaId]: color }));
+  }
+
+  protected muestraColorFiltro(prendaId: number): string | null {
+    const color = this.colorFiltro()[prendaId];
+    return OPCIONES_COLORES.find((opcion) => opcion.valor === color)?.muestra ?? null;
+  }
 
   /**
    * Carga el inventario inicial.
@@ -100,7 +203,7 @@ export class Inventario implements OnInit {
     this.errorEdicion.set(null);
     this.edicion.set({
       prendaId: item.prendaId,
-      tallas: item.tallas.map((t) => ({ ...t })),
+      tallas: item.tallas.map((variante) => ({ ...variante, nuevoColor: null })),
     });
   }
 
@@ -115,9 +218,19 @@ export class Inventario implements OnInit {
    * @param valor Texto introducido en el control.
    * @returns No devuelve un valor.
    */
-  protected cambiarStock(indice: number, valor: string): void {
-    this.edicion.update((e) =>
-      e ? { ...e, tallas: e.tallas.map((t, i) => (i === indice ? { ...t, stock: entero(valor) } : t)) } : e,
+  protected cambiarStock(talla: string, color: ColorPreferido | null | undefined, valor: string): void {
+    const stock = entero(valor);
+    this.edicion.update((edicion) =>
+      edicion
+        ? {
+          ...edicion,
+          tallas: edicion.tallas.map((variante) =>
+            variante.talla === talla && (variante.color ?? null) === (color ?? null)
+              ? { ...variante, stock }
+              : variante,
+          ),
+        }
+        : edicion,
     );
   }
 
@@ -127,10 +240,23 @@ export class Inventario implements OnInit {
    * @param valor Texto introducido en el control.
    * @returns No devuelve un valor.
    */
-  protected cambiarMinimo(indice: number, valor: string): void {
-    const minimo = valor.trim() === '' ? null : entero(valor);
-    this.edicion.update((e) =>
-      e ? { ...e, tallas: e.tallas.map((t, i) => (i === indice ? { ...t, stockMinimo: minimo } : t)) } : e,
+  protected cambiarMinimo(
+    talla: string,
+    color: ColorPreferido | null | undefined,
+    valor: string,
+  ): void {
+    const stockMinimo = valor.trim() === '' ? null : entero(valor);
+    this.edicion.update((edicion) =>
+      edicion
+        ? {
+          ...edicion,
+          tallas: edicion.tallas.map((variante) =>
+            variante.talla === talla && (variante.color ?? null) === (color ?? null)
+              ? { ...variante, stockMinimo }
+              : variante,
+          ),
+        }
+        : edicion,
     );
   }
 
@@ -163,7 +289,13 @@ export class Inventario implements OnInit {
     this.mensaje.set(null);
     this.inventarioService
       .actualizarStock(e.prendaId, {
-        tallas: e.tallas.map((t) => ({ talla: t.talla, stock: t.stock as number, stockMinimo: t.stockMinimo })),
+        tallas: e.tallas.map((variante) => ({
+          talla: variante.talla,
+          color: variante.color ?? null,
+          nuevoColor: variante.nuevoColor ?? null,
+          stock: variante.stock as number,
+          stockMinimo: variante.stockMinimo,
+        })),
       })
       .subscribe({
         next: (actualizado) => {

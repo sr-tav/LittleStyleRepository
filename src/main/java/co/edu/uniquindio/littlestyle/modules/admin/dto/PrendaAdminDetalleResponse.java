@@ -8,6 +8,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Gene
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 
 import java.math.BigDecimal;
@@ -45,7 +46,7 @@ public record PrendaAdminDetalleResponse(
 
     public record TallaResponse(String talla, int stock, BigDecimal estaturaMinCm, BigDecimal estaturaMaxCm,
                                 BigDecimal pesoMinKg, BigDecimal pesoMaxKg, Integer edadMinMeses,
-                                Integer edadMaxMeses, Integer stockMinimo) {
+                                Integer edadMaxMeses, Integer stockMinimo, ColorPreferido color) {
     }
 
     public static PrendaAdminDetalleResponse from(Prenda prenda) {
@@ -58,7 +59,7 @@ public record PrendaAdminDetalleResponse(
         List<TallaResponse> tallas = prenda.getTallas().stream()
                 .map(t -> new TallaResponse(t.getTalla(), t.getStock(), t.getEstaturaMinCm(),
                         t.getEstaturaMaxCm(), t.getPesoMinKg(), t.getPesoMaxKg(),
-                        t.getEdadMinMeses(), t.getEdadMaxMeses(), t.getStockMinimo()))
+                        t.getEdadMinMeses(), t.getEdadMaxMeses(), t.getStockMinimo(), t.getColor()))
                 .toList();
         List<String> imagenes = prenda.getImagenes().stream()
                 .map(i -> i.getUrl())

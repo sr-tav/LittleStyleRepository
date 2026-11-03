@@ -41,7 +41,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     @Query("""
             select u from Usuario u
             where (:rol is null or u.rol = :rol)
-              and (:estado is null or u.estado = :estado)
+              and ((:estado is null and u.estado <> 'ELIMINADO') or u.estado = :estado)
               and (:texto is null or :texto = ''
                    or lower(u.nombre) like lower(concat('%', :texto, '%'))
                    or lower(u.apellido) like lower(concat('%', :texto, '%'))

@@ -17,6 +17,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaResumenCheckoutResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.ValidadorAlergiaCompra;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilResponse;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service.PerfilInfantilService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
@@ -76,10 +77,11 @@ public class CarritoService {
         Carrito carrito = obtenerOBloquearActual();
         Prenda prenda = bloquearPrendaActiva(request.prendaId());
         validarAlergias(prenda, request.perfilInfantilId());
-        TallaPrenda talla = talla(prenda, request.talla());
+        TallaPrenda talla = variante(prenda, request.talla(), request.color());
         ItemCarrito existente = carrito.getItems().stream()
                 .filter(item -> item.getPrendaId().equals(prenda.getId())
-                        && item.getTalla().equalsIgnoreCase(talla.getTalla()))
+                        && item.getTalla().equalsIgnoreCase(talla.getTalla())
+                        && item.getColor() == talla.getColor())
                 .findFirst().orElse(null);
         long cantidadSolicitada = request.cantidad()
                 + (existente == null ? 0L : existente.getCantidad());
@@ -88,6 +90,7 @@ public class CarritoService {
             existente = ItemCarrito.builder()
                     .prendaId(prenda.getId())
                     .talla(talla.getTalla())
+                    .color(talla.getColor())
                     .cantidad(request.cantidad())
                     .tallaSugerida(normalizarSugerida(request.tallaSugerida()))
                     .build();
@@ -113,8 +116,9 @@ public class CarritoService {
         Carrito carrito = obtenerOBloquearActual();
         ItemCarrito item = itemPropio(carrito, itemId);
         Prenda prenda = bloquearPrendaActiva(item.getPrendaId());
-        TallaPrenda talla = talla(prenda, item.getTalla());
+        TallaPrenda talla = variante(prenda, item.getTalla(), item.getColor());
         disponibilidadStockService.validarDisponibilidad(talla.getStock(), request.cantidad());
+        item.setColor(talla.getColor());
         item.setCantidad(request.cantidad());
         carritoRepository.saveAndFlush(carrito);
         return respuesta(carrito.getItems());
@@ -163,13 +167,24 @@ public class CarritoService {
         if (carrito == null) {
             return;
         }
+        Map<Long, Prenda> prendas = new HashMap<>();
+        prendaRepository.findAllById(carrito.getItems().stream()
+                        .map(ItemCarrito::getPrendaId).distinct().toList())
+                .forEach(prenda -> prendas.put(prenda.getId(), prenda));
         Map<ClavePrendaTalla, Integer> cantidades = new HashMap<>();
         comprados.forEach(linea -> cantidades.merge(
-                new ClavePrendaTalla(linea.prendaId(), normalizarTalla(linea.talla())),
+                new ClavePrendaTalla(linea.prendaId(), normalizarTalla(linea.talla()), linea.color()),
                 linea.cantidad(), Math::addExact));
         List<ItemCarrito> quitar = new ArrayList<>();
         carrito.getItems().forEach(item -> {
-            ClavePrendaTalla clave = new ClavePrendaTalla(item.getPrendaId(), normalizarTalla(item.getTalla()));
+            if (item.getColor() == null) {
+                Prenda prenda = prendas.get(item.getPrendaId());
+                if (prenda != null) {
+                    prenda.buscarVariante(item.getTalla(), null)
+                            .ifPresent(variante -> item.setColor(variante.getColor()));
+                }
+            }
+            ClavePrendaTalla clave = new ClavePrendaTalla(item.getPrendaId(), normalizarTalla(item.getTalla()), item.getColor());
             int comprada = cantidades.getOrDefault(clave, 0);
             if (comprada == 0) {
                 return;
@@ -209,11 +224,15 @@ public class CarritoService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
     }
 
-    /** Talla de la prenda con ese nombre; 400 si la prenda no la ofrece. */
-    private TallaPrenda talla(Prenda prenda, String nombre) {
-        return prenda.buscarTalla(nombre.trim())
-                .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
-                        "La talla no está disponible para esta prenda", "talla"));
+    private TallaPrenda variante(Prenda prenda, String nombre, ColorPreferido color) {
+        return prenda.buscarVariante(nombre.trim(), color).orElseThrow(() -> {
+            boolean variasColores = color == null && prenda.getTallas().stream()
+                    .filter(t -> t.getTalla().equalsIgnoreCase(nombre.trim())).count() > 1;
+            return variasColores
+                    ? new BusinessException(HttpStatus.BAD_REQUEST, "Elige un color para esta talla", "color")
+                    : new BusinessException(HttpStatus.BAD_REQUEST,
+                    "La combinación de talla y color no está disponible para esta prenda", "talla");
+        });
     }
 
     /**
@@ -233,7 +252,7 @@ public class CarritoService {
                 throw new BusinessException(HttpStatus.NOT_FOUND,
                         "Una prenda del carrito ya no se encuentra disponible");
             }
-            TallaPrenda tallaActual = prenda.buscarTalla(item.getTalla()).orElse(null);
+            TallaPrenda tallaActual = prenda.buscarVariante(item.getTalla(), item.getColor()).orElse(null);
             // Una prenda SIN_REVISAR sigue publicada: solo la desactivacion administrativa la oculta.
             boolean publicable = prenda.getEstado() == EstadoPrenda.ACTIVA
                     && prenda.getEstadoModeracion() != EstadoModeracion.DESACTIVADA
@@ -245,10 +264,9 @@ public class CarritoService {
             BigDecimal subtotalLinea = prenda.getPrecio().multiply(BigDecimal.valueOf(item.getCantidad()));
             subtotal = subtotal.add(subtotalLinea);
             cantidad = Math.addExact(cantidad, item.getCantidad());
-            lineas.add(new ItemCarritoResponse(item.getId(), prenda.getId(), prenda.getNombre(),
-                    prenda.imagenPrincipal().map(imagen -> imagen.getUrl()).orElse(null),
+            lineas.add(new ItemCarritoResponse(item.getId(), prenda.getId(), prenda.getNombre(),prenda.imagenPrincipal().map(imagen -> imagen.getUrl()).orElse(null),
                     item.getTalla(), item.getCantidad(), prenda.getPrecio(), subtotalLinea,
-                    disponible, item.getTallaSugerida()));
+                    disponible, item.getTallaSugerida(), tallaActual == null ? item.getColor() : tallaActual.getColor()));
         }
         BigDecimal costoEnvio = items.isEmpty() ? BigDecimal.ZERO : null;
         BigDecimal total = items.isEmpty() ? BigDecimal.ZERO : null;
@@ -307,7 +325,5 @@ public class CarritoService {
         return talla.trim().toUpperCase(Locale.ROOT);
     }
 
-    /** Identifica una línea por prenda y talla. */
-    private record ClavePrendaTalla(Long prendaId, String talla) {
-    }
+    private record ClavePrendaTalla(Long prendaId, String talla, ColorPreferido color) { }
 }

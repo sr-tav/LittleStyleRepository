@@ -3,38 +3,13 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Prenda del catálogo de un vendedor, con su composición textil, atributos para alergias, colores,
@@ -100,7 +75,7 @@ public class Prenda {
     /**
      * Moderacion del administrador (US-14). Queda SIN {@code nullable=false} a proposito: {@code ddl-auto=update}
      * agregaria la columna NOT NULL sin default y fallaria en bases con datos; la garantia de valor va por el
-     * hook {@link #moderacionInicial()} y el backfill del {@link EstadoModeracionSchemaMigrator}.
+     * hook {@link #moderacionInicial()}.
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_moderacion", length = 20)
@@ -168,9 +143,9 @@ public class Prenda {
         return tallas.stream().mapToInt(TallaPrenda::getStock).sum();
     }
 
-    /** Talla con ese nombre, sin distinguir mayúsculas. */
+    /** Talla sin color (compatibilidad): equivale a {@code buscarVariante(talla, null)}. */
     public Optional<TallaPrenda> buscarTalla(String talla) {
-        return tallas.stream().filter(t -> t.getTalla().equalsIgnoreCase(talla)).findFirst();
+        return buscarVariante(talla, null);
     }
 
     /** Primera imagen según su orden, que es la principal. */
@@ -186,5 +161,19 @@ public class Prenda {
         if (estadoModeracion == null) {
             estadoModeracion = EstadoModeracion.SIN_REVISAR;
         }
+    }
+
+    /**
+     * Variante exacta (talla y color). Sin color pedido devuelve la única variante de esa talla; si hay varias
+     * no elige por el cliente y devuelve vacío.
+     */
+    public Optional<TallaPrenda> buscarVariante(String talla, ColorPreferido color) {
+        String nombre = talla.trim();
+        List<TallaPrenda> candidatas = tallas.stream()
+                .filter(t -> t.getTalla().equalsIgnoreCase(nombre)).toList();
+        if (color != null) {
+            return candidatas.stream().filter(t -> t.getColor() == color).findFirst();
+        }
+        return candidatas.size() == 1 ? Optional.of(candidatas.getFirst()) : Optional.empty();
     }
 }

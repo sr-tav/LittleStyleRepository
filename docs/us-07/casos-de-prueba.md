@@ -26,8 +26,7 @@
 | CP-US07-17 | RNF-29 | Sin perfilId o con tipo inválido responde 400, no 500 | GET sin `perfilId` / `perfilId=abc` | 400 con campo señalado | Controller | `RecomendacionControllerTest.sinPerfilIdDevuelve400EnVezDe500`, `perfilIdNoNumericoDevuelve400EnVezDe500` |
 | CP-US07-18 | RNF-02 | "Solo mi talla" filtra en el servidor con ids sin tope | Perfil 3, catálogo paginado | `GET /ids` + `GET /catalogo?ids=` pagina consistente | Front auto | `recomendacion.service.spec`, `explorar.spec` (US-07) |
 | CP-US07-19 | RNF-11 | Preferencias van en afinidad aparte, sin contaminar puntaje; estrategia configurable | Perfil con preferencias; prenda advertida a juego; config por categoría | Igual puntaje, afinidad decide; advertida queda debajo aunque tenga afinidad 10; categoría usa su estrategia | Unitaria | `MotorRecomendacionServiceTest.preferenciasDeColorYEstampadoSubenElPuntaje`, `afinidadNuncaCompensaUnaAdvertencia`, `estrategiaSeConfiguraPorCategoria` |
-| CP-US07-20 | RNF-11 | La talla sugerida viaja del carrito al pedido | Agregar con sugerida "4" | `talla_sugerida` persistida en ítem y línea | Unitaria | `CheckoutFacadeTest.conservaLaTallaSugeridaDelMotorParaMedirAdopcionRNF11` |
-
+| CP-US07-20 | RNF-11 | La talla sugerida y el color comprado se conservan para fines distintos | Agregar al carrito una variante con talla sugerida `4` y color elegido `AZUL`. | `talla_sugerida` y `color` se guardan en la línea del pedido; la métrica de adopción compara la talla sugerida con la comprada, no el color. | Unitaria | `CheckoutFacadeTest.conservaLaTallaSugeridaDelMotorParaMedirAdopcionRNF11` |
 ## 2. Environment Postman
 baseUrl = http://localhost:8080 
 

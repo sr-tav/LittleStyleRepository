@@ -1,31 +1,22 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service;
 
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.PrendaResponse;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ComponenteComposicion;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.GeneroPrenda;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoModeracion;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
-import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.*;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.*;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.service.AlertasInventarioService;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Alta y edición de prendas del vendedor autenticado. Una prenda de otro vendedor se trata como
@@ -42,6 +33,7 @@ public class PrendaService {
     private final UsuarioRepository usuarioRepository;
     private final ValidadorPrenda validador;
     private final AlertasInventarioService alertas;
+    private final ImagenPrendaService imagenService;
 
     /** Prendas del vendedor; la búsqueda compara nombre y categoría sin tildes ni mayúsculas. */
     @Transactional(readOnly = true)
@@ -61,10 +53,16 @@ public class PrendaService {
         return PrendaResponse.from(propia(id));
     }
 
-    /** Crea una prenda publicada para el vendedor autenticado y evalúa sus alertas de stock. */
+    /**
+     * Crea una prenda publicada para el vendedor autenticado con sus fotos (al menos una) en una sola
+     * transacción: si algo falla no queda ni la prenda ni los archivos.
+     */
     @Transactional
-    public PrendaResponse crear(PrendaRequest request) {
+    public PrendaResponse crear(PrendaRequest request, List<MultipartFile> archivos) {
         validador.validar(request);
+        if (archivos == null || archivos.stream().allMatch(a -> a == null || a.isEmpty())) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Agrega al menos una foto de la prenda", "archivos");
+        }
         LocalDateTime ahora = LocalDateTime.now();
         Prenda prenda = Prenda.builder()
                 .vendedor(usuarioRepository.getReferenceById(vendedorActual()))
@@ -73,8 +71,9 @@ public class PrendaService {
                 .fechaActualizacion(ahora)
                 .build();
         aplicarDatos(prenda, request);
-        request.tallas().forEach(t -> prenda.getTallas().add(nuevaTalla(prenda, t)));
+        request.tallas().forEach(t -> prenda.getTallas().add(nuevaTalla(prenda, t, request)));
         prendaRepository.save(prenda);
+        imagenService.agregar(prenda, archivos);
         alertas.evaluar(prenda);
         return PrendaResponse.from(prenda);
     }
@@ -89,7 +88,7 @@ public class PrendaService {
         Prenda prenda = propiaBloqueada(id);
         validarQueNoEsteDesactivadaPorModeracion(prenda);
         aplicarDatos(prenda, request);
-        sincronizarTallas(prenda, request.tallas());
+        sincronizarTallas(prenda, request);
         prenda.setFechaActualizacion(LocalDateTime.now());
         alertas.evaluar(prenda);
         return PrendaResponse.from(prenda);
@@ -100,6 +99,10 @@ public class PrendaService {
     public PrendaResponse cambiarEstado(Long id, EstadoPrenda estado) {
         Prenda prenda = propiaBloqueada(id);
         validarQueNoEsteDesactivadaPorModeracion(prenda);
+        if (estado == EstadoPrenda.ACTIVA && prenda.getImagenes().isEmpty()) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "Agrega al menos una foto antes de publicar la prenda", "imagenes");
+        }
         prenda.setEstado(estado);
         prenda.setFechaActualizacion(LocalDateTime.now());
         alertas.evaluar(prenda);
@@ -110,7 +113,7 @@ public class PrendaService {
     private void aplicarDatos(Prenda prenda, PrendaRequest r) {
         prenda.setNombre(r.nombre().trim());
         prenda.setCategoria(r.categoria());
-        prenda.setDescripcion(textoOpcional(r.descripcion()));
+        prenda.setDescripcion(r.descripcion().trim());
         prenda.setInstruccionesCuidado(r.instruccionesCuidado().trim());
         prenda.setMarca(textoOpcional(r.marca()));
         prenda.setPrecio(r.precio());
@@ -130,19 +133,30 @@ public class PrendaService {
     }
 
     /**
-     * Actualiza los rangos de las tallas que siguen, agrega las nuevas y quita las que ya no vienen; no
-     * permite quitar una talla que todavía tiene stock.
+     * Actualiza los rangos de las variantes que siguen, agrega las nuevas y quita las que ya no vienen; no
+     * permite quitar una variante con stock. Una fila anterior a las variantes (sin color) adopta el primer
+     * color pedido para su talla y conserva su stock.
      */
-    private void sincronizarTallas(Prenda prenda, List<TallaRequest> solicitadas) {
-        Map<String, TallaRequest> porNombre = new LinkedHashMap<>();
-        solicitadas.forEach(t -> porNombre.put(ValidadorPrenda.normalizarTalla(t.talla()), t));
+    private void sincronizarTallas(Prenda prenda, PrendaRequest request) {
+        Map<String, TallaRequest> porClave = new LinkedHashMap<>();
+        request.tallas().forEach(t -> porClave.put(clave(t.talla(), ValidadorPrenda.colorDe(t, request)), t));
+
+        for (TallaPrenda legado : prenda.getTallas()) {
+            if (legado.getColor() != null) continue;
+            porClave.values().stream()
+                    .filter(t -> ValidadorPrenda.normalizarTalla(t.talla()).equals(legado.getTalla()))
+                    .map(t -> ValidadorPrenda.colorDe(t, request))
+                    .filter(c -> prenda.buscarVariante(legado.getTalla(), c).isEmpty())
+                    .findFirst()
+                    .ifPresent(legado::setColor);
+        }
 
         for (Iterator<TallaPrenda> it = prenda.getTallas().iterator(); it.hasNext(); ) {
             TallaPrenda existente = it.next();
-            TallaRequest cambio = porNombre.remove(existente.getTalla());
+            TallaRequest cambio = porClave.remove(clave(existente.getTalla(), existente.getColor()));
             if (cambio == null) {
                 if (existente.getStock() > 0) {
-                    throw new BusinessException(HttpStatus.CONFLICT, "No puedes quitar la talla " + existente.getTalla()
+                    throw new BusinessException(HttpStatus.CONFLICT, "No puedes quitar la talla " + existente.etiqueta()
                             + " porque tiene " + existente.getStock() + " unidades. Deja su stock en 0 desde el inventario",
                             "tallas");
                 }
@@ -151,14 +165,19 @@ public class PrendaService {
                 aplicarRangos(existente, cambio);
             }
         }
-        porNombre.values().forEach(t -> prenda.getTallas().add(nuevaTalla(prenda, t)));
+        porClave.values().forEach(t -> prenda.getTallas().add(nuevaTalla(prenda, t, request)));
     }
 
-    /** Crea una talla con su stock inicial (0 si no se indica) y sus rangos. */
-    private static TallaPrenda nuevaTalla(Prenda prenda, TallaRequest t) {
+    private static String clave(String talla, ColorPreferido color) {
+        return ValidadorPrenda.normalizarTalla(talla) + "|" + color;
+    }
+
+    /** Crea una variante con su stock inicial (0 si no se indica), su color y sus rangos. */
+    private static TallaPrenda nuevaTalla(Prenda prenda, TallaRequest t, PrendaRequest request) {
         TallaPrenda talla = TallaPrenda.builder()
                 .prenda(prenda)
                 .talla(ValidadorPrenda.normalizarTalla(t.talla()))
+                .color(ValidadorPrenda.colorDe(t, request))
                 .stock(t.stock() == null ? 0 : t.stock())
                 .build();
         aplicarRangos(talla, t);

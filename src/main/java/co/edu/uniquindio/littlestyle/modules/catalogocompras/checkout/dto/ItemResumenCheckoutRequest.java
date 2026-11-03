@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto;
 
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -15,6 +16,10 @@ public record ItemResumenCheckoutRequest(
         @Positive(message = "La cantidad debe ser mayor que cero")
         Integer cantidad,
         /** Talla sugerida por el motor al agregar al carrito; nula si no hubo sugerencia (RNF-11). */
-        String tallaSugerida
+        String tallaSugerida,
+        ColorPreferido color
 ) {
+        public ItemResumenCheckoutRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida){
+                this(prendaId, talla, cantidad, tallaSugerida, null);
+        }
 }

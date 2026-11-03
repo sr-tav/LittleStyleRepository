@@ -4,27 +4,27 @@
 
 ## 1. Matriz de casos
 
-| ID | RNF | Descripción | Precondiciones | Resultado esperado | Tipo | Evidencia |
-|---|---|---|---|---|---|---|
-| CP-US08-01 | VAL | Crear prenda con tallas, composición y stock inicial | Vendedor autenticado | 201, tallas normalizadas, stock total 12, `DISPONIBLE`, `ACTIVA` | Unitaria / integración | `PrendaServiceTest.creaLaPrendaDelVendedorAutenticadoConTallasNormalizadasYEvaluaAlertas`, `CatalogoInventarioIntegrationTest` + PM-03 |
-| CP-US08-02 | VAL | Composición que no suma 100 % o repite material | Prenda con 80 % + 10 % | 400 con `errores.composicion`, nada guardado | Unitaria / integración | `ValidadorPrendaTest.exigeQueLaComposicionSume100`, `rechazaMaterialesRepetidos`, `PrendaServiceTest.noGuardaNadaSiLaComposicionEsInvalida`, `CatalogoInventarioIntegrationTest.validaLaPrendaYLasImagenes` |
-| CP-US08-03 | VAL | Tallas repetidas ("xs" y " XS ") o rangos invertidos | — | 400 "La talla XS está repetida" / rango inválido | Unitaria | `ValidadorPrendaTest.rechazaTallasRepetidasAunqueDifieranEnMayusculasYEspacios`, `rechazaRangosInvertidos` |
-| CP-US08-04 | VAL | Editar no pisa el stock existente | Talla 4 con 8 uds; form envía 99 | Stock de la 4 sigue en 8, rangos actualizados, talla nueva con su stock | Unitaria | `PrendaServiceTest.editarConservaElStockDeTallasExistentesAgregaNuevasYQuitaLasVacias` |
-| CP-US08-05 | VAL | No quitar una talla con unidades | Talla 6 con 4 uds | 409 con mensaje para dejarla en 0 desde inventario | Unitaria | `PrendaServiceTest.noPermiteQuitarUnaTallaConExistencias` |
-| CP-US08-06 | RNF-25 | Carga masiva de fotos | Prenda creada | 201 con 2 imágenes, claves `prendas/{id}/…`, tipo por contenido, URL accesible | Unitaria / integración | `ImagenPrendaServiceTest.subeVariasImagenesDetectandoElTipoPorSuContenido`, `CatalogoInventarioIntegrationTest.altaFotosStockYAlertasDeReabastecimiento` + PM-04 |
-| CP-US08-07 | RNF-25 | Archivo que no es imagen, demasiado grande o fuera de límite | Archivo `.png` con texto | 400; no se sube ningún archivo | Unitaria / integración | `ImagenPrendaServiceTest.siUnArchivoNoEsImagenNoSeSubeNinguno`, `rechazaArchivosQueSuperanElTamanoMaximo`, `respetaLosLimitesPorCargaYPorPrenda` |
-| CP-US08-08 | RNF-25 | Consistencia BD ↔ S3 | 2.ª subida falla | Se borra el objeto ya subido al revertir; al eliminar, el objeto se borra solo tras commit | Unitaria | `ImagenPrendaServiceTest.siLaTransaccionNoSeConfirmaBorraLoQueYaSeSubio`, `alEliminarBorraElObjetoSoloDespuesDeConfirmar` |
-| CP-US08-09 | RNF-25 | Integración con Amazon S3 (SDK v2) | Cliente S3 simulado | Bucket, clave con prefijo, content-type, URL pública o CDN; fallo → 502 sin detalle técnico | Unitaria | `S3AlmacenamientoImagenesTest` (5 casos) |
-| CP-US08-10 | RNF-14 | Nivel de stock por mínimo | — | 0 → agotado; ≤ mínimo → bajo; > mínimo → disponible | Unitaria | `NivelStockTest` (6 casos) |
-| CP-US08-11 | RNF-14 | Emisión y ciclo de vida de alertas por talla | Tallas con mínimo 5 | Emite bajo y notifica con talla; sin mínimo no alerta; no repite; escala a agotado y notifica; reabastecer parcial reemplaza sin notificar; superar mínimo o desactivar resuelve; heredadas sin talla se resuelven | Unitaria | `AlertasInventarioServiceTest` (9 casos) |
-| CP-US08-12 | RNF-14 | Actualizar stock emite y resuelve alertas en la misma transacción | PM-03 | Talla 4 (2 ≤ 5) → `STOCK_BAJO` con talla y diferencia -3; 0 → `AGOTADO`; 20 → sin alertas; 2 alertas en historial | Integración / Postman | `CatalogoInventarioIntegrationTest.altaFotosStockYAlertasDeReabastecimiento` + PM-07…PM-10 |
-| CP-US08-13 | VAL | Stock por talla inválido | Talla inexistente o repetida | 400 sin evaluar alertas | Unitaria | `InventarioServiceTest.rechazaUnaTallaQueLaPrendaNoTieneSinEvaluarAlertas`, `rechazaTallasRepetidasEnLaMismaPeticion` |
-| CP-US08-14 | RNF-06 | Aislamiento entre vendedores y por rol | Vendedores A y B, cliente | B → 404 sobre prenda de A; cliente → 403; sin token → 401 | Unitaria / integración | `CatalogoInventarioIntegrationTest.cadaVendedorSoloAccedeASusPrendasYElClienteNoAccede`, `InventarioServiceTest.noPermiteModificarElInventarioDeOtroVendedor` + PM-11 |
-| CP-US08-15 | RNF-29 | El motor de US-07 lee el catálogo real | Prenda activa con níquel | Adapter expone tabla, composición, stock por talla y marca; una prenda rota se omite; inactiva desaparece | Unitaria / integración | `CatalogoRecomendacionAdapterTest` (2), `CatalogoInventarioIntegrationTest.elMotorDeRecomendacionesLeeElCatalogoRealYSoloLasPrendasActivas` + PM-12 |
-| CP-US08-16 | RNF-19 | UI-19 lista, busca sin tildes y publica/oculta | Catálogo con 2 prendas | Fila con composición, precio COP y nivel; filtro; PATCH estado | Frontend | `productos-lista.spec.ts` (4 casos) |
-| CP-US08-17 | RNF-16 | UI-20 crea con fotos y recupera fallo parcial | Formulario válido | POST + 1 multipart; si fallan fotos: modo edición, fotos conservadas, reintento; formulario inválido no envía | Frontend | `prenda-form.spec.ts` (7 casos) |
-| CP-US08-18 | RNF-19 | UI-21/UI-22 inventario y alertas | 1 prenda en stock bajo | Mínimos por talla en fila y editor, PUT por talla, contador de alertas; tarjetas con talla, diferencia y mensaje | Frontend | `inventario.spec.ts` (5 casos) |
-| CP-US08-19 | RNF-25 | Subida real a un bucket S3 | Bucket con lectura pública y credenciales IAM | Imagen visible desde la URL pública en Angular | Manual | Pendiente de ejecución en AWS |
+| ID | RNF    | Descripción | Precondiciones | Resultado esperado                                                                                                                                                                                                        | Tipo | Evidencia |
+|---|--------|---|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
+| CP-US08-01 | RNF    | Crear prenda con tallas, composición y stock inicial | Vendedor autenticado | 201, tallas normalizadas, stock total 27, suma del stock de las cuatro variantes 'talla + color', `DISPONIBLE`, `ACTIVA`                                                                                                   | Unitaria / integración | `PrendaServiceTest.creaLaPrendaDelVendedorAutenticadoConTallasNormalizadasYEvaluaAlertas`, `CatalogoInventarioIntegrationTest` + PM-03 |
+| CP-US08-02 | RNF    | Composición que no suma 100 % o repite material | Prenda con 80 % + 10 % | 400 con `errores.composicion`, nada guardado                                                                                                                                                                              | Unitaria / integración | `ValidadorPrendaTest.exigeQueLaComposicionSume100`, `rechazaMaterialesRepetidos`, `PrendaServiceTest.noGuardaNadaSiLaComposicionEsInvalida`, `CatalogoInventarioIntegrationTest.validaLaPrendaYLasImagenes` |
+| CP-US08-03 | RNF    | Tallas repetidas ("xs" y " XS ") o rangos invertidos | — | 400 "La talla XS está repetida" / rango inválido                                                                                                                                                                          | Unitaria | `ValidadorPrendaTest.rechazaTallasRepetidasAunqueDifieranEnMayusculasYEspacios`, `rechazaRangosInvertidos` |
+| CP-US08-04 | RNF    | Editar conserva el stock de variantes existentes | La variante talla 4/AZUL tiene 8 unidades; el formulario envía 99. | El stock de talla 4/AZUL permanece en 8; los rangos pueden actualizarse y las variantes nuevas reciben el stock inicial enviado. | Unitaria | `PrendaServiceTest.editarConservaElStockDeTallasExistentesAgregaNuevasYQuitaLasVacias` |
+| CP-US08-05 | RNF    | No quitar una variante con unidades | La variante talla 6/ROJO tiene 6 unidades. | Intentar quitarla al editar devuelve 409; primero se debe llevar a 0 desde inventario. | Unitaria | `PrendaServiceTest.noPermiteQuitarUnaTallaConExistencias` |                                                                                                                                                                       | Unitaria | `PrendaServiceTest.noPermiteQuitarUnaTallaConExistencias` |
+| CP-US08-06 | RNF-25 | Carga masiva de fotos | Prenda creada | 201 con 2 imágenes, claves `prendas/{id}/…`, tipo por contenido, URL accesible                                                                                                                                            | Unitaria / integración | `ImagenPrendaServiceTest.subeVariasImagenesDetectandoElTipoPorSuContenido`, `CatalogoInventarioIntegrationTest.altaFotosStockYAlertasDeReabastecimiento` + PM-04 |
+| CP-US08-07 | RNF-25 | Archivo que no es imagen, demasiado grande o fuera de límite | Archivo `.png` con texto | 400; no se sube ningún archivo                                                                                                                                                                                            | Unitaria / integración | `ImagenPrendaServiceTest.siUnArchivoNoEsImagenNoSeSubeNinguno`, `rechazaArchivosQueSuperanElTamanoMaximo`, `respetaLosLimitesPorCargaYPorPrenda` |
+| CP-US08-08 | RNF-25 | Consistencia BD ↔ S3 | 2.ª subida falla | Se borra el objeto ya subido al revertir; al eliminar, el objeto se borra solo tras commit                                                                                                                                | Unitaria | `ImagenPrendaServiceTest.siLaTransaccionNoSeConfirmaBorraLoQueYaSeSubio`, `alEliminarBorraElObjetoSoloDespuesDeConfirmar` |
+| CP-US08-09 | RNF-25 | Integración con Amazon S3 (SDK v2) | Cliente S3 simulado | Bucket, clave con prefijo, content-type, URL pública o CDN; fallo → 502 sin detalle técnico                                                                                                                               | Unitaria | `S3AlmacenamientoImagenesTest` (5 casos) |
+| CP-US08-10 | RNF-14 | Nivel de stock por mínimo | — | 0 → agotado; ≤ mínimo → bajo; > mínimo → disponible                                                                                                                                                                       | Unitaria | `NivelStockTest` (6 casos) |
+| CP-US08-11 | RNF-14 | Emisión y ciclo de vida de alertas por variante | Variantes con mínimo 5 | Emite bajo y notifica con talla y color; sin mínimo no alerta; no repite; escala a agotado y notifica; reabastecer parcial reemplaza sin notificar; superar mínimo o desactivar resuelve; heredadas sin talla se resuelven | Unitaria | `AlertasInventarioServiceTest` (9 casos) |
+| CP-US08-12 | RNF-14 | Actualizar stock emite y resuelve alertas por variante en la misma transacción | PM-03 | Actualizar talla 4/AZUL a 2 genera alerta `STOCK_BAJO` con diferencia -3; actualizar la misma variante a 0 escala a `AGOTADO`; reabastecerla a 10 resuelve la alerta. La talla 4/ROJO mantiene su stock y alerta independientes. | Integración / Postman | `CatalogoInventarioIntegrationTest.altaFotosStockYAlertasDeReabastecimiento` + PM-07…PM-10 |
+| CP-US08-13 | RNF-14 | Rechazar una variante inexistente o repetida | Petición contiene una combinación `talla + color` que no existe o repite una combinación enviada. | Devuelve 400 y no evalúa alertas para la solicitud inválida. | Unitaria | `InventarioServiceTest.rechazaUnaTallaQueLaPrendaNoTieneSinEvaluarAlertas`, `rechazaTallasRepetidasEnLaMismaPeticion` |                                                                                                                                                                                               | Unitaria | `InventarioServiceTest.rechazaUnaTallaQueLaPrendaNoTieneSinEvaluarAlertas`, `rechazaTallasRepetidasEnLaMismaPeticion` |
+| CP-US08-14 | RNF-06 | Aislamiento entre vendedores y por rol | Vendedores A y B, cliente | B → 404 sobre prenda de A; cliente → 403; sin token → 401                                                                                                                                                                 | Unitaria / integración | `CatalogoInventarioIntegrationTest.cadaVendedorSoloAccedeASusPrendasYElClienteNoAccede`, `InventarioServiceTest.noPermiteModificarElInventarioDeOtroVendedor` + PM-11 |
+| CP-US08-15 | RNF-29 | El motor de US-07 lee el catálogo real | Prenda activa con níquel | Adapter expone tabla, composición, stock agregado por talla y marca; una prenda rota se omite; inactiva desaparece                                                                                                        | Unitaria / integración | `CatalogoRecomendacionAdapterTest` (2), `CatalogoInventarioIntegrationTest.elMotorDeRecomendacionesLeeElCatalogoRealYSoloLasPrendasActivas` + PM-12 |
+| CP-US08-16 | RNF-19 | UI-19 lista, busca sin tildes y publica/oculta | Catálogo con 2 prendas | Fila con composición, precio COP y nivel; filtro; PATCH estado                                                                                                                                                            | Frontend | `productos-lista.spec.ts` (4 casos) |
+| CP-US08-17 | RNF-16 | UI-20 crea con fotos y recupera fallo parcial | Formulario válido | POST + 1 multipart; si fallan fotos: modo edición, fotos conservadas, reintento; formulario inválido no envía                                                                                                             | Frontend | `prenda-form.spec.ts` (7 casos) |
+| CP-US08-18 | RNF-19 | UI-21/UI-22 inventario y alertas | 1 prenda en stock bajo | Mínimos por variante (`talla + color`) en fila y editor, PUT por variante, contador de alertas; tarjetas con talla, color, diferencia y mensaje                                                                           | Frontend | `inventario.spec.ts` (5 casos) |
+| CP-US08-19 | RNF-25 | Subida real a un bucket S3 | Bucket con lectura pública y credenciales IAM | Imagen visible desde la URL pública en Angular                                                                                                                                                                            | Manual | Pendiente de ejecución en AWS |
 
 ## 2. Environment Postman
 baseUrl = http://localhost:8080 (perfil `local`, almacenamiento local)
@@ -61,7 +61,7 @@ Content-Type: application/json
   "categoria": "PANTALONES",
   "descripcion": "Pantalón cómodo con pretina elástica",
   "precio": 32900,
-  "colores": ["AZUL"],
+  "colores": ["AZUL", "ROJO"],
   "estampado": "LISO",
   "tintesSinteticos": false,
   "brochesMetalicos": false,
@@ -72,8 +72,10 @@ Content-Type: application/json
     { "material": "POLIESTER", "porcentaje": 20 }
   ],
   "tallas": [
-    { "talla": "4", "estaturaMinCm": 100, "estaturaMaxCm": 110, "pesoMinKg": 15, "pesoMaxKg": 20, "stock": 8, "stockMinimo": 5 },
-    { "talla": "6", "estaturaMinCm": 111, "estaturaMaxCm": 122, "pesoMinKg": 21, "pesoMaxKg": 26, "stock": 4, "stockMinimo": 3 }
+    { "talla": "4", "color": "AZUL", "estaturaMinCm": 100, "estaturaMaxCm": 110, "pesoMinKg": 15, "pesoMaxKg": 20, "stock": 8, "stockMinimo": 5 },
+    { "talla": "4", "color": "ROJO", "estaturaMinCm": 100, "estaturaMaxCm": 110, "pesoMinKg": 15, "pesoMaxKg": 20, "stock": 9, "stockMinimo": 5 },
+    { "talla": "6", "color": "AZUL", "estaturaMinCm": 111, "estaturaMaxCm": 122, "pesoMinKg": 21, "pesoMaxKg": 26, "stock": 4, "stockMinimo": 3 },
+    { "talla": "6", "color": "ROJO", "estaturaMinCm": 111, "estaturaMaxCm": 122, "pesoMinKg": 21, "pesoMaxKg": 26, "stock": 6, "stockMinimo": 3 }
   ]
 }
 
@@ -95,7 +97,14 @@ PUT {{baseUrl}}/api/vendedor/inventario/{{prendaId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "tallas": [ { "talla": "4", "stock": 2 }, { "talla": "6", "stock": 1 } ] }
+{
+  "tallas": [
+    { "talla": "4", "color": "AZUL", "stock": 2 },
+    { "talla": "4", "color": "ROJO", "stock": 9 },
+    { "talla": "6", "color": "AZUL", "stock": 1 },
+    { "talla": "6", "color": "ROJO", "stock": 6 }
+  ]
+}
 
 ### PM-08 GET alertas (CP-12)
 GET {{baseUrl}}/api/vendedor/inventario/alertas
@@ -106,15 +115,28 @@ PUT {{baseUrl}}/api/vendedor/inventario/{{prendaId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "tallas": [ { "talla": "4", "stock": 0 }, { "talla": "6", "stock": 0 } ] }
+{
+  "tallas": [
+    { "talla": "4", "color": "AZUL", "stock": 0 },
+    { "talla": "4", "color": "ROJO", "stock": 0 },
+    { "talla": "6", "color": "AZUL", "stock": 0 },
+    { "talla": "6", "color": "ROJO", "stock": 0 }
+  ]
+}
 
 ### PM-10 PUT reabastecer y cambiar mínimo (CP-12)
 PUT {{baseUrl}}/api/vendedor/inventario/{{prendaId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "tallas": [ { "talla": "4", "stock": 10, "stockMinimo": 4 }, { "talla": "6", "stock": 10 } ] }
-
+{
+  "tallas": [
+    { "talla": "4", "color": "AZUL", "stock": 10, "stockMinimo": 4 },
+    { "talla": "4", "color": "ROJO", "stock": 10, "stockMinimo": 5 },
+    { "talla": "6", "color": "AZUL", "stock": 10, "stockMinimo": 3 },
+    { "talla": "6", "color": "ROJO", "stock": 10, "stockMinimo": 3 }
+  ]
+}
 ### PM-11 GET prenda con token de cliente (CP-14)
 GET {{baseUrl}}/api/vendedor/prendas/{{prendaId}}
 Authorization: Bearer {{tokenCliente}}

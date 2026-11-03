@@ -28,7 +28,9 @@
           <input id="nombre" type="text" formControlName="nombre" placeholder="Ej: Vestido Floral Rosa" maxlength="120" />
           @if (invalido(form.controls.nombre)) {
             <span class="field-error">
-              {{ form.controls.nombre.errors?.['servidor'] ?? 'El nombre debe tener entre 3 y 120 caracteres' }}
+              @if (form.controls.nombre.errors?.['servidor']; as msg) { {{ msg }} }
+              @else if (form.controls.nombre.errors?.['required'] || form.controls.nombre.errors?.['minlength']) { El nombre debe tener entre 3 y 120 caracteres }
+              @else { El nombre debe incluir al menos una letra (no puede ser solo números o símbolos) }
             </span>
           }
         </div>
@@ -59,7 +61,12 @@
         <div class="field" [class.has-error]="invalido(form.controls.descripcion)">
           <label for="descripcion">Descripción</label>
           <textarea id="descripcion" formControlName="descripcion" rows="4" maxlength="2000"
-            placeholder="Describe la prenda, materiales, características..."></textarea>
+                    placeholder="Describe la prenda, materiales, características..."></textarea>
+          @if (invalido(form.controls.descripcion)) {
+            <span class="field-error">
+              {{ form.controls.descripcion.errors?.['servidor'] ?? 'La descripción es obligatoria' }}
+            </span>
+          }
         </div>
 
         <div class="field" [class.has-error]="invalido(form.controls.instruccionesCuidado)">
@@ -88,24 +95,6 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-caract">
         <h2 id="sec-caract" class="catalog-section-title"><span aria-hidden="true">✨</span> Características</h2>
 
-        <fieldset class="preference-group">
-          <legend>Colores <span class="field-optional">({{ coloresSeleccionados().length }}/10)</span></legend>
-          <div class="option-chip-grid">
-            @for (color of colores; track color.valor) {
-              <button
-                type="button"
-                class="option-chip"
-                [class.is-selected]="coloresSeleccionados().includes(color.valor)"
-                [attr.aria-pressed]="coloresSeleccionados().includes(color.valor)"
-                (click)="alternarColor(color.valor)"
-              >
-                <span class="color-swatch" [style.background]="color.muestra" aria-hidden="true"></span>
-                {{ color.etiqueta }}
-              </button>
-            }
-          </div>
-        </fieldset>
-
         <div class="field">
           <label for="estampado">Estampado</label>
           <select id="estampado" formControlName="estampado">
@@ -120,10 +109,10 @@
           <legend>Información para alergias</legend>
           <p class="field-hint">El motor de recomendaciones usa estos datos para advertir o excluir la prenda.</p>
           <div class="catalog-checks">
-            <label class="profile-checkbox"><input type="checkbox" formControlName="tintesSinteticos" /> Tintes sintéticos</label>
-            <label class="profile-checkbox"><input type="checkbox" formControlName="brochesMetalicos" /> Broches metálicos</label>
-            <label class="profile-checkbox"><input type="checkbox" formControlName="contieneNiquel" /> Contiene níquel</label>
-            <label class="profile-checkbox"><input type="checkbox" formControlName="tratamientoFormaldehido" /> Tratamiento con formaldehído</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="tintesSinteticos" /> {{ etiquetasAlergia.TINTES }} (sintéticos)</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="brochesMetalicos" /> {{ etiquetasAlergia.BROCHES_METALICOS }}</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="contieneNiquel" /> {{ etiquetasAlergia.NIQUEL }}</label>
+            <label class="profile-checkbox"><input type="checkbox" formControlName="tratamientoFormaldehido" /> {{ etiquetasAlergia.FORMALDEHIDO }}</label>
           </div>
         </fieldset>
       </section>
@@ -174,10 +163,9 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-tallas">
         <h2 id="sec-tallas" class="catalog-section-title"><span aria-hidden="true">📏</span> Tabla de tallas</h2>
         <p class="field-hint">
-          Indica la estatura, el peso y la edad en meses que cubre cada talla. Así el sistema sugiere
-          la talla correcta a cada cliente. La edad es opcional y va de 0 a 216 meses (18 años).
-          El stock y el mínimo de alerta de cada talla se rellenan abajo, en Inventario.
-          @if (!esNueva()) { El stock de las tallas existentes se actualiza desde el inventario. }
+          Cada fila representa una variante de talla y color. Para ofrecer una talla en varios colores,
+          agrega una variante por cada combinación y conserva las mismas medidas para esa talla.
+          El stock y el mínimo de alerta se administran en Inventario.
         </p>
         <div formArrayName="tallas" class="dynamic-rows">
           @for (fila of tallas.controls; track fila; let i = $index) {
@@ -186,6 +174,53 @@
                 <div class="field">
                   <label [for]="'talla-' + i">Talla</label>
                   <input [id]="'talla-' + i" type="text" formControlName="talla" placeholder="4" maxlength="10" />
+                </div>
+                <div
+                  class="field stock-variant-color"
+                  [class.has-error]="enviado() && !fila.get('color')?.value"
+                >
+                  <span class="stock-field-label" [id]="'color-label-' + i">Color</span>
+
+                  <details class="stock-color-picker" #selectorColor>
+                    <summary [attr.aria-labelledby]="'color-label-' + i">
+      <span
+        class="color-swatch"
+        [style.background-color]="muestraColor(fila.get('color')?.value)"
+        aria-hidden="true"
+      ></span>
+                      <span class="stock-color-selected">
+        {{ etiquetaColor(fila.get('color')?.value) || 'Selecciona un color' }}
+      </span>
+                    </summary>
+
+                    <div
+                      class="stock-color-options"
+                      role="listbox"
+                      [attr.aria-labelledby]="'color-label-' + i"
+                    >
+                      @for (color of colores; track color.valor) {
+                        <button
+                          type="button"
+                          class="stock-color-option"
+                          role="option"
+                          [attr.aria-selected]="fila.get('color')?.value === color.valor"
+                          [disabled]="!puedeSeleccionarColor(fila, color.valor)"
+                          (click)="seleccionarColorVariante(fila, color.valor, selectorColor)"
+                        >
+          <span
+            class="color-swatch"
+            [style.background-color]="color.muestra"
+            aria-hidden="true"
+          ></span>
+                          <span class="stock-color-label">{{ color.etiqueta }}</span>
+                        </button>
+                      }
+                    </div>
+                  </details>
+
+                  @if (enviado() && !fila.get('color')?.value) {
+                    <span class="field-error">Selecciona un color.</span>
+                  }
                 </div>
                 <div class="field">
                   <label [for]="'emin-' + i">Estatura mín. (cm)</label>
@@ -235,42 +270,76 @@
           }
         </div>
         <div class="dynamic-footer">
-          <span class="field-hint">{{ tallas.length }}/{{ limites.maxTallas }} tallas</span>
+          <span class="field-hint">{{ tallas.length }}/{{ limites.maxTallas }} variantes</span>
           @if (tallas.length < limites.maxTallas) {
-            <button type="button" class="btn-ghost" (click)="agregarTalla()">+ Agregar talla</button>
+            <button type="button" class="btn-ghost" (click)="agregarTalla()">
+              + Agregar variante
+            </button>
           }
         </div>
         @if (invalido(tallas) && tallas.errors) {
           <span class="field-error">
-            {{ tallas.errors['servidor'] ?? 'La talla ' + tallas.errors['tallaRepetida'] + ' está repetida.' }}
+            {{ tallas.errors['servidor'] ?? 'La variante ' + tallas.errors['tallaRepetida'] + ' está repetida.' }}
           </span>
         }
       </section>
 
+      @if (esNueva()){
       <!-- Inventario -->
       <section class="profile-section catalog-section" aria-labelledby="sec-inv">
-        <h2 id="sec-inv" class="catalog-section-title"><span aria-hidden="true">📦</span> Inventario</h2>
+        <h2 id="sec-inv" class="catalog-section-title">
+          <span aria-hidden="true"></span> Inventario por variante
+        </h2>
+
         <p class="field-hint">
-          Stock y mínimo de alerta por talla: recibirás un aviso cuando el stock de esa talla
-          llegue a su mínimo. Mínimo vacío significa sin alerta.
+          Define el stock inicial y el mínimo de alerta de cada variante. El color se asigna
+          en la tabla de tallas. Un mínimo vacío significa que no se genera alerta.
         </p>
-        <div formArrayName="tallas" class="dynamic-rows" aria-label="Inventario por talla">
+
+        <div
+          formArrayName="tallas"
+          class="dynamic-rows"
+          aria-label="Inventario por variante de talla y color"
+        >
           @for (fila of tallas.controls; track fila; let i = $index) {
             <div class="dynamic-row stock-row" [formGroupName]="i">
-              <div class="field">
-                <span class="stock-talla-caption">Talla</span>
-                <strong class="stock-talla-valor">{{ fila.getRawValue()['talla'] || '—' }}</strong>
+              <div class="field stock-variant-size">
+                <span class="stock-field-label">Talla</span>
+                <strong>{{ fila.getRawValue()['talla'] || '—' }}</strong>
               </div>
-              <div class="field" [class.has-error]="invalido(fila.get('stock'))">
-                <label [for]="'stock-' + i">{{ fila.getRawValue()['existente'] ? 'Stock actual' : 'Stock inicial' }}</label>
-                <input [id]="'stock-' + i" type="number" formControlName="stock" min="0" />
+
+              <div
+                class="field stock-variant-quantity"
+                [class.has-error]="invalido(fila.get('stock'))"
+              >
+                <label [for]="'stock-' + i">
+                  {{ fila.getRawValue()['existente'] ? 'Stock actual' : 'Stock inicial' }}
+                </label>
+                <input
+                  [id]="'stock-' + i"
+                  type="number"
+                  formControlName="stock"
+                  min="0"
+                  inputmode="numeric"
+                />
                 @if (invalido(fila.get('stock'))) {
                   <span class="field-error">Ingresa un stock de 0 en adelante.</span>
                 }
               </div>
-              <div class="field" [class.has-error]="invalido(fila.get('stockMinimo'))">
-                <label [for]="'minimo-' + i">Mínimo de alerta</label>
-                <input [id]="'minimo-' + i" type="number" formControlName="stockMinimo" min="0" placeholder="Sin alerta" />
+
+              <div
+                class="field stock-variant-minimum"
+                [class.has-error]="invalido(fila.get('stockMinimo'))"
+              >
+                <label [for]="'minimo-' + i">Alerta: stock mínimo</label>
+                <input
+                  [id]="'minimo-' + i"
+                  type="number"
+                  formControlName="stockMinimo"
+                  min="0"
+                  inputmode="numeric"
+                  placeholder="Sin alerta"
+                />
                 @if (invalido(fila.get('stockMinimo'))) {
                   <span class="field-error">Ingresa un mínimo de 0 en adelante.</span>
                 }
@@ -278,11 +347,31 @@
             </div>
           }
         </div>
+
+        <div class="dynamic-footer">
+          <span class="field-hint">{{ tallas.length }}/{{ limites.maxTallas }} variantes</span>
+          @if (tallas.length < limites.maxTallas) {
+            <button type="button" class="btn-ghost" (click)="agregarTalla()">
+              + Agregar variante
+            </button>
+          }
+        </div>
+
+        @if (invalido(tallas) && tallas.errors) {
+          <span class="field-error">
+            {{ tallas.errors['servidor'] ?? 'La variante ' + tallas.errors['tallaRepetida'] + ' está repetida.' }}
+          </span>
+        }
+
+        @if (enviado() && tieneVariantesSinColor()) {
+          <span class="field-error">Asigna un color a cada variante.</span>
+        }
       </section>
+      }
 
       <!-- Fotos -->
       <section class="profile-section catalog-section" aria-labelledby="sec-fotos">
-        <h2 id="sec-fotos" class="catalog-section-title"><span aria-hidden="true">📷</span> Fotos</h2>
+        <h2 id="sec-fotos" class="catalog-section-title"><span aria-hidden="true">📷</span> Fotos <span class="field-hint">(obligatorio: al menos 1)</span></h2>
         <p class="field-hint">
           JPG, PNG o WEBP de máximo {{ limites.maxTamanoImagenMb }} MB. Hasta {{ limites.maxImagenesPorPrenda }} fotos;
           la primera es la principal.

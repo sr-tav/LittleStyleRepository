@@ -4,14 +4,13 @@ import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
 import co.edu.uniquindio.littlestyle.modules.admin.dto.UsuarioAdminResponse;
 import co.edu.uniquindio.littlestyle.modules.admin.model.AccionAuditoria;
 import co.edu.uniquindio.littlestyle.modules.admin.model.TipoEntidad;
-import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.auth.model.*;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.shared.dto.PaginaResponse;
 import co.edu.uniquindio.littlestyle.shared.event.CuentaEstadoCambiadaEvent;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
+import co.edu.uniquindio.littlestyle.modules.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +44,7 @@ public class AdminUsuarioService {
     private final AuditoriaService auditoriaService;
     private final IncidenciaService incidenciaService;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuthService authService;
 
     /** Bandeja paginada de cuentas con filtros opcionales por rol, estado y texto libre. */
     @Transactional(readOnly = true)
@@ -94,6 +94,45 @@ public class AdminUsuarioService {
             // Intento denegado o fallido: queda en la pista con transaccion aparte y se relanza el 400/403/409.
             auditoriaService.registrarIntentoFallido(accionDe(destino), TipoEntidad.USUARIO,
                     String.valueOf(id), "Intento " + destino.name() + " rechazado: " + ex.getMessage());
+            throw ex;
+        }
+    }
+
+    /**
+     * Elimina una cuenta de cliente o vendedor: anonimiza al usuario y borra sus datos (en un vendedor, su tienda y catalogo) mediante el mismo flujo que usa el titular.
+     * La auditoria tiene el motivo de eliminación.
+     */
+    @Transactional
+    public void eliminar(Long id, String motivo) {
+        String motivoValido = motivo == null ? "" : motivo.trim();
+        if (motivoValido.length() < 10 || motivoValido.length() > 500) {
+            auditoriaService.registrarIntentoFallido(AccionAuditoria.ELIMINAR_USUARIO, TipoEntidad.USUARIO,
+                    String.valueOf(id), "Eliminación rechazada: el motivo debe tener entre 10 y 500 caracteres");
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "El motivo es obligatorio y debe tener entre 10 y 500 caracteres", "motivo");
+        }
+        try {
+            Usuario usuario = usuarioRepository.findByIdForUpdate(id).orElseThrow(() -> cuentaNoEncontrada(id));
+            Long adminId = SecurityUtils.usuarioActual().map(AuthenticatedUser::id).orElse(null);
+            if (usuario.getRol() == Rol.ADMINISTRADOR) {
+                throw new BusinessException(HttpStatus.FORBIDDEN,
+                        "No se puede eliminar una cuenta administradora", "estado");
+            }
+            if (adminId != null && adminId.equals(usuario.getId())) {
+                throw new BusinessException(HttpStatus.FORBIDDEN,
+                        "No puede eliminar su propia cuenta desde el panel", "estado");
+            }
+            if (usuario.getEstado() == EstadoUsuario.ELIMINADO) {
+                throw new BusinessException(HttpStatus.CONFLICT,
+                        "La cuenta ya fue eliminada por su titular y no se administra", "estado");
+            }
+            String anterior = usuario.getEstado().name();
+            authService.desactivarCuenta(id);
+            auditoriaService.registrar(AccionAuditoria.ELIMINAR_USUARIO, TipoEntidad.USUARIO,
+                    String.valueOf(id), anterior, EstadoUsuario.ELIMINADO.name(), motivoValido);
+        } catch ( BusinessException ex) {
+            auditoriaService.registrarIntentoFallido(AccionAuditoria.ELIMINAR_USUARIO, TipoEntidad.USUARIO,
+                    String.valueOf(id), "Intento ELIMINAR rechazado: " + ex.getMessage());
             throw ex;
         }
     }

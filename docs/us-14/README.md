@@ -73,6 +73,7 @@ auditoría.
 ## Suposiciones y decisiones
 
 - **Moderación posterior:** se mantiene la decisión de negocio: publicar libremente, revisar después; `SIN_REVISAR` no bloquea la venta.
+- **Detalle por variante:** el detalle muestra una fila por 'talla + color', con el stock de esa combinación y sus medidas. No muestra el stock minimo. La decisión administrativa (aprobar, desactivar o restaurar) sigue siendo sobre la prenda completa; las existencias por variante sirven para identificar qué combinación está agotada o tiene poco stock, sin confundirlas con la disponibilidad global de la prenda.
 - **Carrito/checkout:** una prenda o vendedor que deja de ser visible se muestra no disponible en el carrito y no se puede incluir en un checkout nuevo. No se cancelan ni reescriben pedidos ya pagados.
 - **Apelación de cuenta:** al suspender/bloquear se crea una incidencia ligada al titular dentro de la misma transacción; si no puede guardarse, tampoco se confirma el cambio de estado. El login muestra un mensaje distinto para suspensión y bloqueo, e informa que la apelación ya fue abierta y la respuesta llegará por correo. A falta de endpoint de apelación público con verificación del correo, no se habilita una página de envío sin autenticación.
 - **Protección MySQL:** un operador autorizado aplica `auditoria-inmutable-mysql.sql` después de que exista `auditoria_admin`; H2 no ejecuta esos triggers.

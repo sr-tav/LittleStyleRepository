@@ -13,7 +13,7 @@ import {
   describirComposicion,
   formatearPrecio,
 } from '../../catalogoCompras/models/prenda-opciones';
-import { ETIQUETAS_COLORES, ETIQUETAS_ESTAMPADOS } from '../../perfilesInfantiles/models/perfil-opciones';
+import { ETIQUETAS_ALERGIAS, ETIQUETAS_COLORES, ETIQUETAS_ESTAMPADOS, OPCIONES_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { TallaSugerida } from '../../recomendacion/components/talla-sugerida';
 import { RecomendacionItem } from '../../recomendacion/models/recomendacion.models';
@@ -60,7 +60,11 @@ export class DetalleProducto implements OnInit {
   protected readonly descripcionReporteInput = viewChild<ElementRef<HTMLTextAreaElement>>('descripcionReporteCampo');
   protected readonly stockTallaSeleccionada = computed(() => {
     const talla = this.tallaSeleccionada();
-    return this.prenda()?.tallas.find((item) => item.talla === talla)?.stockDisponible ?? 0;
+    const color = this.colorSeleccionado();
+
+    return (this.prenda()?.tallas ?? []).find(
+      (variante) => variante.talla === talla && variante.color === color,
+    )?.stockDisponible ?? 0;
   });
 
   /** Marca "Nuevo" si la prenda se actualizó en los últimos 30 días. */
@@ -69,6 +73,28 @@ export class DetalleProducto implements OnInit {
     if (!fecha) return false;
     const millis = new Date(fecha).getTime();
     return !Number.isNaN(millis) && Date.now() - millis < 30 * 24 * 60 * 60 * 1000;
+  });
+
+  protected readonly tallasTablaMedidas = computed<VitrinaTalla[]>(() => {
+    const porTalla = new Map<string, VitrinaTalla>();
+
+    for (const variante of this.prenda()?.tallas ?? []) {
+      const existente = porTalla.get(variante.talla);
+
+      if (!existente) {
+        porTalla.set(variante.talla, variante);
+        continue;
+      }
+
+      const stockDisponible = existente.stockDisponible + variante.stockDisponible;
+      porTalla.set(variante.talla, {
+        ...existente,
+        stockDisponible,
+        disponible: stockDisponible > 0,
+      });
+    }
+
+    return [...porTalla.values()];
   });
 
   /**
@@ -109,18 +135,30 @@ export class DetalleProducto implements OnInit {
   protected agregarAlCarrito(): void {
     const prenda = this.prenda();
     const talla = this.tallaSeleccionada();
+    const color = this.colorSeleccionado();
     const cantidad = this.cantidadSeleccionada();
-    if (!prenda || !talla || cantidad < 1 || cantidad > this.stockTallaSeleccionada()
-      || this.agregandoAlCarrito()) return;
+
+    if (
+      !prenda ||
+      !talla ||
+      !color ||
+      cantidad < 1 ||
+      cantidad > this.stockTallaSeleccionada() ||
+      this.agregandoAlCarrito()
+    ) {
+      return;
+    }
 
     this.agregandoAlCarrito.set(true);
     this.mensajeCarrito.set(null);
     this.errorCarrito.set(null);
+
     this.carrito.agregar({
       prendaId: prenda.id,
       talla,
       cantidad,
       tallaSugerida: this.sugerida()?.tallaSugerida || null,
+      color,
     }).subscribe({
       next: () => {
         this.mensajeCarrito.set('Prenda agregada al carrito.');
@@ -245,14 +283,13 @@ export class DetalleProducto implements OnInit {
    * @param event Evento del selector de tallas.
    * @returns No devuelve un valor.
    */
-  protected seleccionarTalla(event: Event): void {
-    if (event.target instanceof HTMLSelectElement) {
-      this.tallaSeleccionada.set(event.target.value);
-      this.cantidadSeleccionada.set(1);
-      this.mensajeCarrito.set(null);
-      this.errorCarrito.set(null);
-    }
+  protected seleccionarTalla(talla: string): void {
+    this.tallaSeleccionada.set(talla);
+    this.cantidadSeleccionada.set(1);
+    this.mensajeCarrito.set(null);
+    this.errorCarrito.set(null);
   }
+
 
   /**
    * Ajusta la cantidad al intervalo entre una unidad y el stock de la talla seleccionada.
@@ -306,4 +343,64 @@ export class DetalleProducto implements OnInit {
       },
     });
   }
+
+  protected readonly alergenosDe = (p: VitrinaDetalle): string[] => {
+    const lista: string[] = [];
+    if (p.tintesSinteticos) lista.push(`${ETIQUETAS_ALERGIAS.TINTES} (sinteticos`);
+    if (p.brochesMetalicos) lista.push(ETIQUETAS_ALERGIAS.BROCHES_METALICOS);
+    if(p.contieneNiquel) lista.push(ETIQUETAS_ALERGIAS.NIQUEL);
+    if (p.tratamientoFormaldehido) lista.push(ETIQUETAS_ALERGIAS.FORMALDEHIDO);
+    return lista;
+  }
+
+  protected readonly colorSeleccionado = signal('');
+
+  protected readonly coloresDisponibles = computed(
+    () => this.prenda()?.colores ?? [],
+  );
+
+  protected readonly tallasDisponibles = computed(() => {
+    const tallas = new Set((this.prenda()?.tallas ?? []).map((variante) => variante.talla));
+    return [...tallas].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  });
+
+  protected stockTotalTalla(talla: string): number {
+    return (this.prenda()?.tallas ?? [])
+      .filter((variante) => variante.talla === talla)
+      .reduce((total, variante) => total + variante.stockDisponible, 0);
+  }
+
+  protected stockVariante(talla: string, color: string): number {
+    return (this.prenda()?.tallas ?? []).find(
+      (variante) => variante.talla === talla && variante.color === color,
+    )?.stockDisponible ?? 0;
+  }
+
+  protected tieneStockTalla(talla: string): boolean {
+    return (this.prenda()?.tallas ?? []).some(
+      (variante) =>
+        variante.talla === talla &&
+        variante.disponible &&
+        variante.stockDisponible > 0,
+    );
+  }
+
+
+  protected tieneStockColor(color: string): boolean {
+    return (this.prenda()?.tallas ?? []).some(
+      (t) => t.color === color && t.disponible && t.stockDisponible > 0,
+    );
+  }
+
+  protected muestraColor(color: string): string {
+    return OPCIONES_COLORES.find((opcion) => opcion.valor === color)?.muestra ?? '#ffffff';
+  }
+
+  protected seleccionarColor(color: string): void {
+    this.colorSeleccionado.set(color);
+    this.cantidadSeleccionada.set(1);
+    this.mensajeCarrito.set(null);
+    this.errorCarrito.set(null);
+  }
+
 }

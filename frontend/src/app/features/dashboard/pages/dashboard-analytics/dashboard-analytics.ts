@@ -132,7 +132,7 @@ const RESUMEN_VACIO: DashboardOverview = {
             </article>
 
             <article class="kpi-card" [class.kpi-alerta]="resumen().stockBajo > 0">
-              <span>Tallas con stock bajo</span>
+              <span>Variantes con stock bajo</span>
               <strong>{{ resumen().stockBajo.toLocaleString('es-CO') }}</strong>
             </article>
 

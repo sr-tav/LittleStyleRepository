@@ -14,11 +14,14 @@ No incluye carrito (US-10) ni compra.
 - Solo prendas `ACTIVA`. Una prenda oculta o inexistente es 404 en el detalle.
 - Filtros: texto (nombre, marca, descripción con `LIKE '%x%'`, sin índice:
   no es búsqueda full-text), categoría, género (niños, niñas, unisex; sin
-  valor aplican todos), precio mín/máx, disponibilidad (alguna talla con
+  valor aplican todos), precio mín/máx, disponibilidad (alguna variante con
   stock), material (coma-separados, coincide si ALGÚN componente está;
-  p. ej. `ALGODON,POLIESTER`), talla (talla con existencias), edad en meses
+  p. ej. `ALGODON,POLIESTER`), talla (talla con existencias), color
+  (`color`: variante con ese color y `stock > 0`), edad en meses
   (`edadMeses`: coincide si alguna talla cubre la edad o no declara rango;
   rango nulo = compatible hacia atrás), e `ids` de recomendados (US-07).
+  Talla y color se combinan sobre `prenda_tallas`: pedir `talla=4&color=AZUL`
+  exige que esa variante tenga stock, no solo la talla.
 - "Solo mi talla" filtra en el SERVIDOR (`GET /ids` + `?ids=`): la
   paginación y el contador los calcula la base de datos. Las tarjetas
   muestran además el badge de talla sugerida y aviso de alergia (mejor
@@ -32,15 +35,17 @@ No incluye carrito (US-10) ni compra.
   material desconocido) → 400, nunca 500.
 - La ficha muestra composición con porcentajes, marca, categoría, colores,
   estampado, cuidado y tabla de tallas con rangos, edad y disponibilidad
-  por talla. DECISIÓN: las existencias por talla SÍ son exactas (el cliente
-  las necesita para elegir cantidad hasta el stock real); lo que nunca se
-  expone es `stockMinimo`, `stockTotal` ni datos del vendedor.
+  **por variante `talla + color`**. DECISIÓN: las existencias por variante SÍ
+  son exactas (el cliente las necesita para elegir cantidad hasta el stock
+  real); lo que nunca se expone es `stockMinimo`, `stockTotal` ni datos del
+  vendedor. Una talla disponible en un color agotado en otro no se presenta
+  como comprable: el cliente debe elegir la combinación con stock.
 
 ## 4. Seguridad y datos
 Solo CLIENTE (`/api/cliente/**` + `@PreAuthorize`). Sin datos del vendedor.
 
 ## 5. Endpoints
-- `GET /api/cliente/catalogo?q=&categoria=&genero=&precioMin=&precioMax=&disponible=&material=ALGODON,POLIESTER&talla=&edadMeses=&ids=&pagina=0&tamano=12&orden=novedades` → 200 página, 400 filtro inválido o mal tipado, 401/403.
+- `GET /api/cliente/catalogo?q=&categoria=&genero=&precioMin=&precioMax=&disponible=&material=ALGODON,POLIESTER&talla=&color=&edadMeses=&ids=&pagina=0&tamano=12&orden=novedades` → 200 página, 400 filtro inválido o mal tipado, 401/403.
 - `GET /api/cliente/catalogo/{id}` → 200 ficha, 400 id no numérico, 404 inactiva o inexistente.
 
 ## 6. Supuestos y brechas

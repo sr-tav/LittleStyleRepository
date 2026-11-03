@@ -74,9 +74,11 @@
             <strong>tu pago será reembolsado</strong>. Los productos siguen en tu carrito.
           </p>
           <ul class="pago-agotadas">
-            @for (prenda of pago.prendasAgotadas; track prenda.prendaId + prenda.talla) {
+            @for (prenda of pago.prendasAgotadas; track prenda.prendaId + '-' + prenda.talla + '-' + (prenda.color ?? 'sin-color')) {
               <li>
-                <strong>{{ prenda.nombre }}</strong> · talla {{ prenda.talla }}
+                <strong>{{ prenda.nombre }}</strong> ·
+                @if (prenda.color) { {{ prenda.color | colorEtiqueta }} · }
+                talla {{ prenda.talla }}
                 (pediste {{ prenda.cantidadSolicitada }}, disponibles {{ prenda.stockDisponible }})
               </li>
             }

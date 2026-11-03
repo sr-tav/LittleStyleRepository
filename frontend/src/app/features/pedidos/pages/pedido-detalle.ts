@@ -4,6 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
+import { ETIQUETAS_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
+import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
 import { ETIQUETAS_ESTADO, ORDEN_ESTADOS, PedidoDetalle } from '../models/pedido.models';
 import { PedidosService } from '../services/pedidos.service';
 
@@ -28,6 +30,7 @@ export class PedidoDetallePage implements OnInit {
 
   protected readonly estadoDe = (estado: PedidoDetalle['estado']) => ETIQUETAS_ESTADO[estado];
   protected readonly precio = (valor: number) => formatearPrecio(valor);
+  protected readonly colorDe = (color: ColorPreferido) => ETIQUETAS_COLORES[color];
   protected readonly pasos = ORDEN_ESTADOS;
   protected readonly fechaDe = (iso: string | null) =>
     iso === null

@@ -40,10 +40,15 @@ publicación.
 1. Abre **Moderación**. La cola prioriza prendas **Sin revisar**, luego reportes
    abiertos/en revisión, y finalmente las más recientemente actualizadas.
 2. Filtra por moderación, estado comercial, vendedor o texto y pulsa **Filtrar**.
-3. Selecciona **Ver detalle** para revisar descripción, composición, tallas e imágenes.
-4. **Aprobar** marca la prenda como aprobada. **Desactivar** la oculta a clientes y exige
-   un motivo de 10–500 caracteres que verá el vendedor. **Restaurar** devuelve una
-   desactivada a estado aprobado.
+3. Selecciona **Ver detalle** para revisar descripción, composición, tallas,
+   existencias por variante e imágenes. En la tabla, cada fila corresponde a una
+   combinación de talla y color: el stock de una fila no se suma visualmente con
+   el de otro color. Si la tabla no cabe en la pantalla, desplázate horizontalmente
+   dentro de ella.
+4. **Aprobar** marca la prenda como aprobada. **Desactivar** la oculta a clientes
+   y exige un motivo de 10–500 caracteres que verá el vendedor. **Restaurar**
+   devuelve una desactivada a estado aprobado. Estas acciones se aplican a toda
+   la prenda, no a una talla o color individual.
 
 La moderación ocurre después de publicar: «Sin revisar» no significa que la prenda esté
 oculta. El sistema no elimina el producto ni destruye su inventario.

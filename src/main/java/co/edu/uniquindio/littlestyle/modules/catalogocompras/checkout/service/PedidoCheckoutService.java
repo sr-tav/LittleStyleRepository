@@ -73,8 +73,7 @@ public class PedidoCheckoutService {
                         .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                                 "Una prenda del carrito ya no está disponible. Vuelve al carrito para retirarla o elegir otra antes de continuar.")));
         List<ItemResumenCheckoutRequest> items = carrito.items().stream()
-                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(),
-                        item.tallaSugerida()))
+                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(), item.tallaSugerida(), item.color()))
                 .toList();
         ResumenCheckoutResponse resumen = checkoutFacade.calcularResumen(
                 new ResumenCheckoutRequest(request.perfilInfantilId(), request.direccion()), items);
@@ -119,6 +118,7 @@ public class PedidoCheckoutService {
                 .precioUnitario(linea.precioUnitario())
                 .subtotal(linea.subtotal())
                 .tallaSugerida(linea.tallaSugerida())
+                .color(linea.color())
                 .build()));
         pedidoRepository.saveAndFlush(pedido);
         historialRepository.save(HistorialEstadoPedido.builder()

@@ -1,17 +1,13 @@
 package co.edu.uniquindio.littlestyle.modules.admin.service;
 
 import co.edu.uniquindio.littlestyle.config.security.AuthenticatedUser;
-import co.edu.uniquindio.littlestyle.modules.admin.model.AccionAuditoria;
-import co.edu.uniquindio.littlestyle.modules.admin.model.TipoEntidad;
-import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
-import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
+import co.edu.uniquindio.littlestyle.modules.admin.model.*;
+import co.edu.uniquindio.littlestyle.modules.auth.model.*;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
 import co.edu.uniquindio.littlestyle.shared.event.CuentaEstadoCambiadaEvent;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import co.edu.uniquindio.littlestyle.modules.auth.service.AuthService;
+import org.junit.jupiter.api.*;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,11 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import org.mockito.ArgumentCaptor;
 
 class AdminUsuarioServiceTest {
@@ -38,8 +30,9 @@ class AdminUsuarioServiceTest {
     private final AuditoriaService auditoriaService = mock(AuditoriaService.class);
     private final IncidenciaService incidenciaService = mock(IncidenciaService.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final AuthService authService = mock(AuthService.class);
     private final AdminUsuarioService servicio =
-            new AdminUsuarioService(usuarioRepository, auditoriaService, incidenciaService, eventPublisher);
+            new AdminUsuarioService(usuarioRepository, auditoriaService, incidenciaService, eventPublisher, authService);
 
     @BeforeEach
     void autenticarAdministrador() {
@@ -127,5 +120,42 @@ class AdminUsuarioServiceTest {
         AuthenticatedUser actual = new AuthenticatedUser(id, "admin@littlestyle.co", "Admin", rol);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(actual, null, List.of()));
+    }
+
+    @Test
+    void eliminaUnVendedorDelegandoEnAuthServiceYAuditando() {
+        Usuario vendedor = usuario(42L, Rol.VENDEDOR, EstadoUsuario.ACTIVO);
+        when(usuarioRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(vendedor));
+
+        servicio.eliminar(42L, "Solicitud de cierre verificada por soporte");
+
+        verify(authService).desactivarCuenta(42L);
+        verify(auditoriaService).registrar(eq(AccionAuditoria.ELIMINAR_USUARIO), eq(TipoEntidad.USUARIO),
+                eq("42"), eq("ACTIVO"), eq("ELIMINADO"), eq("Solicitud de cierre verificada por soporte"));
+    }
+
+    @Test
+    void eliminarRechazaUnMotivoCorto() {
+        assertThatThrownBy(() -> servicio.eliminar(42L, "corto"))
+                .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void eliminarRechazaCuentasAdministradorasLaPropiaYLasYaEliminadas() {
+        when(usuarioRepository.findByIdForUpdate(7L))
+                .thenReturn(Optional.of(usuario(7L, Rol.ADMINISTRADOR, EstadoUsuario.ACTIVO)));
+        when(usuarioRepository.findByIdForUpdate(9L))
+                .thenReturn(Optional.of(usuario(9L, Rol.VENDEDOR, EstadoUsuario.ACTIVO))); // id del admin autenticado
+        when(usuarioRepository.findByIdForUpdate(8L))
+                .thenReturn(Optional.of(usuario(8L, Rol.CLIENTE, EstadoUsuario.ELIMINADO)));
+
+        for (long id : new long[] {7L, 9L, 8L}) {
+            assertThatThrownBy(() -> servicio.eliminar(id, "Motivo suficientemente largo"))
+                    .isInstanceOf(BusinessException.class);
+        }
+        verifyNoInteractions(authService);
+        verify(auditoriaService, org.mockito.Mockito.times(3)).registrarIntentoFallido(
+                eq(AccionAuditoria.ELIMINAR_USUARIO), eq(TipoEntidad.USUARIO), any(), any());
     }
 }

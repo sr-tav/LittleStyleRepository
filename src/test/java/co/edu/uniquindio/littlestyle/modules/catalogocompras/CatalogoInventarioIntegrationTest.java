@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures.prendaMultipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -60,8 +61,7 @@ class CatalogoInventarioIntegrationTest {
     }
 
     private int crearPrenda(String token) throws Exception {
-        String json = mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", token)
-                        .contentType(MediaType.APPLICATION_JSON).content(PRENDA))
+        String json = mockMvc.perform(prendaMultipart(PRENDA).header("Authorization", token))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.stockTotal").value(12))
                 .andExpect(jsonPath("$.nivelStock").value("DISPONIBLE"))
@@ -87,7 +87,7 @@ class CatalogoInventarioIntegrationTest {
                         .file(new MockMultipartFile("archivos", "espalda.png", "image/png", PNG))
                         .header("Authorization", vendedor))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$.length()").value(3))
                 .andReturn().getResponse().getContentAsString();
         String url = JsonPath.read(imagenes, "$[0].url");
         assertThat(url).startsWith("/media/prendas/" + id + "/").endsWith(".png");
@@ -168,13 +168,12 @@ class CatalogoInventarioIntegrationTest {
     void validaLaPrendaYLasImagenes() throws Exception {
         String vendedor = registrar("vendedor-validacion@correo.com", "VENDEDOR");
 
-        mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(PRENDA.replace("\"porcentaje\":20", "\"porcentaje\":10")))
+        mockMvc.perform(prendaMultipart(PRENDA.replace("\"porcentaje\":20", "\"porcentaje\":10"))
+                        .header("Authorization", vendedor))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errores.composicion").exists());
-        mockMvc.perform(post("/api/vendedor/prendas").header("Authorization", vendedor)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"\",\"tallas\":[]}"))
+        mockMvc.perform(prendaMultipart("{\"nombre\":\"\",\"tallas\":[]}")
+                        .header("Authorization", vendedor))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errores.nombre").exists())
                 .andExpect(jsonPath("$.errores.precio").exists())

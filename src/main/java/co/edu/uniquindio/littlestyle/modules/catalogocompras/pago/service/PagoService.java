@@ -24,6 +24,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.MotivoRe
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.PrendaAgotadaPago;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.model.TransaccionPago;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.pago.repository.TransaccionPagoRepository;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import tools.jackson.core.JacksonException;
@@ -304,8 +305,8 @@ public class PagoService {
                         transaccion.getReferencia(), pedidoId);
                 transaccion.marcarReembolsoPendiente(MotivoReembolso.STOCK_INSUFICIENTE,
                         resultado.prendasAgotadas().stream()
-                                .map(linea -> new PrendaAgotadaPago(linea.prendaId(), linea.nombre(),
-                                        linea.talla(), linea.cantidadSolicitada(), linea.stockDisponible()))
+                                .map(linea -> new PrendaAgotadaPago(linea.prendaId(), linea.nombre(), linea.talla(), linea.cantidadSolicitada(),
+                                        linea.stockDisponible(), linea.color()))
                                 .toList());
             }
         }
@@ -316,25 +317,23 @@ public class PagoService {
         Pedido pedido = transaccion.getPedido();
         PedidoPagoSnapshot snapshot = pedido == null ? deserializar(transaccion.getSnapshotCheckout()) : null;
         List<LineaDisponibilidadPagoResponse> agotadas = transaccion.getPrendasAgotadas().stream()
-                .map(prenda -> new LineaDisponibilidadPagoResponse(prenda.getPrendaId(), prenda.getNombre(),
-                        prenda.getTalla(), prenda.getCantidadSolicitada(), prenda.getStockDisponible()))
+                .map(prenda -> new LineaDisponibilidadPagoResponse(prenda.getPrendaId(), prenda.getNombre(), prenda.getTalla(),
+                        prenda.getCantidadSolicitada(), prenda.getStockDisponible(), prenda.getColor()))
                 .toList();
         List<LineaRecompraResponse> disponibles = List.of();
         if (transaccion.getMotivoReembolso() == MotivoReembolso.STOCK_INSUFICIENTE) {
             Set<String> clavesAgotadas = agotadas.stream()
-                    .map(linea -> clave(linea.prendaId(), linea.talla()))
+                    .map(linea -> clave(linea.prendaId(), linea.talla(), linea.color()))
                     .collect(Collectors.toSet());
             if (pedido != null) {
                 disponibles = pedido.getItems().stream()
-                        .filter(linea -> !clavesAgotadas.contains(clave(linea.getPrendaId(), linea.getTalla())))
-                        .map(linea -> new LineaRecompraResponse(linea.getPrendaId(), linea.getNombre(),
-                                linea.getTalla(), linea.getCantidad()))
+                        .filter(linea -> !clavesAgotadas.contains(clave(linea.getPrendaId(), linea.getTalla(), linea.getColor())))
+                        .map(linea -> new LineaRecompraResponse(linea.getPrendaId(), linea.getNombre(), linea.getTalla(), linea.getCantidad(), linea.getColor()))
                         .toList();
             } else if (snapshot != null) {
                 disponibles = snapshot.items().stream()
-                        .filter(linea -> !clavesAgotadas.contains(clave(linea.prendaId(), linea.talla())))
-                        .map(linea -> new LineaRecompraResponse(linea.prendaId(), linea.nombre(),
-                                linea.talla(), linea.cantidad()))
+                        .filter(linea -> !clavesAgotadas.contains(clave(linea.prendaId(), linea.talla(), linea.color())))
+                        .map(linea -> new LineaRecompraResponse(linea.prendaId(), linea.nombre(), linea.talla(), linea.cantidad(), linea.color()))
                         .toList();
             }
         }
@@ -431,7 +430,7 @@ public class PagoService {
     }
 
     /** Llave prenda y talla para comparar líneas. */
-    private static String clave(Long prendaId, String talla) {
-        return prendaId + "|" + talla.trim().toUpperCase(Locale.ROOT);
+    private static String clave(Long prendaId, String talla, ColorPreferido color) {
+        return prendaId + "|" + talla.trim().toUpperCase(Locale.ROOT) + "|" + color;
     }
 }
