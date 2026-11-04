@@ -69,15 +69,28 @@ class DashboardIntegrationTest {
     private Usuario cliente;
 
     /**
+     * Lo que el administrador ya ve antes del escenario. Otras pruebas sin {@code @Transactional} comparten el
+     * mismo H2 y dejan datos confirmados; según el orden de ejecución (distinto en Linux/CI) inflarían los totales.
+     */
+    private double ventasPrevias;
+    private int pedidosPrevios;
+    private double stockPrevio;
+
+    /**
      * Escenario: A vende un vestido (stock bajo) y un buzo; B vende un vestido. El pedido 1 mezcla prendas de A
      * y B, el 2 está cancelado y el 3 ya se envió.
      */
     @BeforeEach
-    void escenario() {
+    void escenario() throws Exception {
+        admin = usuario("admin@littlestyle.com", Rol.ADMINISTRADOR);
+        String previo = consultar(admin, "");
+        ventasPrevias = numero(previo, "$.totalVentas");
+        pedidosPrevios = JsonPath.read(previo, "$.totalPedidos");
+        stockPrevio = numero(previo, "$.stockTotal");
+
         vendedorA = usuario("a@tienda.com", Rol.VENDEDOR);
         vendedorB = usuario("b@tienda.com", Rol.VENDEDOR);
         vendedorSinVentas = usuario("c@tienda.com", Rol.VENDEDOR);
-        admin = usuario("admin@littlestyle.com", Rol.ADMINISTRADOR);
         cliente = usuario("cliente@mail.com", Rol.CLIENTE);
 
         Prenda vestidoA = prenda(vendedorA, "Vestido Rosa", CategoriaPrenda.VESTIDOS, 3, 5);
@@ -134,9 +147,9 @@ class DashboardIntegrationTest {
     void administradorVeLaPlataformaCompleta() throws Exception {
         String json = consultar(admin, "");
 
-        assertThat(numero(json, "$.totalVentas")).isEqualTo(120000d);
-        assertThat((int) JsonPath.read(json, "$.totalPedidos")).isEqualTo(2);
-        assertThat(numero(json, "$.stockTotal")).isEqualTo(20d);
+        assertThat(numero(json, "$.totalVentas")).isEqualTo(ventasPrevias + 120000d);
+        assertThat((int) JsonPath.read(json, "$.totalPedidos")).isEqualTo(pedidosPrevios + 2);
+        assertThat(numero(json, "$.stockTotal")).isEqualTo(stockPrevio + 20d);
     }
 
     @Test
