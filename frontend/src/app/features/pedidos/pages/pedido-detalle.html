@@ -1,6 +1,6 @@
 <app-navbar />
 <main class="reco-page">
-  <a class="back-link" routerLink="/cliente/pedidos" aria-label="Volver a mis pedidos">← Mis pedidos</a>
+  <app-boton-volver fallbackUrl="/cliente/pedidos" />
 
   @if (cargando()) {
     <div class="reco-state" role="status"><p>Cargando pedido…</p></div>
@@ -9,7 +9,13 @@
   } @else if (pedido(); as p) {
     <header class="reco-heading">
       <div>
-        <p class="reco-eyebrow">Pedido #{{ p.numeroPedido }}</p>
+        <p class="reco-eyebrow">
+          @if (p.numeroPedido != null) {
+            Pedido #{{ p.numeroPedido }}
+          } @else {
+            Pedido sin número
+          }
+        </p>
         <h1>{{ estadoDe(p.estado) }}</h1>
       </div>
       <div class="reco-acciones">

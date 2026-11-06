@@ -23,6 +23,7 @@ import { VitrinaDetalle, VitrinaTalla } from '../models/vitrina.models';
 import { VitrinaService } from '../services/vitrina.service';
 import { CrearIncidencia } from '../../admin/models/admin.models';
 import { IncidenciasService } from '../../admin/services/incidencias.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * US-09: ficha del producto con ficha técnica textil y tabla de medidas.
@@ -31,7 +32,7 @@ import { IncidenciasService } from '../../admin/services/incidencias.service';
  */
 @Component({
   selector: 'app-detalle-producto',
-  imports: [Navbar, RouterLink, PrendaMiniatura, TallaSugerida],
+  imports: [Navbar, RouterLink, PrendaMiniatura, TallaSugerida, BotonVolver],
   templateUrl: './detalle.html',
 })
 export class DetalleProducto implements OnInit {
@@ -290,6 +291,18 @@ export class DetalleProducto implements OnInit {
     this.vitrina.detalle(id).subscribe({
       next: (p) => {
         this.prenda.set(p);
+        const coloresConStock = [...new Set(p.colores)].filter((color) =>
+          p.tallas.some(
+            (talla) =>
+              talla.color === color &&
+              talla.disponible &&
+              talla.stockDisponible > 0,
+          ),
+        );
+
+        if (coloresConStock.length === 1) {
+          this.colorSeleccionado.set(coloresConStock[0]);
+        }
         this.cargando.set(false);
         if (perfilId !== null) this.cargarSugerida(id, perfilId);
       },

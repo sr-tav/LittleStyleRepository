@@ -2,6 +2,7 @@
 <main class="catalog-page">
   <header class="catalog-heading">
     <div>
+      <app-boton-volver fallbackUrl="/admin" />
       <h1>Incidencias</h1>
       <p class="catalog-subtitle">Atiende apelaciones y solicitudes de soporte</p>
     </div>
@@ -68,49 +69,49 @@
       <div class="catalog-state"><p>Todavía no hay incidencias que coincidan con los filtros.</p></div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table">
+        <table class="catalog-table tabla-tarjetas">
           <caption class="visually-hidden">Bandeja de incidencias con reportante, tipo, estado y acciones</caption>
           <thead>
-            <tr>
-              <th scope="col">Incidencia</th>
-              <th scope="col">Reportante</th>
-              <th scope="col">Tipo</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Acciones</th>
-            </tr>
+          <tr>
+            <th scope="col">Incidencia</th>
+            <th scope="col">Reportante</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
           </thead>
           <tbody>
             @for (i of items(); track i.id) {
               <tr>
-                <td>
+                <td data-label="Incidencia">
                   <strong>#{{ i.id }} · {{ i.asunto }}</strong>
                   <span class="product-meta">
-                    Creada {{ i.fechaCreacion }}
+            Creada {{ i.fechaCreacion }}
                     @if (i.fechaResolucion) {
                       · Resuelta {{ i.fechaResolucion }}
                     }
-                  </span>
+          </span>
                   @if (i.referenciaId !== null) {
                     <span class="product-meta">Referencia: {{ i.referenciaDetalle ?? ('#' + i.referenciaId) }}</span>
                   }
                 </td>
-                <td>
+                <td data-label="Reportante">
                   {{ i.reportanteEmail }}
                   @if (i.respuesta) {
                     <span class="product-meta">Respuesta: {{ i.respuesta }}</span>
                   }
                 </td>
-                <td>{{ etiquetasTipo[i.tipo] }}</td>
-                <td>
-                  <span
-                    class="state-chip"
-                    [class.chip-ABIERTA]="i.estado === 'ABIERTA'"
-                    [class.chip-EN_REVISION]="i.estado === 'EN_REVISION'"
-                    [class.chip-RECHAZADA]="i.estado === 'RECHAZADA'"
-                    [class.is-off]="i.estado === 'RESUELTA'"
-                  >{{ etiquetasEstado[i.estado] }}</span>
+                <td data-label="Tipo">{{ etiquetasTipo[i.tipo] }}</td>
+                <td data-label="Estado">
+          <span
+            class="state-chip"
+            [class.chip-ABIERTA]="i.estado === 'ABIERTA'"
+            [class.chip-EN_REVISION]="i.estado === 'EN_REVISION'"
+            [class.chip-RECHAZADA]="i.estado === 'RECHAZADA'"
+            [class.is-off]="i.estado === 'RESUELTA'"
+          >{{ etiquetasEstado[i.estado] }}</span>
                 </td>
-                <td class="celda-accion">
+                <td data-label="Acciones" class="celda-accion">
                   @if (i.estado === 'ABIERTA' || i.estado === 'EN_REVISION') {
                     <select
                       class="acciones-select"

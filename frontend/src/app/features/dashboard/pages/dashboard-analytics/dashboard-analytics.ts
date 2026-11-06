@@ -591,6 +591,21 @@ const RESUMEN_VACIO: DashboardOverview = {
           grid-template-columns: 1fr;
         }
 
+        .kpi-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.75rem;
+        }
+
+        .kpi-card {
+          min-width: 0;
+          padding: 0.85rem;
+        }
+
+        .kpi-card span,
+        .kpi-card strong {
+          overflow-wrap: anywhere;
+        }
+
         .filter-field {
           flex: 1 1 130px;
         }
@@ -823,17 +838,30 @@ export class DashboardAnalyticsPage implements OnInit, OnDestroy {
             pointBackgroundColor: '#15803d',
             pointBorderColor: '#ffffff',
             fill: true,
-            tension: 0.38,
+            tension: 0.25,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+        },
         scales: {
-          x: { grid: { display: false }, ticks: { color: '#6b7280' } },
-          y: { beginAtZero: true, grid: { color: '#f5f5f4' }, ticks: { color: '#6b7280' } },
+          x: {
+            grid: { display: false },
+            ticks: { color: '#6b7280' },
+          },
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Unidades vendidas',
+            },
+            grid: { color: '#f5f5f4' },
+            ticks: { color: '#6b7280' },
+          },
         },
       },
     });

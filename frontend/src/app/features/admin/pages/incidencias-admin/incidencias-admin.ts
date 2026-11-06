@@ -14,6 +14,7 @@ import {
   TipoIncidencia,
 } from '../../models/admin.models';
 import { IncidenciasService } from '../../services/incidencias.service';
+import {BotonVolver} from '../../../../shared/components/boton-volver/boton-volver';
 
 /** Estados disponibles en el filtro de la bandeja. */
 const ESTADOS_FILTRO: EstadoIncidencia[] = ['ABIERTA', 'EN_REVISION', 'RESUELTA', 'RECHAZADA'];
@@ -34,7 +35,7 @@ const ROLES_FILTRO: Rol[] = ['CLIENTE', 'VENDEDOR'];
  */
 @Component({
   selector: 'app-incidencias-admin',
-  imports: [Navbar],
+  imports: [Navbar, BotonVolver],
   templateUrl: './incidencias-admin.html',
   styles: `
     .admin-filtros {

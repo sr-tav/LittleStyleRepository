@@ -15,6 +15,7 @@ import {
 } from '../../models/admin.models';
 import { ModeracionService } from '../../services/moderacion.service';
 import { formatearPrecio } from '../../../catalogoCompras/models/prenda-opciones';
+import {BotonVolver} from '../../../../shared/components/boton-volver/boton-volver';
 
 /** Estados de moderación que pueden mostrarse en el filtro. */
 const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESACTIVADA'];
@@ -26,7 +27,7 @@ const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESA
  */
 @Component({
   selector: 'app-moderacion',
-  imports: [Navbar, ColorEtiquetaPipe],
+  imports: [Navbar, ColorEtiquetaPipe, BotonVolver],
   templateUrl: './moderacion.html',
   styles: `
     .admin-filtros {
@@ -292,6 +293,162 @@ const ESTADOS_MODERACION: EstadoModeracion[] = ['SIN_REVISAR', 'APROBADA', 'DESA
     .chip-DESACTIVADA {
       background: var(--ls-error-soft);
       color: var(--ls-error);
+    }
+
+    @media (max-width: 600px) {
+      .detalle-prenda {
+        min-width: 0;
+        padding: 1rem;
+      }
+
+      .detalle-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .detalle-grid > *,
+      .detalle-info,
+      .detalle-bloque {
+        min-width: 0;
+      }
+
+      .detalle-foto {
+        width: min(100%, 22rem);
+        height: auto;
+        max-height: 55vh;
+        aspect-ratio: auto;
+        object-fit: contain;
+        margin-inline: auto;
+      }
+
+      .detalle-tabla-wrap {
+        overflow-x: visible;
+      }
+
+      .detalle-tabla {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .detalle-tabla thead {
+        display: none;
+      }
+
+      .detalle-tabla tbody,
+      .detalle-tabla tr,
+      .detalle-tabla td {
+        display: block;
+      }
+
+      .detalle-tabla tbody tr {
+        padding: 0.6rem;
+        border-bottom: 1px solid var(--ls-border);
+      }
+
+      .detalle-tabla td {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        overflow-wrap: anywhere;
+      }
+
+      .detalle-tabla td::before {
+        content: attr(data-label);
+        color: var(--ls-muted);
+        font-weight: 800;
+        text-align: left;
+      }
+
+      .detalle-flags {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .detalle-acciones {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .detalle-acciones button {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .detalle-prenda {
+        min-width: 0;
+        padding: 1rem;
+      }
+
+      .detalle-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .detalle-grid > *,
+      .detalle-info,
+      .detalle-bloque {
+        min-width: 0;
+      }
+
+      .detalle-foto {
+        width: min(100%, 22rem);
+        height: auto;
+        max-height: 55vh;
+        aspect-ratio: auto;
+        object-fit: contain;
+        margin-inline: auto;
+      }
+
+      .detalle-tabla-wrap {
+        overflow-x: visible;
+      }
+
+      .detalle-tabla {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .detalle-tabla thead {
+        display: none;
+      }
+
+      .detalle-tabla tbody,
+      .detalle-tabla tr,
+      .detalle-tabla td {
+        display: block;
+      }
+
+      .detalle-tabla tbody tr {
+        padding: 0.6rem;
+        border-bottom: 1px solid var(--ls-border);
+      }
+
+      .detalle-tabla td {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        overflow-wrap: anywhere;
+      }
+
+      .detalle-tabla td::before {
+        content: attr(data-label);
+        color: var(--ls-muted);
+        font-weight: 800;
+        text-align: left;
+      }
+
+      .detalle-flags {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .detalle-acciones {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .detalle-acciones button {
+        width: 100%;
+      }
     }
   `,
 })

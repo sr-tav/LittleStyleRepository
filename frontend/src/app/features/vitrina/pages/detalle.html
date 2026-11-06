@@ -1,6 +1,6 @@
 <app-navbar />
 <main class="reco-page">
-  <a class="back-link" routerLink="/cliente/catalogo" aria-label="Volver al catálogo">← Volver al catálogo</a>
+  <app-boton-volver fallbackUrl="/cliente/catalogo" />
 
   @if (cargando()) {
     <div class="reco-state" role="status"><p>Cargando prenda…</p></div>
@@ -344,16 +344,24 @@
             <tbody>
               @for (t of tallasTablaMedidas(); track t.talla) {
                 <tr [class.is-sugerida]="sugerida()?.tallaSugerida === t.talla">
-                  <td>
+                  <td data-label="Talla">
                     <strong>{{ t.talla }}</strong>
                     @if (sugerida()?.tallaSugerida === t.talla) {
                       <span class="talla-badge">Tu talla</span>
                     }
                   </td>
-                  <td class="muted-cell">{{ t.estaturaMinCm }} – {{ t.estaturaMaxCm }}</td>
-                  <td class="muted-cell">{{ t.pesoMinKg }} – {{ t.pesoMaxKg }}</td>
-                  <td class="muted-cell">{{ edadDe(t) }}</td>
-                  <td class="muted-cell">{{ t.stockDisponible }}</td>
+                  <td class="muted-cell" data-label="Estatura (cm)">
+                    {{ t.estaturaMinCm }} – {{ t.estaturaMaxCm }}
+                  </td>
+                  <td class="muted-cell" data-label="Peso (kg)">
+                    {{ t.pesoMinKg }} – {{ t.pesoMaxKg }}
+                  </td>
+                  <td class="muted-cell" data-label="Edad (meses)">
+                    {{ edadDe(t) }}
+                  </td>
+                  <td class="muted-cell" data-label="Disponibles">
+                    {{ t.stockDisponible }}
+                  </td>
                 </tr>
               }
             </tbody>

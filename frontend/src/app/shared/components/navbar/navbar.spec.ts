@@ -155,30 +155,11 @@ describe('Navbar', () => {
       return fixture.nativeElement as HTMLElement;
     }
 
-    it('muestra el enlace «Inicio» en páginas internas y lo dirige al inicio del rol', async () => {
+    it('no muestra retroceso ni enlace a Inicio en el navbar global', async () => {
       const root = await crearEn('/cliente/hijos/5');
-      const inicio = root.querySelector<HTMLAnchorElement>('a.navbar-inicio');
-      expect(inicio?.textContent?.trim()).toBe('Inicio');
-      expect(inicio?.getAttribute('href')).toBe('/cliente');
-    });
 
-    it('oculta «Inicio», la flecha de regreso y las migas en las páginas principales', async () => {
-      for (const [ruta, rol, rutaInicio] of [
-        ['/cliente', 'CLIENTE', '/cliente'],
-        ['/vendedor', 'VENDEDOR', '/vendedor'],
-        ['/admin', 'ADMINISTRADOR', '/admin'],
-      ]) {
-        const root = await crearEn(ruta, rol, rutaInicio);
-        expect(root.querySelector('.navbar-inicio'), ruta).toBeNull();
-        expect(root.querySelector('.navbar-volver'), ruta).toBeNull();
-        expect(root.querySelector('nav.migas'), ruta).toBeNull();
-      }
-    });
-
-    it('en páginas internas conserva Inicio y la flecha de regreso sin mostrar migas de pan', async () => {
-      const root = await crearEn('/cliente/hijos/5');
-      expect(root.querySelector('.navbar-volver')).not.toBeNull();
-      expect(root.querySelector('a.navbar-inicio[href="/cliente"]')).not.toBeNull();
+      expect(root.querySelector('.navbar-volver')).toBeNull();
+      expect(root.querySelector('.navbar-inicio')).toBeNull();
       expect(root.querySelector('nav.migas')).toBeNull();
     });
   });

@@ -75,6 +75,16 @@ describe('UsuariosAdminPage (US-14)', () => {
     expect(listar).toHaveBeenCalledWith(expect.objectContaining({ pagina: 0, tamano: 10 }));
   });
 
+  it('prepara la tabla de usuarios para tarjetas móviles', () => {
+    const { el } = crear();
+
+    expect(el.querySelector('.catalog-table')?.classList.contains('tabla-tarjetas')).toBe(true);
+    expect(
+      Array.from(el.querySelectorAll('tbody tr:first-child td'))
+        .map((td) => td.getAttribute('data-label')),
+    ).toEqual(['Usuario', 'Rol', 'Tienda', 'Estado', 'Acción']);
+  });
+
   it('aplica los filtros de rol, estado y texto', () => {
     const { fixture, el } = crear();
     cambiar(el.querySelector<HTMLSelectElement>('#filtro-rol')!, 'VENDEDOR', 'change');

@@ -78,6 +78,19 @@ describe('IncidenciasAdminPage (US-14)', () => {
     expect(listar).toHaveBeenCalledWith(expect.objectContaining({ pagina: 0, tamano: 10 }));
   });
 
+  it('prepara la tabla de incidencias para tarjetas móviles y etiqueta su acción', () => {
+    const { el } = crear();
+
+    expect(el.querySelector('.catalog-table')?.classList.contains('tabla-tarjetas')).toBe(true);
+    expect(
+      Array.from(el.querySelectorAll('tbody tr:first-child td'))
+        .map((td) => td.getAttribute('data-label')),
+    ).toEqual(['Incidencia', 'Reportante', 'Tipo', 'Estado', 'Acciones']);
+
+    expect(el.querySelector('.acciones-select')?.closest('td')?.getAttribute('data-label'))
+      .toBe('Acciones');
+  });
+
   it('toma una incidencia abierta y pasa a revisión', () => {
     const { fixture, el } = crear();
     const acciones = el.querySelector<HTMLSelectElement>('.acciones-select')!;

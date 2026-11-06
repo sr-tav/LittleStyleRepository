@@ -71,6 +71,24 @@ describe('AuditoriaPage (US-14)', () => {
     expect(el.querySelector('input[type="submit"]')).toBeNull();
   });
 
+  it('prepara la tabla de auditoría para tarjetas móviles', () => {
+    const { el } = crear();
+
+    expect(el.querySelector('.auditoria-table')?.classList.contains('tabla-tarjetas')).toBe(true);
+    expect(
+      Array.from(el.querySelectorAll('.auditoria-table tbody tr:first-child td'))
+        .map((td) => td.getAttribute('data-label')),
+    ).toEqual([
+      'Fecha y hora',
+      'Administrador',
+      'Acción',
+      'Entidad',
+      'Cambio',
+      'Resultado',
+      'Motivo',
+    ]);
+  });
+
   it('muestra una sola fila por cada registro al desactivar una prenda', () => {
     respuesta.contenido = [{
       ...registro,

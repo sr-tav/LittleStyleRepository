@@ -243,9 +243,15 @@ describe('DashboardAnalyticsPage', () => {
 
     const llamadas = chartConstructor.mock.calls.slice(-2);
     expect(llamadas).toHaveLength(2);
-    expect(llamadas[0][0]).toBe(chartContext);
-    expect(llamadas[0][1].data.datasets[0].data).toEqual([12]); // demanda por talla
-    expect(llamadas[1][1].data.datasets[0].data).toEqual([800]); // ventas por categoría
+
+    const configuracionDemanda = llamadas[0][1];
+    expect(configuracionDemanda.type).toBe('line');
+    expect(configuracionDemanda.data.labels).toEqual(['M']);
+    expect(configuracionDemanda.data.datasets[0].data).toEqual([12]);
+    expect(configuracionDemanda.options.scales.y.beginAtZero).toBe(true);
+    expect(configuracionDemanda.options.scales.y.title.text).toBe('Unidades vendidas');
+
+    expect(llamadas[1][1].data.datasets[0].data).toEqual([800]);
   });
 
   it('envía la categoría seleccionada y solicita de nuevo las métricas', async () => {

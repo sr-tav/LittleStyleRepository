@@ -21,17 +21,6 @@
   gap: 0.25rem;
 }
 
-.navbar-inicio {
-  padding: 0 0.5rem;
-  color: var(--ls-primary-dark);
-  font-size: 0.9rem;
-  font-weight: 600;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
 .migas {
   padding: 0.5rem 2rem;
   border-bottom: 1px solid var(--ls-border);
@@ -772,5 +761,35 @@
 @media (max-width: 380px) {
   .home-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.boton-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ls-primary-dark);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  span:first-child {
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  &:hover {
+    background: var(--ls-primary-soft);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-primary-dark);
+    outline-offset: 2px;
   }
 }

@@ -6,6 +6,7 @@ import { procesarErrorApi } from '../../auth/auth.validators';
 import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
 import { ETIQUETAS_ESTADO, PedidoResumen } from '../models/pedido.models';
 import { PedidosService } from '../services/pedidos.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * US-12 / UI-17: historial de pedidos del cliente.
@@ -14,7 +15,7 @@ import { PedidosService } from '../services/pedidos.service';
  */
 @Component({
   selector: 'app-mis-pedidos',
-  imports: [Navbar, RouterLink],
+  imports: [Navbar, RouterLink, BotonVolver],
   templateUrl: './mis-pedidos.html',
 })
 export class MisPedidos implements OnInit {

@@ -1,9 +1,6 @@
 <app-navbar />
 <main class="profiles-page profile-detail-page">
-  <a class="back-link" routerLink="/cliente/hijos" aria-label="Volver a mis hijos"
-    >← Volver a mis hijos</a
-  >
-
+  <app-boton-volver fallbackUrl="/cliente/hijos" />
   @if (cargando()) {
     <div class="profiles-state" role="status">
       <span class="spinner"></span>

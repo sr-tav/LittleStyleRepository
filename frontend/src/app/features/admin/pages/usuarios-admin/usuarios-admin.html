@@ -2,6 +2,7 @@
 <main class="catalog-page">
   <header class="catalog-heading">
     <div>
+      <app-boton-volver fallbackUrl="/admin" />
       <h1>Gestión de usuarios</h1>
       <p class="catalog-subtitle">Suspende, bloquea o habilita cuentas con motivo</p>
     </div>
@@ -59,28 +60,35 @@
       <div class="catalog-state"><p>Todavía no hay usuarios que coincidan con los filtros.</p></div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table">
+        <table class="catalog-table tabla-tarjetas">
           <caption class="visually-hidden">Cuentas de usuarios con rol, estado y acciones de cambio de estado</caption>
           <thead>
-            <tr>
-              <th scope="col">Usuario</th>
-              <th scope="col">Rol</th>
-              <th scope="col">Tienda</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Acción</th>
-            </tr>
+          <tr>
+            <th scope="col">Usuario</th>
+            <th scope="col">Rol</th>
+            <th scope="col">Tienda</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acción</th>
+          </tr>
           </thead>
           <tbody>
             @for (u of items(); track u.id) {
               <tr>
-                <td>
+                <td data-label="Usuario">
                   <strong>{{ u.nombre }} {{ u.apellido }}</strong>
                   <span class="product-meta">{{ u.email }}</span>
                 </td>
-                <td>{{ etiquetasRol[u.rol] }}</td>
-                <td class="muted-cell">{{ u.nombreTienda ?? '—' }}</td>
-                <td><span class="state-chip" [class.chip-SUSPENDIDO]="u.estado === 'SUSPENDIDO'" [class.chip-BLOQUEADO]="u.estado === 'BLOQUEADO'" [class.chip-ELIMINADO]="u.estado === 'ELIMINADO'">{{ etiquetasEstado[u.estado] }}</span></td>
-                <td class="celda-accion">
+                <td data-label="Rol">{{ etiquetasRol[u.rol] }}</td>
+                <td data-label="Tienda" class="muted-cell">{{ u.nombreTienda ?? '—' }}</td>
+                <td data-label="Estado">
+          <span
+            class="state-chip"
+            [class.chip-SUSPENDIDO]="u.estado === 'SUSPENDIDO'"
+            [class.chip-BLOQUEADO]="u.estado === 'BLOQUEADO'"
+            [class.chip-ELIMINADO]="u.estado === 'ELIMINADO'"
+          >{{ etiquetasEstado[u.estado] }}</span>
+                </td>
+                <td data-label="Acción" class="celda-accion">
                   @if (admiteAcciones(u)) {
                     <button type="button" class="btn-soft" (click)="abrirDialogo(u)">Cambiar estado</button>
                     <button type="button" class="btn-ghost" (click)="abrirEliminar(u)">Eliminar cuenta</button>

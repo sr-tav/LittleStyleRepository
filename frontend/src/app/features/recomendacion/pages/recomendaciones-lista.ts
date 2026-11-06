@@ -10,6 +10,7 @@ import { RecomendacionItem } from '../models/recomendacion.models';
 import { RecomendacionService } from '../services/recomendacion.service';
 import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatura';
 import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * Presenta los productos recomendados para el perfil infantil seleccionado.
@@ -19,12 +20,13 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
  */
 @Component({
   selector: 'app-recomendaciones-lista',
-  imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura],
+  imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura, BotonVolver],
   template: `
   <app-navbar />
   <main class="reco-page">
     <header class="reco-heading">
       <div>
+        <app-boton-volver fallbackUrl="/cliente" />
         <p class="reco-eyebrow">Recomendación</p>
         <h1>Talla sugerida</h1>
         <p class="reco-subtitle">Calculada con las medidas de tu hijo, no con la edad</p>
@@ -48,9 +50,14 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
         @for (r of items(); track r.prendaId) {
           <li>
             <article class="reco-card">
-              <div class="reco-card-media">
+              <a
+                class="reco-card-media reco-card-media-link"
+                [routerLink]="['/cliente/catalogo', r.prendaId]"
+                [queryParams]="{ perfilId: perfilId() }"
+                [attr.aria-label]="'Ver detalle de ' + r.nombre"
+              >
                 <app-prenda-miniatura [url]="r.imagenUrl" [nombre]="r.nombre" />
-              </div>
+              </a>
               <div class="reco-card-body">
                 <h2 class="reco-card-title">{{ r.nombre }}</h2>
                 @if (precioDe(r) !== null) {

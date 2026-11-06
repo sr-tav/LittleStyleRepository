@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.dashboard.service;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.CategoriaPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardOverviewResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
@@ -206,5 +207,11 @@ class DashboardAnalyticsServiceTest {
                 eq(DashboardAnalyticsService.ESTADOS_VENTA), eq(7L), eq(CategoriaPrenda.VESTIDOS),
                 org.mockito.ArgumentMatchers.argThat(pageable ->
                         pageable.getPageSize() == DashboardAnalyticsService.MAX_FILAS_REPORTE + 1));
+    }
+
+    @Test
+    void estadosDeVentaExcluyenPedidosCancelados() {
+        assertThat(DashboardAnalyticsService.ESTADOS_VENTA)
+                .doesNotContain(EstadoPedido.CANCELADO);
     }
 }

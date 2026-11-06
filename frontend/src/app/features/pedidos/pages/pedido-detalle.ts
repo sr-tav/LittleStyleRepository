@@ -9,6 +9,7 @@ import { ETIQUETAS_COLORES } from '../../perfilesInfantiles/models/perfil-opcion
 import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
 import { ETIQUETAS_ESTADO, ORDEN_ESTADOS, PedidoDetalle } from '../models/pedido.models';
 import { PedidosService } from '../services/pedidos.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * US-12 / UI-16: detalle del pedido con línea de tiempo y guía de envío.
@@ -17,7 +18,7 @@ import { PedidosService } from '../services/pedidos.service';
  */
 @Component({
   selector: 'app-pedido-detalle',
-  imports: [Navbar, RouterLink, EstampadoEtiquetaPipe],
+  imports: [Navbar,  EstampadoEtiquetaPipe, BotonVolver],
   templateUrl: './pedido-detalle.html',
 })
 export class PedidoDetallePage implements OnInit {

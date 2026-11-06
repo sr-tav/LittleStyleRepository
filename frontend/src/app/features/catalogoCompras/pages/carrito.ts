@@ -8,6 +8,7 @@ import { procesarErrorApi } from '../../auth/auth.validators';
 import { formatearPrecio } from '../models/prenda-opciones';
 import { ItemCarrito } from '../models/carrito.models';
 import { CarritoService } from '../services/carrito.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * Presenta el carrito y permite cambiar cantidades, quitar líneas o continuar al checkout.
@@ -16,7 +17,7 @@ import { CarritoService } from '../services/carrito.service';
  */
 @Component({
   selector: 'app-carrito',
-  imports: [Navbar, RouterLink, ColorEtiquetaPipe, EstampadoEtiquetaPipe],
+  imports: [Navbar, RouterLink, ColorEtiquetaPipe, EstampadoEtiquetaPipe, BotonVolver],
   templateUrl: './carrito.html',
 })
 export class CarritoPage {

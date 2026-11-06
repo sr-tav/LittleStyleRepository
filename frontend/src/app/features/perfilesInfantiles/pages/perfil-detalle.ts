@@ -34,6 +34,7 @@ import {
   OPCIONES_ESTAMPADOS,
 } from '../models/perfil-opciones';
 import { PerfilesService } from '../services/perfiles.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 const FECHA_LOCAL = new Date();
 const HOY = `${FECHA_LOCAL.getFullYear()}-${String(FECHA_LOCAL.getMonth() + 1).padStart(2, '0')}-${String(FECHA_LOCAL.getDate()).padStart(2, '0')}`;
@@ -66,7 +67,7 @@ function edadEnAnios(fechaNacimiento: string, fechaReferencia: string): number {
  */
 @Component({
   selector: 'app-perfil-detalle',
-  imports: [Navbar, ReactiveFormsModule, RouterLink],
+  imports: [Navbar, ReactiveFormsModule, RouterLink, BotonVolver],
   templateUrl: './perfil-detalle.html',
 })
 export class PerfilDetalle implements OnInit {
