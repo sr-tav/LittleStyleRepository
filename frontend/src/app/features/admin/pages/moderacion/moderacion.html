@@ -2,6 +2,7 @@
 <main class="catalog-page">
   <header class="catalog-heading">
     <div>
+      <app-boton-volver fallbackUrl="/admin" />
       <h1>Moderación de prendas</h1>
       <p class="catalog-subtitle">Revisa publicaciones activas, desactiva las que incumplan las normas y restaura cuando corresponda</p>
     </div>
@@ -69,7 +70,7 @@
       <div class="catalog-state"><p>Todavía no hay prendas en la cola de moderación.</p></div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table">
+        <table class="catalog-table tabla-tarjetas">
           <caption class="visually-hidden">Cola de moderación con vendedor, estado de moderación y acciones</caption>
           <thead>
           <tr>
@@ -83,30 +84,35 @@
           <tbody>
             @for (p of items(); track p.id) {
               <tr>
-                <td>
+                <td data-label="Prenda">
                   <strong>{{ p.nombre }}</strong>
                   <span class="product-meta">{{ etiquetasPrenda[p.estado] }}</span>
                 </td>
-                <td>
+                <td data-label="Vendedor">
                   {{ p.vendedorEmail }}
                   @if (p.vendedorTienda) {
                     <span class="product-meta">{{ p.vendedorTienda }}</span>
                   }
                 </td>
-                <td class="price-cell">{{ precio(p.precio) }}</td>
-                <td>
-                  <span
-                    class="state-chip"
-                    [class.chip-SIN-REVISAR]="p.estadoModeracion === 'SIN_REVISAR'"
-                    [class.chip-DESACTIVADA]="p.estadoModeracion === 'DESACTIVADA'"
-                    [class.is-off]="p.estadoModeracion === 'APROBADA'"
-                  >{{ etiquetasModeracion[p.estadoModeracion] }}</span>
+                <td data-label="Precio" class="price-cell">{{ precio(p.precio) }}</td>
+                <td data-label="Estado">
+          <span
+            class="state-chip"
+            [class.chip-SIN-REVISAR]="p.estadoModeracion === 'SIN_REVISAR'"
+            [class.chip-DESACTIVADA]="p.estadoModeracion === 'DESACTIVADA'"
+            [class.is-off]="p.estadoModeracion === 'APROBADA'"
+          >{{ etiquetasModeracion[p.estadoModeracion] }}</span>
                   @if (p.motivoModeracion) {
                     <span class="product-meta" [attr.title]="p.motivoModeracion">{{ p.motivoModeracion }}</span>
                   }
                 </td>
-                <td class="celda-accion">
-                  <button type="button" class="btn-soft" (click)="verDetalle(p)" [attr.aria-label]="'Ver detalle de la prenda ' + p.nombre">Ver detalle</button>
+                <td data-label="Acción" class="celda-accion">
+                  <button
+                    type="button"
+                    class="btn-soft"
+                    (click)="verDetalle(p)"
+                    [attr.aria-label]="'Ver detalle de la prenda ' + p.nombre"
+                  >Ver detalle</button>
                 </td>
               </tr>
             }
@@ -202,11 +208,11 @@
               <tbody>
                 @for (t of d.tallas; track t.talla + '-' + (t.color ?? 'sin-color')) {
                   <tr>
-                    <td>{{ t.talla }}</td>
-                    <td>{{ (t.color | colorEtiqueta) || '—' }}</td>
-                    <td>{{ t.stock }}</td>
-                    <td>{{ t.estaturaMinCm }}–{{ t.estaturaMaxCm }} cm</td>
-                    <td>{{ t.pesoMinKg }}–{{ t.pesoMaxKg }} kg</td>
+                    <td data-label="Talla">{{ t.talla }}</td>
+                    <td data-label="Color">{{ (t.color | colorEtiqueta) || '—' }}</td>
+                    <td data-label="Stock">{{ t.stock }}</td>
+                    <td data-label="Estatura">{{ t.estaturaMinCm }}–{{ t.estaturaMaxCm }} cm</td>
+                    <td data-label="Peso">{{ t.pesoMinKg }}–{{ t.pesoMaxKg }} kg</td>
                   </tr>
                 }
               </tbody>

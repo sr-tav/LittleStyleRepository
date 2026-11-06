@@ -212,4 +212,27 @@ describe('ModeracionPage (US-14)', () => {
     expect(rojo[1].textContent?.trim()).toBe('Rojo');
     expect(rojo[2].textContent?.trim()).toBe('8');
   });
+
+  it('prepara la cola de moderación para tarjetas móviles', () => {
+    const { el } = crear();
+
+    expect(el.querySelector('.catalog-table')?.classList.contains('tabla-tarjetas')).toBe(true);
+    expect(
+      Array.from(el.querySelector('.catalog-table tbody tr:first-child')?.querySelectorAll('td') ?? [])
+        .map((td) => td.getAttribute('data-label')),
+    ).toEqual(['Prenda', 'Vendedor', 'Precio', 'Estado', 'Acción']);
+  });
+
+  it('etiqueta las celdas de variantes en el detalle de la prenda', () => {
+    const { fixture, el } = crear();
+    detalle.mockReturnValueOnce(of(detallePrenda));
+
+    el.querySelector<HTMLButtonElement>('tbody .btn-soft')!.click();
+    fixture.detectChanges();
+
+    expect(
+      Array.from(el.querySelectorAll('.detalle-tabla tbody tr:first-child td'))
+        .map((td) => td.getAttribute('data-label')),
+    ).toEqual(['Talla', 'Color', 'Stock', 'Estatura', 'Peso']);
+  });
 });

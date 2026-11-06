@@ -18,6 +18,7 @@ import {
 } from '../models/perfil-opciones';
 import { PerfilActivoService } from '../services/perfil-activo.service';
 import { PerfilesService } from '../services/perfiles.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * Lista los perfiles infantiles, presenta sus preferencias y permite elegir el perfil activo.
@@ -26,7 +27,7 @@ import { PerfilesService } from '../services/perfiles.service';
  */
 @Component({
   selector: 'app-perfiles-lista',
-  imports: [Navbar, RouterLink],
+  imports: [Navbar, RouterLink, BotonVolver],
   templateUrl: './perfiles-lista.html',
 })
 export class PerfilesLista implements OnInit {

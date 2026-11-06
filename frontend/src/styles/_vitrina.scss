@@ -700,6 +700,71 @@
   }
 }
 
+@media (max-width: 600px) {
+  .tabla-medidas-wrap {
+    overflow-x: visible;
+  }
+
+  .catalog-table.tabla-medidas {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    tbody tr {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      overflow: hidden;
+      border: 1px solid var(--ls-border);
+      border-radius: 12px;
+      background: var(--ls-surface);
+    }
+
+    tbody tr.is-sugerida {
+      background: var(--ls-primary-soft);
+    }
+
+    tbody td {
+      display: grid;
+      gap: 0.2rem;
+      min-width: 0;
+      padding: 0.65rem;
+      overflow-wrap: anywhere;
+      border: 0;
+      font-size: 0.85rem;
+    }
+
+    tbody td::before {
+      color: var(--ls-muted);
+      content: attr(data-label);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    tbody td:first-child {
+      grid-column: 1 / -1;
+      border-bottom: 1px solid var(--ls-border);
+    }
+
+    tbody tr.is-sugerida td:first-child {
+      border-left: 4px solid var(--ls-primary-dark);
+    }
+
+    td .talla-badge {
+      width: fit-content;
+      margin: 0.25rem 0 0;
+    }
+  }
+}
+
 /* ---------- Pedidos del cliente (US-12) ---------- */
 .pedido-lista {
   display: grid;
@@ -940,4 +1005,55 @@ li.is-actual .pedido-punto {
 
 .detalle-estampado {
   @extend .detalle-talla;
+}
+
+.detalle-estampado-opcion {
+  width: auto;
+  min-width: 0;
+}
+
+.detalle-estampado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  height: auto;
+  padding: 0.55rem 0.8rem;
+  white-space: normal;
+}
+
+@media (max-width: 760px) {
+  .vitrina-detalle-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .vitrina-detalle-grid > *,
+  .reco-detail-info {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .vitrina-detalle-grid {
+    padding: 0.75rem;
+    border-radius: 16px;
+  }
+
+  .detalle-talla-opcion {
+    width: 3.25rem;
+  }
+
+  .detalle-talla {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .detalle-color {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
 }

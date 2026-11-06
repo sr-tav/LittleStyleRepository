@@ -10,6 +10,7 @@ import { ETIQUETAS_COLORES, OPCIONES_COLORES } from '../../perfilesInfantiles/mo
 import { ColorPreferido } from '../../perfilesInfantiles/models/perfil-infantil.models';
 import { InventarioItem } from '../models/prenda.models';
 import { InventarioService } from '../services/inventario.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 interface Edicion {
   prendaId: number;
@@ -31,7 +32,7 @@ interface VarianteEdicion {
  */
 @Component({
   selector: 'app-inventario',
-  imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura],
+  imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura, BotonVolver],
   templateUrl: './inventario.html',
 })
 export class Inventario implements OnInit {

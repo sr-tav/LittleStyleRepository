@@ -18,6 +18,7 @@ import { RecomendacionItem } from '../../recomendacion/models/recomendacion.mode
 import { RecomendacionService } from '../../recomendacion/services/recomendacion.service';
 import { Pagina, VitrinaItem, FiltrosVitrina } from '../models/vitrina.models';
 import { VitrinaService } from '../services/vitrina.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /** Filtro por talla con existencias. */
 const TALLAS = ['2', '4', '6', '8', '10', '12', '14', '16'];
@@ -34,7 +35,7 @@ const ORDENES = [
  */
 @Component({
   selector: 'app-explorar',
-  imports: [Navbar, RouterLink, PrendaMiniatura],
+  imports: [Navbar, RouterLink, PrendaMiniatura, BotonVolver],
   templateUrl: './explorar.html',
 })
 export class Explorar {

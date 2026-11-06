@@ -1,6 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-
+import { ActivatedRoute } from '@angular/router';
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { EstampadoEtiquetaPipe } from '../../../shared/pipes/estampado-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
@@ -9,6 +8,7 @@ import { formatearPrecio } from '../models/prenda-opciones';
 import { ETIQUETAS_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
 import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * Detalle del despacho del vendedor: su paquete, su estado y sus productos.
@@ -16,7 +16,7 @@ import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
  */
 @Component({
   selector: 'app-pedido-vendedor-detalle',
-  imports: [Navbar, RouterLink, EstampadoEtiquetaPipe],
+  imports: [Navbar, EstampadoEtiquetaPipe, BotonVolver],
   templateUrl: './pedido-vendedor-detalle.html',
 })
 export class PedidoVendedorDetallePage implements OnInit {

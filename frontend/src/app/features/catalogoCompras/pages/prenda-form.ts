@@ -41,6 +41,7 @@ import {
 } from '../models/prenda.models';
 import { PrendasService } from '../services/prendas.service';
 import {pattern} from '@angular/forms/signals';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 interface FotoPendiente {
   archivo: File;
@@ -162,7 +163,7 @@ export function normalizarTalla(valor: string | null | undefined): string {
  */
 @Component({
   selector: 'app-prenda-form',
-  imports: [Navbar, RouterLink, ReactiveFormsModule],
+  imports: [Navbar, RouterLink, ReactiveFormsModule, BotonVolver],
   templateUrl: './prenda-form.html',
 })
 export class PrendaForm implements OnInit, OnDestroy {

@@ -116,9 +116,13 @@
         @for (item of novedades(); track item.id) {
           <li>
             <article class="reco-card">
-              <div class="reco-card-media">
+              <a
+                class="reco-card-media reco-card-media-link"
+                [routerLink]="['/cliente/catalogo', item.id]"
+                [attr.aria-label]="'Ver detalle de ' + item.nombre"
+              >
                 <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
-              </div>
+              </a>
               <div class="reco-card-body">
                 <h3 class="reco-card-title">{{ item.nombre }}</h3>
                 <p class="reco-price">{{ precio(item) }}</p>

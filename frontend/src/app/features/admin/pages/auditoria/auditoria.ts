@@ -7,6 +7,7 @@ import {
   FiltrosAuditoria, Pagina, RegistroAuditoria, RespuestaIntegridad,
 } from '../../models/admin.models';
 import { AuditoriaService } from '../../services/auditoria.service';
+import {BotonVolver} from '../../../../shared/components/boton-volver/boton-volver';
 
 /**
  * US-14: visor de solo lectura de la auditoría con filtros, paginación y
@@ -17,7 +18,7 @@ import { AuditoriaService } from '../../services/auditoria.service';
 
 @Component({
   selector: 'app-auditoria',
-  imports: [Navbar, DatePipe],
+  imports: [Navbar, DatePipe, BotonVolver],
   templateUrl: './auditoria.html',
   styles: `
     .admin-filtros {

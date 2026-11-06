@@ -2,6 +2,7 @@
 <main class="catalog-page">
   <header class="catalog-heading">
     <div>
+      <app-boton-volver fallbackUrl="/vendedor" />
       <h1>Inventario</h1>
       <p class="catalog-subtitle">Control de existencias de tus productos</p>
     </div>
@@ -63,7 +64,7 @@
           <tbody>
             @for (item of items(); track item.prendaId) {
               <tr>
-                <td>
+                <td data-label="Producto">
                   <div class="product-cell">
                     <app-prenda-miniatura [url]="item.imagenUrl" [nombre]="item.nombre" />
                     <div>
@@ -82,7 +83,7 @@
                 <td data-label="Estado">
                   <app-nivel-stock-badge [nivel]="item.nivel" />
                 </td>
-                <td class="celda-accion">
+                <td class="celda-accion" data-label="Acción">
                   @if (edicion()?.prendaId !== item.prendaId) {
                     <button type="button" class="btn-soft" (click)="editar(item)">
                       Actualizar inventario

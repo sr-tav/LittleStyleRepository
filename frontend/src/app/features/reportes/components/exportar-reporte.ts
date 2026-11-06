@@ -98,9 +98,12 @@ import { ErrorReporte, ReportesService } from '../services/reportes.service';
     `
       .export-box {
         display: grid;
-        grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.7fr) minmax(0, 1.6fr);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
         align-items: end;
-        gap: 1.25rem;
+        gap: 1rem;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
       }
 
       .export-field {
@@ -140,10 +143,10 @@ import { ErrorReporte, ReportesService } from '../services/reportes.service';
 
       .export-actions {
         display: grid;
-        grid-template-columns: repeat(2, minmax(150px, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        min-width: 0;
         gap: 0.6rem;
       }
-
       button {
         box-sizing: border-box;
         width: 100%;
@@ -244,9 +247,9 @@ import { ErrorReporte, ReportesService } from '../services/reportes.service';
         font-size: 0.78rem;
       }
 
-      @media (max-width: 640px) {
+      @media (max-width: 900px) {
         .export-box {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
           gap: 0.9rem;
         }
 

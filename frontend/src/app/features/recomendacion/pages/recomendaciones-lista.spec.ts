@@ -89,10 +89,13 @@ describe('RecomendacionesLista (US-07)', () => {
     const { el } = crear();
 
     expect(el.querySelector('app-acceso-rapido-prenda')).toBeNull();
-    const enlace = el.querySelector<HTMLAnchorElement>('a[href^="/cliente/catalogo/7"]');
+    const enlace = el.querySelector<HTMLAnchorElement>('.reco-card-cta a.reco-card-link');
     expect(enlace?.textContent?.trim()).toBe('Ver');
     expect(enlace?.getAttribute('href')).toMatch(/^\/cliente\/catalogo\/7(?:\?|$)/);
     expect(enlace?.classList.contains('reco-card-link')).toBe(true);
+    const foto = el.querySelector<HTMLAnchorElement>('.reco-card-media-link');
+    expect(foto?.getAttribute('href')).toContain('/cliente/catalogo/7');
+    expect(foto?.getAttribute('href')).toContain('perfilId=3');
   });
 
   it('avisa cuando no hay prendas compatibles', () => {

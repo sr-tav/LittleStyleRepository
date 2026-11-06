@@ -2,6 +2,7 @@
 <main class="profiles-page">
   <header class="profiles-heading">
     <div>
+      <app-boton-volver fallbackUrl="/cliente" />
       @if (modoSeleccion()) {
         <p class="profiles-eyebrow">Cambiar perfil</p>
         <h1>¿Quién usará LittleStyle?</h1>
@@ -16,8 +17,8 @@
       <a class="btn-ghost btn-inline" routerLink="/cliente">Volver</a>
     } @else {
       <div class="profile-actions">
-        <a class="btn-ghost btn-inline" routerLink="/cliente" aria-label="Volver al inicio"
-          >← Volver al inicio</a
+        <a class="btn-ghost btn-inline" routerLink="/cliente" aria-label="Volver"
+          >← Volver</a
         >
         @if (perfiles().length < maximoPerfiles) {
           <a
@@ -139,18 +140,27 @@
               <strong>{{ contextura(perfil) }}</strong>
             </span>
           </div>
-          @if (perfil.alergias.length > 0) {
-            <p class="profile-allergies"><strong>Alergias:</strong> {{ alergias(perfil) }}</p>
-          }
-          @if (colores(perfil) || estampados(perfil)) {
-            <p class="profile-preferences">
-              @if (colores(perfil)) {
-                <span><strong>Colores:</strong> {{ colores(perfil) }}</span>
+          @if (perfil.alergias.length > 0 || colores(perfil) || estampados(perfil)) {
+            <details class="profile-extra">
+              <summary>Preferencias y alergias</summary>
+
+              @if (perfil.alergias.length > 0) {
+                <p class="profile-allergies">
+                  <strong>Alergias:</strong> {{ alergias(perfil) }}
+                </p>
               }
-              @if (estampados(perfil)) {
-                <span><strong>Estampados:</strong> {{ estampados(perfil) }}</span>
+
+              @if (colores(perfil) || estampados(perfil)) {
+                <p class="profile-preferences">
+                  @if (colores(perfil)) {
+                    <span><strong>Colores:</strong> {{ colores(perfil) }}</span>
+                  }
+                  @if (estampados(perfil)) {
+                    <span><strong>Estampados:</strong> {{ estampados(perfil) }}</span>
+                  }
+                </p>
               }
-            </p>
+            </details>
           }
           <div class="profile-card-actions">
             <a

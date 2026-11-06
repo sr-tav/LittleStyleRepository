@@ -83,8 +83,8 @@ describe('PerfilesLista (UI-4)', () => {
     fixture.detectChanges();
 
     const volver = el.querySelector<HTMLAnchorElement>('a[routerLink="/cliente"]');
-    expect(volver?.textContent?.trim()).toBe('← Volver al inicio');
-    expect(volver?.getAttribute('aria-label')).toBe('Volver al inicio');
+    expect(volver?.textContent?.trim()).toBe('← Volver');
+    expect(volver?.getAttribute('aria-label')).toBe('Volver');
     expect(el.querySelectorAll('a[routerLink="/cliente/hijos/nuevo"]')).toHaveLength(1);
     expect(
       el

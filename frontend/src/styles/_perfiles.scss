@@ -48,6 +48,16 @@
   gap: 1.25rem;
 }
 
+@media (max-width: 480px) {
+  .profile-card {
+    padding: 1rem;
+  }
+
+  .profile-card-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .profile-picker-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -695,6 +705,30 @@
   font-size: 0.82rem;
 }
 
+.profile-extra {
+  margin: 0 0 1rem;
+  border-top: 1px solid var(--ls-border);
+  border-bottom: 1px solid var(--ls-border);
+
+  summary {
+    min-height: 44px;
+    padding: 0.7rem 0;
+    color: var(--ls-primary-dark);
+    font-size: 0.86rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  &[open] {
+    padding-bottom: 0.25rem;
+  }
+
+  .profile-allergies,
+  .profile-preferences {
+    margin: 0 0 0.75rem;
+  }
+}
+
 .profile-incomplete-guidance {
   margin: 0.4rem 0 0.85rem;
   color: var(--ls-muted);
@@ -920,7 +954,9 @@
   }
 
   .profiles-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+    gap: 1.25rem;
   }
 
   .profile-picker-grid {

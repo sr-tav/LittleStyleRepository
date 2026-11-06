@@ -2,6 +2,7 @@
 <main class="reco-page">
   <header class="reco-heading">
     <div>
+      <app-boton-volver fallbackUrl="/cliente" />
       <p class="reco-eyebrow">Compras</p>
       <h1>Mis pedidos</h1>
       <p class="reco-subtitle">Sigue el estado de cada pedido</p>
@@ -30,7 +31,13 @@
             [attr.aria-label]="'Ver detalle del pedido ' + p.numeroPedido + ', ' + estado(p)"
           >
             <div class="pedido-tarjeta-info">
-              <strong>Pedido #{{ p.numeroPedido }}</strong>
+              <strong>
+                @if (p.numeroPedido != null) {
+                  Pedido #{{ p.numeroPedido }}
+                } @else {
+                  Pedido sin número
+                }
+              </strong>
               <span class="product-meta">{{ p.cantidadItems }} prenda(s) · {{ precioTotal(p) }} · {{ fechaDe(p.fechaCreacion) }}</span>
               @if (p.numeroGuia) {
                 <span class="product-meta">Guía: {{ p.numeroGuia }}</span>

@@ -36,7 +36,7 @@ export interface PedidoResumen {
   /** Identificador interno; se usa en las rutas, no se muestra al cliente. */
   id: number;
   /** Consecutivo del pedido para el cliente (1, 2, 3…); es el número que se muestra. */
-  numeroPedido: number;
+  numeroPedido: number | null;
   estado: EstadoPedido;
   total: number;
   fechaCreacion: string;
@@ -85,7 +85,7 @@ export interface PedidoDetalle {
   /** Identificador interno; se usa en las rutas, no se muestra al cliente. */
   id: number;
   /** Consecutivo del pedido para el cliente (1, 2, 3…); es el número que se muestra. */
-  numeroPedido: number;
+  numeroPedido: number | null;
   estado: EstadoPedido;
   subtotal: number;
   costoEnvio: number;

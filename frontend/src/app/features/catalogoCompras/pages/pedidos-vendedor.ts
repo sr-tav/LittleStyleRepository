@@ -7,6 +7,7 @@ import { formatearPrecio } from '../models/prenda-opciones';
 import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
 import { DespachoVendedor } from '../models/pedido-vendedor.models';
 import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * Paquetes del vendedor (US-12 multi-vendedor): solo su despacho por pedido.
@@ -14,7 +15,7 @@ import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
  */
 @Component({
   selector: 'app-pedidos-vendedor',
-  imports: [Navbar, RouterLink],
+  imports: [Navbar, RouterLink, BotonVolver],
   templateUrl: './pedidos-vendedor.html',
 })
 export class PedidosVendedor implements OnInit {

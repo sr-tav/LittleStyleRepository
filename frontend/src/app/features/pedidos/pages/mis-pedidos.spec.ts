@@ -48,6 +48,25 @@ describe('MisPedidos (US-12 / UI-17)', () => {
     expect(enlace).not.toBeNull();
   });
 
+  it('explica cuando un pedido no tiene número visible', () => {
+    listarRespuesta = [{
+      id: 7,
+      numeroPedido: null,
+      estado: 'ENVIADO',
+      total: 107000,
+      fechaCreacion: '2026-10-01T10:00:00',
+      cantidadItems: 1,
+      numeroGuia: null,
+    }];
+
+    const fixture = TestBed.createComponent(MisPedidos);
+    fixture.detectChanges();
+
+    const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(texto).toContain('Pedido sin número');
+    expect(texto).not.toContain('Pedido #');
+  });
+
   it('muestra estado vacío sin pedidos', () => {
     listarRespuesta = [];
     const fixture = TestBed.createComponent(MisPedidos);

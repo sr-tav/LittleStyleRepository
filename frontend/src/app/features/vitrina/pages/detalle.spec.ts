@@ -450,22 +450,54 @@ describe('DetalleProducto (US-09)', () => {
   });
 
   describe('color obligatorio (Punto 10)', () => {
-    it('deja el botón deshabilitado y anuncia la ayuda incluso con un solo color disponible', () => {
-      carritoMock.agregar.mockClear();
-      const { el, http } = crear(detalle());
+    it('selecciona automáticamente el único color con stock', () => {
+      const { fixture, el, http } = crear(detalle());
       http.verify();
 
-      const agregar = el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!;
+      const color = el.querySelector<HTMLButtonElement>('.detalle-color[role="radio"]')!;
+      expect(color.getAttribute('aria-checked')).toBe('true');
+      expect(el.querySelector('.detalle-ayuda-seleccion')).toBeNull();
+
+      const agregar = el.querySelector<HTMLButtonElement>(
+        '.detalle-agregar-carrito > .btn-primary',
+      )!;
       expect(agregar.disabled).toBe(true);
-      expect(el.textContent).toContain('Elige un color para continuar');
-      // El color se ve con su nombre, no solo la muestra.
-      expect(el.querySelector('.detalle-color-nombre')?.textContent?.trim()).toBe('Azul');
-      expect(carritoMock.agregar).not.toHaveBeenCalled();
+
+      el.querySelector<HTMLButtonElement>('.detalle-talla[aria-label^="Talla 4"]')!.click();
+      fixture.detectChanges();
+
+      expect(agregar.disabled).toBe(false);
     });
 
     it('si se intenta agregar sin color, enfoca al selector y anuncia el error en vivo', async () => {
       carritoMock.agregar.mockClear();
-      const { fixture, el, http } = crear(detalle());
+      const { fixture, el, http } = crear(
+        detalle({
+          colores: ['AZUL', 'ROSA'],
+          tallas: [
+            {
+              talla: '4',
+              color: 'AZUL',
+              estaturaMinCm: 100,
+              estaturaMaxCm: 110,
+              pesoMinKg: 15,
+              pesoMaxKg: 20,
+              stockDisponible: 2,
+              disponible: true,
+            },
+            {
+              talla: '4',
+              color: 'ROSA',
+              estaturaMinCm: 100,
+              estaturaMaxCm: 110,
+              pesoMinKg: 15,
+              pesoMaxKg: 20,
+              stockDisponible: 2,
+              disponible: true,
+            },
+          ],
+        }),
+      );
       http.verify();
 
       el.querySelector<HTMLButtonElement>('.detalle-talla[aria-label^="Talla 4"]')!.click();
@@ -499,5 +531,40 @@ describe('DetalleProducto (US-09)', () => {
       expect(el.textContent).not.toContain('Elige un color para continuar');
       expect(el.querySelector('.detalle-ayuda-seleccion')).toBeNull();
     });
+  });
+
+  it('no selecciona color automáticamente cuando hay varios con stock', () => {
+    const { el, http } = crear(
+      detalle({
+        colores: ['AZUL', 'ROSA'],
+        tallas: [
+          {
+            talla: '4',
+            color: 'AZUL',
+            estaturaMinCm: 100,
+            estaturaMaxCm: 110,
+            pesoMinKg: 15,
+            pesoMaxKg: 20,
+            stockDisponible: 2,
+            disponible: true,
+          },
+          {
+            talla: '4',
+            color: 'ROSA',
+            estaturaMinCm: 100,
+            estaturaMaxCm: 110,
+            pesoMinKg: 15,
+            pesoMaxKg: 20,
+            stockDisponible: 2,
+            disponible: true,
+          },
+        ],
+      }),
+    );
+    http.verify();
+
+    const colores = el.querySelectorAll<HTMLButtonElement>('.detalle-color[role="radio"]');
+    expect(colores).toHaveLength(2);
+    expect([...colores].every((color) => color.getAttribute('aria-checked') === 'false')).toBe(true);
   });
 });

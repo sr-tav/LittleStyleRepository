@@ -2,6 +2,7 @@
 <main class="catalog-page">
   <header class="catalog-heading">
     <div>
+      <app-boton-volver fallbackUrl="/admin" />
       <h1>Auditoría</h1>
       <p class="catalog-subtitle">Registro de solo lectura de las acciones del administrador</p>
     </div>
@@ -94,7 +95,7 @@
       </div>
     } @else {
       <div class="catalog-table-wrap">
-        <table class="catalog-table auditoria-table">
+        <table class="catalog-table auditoria-table tabla-tarjetas">
           <caption class="visually-hidden">Registros de auditoría</caption>
           <thead>
           <tr>
@@ -110,24 +111,31 @@
           <tbody>
             @for (r of items(); track r.id) {
               <tr>
-                <td class="muted-cell">{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}</td>
-                <td><strong>{{ r.adminEmail }}</strong></td>
-                <td>{{ etiquetaAccion(r.accion) }}</td>
-                <td class="muted-cell">
+                <td data-label="Fecha y hora" class="muted-cell">
+                  {{ r.fechaHora | date: 'dd/MM/yyyy HH:mm:ss' }}
+                </td>
+                <td data-label="Administrador"><strong>{{ r.adminEmail }}</strong></td>
+                <td data-label="Acción">{{ etiquetaAccion(r.accion) }}</td>
+                <td data-label="Entidad" class="muted-cell">
                   {{ etiquetaTipo(r.tipoEntidad) }}
                   @if (r.entidadId !== null) { #{{ r.entidadId }} }
                 </td>
-                <td>
+                <td data-label="Cambio">
                   @if (r.valorAnterior || r.valorNuevo) {
-                    <span class="valor-cambio"><s>{{ r.valorAnterior ?? '—' }}</s> → <strong>{{ r.valorNuevo ?? '—' }}</strong></span>
+                    <span class="valor-cambio">
+              <s>{{ r.valorAnterior ?? '—' }}</s> →
+              <strong>{{ r.valorNuevo ?? '—' }}</strong>
+            </span>
                   } @else { — }
                 </td>
-                <td>
-              <span class="state-chip" [class.chip-FALLO]="r.resultado === 'FALLO'" [class.is-off]="r.resultado === 'EXITO'">
-                {{ etiquetasResultado[r.resultado] }}
-              </span>
+                <td data-label="Resultado">
+          <span
+            class="state-chip"
+            [class.chip-FALLO]="r.resultado === 'FALLO'"
+            [class.is-off]="r.resultado === 'EXITO'"
+          >{{ etiquetasResultado[r.resultado] }}</span>
                 </td>
-                <td class="muted-cell">{{ r.motivo ?? '—' }}</td>
+                <td data-label="Motivo" class="muted-cell">{{ r.motivo ?? '—' }}</td>
               </tr>
             }
           </tbody>

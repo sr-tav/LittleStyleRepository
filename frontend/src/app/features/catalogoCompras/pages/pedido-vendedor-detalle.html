@@ -1,7 +1,6 @@
 <app-navbar />
 <main class="catalog-page">
-  <a class="back-link" routerLink="/vendedor/pedidos" aria-label="Volver a despachos">← Mis despachos</a>
-
+  <app-boton-volver fallbackUrl="/vendedor/pedidos" />
   @if (cargando()) {
     <div class="catalog-state" role="status"><span class="spinner spinner-dark"></span> Cargando despacho...</div>
   } @else if (error()) {

@@ -95,6 +95,17 @@
   }
 }
 
+.reco-card-media-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-primary-dark);
+    outline-offset: -3px;
+  }
+}
+
 .reco-card-body {
   display: flex;
   flex: 1;

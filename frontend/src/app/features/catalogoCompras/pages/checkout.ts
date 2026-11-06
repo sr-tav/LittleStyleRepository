@@ -23,6 +23,7 @@ import { DEPARTAMENTOS_COLOMBIA, municipiosDe } from '../data/municipios-colombi
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
 import { PagoWompi } from '../components/pago-wompi';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * Gestiona las direcciones de entrega, el perfil infantil y el resumen previo al pago.
@@ -32,7 +33,7 @@ import { PagoWompi } from '../components/pago-wompi';
  */
 @Component({
   selector: 'app-checkout',
-  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi, ColorEtiquetaPipe, EstampadoEtiquetaPipe],
+  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi, ColorEtiquetaPipe, EstampadoEtiquetaPipe, BotonVolver],
   templateUrl: './checkout.html',
 })
 export class CheckoutPage implements OnInit {

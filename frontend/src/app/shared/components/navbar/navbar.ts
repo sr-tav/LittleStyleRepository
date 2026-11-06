@@ -1,9 +1,5 @@
-import { Location } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter, map } from 'rxjs';
-
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CarritoService } from '../../../features/catalogoCompras/services/carrito.service';
 import { ItemCarrito } from '../../../features/catalogoCompras/models/carrito.models';
@@ -12,6 +8,7 @@ import {
   formatearPrecio,
   OPCIONES_CATEGORIAS,
 } from '../../../features/catalogoCompras/models/prenda-opciones';
+
 
 /**
  * Navegación principal por rol y panel de acceso rápido al carrito del cliente.
@@ -35,29 +32,13 @@ import {
           class="icon-button"
           aria-label="Abrir menú"
           [attr.aria-expanded]="menuAbierto()"
-          (click)="menuAbierto.update((abierto) => !abierto)"
+          (click)="alternarMenu()"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
             stroke-linecap="round" aria-hidden="true">
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
         </button>
-        @if (!enInicio()) {
-          <button
-            type="button"
-            class="icon-button navbar-volver"
-            aria-label="Volver a la página anterior"
-            (click)="volver()"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </button>
-        }
-        @if (!enInicio()) {
-          <a class="navbar-inicio" [routerLink]="auth.rutaInicio()">Inicio</a>
-        }
       </div>
 
       <a class="navbar-brand navbar-brand-centro" [routerLink]="auth.rutaInicio()">Little<strong>Style</strong></a>
@@ -90,7 +71,7 @@ import {
                 aria-label="Abrir menú de cuenta"
                 aria-haspopup="menu"
                 [attr.aria-expanded]="cuentaAbierta()"
-                (click)="cuentaAbierta.update((abierto) => !abierto)"
+                (click)="alternarCuenta()"
               >
                 {{ usuario.nombre.charAt(0).toUpperCase() }}
               </button>
@@ -265,8 +246,6 @@ import {
   `,
 })
 export class Navbar {
-  private readonly router = inject(Router);
-  private readonly location = inject(Location);
   protected readonly auth = inject(AuthService);
   protected readonly carrito = inject(CarritoService);
   protected readonly menuAbierto = signal(false);
@@ -276,30 +255,6 @@ export class Navbar {
   protected readonly precio = formatearPrecio;
   protected readonly cambioPendiente = signal<number | null>(null);
   protected readonly errorCambio = signal<string | null>(null);
-
-  private readonly urlActual = toSignal(
-    this.router.events.pipe(
-      filter((evento) => evento instanceof NavigationEnd),
-      map(() => this.router.url),
-    ),
-    { initialValue: this.router.url },
-  );
-
-  /** Indica si la página actual es el inicio del rol, donde no se muestra la flecha de regreso. */
-  protected readonly enInicio = computed(
-    () => this.urlActual().split(/[?#]/)[0] === this.auth.rutaInicio(),
-  );
-
-  /**
-   * Regresa a la página anterior o, si no hay historial, al inicio del rol.
-   */
-  protected volver(): void {
-    if (window.history.length > 1) {
-      this.location.back();
-    } else {
-      void this.router.navigateByUrl(this.auth.rutaInicio());
-    }
-  }
 
   /**
    * Alterna la apertura del grupo de menú indicado.
@@ -352,5 +307,13 @@ export class Navbar {
       },
       complete: () => this.cambioPendiente.set(null),
     });
+  }
+
+  protected alternarMenu(): void {
+    this.menuAbierto.update((abierto) => !abierto);
+  }
+
+  protected alternarCuenta(): void {
+    this.cuentaAbierta.update((abierto) => !abierto);
   }
 }

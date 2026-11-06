@@ -13,6 +13,7 @@ import {
 } from '../models/prenda-opciones';
 import { Prenda } from '../models/prenda.models';
 import { PrendasService } from '../services/prendas.service';
+import {BotonVolver} from '../../../shared/components/boton-volver/boton-volver';
 
 /**
  * UI-19: Mis productos (catálogo del vendedor).
@@ -20,7 +21,7 @@ import { PrendasService } from '../services/prendas.service';
  */
 @Component({
   selector: 'app-productos-lista',
-  imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura],
+  imports: [Navbar, RouterLink, NivelStockBadge, PrendaMiniatura, BotonVolver],
   templateUrl: './productos-lista.html',
 })
 export class ProductosLista implements OnInit, OnDestroy {

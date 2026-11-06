@@ -81,7 +81,7 @@
         <element kind="staticText" x="300" y="0" width="90" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
             <text><![CDATA[Cantidad  ]]></text>
         </element>
-        <element kind="staticText" x="390" y="0" width="165" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
+        <element kind="staticText" x="390" y="0" width="155" height="24" fontSize="8.5" bold="true" forecolor="#FFFFFF" backcolor="#14532D" mode="Opaque" hTextAlign="Right" vTextAlign="Middle">
             <text><![CDATA[Valor  ]]></text>
         </element>
     </columnHeader>
@@ -99,7 +99,7 @@
             <element kind="textField" x="300" y="0" width="90" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
                 <expression><![CDATA[$F{cantidad} + "  "]]></expression>
             </element>
-            <element kind="textField" x="390" y="0" width="165" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
+            <element kind="textField" x="390" y="0" width="155" height="17" fontSize="8.5" hTextAlign="Right" vTextAlign="Middle">
                 <expression><![CDATA[$F{valor} + "  "]]></expression>
             </element>
             <element kind="line" x="0" y="16" width="555" height="1">

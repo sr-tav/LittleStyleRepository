@@ -12,6 +12,7 @@ import {
   UsuarioAdmin,
 } from '../../models/admin.models';
 import { UsuariosAdminService } from '../../services/usuarios-admin.service';
+import {BotonVolver} from '../../../../shared/components/boton-volver/boton-volver';
 
 /** Estado destino del cambio: suspender, bloquear o habilitar la cuenta. */
 type AccionEstado = 'SUSPENDIDO' | 'BLOQUEADO' | 'ACTIVO';
@@ -37,7 +38,7 @@ const ETIQUETAS_ACCION: Record<AccionEstado, string> = {
  */
 @Component({
   selector: 'app-usuarios-admin',
-  imports: [Navbar],
+  imports: [Navbar, BotonVolver],
   templateUrl: './usuarios-admin.html',
   styles: `
     .admin-filtros {
