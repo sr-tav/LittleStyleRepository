@@ -153,7 +153,8 @@ public class NotificacionPedidoListener {
             correo.enviarPedidoNuevoVendedor(
                     vendedor.getEmail(),
                     vendedor.getNombreTienda() != null ? vendedor.getNombreTienda() : vendedor.getNombre(),
-                    pedido.getId(),
+                    pedido.numeroVisible(),
+                    pedido.getDestinatario(),
                     pedido.getCliente().getNombre(),
                     items);
         }

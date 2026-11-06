@@ -14,6 +14,8 @@ export interface DespachoVendedor {
   numeroGuia: string | null;
   fechaActualizacion: string;
   items: PedidoVendedorItem[];
+  numeroPedido: number | null;
+  destinatario: string;
 }
 
 /** Alias de compatibilidad con el panel anterior (pedido por vendedor). */

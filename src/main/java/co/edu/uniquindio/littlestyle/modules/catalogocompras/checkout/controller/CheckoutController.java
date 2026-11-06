@@ -21,13 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -51,6 +45,19 @@ public class CheckoutController {
     @GetMapping("/direcciones")
     public ResponseEntity<List<DireccionClienteResponse>> listarDirecciones() {
         return ResponseEntity.ok(direccionClienteService.listar());
+    }
+
+    /** Elimina una dirección propia del cliente autenticado. */
+    @DeleteMapping("/direcciones/{id}")
+    public ResponseEntity<Void> eliminarDireccion(@PathVariable Long id) {
+        direccionClienteService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Marca como predeterminada una dirección propia. */
+    @PutMapping("/direcciones/{id}/predeterminada")
+    public ResponseEntity<DireccionClienteResponse> marcarDireccionPredeterminada(@PathVariable Long id) {
+        return ResponseEntity.ok(direccionClienteService.marcarPredeterminada(id));
     }
 
     /** Crea una dirección de envío para el cliente autenticado. */

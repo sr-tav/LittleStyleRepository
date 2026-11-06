@@ -52,10 +52,12 @@ class NotificacionPedidoListenerTest {
     // Pedido de ejemplo con un cliente y una línea de "Pantalón", para reusar en varios tests.
     private Pedido pedido() {
         Pedido pedido = Pedido.builder()
-                .id(7L)
+                .id(3L)
                 .cliente(Usuario.builder().id(1L).nombre("Ana").email("a@b.com").build())
                 .estado(EstadoPedido.EN_PREPARACION)
                 .total(new BigDecimal("107000"))
+                .numeroCliente(3)
+                .destinatario("Laura Ruiz")
                 .build();
         pedido.agregar(LineaPedido.builder().prendaId(3L).nombre("Pantalón")
                 .talla("4").cantidad(1).precioUnitario(new BigDecimal("107000"))
@@ -67,7 +69,7 @@ class NotificacionPedidoListenerTest {
     // así que el listener no debe mandar otro correo de cambio de estado (evita duplicados).
     @Test
     void cambioAEnviadoNoDuplicaElCorreoConGuia() {
-        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.ENVIADO));
+        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(3L, EstadoPedido.ENVIADO));
 
         verify(pedidoRepository, never()).findById(anyLong());
         verify(correo, never()).enviarCambioEstado(anyString(), anyString(), anyLong(), anyString(), anyString());
@@ -76,11 +78,11 @@ class NotificacionPedidoListenerTest {
     // Cuando el pedido pasa a preparación el cliente debe recibir su correo con el estado y el total.
     @Test
     void cambioAPreparacionAvisaAlCliente() {
-        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
+        when(pedidoRepository.findById(3L)).thenReturn(Optional.of(pedido()));
 
-        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.EN_PREPARACION));
+        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(3L, EstadoPedido.EN_PREPARACION));
 
-        verify(correo).enviarCambioEstado(eq("a@b.com"), eq("Ana"), eq(7L), eq("En preparación"), eq("107000"));
+        verify(correo).enviarCambioEstado(eq("a@b.com"), eq("Ana"), eq(3L), eq("En preparación"), eq("107000"));
     }
 
     // Si por algún motivo llega un evento con un pedido que ya no existe, no se intenta enviar nada.
@@ -96,30 +98,31 @@ class NotificacionPedidoListenerTest {
     // La creación y la confirmación de pago disparan cada una su correo al cliente.
     @Test
     void creacionYPagoAvisanAlCliente() {
-        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
+        when(pedidoRepository.findById(3L)).thenReturn(Optional.of(pedido()));
 
-        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(7L));
-        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(7L));
+        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(3L));
+        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(3L));
 
-        verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), anyList());
-        verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), anyList());
+        verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
+        verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
     }
 
     // Al pagar, además del correo al cliente, el vendedor dueño de la prenda
     // debe recibir su propio aviso con la venta nueva.
     @Test
     void pagoAvisaAlVendedorConSusLineas() {
-        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
+        when(pedidoRepository.findById(3L)).thenReturn(Optional.of(pedido()));
         var vendedor = Usuario.builder().id(9L).nombre("Luis").nombreTienda("Tienda Sol")
                 .email("v@tienda.com").build();
         var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
                 .id(3L).vendedor(vendedor).build();
         when(prendaRepository.findById(3L)).thenReturn(Optional.of(prenda));
 
-        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(7L));
+        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(3L));
 
-        verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), anyList());
-        verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(7L), eq("Ana"), anyList());
+        verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
+        verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"),
+                eq(3L), eq("Laura Ruiz"), eq("Ana"), anyList());
     }
 
     // Auditoría 4.2: los correos al cliente citan su consecutivo (3); el aviso al vendedor conserva el
@@ -128,19 +131,19 @@ class NotificacionPedidoListenerTest {
     void correosAlClienteUsanElConsecutivoYElVendedorElIdGlobal() {
         Pedido pedido = pedido();
         pedido.setNumeroCliente(3);
-        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findById(3L)).thenReturn(Optional.of(pedido));
         var vendedor = Usuario.builder().id(9L).nombre("Luis").nombreTienda("Tienda Sol")
                 .email("v@tienda.com").build();
         var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
                 .id(3L).vendedor(vendedor).build();
         when(prendaRepository.findById(3L)).thenReturn(Optional.of(prenda));
 
-        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(7L));
-        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(7L));
+        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(3L));
+        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(3L));
 
         verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
         verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
-        verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(7L), eq("Ana"), anyList());
+        verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(3L), eq("Laura Ruiz"), eq("Ana"), anyList());
     }
 
     // Si Wompi rechaza el pago, el cliente se entera; aquí el listener trabaja con la
@@ -173,17 +176,17 @@ class NotificacionPedidoListenerTest {
         despachado.setFechaActualizacion(java.time.LocalDateTime.now());
         pedido.getItems().getFirst().setDespacho(despachado);
         when(despachoRepository.findById(5L)).thenReturn(Optional.of(despachado));
-        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido));
+        when(pedidoRepository.findById(3L)).thenReturn(Optional.of(pedido));
 
-        listener.alEnviarDespacho(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.DespachoEnviadoEvent(7L, 5L));
+        listener.alEnviarDespacho(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.DespachoEnviadoEvent(3L, 5L));
 
-        verify(correo).enviarPedidoEnviado(eq("a@b.com"), eq("Ana"), eq(7L), eq("GUIA-5"), eq("107000"), anyList());
+        verify(correo).enviarPedidoEnviado(eq("a@b.com"), eq("Ana"), eq(3L), eq("GUIA-5"), eq("107000"), anyList());
     }
 
     // Si la prenda tiene fotos, el correo debe incluir la imagen (miniatura) y el precio por unidad.
     @Test
     void lineaConFotoIncluyeMiniimagenYPrecios() {
-        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido()));
+        when(pedidoRepository.findById(3L)).thenReturn(Optional.of(pedido()));
         var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
                 .id(3L).build();
         prenda.getImagenes().add(co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ImagenPrenda
@@ -191,10 +194,10 @@ class NotificacionPedidoListenerTest {
                 .fechaCarga(java.time.LocalDateTime.now()).build());
         when(prendaRepository.findById(3L)).thenReturn(Optional.of(prenda));
 
-        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(7L));
+        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(3L));
 
         var captor = org.mockito.ArgumentCaptor.forClass(java.util.List.class);
-        verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(7L), eq("107000"), captor.capture());
+        verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), captor.capture());
         var items = (List<CorreoService.ItemCorreo>) captor.getValue();
         assertThat(items).hasSize(1);
         assertThat(items.getFirst().imagenUrl()).isEqualTo("/media/a.png");
@@ -204,7 +207,7 @@ class NotificacionPedidoListenerTest {
     // Igual que con ENVIADO, PARCIALMENTE_ENVIADO no genera un correo extra de cambio de estado.
     @Test
     void cambioAParcialmenteEnviadoNoDuplicaElCorreo() {
-        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(7L, EstadoPedido.PARCIALMENTE_ENVIADO));
+        listener.alCambiarEstado(new PedidoEstadoCambiadoEvent(3L, EstadoPedido.PARCIALMENTE_ENVIADO));
 
         verify(pedidoRepository, never()).findById(anyLong());
         verify(correo, never()).enviarCambioEstado(anyString(), anyString(), anyLong(), anyString(), anyString());

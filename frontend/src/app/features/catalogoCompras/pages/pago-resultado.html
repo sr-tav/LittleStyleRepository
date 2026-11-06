@@ -21,7 +21,7 @@
       @case ('aprobado') {
         <section class="pago-resultado pago-aprobado" role="status" aria-live="polite">
           <h2>¡Pago aprobado!</h2>
-          @if (pago.numeroPedido ?? pago.pedidoId; as numeroPedido) {
+          @if (pago.numeroPedido; as numeroPedido) {
             <p>Tu pedido <strong>#{{ numeroPedido }}</strong> fue creado con el pago y ya lo estamos preparando.</p>
           } @else {
             <p>Tu compra fue pagada correctamente.</p>
@@ -68,7 +68,7 @@
           <h2>Algunas prendas se agotaron mientras pagabas</h2>
           <p>
             Lo sentimos, otra compra se confirmó antes que la tuya y estas prendas ya no tienen unidades suficientes.
-            @if (pago.numeroPedido ?? pago.pedidoId; as numeroPedido) {
+            @if (pago.numeroPedido; as numeroPedido) {
               El pedido <strong>#{{ numeroPedido }}</strong> fue cancelado y
             }
             <strong>tu pago será reembolsado</strong>. Los productos siguen en tu carrito.

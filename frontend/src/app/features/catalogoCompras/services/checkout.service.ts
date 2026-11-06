@@ -32,6 +32,19 @@ export class CheckoutService {
     return this.http.put<DireccionClienteGuardada>(`${this.baseUrl}/direcciones/${id}`, direccion);
   }
 
+  /** Elimina una dirección guardada propia. */
+  eliminarDireccion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/direcciones/${id}`);
+  }
+
+  /** Marca como predeterminada una dirección propia. */
+  marcarDireccionPredeterminada(id: number): Observable<DireccionClienteGuardada> {
+    return this.http.put<DireccionClienteGuardada>(
+      `${this.baseUrl}/direcciones/${id}/predeterminada`,
+      {},
+    );
+  }
+
   /**
    * Consulta la dirección de envío guardada del cliente.
    * @returns Flujo con el estado y los datos de la dirección.

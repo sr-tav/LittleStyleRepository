@@ -7,6 +7,8 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.AgregarItemCarritoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.ItemCarritoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.Carrito;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.ItemCarrito;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.CambiarCantidadCarritoRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ComponenteComposicion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
@@ -17,6 +19,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.servi
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strategy.FiltroAlergiaEstandar;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilResponse;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.AlergiaTextil;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Contextura;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Holgura;
@@ -87,7 +90,7 @@ class CarritoServiceTest {
 
     @Test
     void bloqueaAgregarLaPrendaExcluidaPorLaAlergiaGraveDelPerfilIndicado() {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prenda.setContieneNiquel(true);
         prepararCarrito(prenda);
         when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(AlergiaTextil.NIQUEL), false));
@@ -105,7 +108,7 @@ class CarritoServiceTest {
 
     @Test
     void bloqueaAgregarLaPrendaConElUmbralDeFibrasSinteticasGraves() {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prenda.getComposicion().clear();
         prenda.getComposicion().add(new ComponenteComposicion(MaterialTextil.POLIESTER, 40));
         prenda.getComposicion().add(new ComponenteComposicion(MaterialTextil.ALGODON, 60));
@@ -122,7 +125,7 @@ class CarritoServiceTest {
 
     @Test
     void sinPerfilEnLaSolicitudValidaTodosLosPerfilesDelCliente() {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prenda.setContieneNiquel(true);
         prepararCarrito(prenda);
         when(perfilInfantilService.listar()).thenReturn(List.of(
@@ -138,7 +141,7 @@ class CarritoServiceTest {
 
     @Test
     void noBloqueaAgregarCuandoLaCoincidenciaDeAlergiaSoloAdvierte() {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prepararCarrito(prenda);
         when(perfilInfantilService.obtener(11L))
                 .thenReturn(perfil(11L, Set.of(AlergiaTextil.ALGODON), false));
@@ -153,7 +156,7 @@ class CarritoServiceTest {
 
     @Test
     void permiteAgregarCuandoElPerfilNoDeclaroAlergias() {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prepararCarrito(prenda);
         when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(), true));
         when(prendaRepository.findAllById(any())).thenReturn(List.of(prenda));
@@ -166,10 +169,72 @@ class CarritoServiceTest {
 
     @Test
     void rechazaUnPerfilInfantilInvalido() {
-        assertThatThrownBy(() -> servicio.agregar(new AgregarItemCarritoRequest(7L, "4", 1, null, -5L)))
+        assertThatThrownBy(() -> servicio.agregar(
+                new AgregarItemCarritoRequest(7L, "4", 1, null, -5L, ColorPreferido.AZUL, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getStatus())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    // El color es obligatorio al agregar: no se deduce aunque la prenda tenga una sola variante
+    @Test
+    void rechazaAgregarSinColor() {
+        assertThatThrownBy(() -> servicio.agregar(solicitudSinColor()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> {
+                    BusinessException excepcion = (BusinessException) error;
+                    assertThat(excepcion.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(excepcion.getCampo()).isEqualTo("color");
+                    assertThat(excepcion.getMessage()).contains("Elige un color");
+                });
+        verify(carritoRepository, never()).saveAndFlush(any(Carrito.class));
+    }
+
+    @Test
+    void rechazaUnColorQueLaPrendaNoOfrece() {
+        Prenda prenda = prendaConColor();
+        prepararCarrito(prenda);
+        when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(), true));
+        AgregarItemCarritoRequest rosado = new AgregarItemCarritoRequest(
+                7L, "4", 1, null, 11L, ColorPreferido.ROSA, null);
+
+        assertThatThrownBy(() -> servicio.agregar(rosado))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("no está disponible para esta prenda")
+                .satisfies(error -> assertThat(((BusinessException) error).getStatus())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+        verify(carritoRepository, never()).saveAndFlush(any(Carrito.class));
+    }
+
+    @Test
+    void guardaElColorElegidoEnLaLineaDelCarrito() {
+        Prenda prenda = prendaConColor();
+        prepararCarrito(prenda);
+        when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(), true));
+        when(prendaRepository.findAllById(any())).thenReturn(List.of(prenda));
+        when(carritoRepository.saveAndFlush(any(Carrito.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var respuesta = servicio.agregar(solicitud(11L));
+
+        assertThat(respuesta.items().get(0).color()).isEqualTo(ColorPreferido.AZUL);
+        assertThat(carrito.getItems().get(0).getColor()).isEqualTo(ColorPreferido.AZUL);
+    }
+
+    // Backfill: las líneas guardadas antes del color obligatorio siguen legibles y editables
+    @Test
+    void cambiaLaCantidadDeUnaLineaAntiguaSinColor() {
+        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        prepararCarrito(prenda);
+        ItemCarrito antigua = ItemCarrito.builder().prendaId(7L).talla("4").cantidad(1).build();
+        antigua.setId(5L);
+        carrito.agregar(antigua);
+        when(prendaRepository.findAllById(any())).thenReturn(List.of(prenda));
+        when(carritoRepository.saveAndFlush(any(Carrito.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var respuesta = servicio.cambiarCantidad(5L, new CambiarCantidadCarritoRequest(3));
+
+        assertThat(respuesta.cantidad()).isEqualTo(3);
+        assertThat(carrito.getItems().get(0).getCantidad()).isEqualTo(3);
     }
 
     // Auditoría: el cliente elige estampado en el detalle; si la prenda ofrece varios debe indicar uno
@@ -226,7 +291,7 @@ class CarritoServiceTest {
     // Una prenda antigua solo tiene su estampado único (campo anterior) y ese es el que se asume
     @Test
     void usaElEstampadoUnicoDeLasPrendasAnterioresALaSeleccionMultiple() {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prenda.setEstampado(Estampado.ESTRELLAS);
         prepararCarritoConGuardado(prenda);
 
@@ -261,13 +326,13 @@ class CarritoServiceTest {
     }
 
     private Prenda prendaConEstampados(Estampado... estampados) {
-        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        Prenda prenda = prendaConColor();
         prenda.getEstampados().addAll(Set.of(estampados));
         return prenda;
     }
 
     private AgregarItemCarritoRequest solicitudConEstampado(Estampado estampado) {
-        return new AgregarItemCarritoRequest(7L, "4", 1, null, 11L, null, estampado);
+        return new AgregarItemCarritoRequest(7L, "4", 1, null, 11L, ColorPreferido.AZUL, estampado);
     }
 
     private void prepararCarritoConGuardado(Prenda prenda) {
@@ -278,7 +343,22 @@ class CarritoServiceTest {
     }
 
     private AgregarItemCarritoRequest solicitud(Long perfilInfantilId) {
-        return new AgregarItemCarritoRequest(7L, "4", 1, null, perfilInfantilId);
+        return new AgregarItemCarritoRequest(7L, "4", 1, null, perfilInfantilId, ColorPreferido.AZUL, null);
+    }
+
+    /** El color es obligatorio: solicitud sin color, igual a la que llegaba de clientes antiguos. */
+    private AgregarItemCarritoRequest solicitudSinColor() {
+        return new AgregarItemCarritoRequest(7L, "4", 1, null, 11L, null, null);
+    }
+
+    /**
+     * Talla del fixture pintada de AZUL: las variantes sin color son prendas antiguas y para
+     * comprar hoy el cliente debe poder pedir un color declarado.
+     */
+    private Prenda prendaConColor() {
+        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        prenda.getTallas().forEach(talla -> talla.setColor(ColorPreferido.AZUL));
+        return prenda;
     }
 
     private void prepararCarrito(Prenda prenda) {

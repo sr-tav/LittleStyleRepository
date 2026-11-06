@@ -480,12 +480,15 @@
   gap: 0.65rem;
 }
 
+/* Fitts: el botón de color es una pastilla con nombre visible (no solo la muestra)
+   y un objetivo táctil de mínimo 44 px. */
 .detalle-color {
-  display: grid;
-  width: 3.25rem;
-  height: 3.25rem;
-  place-items: center;
-  padding: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.3rem 0.75rem 0.3rem 0.4rem;
   border: 1px solid var(--ls-border);
   border-radius: 0.8rem;
   background: var(--ls-surface);
@@ -493,14 +496,52 @@
   position: relative;
 }
 
-detalle-color.is-agotado::after {
+.detalle-color-nombre {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ls-ink);
+}
+
+.detalle-color-agotado {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ls-error);
+}
+
+.detalle-color:disabled,
+.detalle-talla:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.detalle-color.is-agotado {
+  background: var(--ls-bg);
+  color: var(--ls-muted);
+}
+
+/* El agotado se anuncia con texto; la raya sobre la muestra es solo refuerzo local,
+   nunca la única señal. */
+.detalle-color.is-agotado .detalle-color-muestra::after {
   position: absolute;
   top: 50%;
-  right: 10%;
-  left: 10%;
+  right: 0.05rem;
+  left: 0.05rem;
   border-top: 2px solid #b42323;
   content: '';
   transform: rotate(-45deg);
+  border-radius: 2px;
+}
+
+.detalle-ayuda-seleccion {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ls-muted);
+}
+
+/* El selector recibe el foco programático cuando se intenta agregar sin color. */
+.detalle-selector:focus-visible {
+  outline: 3px solid var(--ls-primary-dark);
+  outline-offset: 2px;
 }
 
 .detalle-color.is-selected {
@@ -521,6 +562,7 @@ detalle-color.is-agotado::after {
 }
 
 .detalle-color-muestra {
+  position: relative;
   width: 1.8rem;
   height: 1.8rem;
   border: 1px solid rgb(35 49 39 / 25%);
@@ -690,6 +732,24 @@ detalle-color.is-agotado::after {
   display: grid;
   gap: 0.2rem;
   min-width: 0;
+}
+
+.pedido-referencia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.4rem;
+  min-width: 0;
+}
+
+.pedido-referencia-numero {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.pedido-destinatario {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Resumen en grilla del detalle: fecha, estado, líneas y subtotal propio */

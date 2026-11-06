@@ -160,7 +160,7 @@
                     <p class="reco-sugerida">
                       <span class="talla-badge">Talla sugerida: {{ s.tallaSugerida }}</span>
                       @if (s.riesgo === 'ADVERTENCIA' && s.advertencias.length > 0) {
-                        <span class="alert-warn" role="alert" [title]="s.advertencias.join(', ')">⚠ Alergia</span>
+                        <span class="alert-warn" role="alert"> ⚠ Alergia: {{ s.advertencias.join(', ') }}</span>
                       }
                     </p>
                   }
@@ -169,10 +169,10 @@
                   }
                   <div class="reco-card-cta">
                     <a
-                      class="btn-primary btn-inline btn-small"
+                      class="btn-primary btn-inline btn-small reco-card-link"
                       [routerLink]="['/cliente/catalogo', item.id]"
                       [attr.aria-label]="'Ver detalle de ' + item.nombre"
-                      >Ver</a
+                    >Ver</a
                     >
                   </div>
                 </div>

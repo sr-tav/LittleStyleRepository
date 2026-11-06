@@ -28,7 +28,14 @@
             [attr.aria-label]="'Ver despacho ' + p.despachoId + ', ' + estado(p)"
           >
             <div class="pedido-tarjeta-info">
-              <strong>Pedido #{{ p.pedidoId }} · Tu paquete</strong>
+              <strong class="pedido-referencia">
+                @if (p.numeroPedido !== null) {
+                  <span class="pedido-referencia-numero">Pedido #{{ p.numeroPedido }}</span>
+                } @else {
+                  <span class="pedido-referencia-numero">Pedido sin número</span>
+                }
+                <span class="pedido-destinatario">· {{ p.destinatario }} · Tu paquete</span>
+              </strong>
               <span class="product-meta">
                 {{ unidades(p) }} unidad(es) tuyas · {{ precio(p) }} · {{ fecha(p) }}
               </span>

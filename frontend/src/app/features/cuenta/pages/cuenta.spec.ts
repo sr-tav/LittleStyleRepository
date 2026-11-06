@@ -6,7 +6,7 @@ import { signal } from '@angular/core';
 
 import { crearAuthResponse } from '../../../core/testing/auth-testing';
 import { CarritoService } from '../../catalogoCompras/services/carrito.service';
-import { DireccionEnvio } from '../../catalogoCompras/models/checkout.models';
+import {DireccionClienteGuardada, DireccionEnvio} from '../../catalogoCompras/models/checkout.models';
 import { Cuenta } from './cuenta';
 
 describe('Cuenta (US-06)', () => {
@@ -41,7 +41,10 @@ describe('Cuenta (US-06)', () => {
 
   afterEach(() => httpMock.verify());
 
-  function cargar(direccion: DireccionEnvio | null = null) {
+  function cargar(
+    direccion: DireccionEnvio | null = null,
+    adicionales: DireccionClienteGuardada[] = [],
+  ) {
     const fixture = TestBed.createComponent(Cuenta);
     fixture.detectChanges();
     httpMock.expectOne('/api/auth/me').flush({
@@ -53,9 +56,12 @@ describe('Cuenta (US-06)', () => {
       nombreTienda: null,
       rol: 'CLIENTE',
     });
-    httpMock.expectOne('/api/cliente/checkout/direcciones').flush(
-      direccion === null ? [] : [{ id: 1, direccion }],
-    );
+    httpMock.expectOne('/api/cliente/checkout/direcciones').flush([
+      ...(direccion === null
+        ? []
+        : [{ id: 1, direccion, predeterminada: true }]),
+      ...adicionales,
+    ]);
     fixture.detectChanges();
     return { fixture, element: fixture.nativeElement as HTMLElement };
   }
@@ -376,5 +382,95 @@ describe('Cuenta (US-06)', () => {
     httpMock.expectOne({ method: 'DELETE', url: '/api/auth/me' }).flush(null);
 
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
+  });
+
+  it('marca una dirección guardada como predeterminada', () => {
+    const segunda: DireccionEnvio = {
+      destinatario: 'Laura Pérez',
+      direccion: 'Carrera 12 # 34 - 56',
+      tipoVia: 'Carrera',
+      numeroVia: '12',
+      numeroCruce: '34',
+      placa: '56',
+      complemento: null,
+      codigoPostal: '630001',
+      departamento: 'Quindío',
+      municipio: 'Armenia',
+      telefono: '3001234567',
+    };
+
+    const { fixture, element } = cargar(segunda, [
+      { id: 2, direccion: { ...segunda, direccion: 'Calle 20 # 1 - 2' }, predeterminada: false },
+    ]);
+
+    const tarjetas = element.querySelectorAll<HTMLElement>('.account-address .checkout-direccion');
+    Array.from(tarjetas[1].querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Marcar predeterminada'))!
+      .click();
+    fixture.detectChanges();
+
+    const request = httpMock.expectOne({
+      method: 'PUT',
+      url: '/api/cliente/checkout/direcciones/2/predeterminada',
+    });
+    request.flush({
+      id: 2,
+      direccion: { ...segunda, direccion: 'Calle 20 # 1 - 2' },
+      predeterminada: true,
+    });
+    fixture.detectChanges();
+
+    expect(tarjetas[0].textContent).not.toContain('Dirección predeterminada');
+    expect(tarjetas[1].textContent).toContain('Dirección predeterminada');
+  });
+
+  it('permite cancelar la eliminación y elimina solo al confirmar', () => {
+    const direccion: DireccionEnvio = {
+      destinatario: 'Laura Pérez',
+      direccion: 'Calle 10 # 20 - 30',
+      tipoVia: 'Calle',
+      numeroVia: '10',
+      numeroCruce: '20',
+      placa: '30',
+      complemento: null,
+      codigoPostal: '630001',
+      departamento: 'Quindío',
+      municipio: 'Armenia',
+      telefono: '3001234567',
+    };
+    const { fixture, element } = cargar(direccion);
+    const tarjeta = element.querySelector<HTMLElement>('.account-address .checkout-direccion')!;
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Eliminar dirección'))!
+      .click();
+    fixture.detectChanges();
+
+    expect(tarjeta.textContent).toContain('¿Eliminar esta dirección guardada?');
+    httpMock.expectNone({ method: 'DELETE', url: '/api/cliente/checkout/direcciones/1' });
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.trim() === 'Cancelar')!
+      .click();
+    fixture.detectChanges();
+    httpMock.expectNone({ method: 'DELETE', url: '/api/cliente/checkout/direcciones/1' });
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Eliminar dirección'))!
+      .click();
+    fixture.detectChanges();
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Sí, eliminar'))!
+      .click();
+    fixture.detectChanges();
+
+    httpMock.expectOne({
+      method: 'DELETE',
+      url: '/api/cliente/checkout/direcciones/1',
+    }).flush(null);
+    fixture.detectChanges();
+
+    expect(element.querySelector('.account-address .checkout-direccion')).toBeNull();
+    expect(element.textContent).toContain('Aún no tienes una dirección de envío guardada.');
   });
 });

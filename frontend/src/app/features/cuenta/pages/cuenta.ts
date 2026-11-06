@@ -39,6 +39,9 @@ export class Cuenta implements OnInit {
   protected readonly editandoDatos = signal(false);
   protected readonly editandoDireccion = signal(false);
   protected readonly editandoDireccionId = signal<number | null>(null);
+  protected readonly eliminandoDireccionId = signal<number | null>(null);
+  protected readonly eliminacionEnCursoId = signal<number | null>(null);
+  protected readonly guardandoPredeterminadaId = signal<number | null>(null);
   protected readonly cambiandoPassword = signal(false);
   protected readonly enviado = signal(false);
   protected readonly direccionEnviada = signal(false);
@@ -455,6 +458,76 @@ export class Cuenta implements OnInit {
       email: usuario.email,
       telefono: usuario.telefono ?? '',
       nombreTienda: usuario.nombreTienda ?? '',
+    });
+  }
+
+  protected confirmarEliminacionDireccion(id: number): void {
+    if (this.eliminacionEnCursoId() !== null) return;
+    this.eliminandoDireccionId.set(id);
+    this.error.set(null);
+  }
+
+  protected cancelarEliminacionDireccion(): void {
+    if (this.eliminacionEnCursoId() !== null) return;
+    this.eliminandoDireccionId.set(null);
+  }
+
+  protected eliminarDireccion(id: number): void {
+    if (this.eliminacionEnCursoId() !== null) return;
+
+    const eliminada = this.direccionesGuardadas().find((direccion) => direccion.id === id);
+    if (!eliminada) return;
+
+    this.error.set(null);
+    this.mensaje.set(null);
+    this.eliminacionEnCursoId.set(id);
+
+    this.checkoutService.eliminarDireccion(id).subscribe({
+      next: () => {
+        const restantes = this.direccionesGuardadas().filter((direccion) => direccion.id !== id);
+        const predeterminadaActual = restantes.find((direccion) => direccion.predeterminada);
+        const nuevaPredeterminada = eliminada.predeterminada
+          ? predeterminadaActual ?? restantes[0]
+          : predeterminadaActual;
+
+        this.direccionesGuardadas.set(restantes.map((direccion) => ({
+          ...direccion,
+          predeterminada: direccion.id === nuevaPredeterminada?.id,
+        })));
+
+        this.eliminandoDireccionId.set(null);
+        this.eliminacionEnCursoId.set(null);
+        this.mensaje.set('La dirección de envío se eliminó.');
+      },
+      error: (error: unknown) => {
+        this.eliminacionEnCursoId.set(null);
+        this.error.set(procesarErrorApi(error));
+      },
+    });
+  }
+
+  protected marcarPredeterminada(id: number): void {
+    if (this.guardandoPredeterminadaId() !== null) return;
+
+    this.error.set(null);
+    this.mensaje.set(null);
+    this.guardandoPredeterminadaId.set(id);
+
+    this.checkoutService.marcarDireccionPredeterminada(id).subscribe({
+      next: (actualizada) => {
+        this.direccionesGuardadas.update((direcciones) =>
+          direcciones.map((direccion) => ({
+            ...direccion,
+            predeterminada: direccion.id === actualizada.id,
+          })),
+        );
+        this.guardandoPredeterminadaId.set(null);
+        this.mensaje.set('La dirección predeterminada se actualizó.');
+      },
+      error: (error: unknown) => {
+        this.guardandoPredeterminadaId.set(null);
+        this.error.set(procesarErrorApi(error));
+      },
     });
   }
 }

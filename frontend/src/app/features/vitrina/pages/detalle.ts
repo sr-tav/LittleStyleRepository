@@ -13,7 +13,8 @@ import {
   describirComposicion,
   formatearPrecio,
 } from '../../catalogoCompras/models/prenda-opciones';
-import { ETIQUETAS_ALERGIAS, ETIQUETAS_COLORES, ETIQUETAS_ESTAMPADOS, OPCIONES_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
+import { ETIQUETAS_COLORES, ETIQUETAS_ESTAMPADOS, OPCIONES_COLORES } from '../../perfilesInfantiles/models/perfil-opciones';
+import { alergiasDeclaradasDe, alergiasDetectadasDe } from '../../catalogoCompras/data/filtro-alergia-estandar';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { TallaSugerida } from '../../recomendacion/components/talla-sugerida';
 import { RecomendacionItem } from '../../recomendacion/models/recomendacion.models';
@@ -58,6 +59,8 @@ export class DetalleProducto implements OnInit {
   protected readonly reporteEnviando = signal(false);
   protected readonly reporteMensaje = signal<string | null>(null);
   protected readonly descripcionReporteInput = viewChild<ElementRef<HTMLTextAreaElement>>('descripcionReporteCampo');
+  /** Selector de color para enfocarlo si se intenta agregar sin haberlo elegido. */
+  protected readonly selectorColorCampo = viewChild<ElementRef<HTMLFieldSetElement>>('selectorColor');
   protected readonly stockTallaSeleccionada = computed(() => {
     const talla = this.tallaSeleccionada();
     const color = this.colorSeleccionado();
@@ -142,11 +145,27 @@ export class DetalleProducto implements OnInit {
     if (
       !prenda ||
       !talla ||
-      !color ||
+      this.agregandoAlCarrito()
+    ) {
+      return;
+    }
+    if (!color) {
+      // El color se elige siempre de forma explícita, también con un solo color disponible.
+      // Va antes del resto de guardas: sin color el stock de la variante es 0 y, si la
+      // validación de cantidad corriera primero, el aviso nunca llegaría al usuario.
+      this.errorCarrito.set('Elige un color para continuar');
+      const selector = this.selectorColorCampo()?.nativeElement;
+      if (selector) {
+        selector.focus();
+      } else {
+        setTimeout(() => this.selectorColorCampo()?.nativeElement.focus());
+      }
+      return;
+    }
+    if (
       (this.estampadosDisponibles().length > 0 && !estampado) ||
       cantidad < 1 ||
-      cantidad > this.stockTallaSeleccionada() ||
-      this.agregandoAlCarrito()
+      cantidad > this.stockTallaSeleccionada()
     ) {
       return;
     }
@@ -347,13 +366,19 @@ export class DetalleProducto implements OnInit {
     });
   }
 
+  /**
+   * Alergias visibles al cliente (Punto 3): las 4 declaradas más las detectadas por
+   * composición, todas con las etiquetas compartidas del perfil infantil (mismo
+   * módulo que el formulario del vendedor).
+   * @param p Prendas en modo detalle de vitrina.
+   * @returns Etiquetas con motivo entre paréntesis si hay detalle de detección.
+   */
   protected readonly alergenosDe = (p: VitrinaDetalle): string[] => {
-    const lista: string[] = [];
-    if (p.tintesSinteticos) lista.push(`${ETIQUETAS_ALERGIAS.TINTES} (sinteticos`);
-    if (p.brochesMetalicos) lista.push(ETIQUETAS_ALERGIAS.BROCHES_METALICOS);
-    if(p.contieneNiquel) lista.push(ETIQUETAS_ALERGIAS.NIQUEL);
-    if (p.tratamientoFormaldehido) lista.push(ETIQUETAS_ALERGIAS.FORMALDEHIDO);
-    return lista;
+    const declaradas = alergiasDeclaradasDe(p).map((a) => a.etiqueta);
+    const detectadas = alergiasDetectadasDe(p).map((a) =>
+      `${a.etiqueta} (${a.detalle})`,
+    );
+    return [...declaradas, ...detectadas];
   }
 
   protected readonly colorSeleccionado = signal('');

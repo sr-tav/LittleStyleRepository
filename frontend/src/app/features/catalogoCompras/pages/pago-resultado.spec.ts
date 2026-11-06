@@ -70,19 +70,12 @@ describe('PagoResultadoPage', () => {
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
 
-  it('muestra el consecutivo del cliente y no el id interno del pedido', () => {
-    pagoService.verificar.mockReturnValue(of(base));
-    const { root } = crear();
-
-    expect(root.textContent).toContain('#2');
-    expect(root.textContent).not.toContain('#55');
-  });
-
-  it('si el pedido aún no tiene consecutivo muestra su id', () => {
+  it('si falta el consecutivo no muestra el id interno', () => {
     pagoService.verificar.mockReturnValue(of({ ...base, numeroPedido: null }));
     const { root } = crear();
 
-    expect(root.textContent).toContain('#55');
+    expect(root.textContent).not.toContain('#55');
+    expect(root.textContent).toContain('Tu compra fue pagada correctamente.');
   });
 
   it('confirma el pago aprobado con el número de pedido', () => {

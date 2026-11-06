@@ -14,6 +14,9 @@ public interface DireccionClienteRepository extends JpaRepository<DireccionClien
     /** Busca una dirección solo si pertenece al cliente indicado. */
     Optional<DireccionCliente> findByIdAndClienteId(Long id, Long clienteId);
 
+    /** Cantidad de direcciones guardadas del cliente, para el límite configurable. */
+    long countByClienteId(Long clienteId);
+
     /** Borra la dirección del cliente (al eliminar su cuenta). */
     void deleteByClienteId(Long clienteId);
 }

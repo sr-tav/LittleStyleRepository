@@ -37,6 +37,9 @@ describe('ProductosLista (UI-19)', () => {
     expect(fila.textContent).toMatch(/\$\s?32\.900/);
     expect(fila.querySelector('.stock-badge')?.textContent).toContain('Stock bajo');
     expect(fila.querySelector('img')?.getAttribute('src')).toBe('/media/prendas/7/a.png');
+    expect(fila.querySelector('a[aria-label^="Editar"]')).not.toBeNull();
+    expect(fila.querySelector('button[aria-label^="Ocultar"]')).not.toBeNull();
+    expect(fila.querySelector('.reco-card-link')).toBeNull();
   });
 
   it('busca en el servidor por nombre o categoría sin distinguir tildes', () => {

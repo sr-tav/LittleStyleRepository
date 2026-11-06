@@ -66,9 +66,6 @@ public class CatalogoClienteController {
                         color, ids, perfilId, soloMiTalla, edadMeses, pagina, tamano, orden);
         long ms = (System.nanoTime() - ini) / 1_000_000;
         // Solo la primera página: paginar la misma búsqueda no es una búsqueda nueva (métrica US-15).
-        if (pagina == 0 && texto != null && !texto.isBlank()) {
-            tracking.registrarBusqueda(texto, res.totalElementos(), idDe(usuario), userAgent);
-        }
         return ResponseEntity.ok().header("X-Catalogo-Ms", String.valueOf(ms)).body(res);
     }
 

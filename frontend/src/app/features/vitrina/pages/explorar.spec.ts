@@ -89,6 +89,7 @@ describe('Explorar (US-09)', () => {
     expect(el.querySelector('app-acceso-rapido-prenda')).toBeNull();
     const enlace = el.querySelector<HTMLAnchorElement>('a[href="/cliente/catalogo/10"]');
     expect(enlace?.textContent?.trim()).toBe('Ver');
+    expect(enlace?.classList.contains('reco-card-link')).toBe(true);
   });
 
   it('cambiar un filtro vuelve a la primera página con ese parámetro', () => {
@@ -171,6 +172,9 @@ describe('Explorar (US-09)', () => {
 
     expect(el.textContent).toContain('Pantalón Jogger Azul');
     expect(el.textContent).toContain('Talla sugerida: 4');
+    const advertencia = el.querySelector<HTMLElement>('.alert-warn');
+    expect(advertencia?.textContent).toContain('Contiene lana');
+    expect(advertencia?.hasAttribute('title')).toBe(false);
   });
 
   it('envía la edad en meses como filtro de servidor (US-09)', () => {

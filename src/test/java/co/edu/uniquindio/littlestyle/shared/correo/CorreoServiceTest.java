@@ -93,17 +93,28 @@ class CorreoServiceTest {
     }
 
     @Test
-    void avisaAlVendedorDelPedidoNuevo() throws Exception {
+    void avisaAlVendedorConConsecutivoYDestinatario() throws Exception {
         MimeMessage mensaje = new MimeMessage((jakarta.mail.Session) null);
         when(envio.createMimeMessage()).thenReturn(mensaje);
-        CorreoService servicio = new CorreoService(envio,
-                props("tienda@gmail.com", "clave"));
+        CorreoService servicio = new CorreoService(envio, props("tienda@gmail.com", "clave"));
 
-        servicio.enviarPedidoNuevoVendedor("v@tienda.com", "Tienda Sol", 7L, "Ana",
-                List.of(new CorreoService.ItemCorreo("Pantalón", "4", 1, "107000", "107000", "/media/a.png")));
+        servicio.enviarPedidoNuevoVendedor(
+                "v@tienda.com",
+                "Tienda Sol",
+                3L,
+                "Laura Ruiz",
+                "Ana",
+                List.of(new CorreoService.ItemCorreo(
+                        "Pantalón", "4", 1, "107000", "107000", "/media/a.png")));
 
         verify(envio).send(mensaje);
-        assert mensaje.getSubject().contains("#7");
+        assert mensaje.getSubject().contains("#3");
+        assert !mensaje.getSubject().contains("#7");
+
+        String html = String.valueOf(mensaje.getContent());
+        assert html.contains("Pedido #3 · Laura Ruiz");
+        assert html.contains("del cliente Ana");
+        assert !html.contains("Pedido #7");
     }
 
     @Test

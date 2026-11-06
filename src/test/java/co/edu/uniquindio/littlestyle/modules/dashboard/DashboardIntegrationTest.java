@@ -14,13 +14,14 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Esta
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.LineaPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository.PedidoRepository;
-import co.edu.uniquindio.littlestyle.modules.dashboard.model.Busqueda;
 import co.edu.uniquindio.littlestyle.modules.dashboard.model.ProductoVista;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
-import co.edu.uniquindio.littlestyle.modules.dashboard.repository.BusquedaRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.repository.ProductoVistaRepository;
 import co.edu.uniquindio.littlestyle.modules.dashboard.service.DashboardAnalyticsService;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.BusquedaCatalogo;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.service.NormalizadorBusqueda;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.BusquedaCatalogoRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,7 +60,7 @@ class DashboardIntegrationTest {
     @Autowired private PrendaRepository prendaRepository;
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private ProductoVistaRepository productoVistaRepository;
-    @Autowired private BusquedaRepository busquedaRepository;
+    @Autowired private BusquedaCatalogoRepository busquedaCatalogoRepository;
     @Autowired private DashboardAnalyticsService dashboardAnalyticsService;
 
     private Usuario vendedorA;
@@ -344,6 +345,13 @@ class DashboardIntegrationTest {
     }
 
     private void busqueda(String termino, LocalDateTime fecha) {
-        busquedaRepository.save(Busqueda.builder().termino(termino).totalResultados(4).fecha(fecha).build());
+        busquedaCatalogoRepository.saveAndFlush(BusquedaCatalogo.builder()
+                .terminoNormalizado(NormalizadorBusqueda.normalizar(termino))
+                .terminoOriginal(termino)
+                .categoria(null)
+                .resultadosCount(4)
+                .usuarioId(null)
+                .creadoEn(fecha)
+                .build());
     }
 }

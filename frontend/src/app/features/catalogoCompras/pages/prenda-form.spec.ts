@@ -208,3 +208,247 @@ describe('PrendaForm (UI-20)', () => {
     req.flush(crearPrenda());
   });
 });
+
+// === Punto 12 (UI-20): sugerencias de medidas por talla ===
+
+function clickPorTexto(el: HTMLElement, texto: string): HTMLButtonElement {
+  const boton = [...el.querySelectorAll<HTMLButtonElement>('button')]
+    .find((b) => b.textContent?.includes(texto));
+  expect(boton, `falta el botón «${texto}»`).toBeTruthy();
+  boton!.click();
+  return boton!;
+}
+
+describe('PrendaForm — sugerencias de medidas (Punto 12)', () => {
+  let http: HttpTestingController;
+  let idRuta: string | null;
+
+  beforeEach(async () => {
+    idRuta = null;
+    URL.createObjectURL = vi.fn(() => 'blob:vista');
+    URL.revokeObjectURL = vi.fn();
+    await TestBed.configureTestingModule({
+      imports: [PrendaForm],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useFactory: () => ({
+            snapshot: { paramMap: convertToParamMap(idRuta ? { id: idRuta } : {}) },
+          }),
+        },
+      ],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  function crear() {
+    const fixture = TestBed.createComponent(PrendaForm);
+    fixture.detectChanges();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = fixture.componentInstance as any;
+    return { fixture, c, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('muestra la sugerencia visible con la talla normalizada y la aplica con el botón', () => {
+    const { fixture, c, el } = crear();
+    c.tallas.at(0).patchValue({ talla: ' 4 ', color: 'AZUL' });
+    fixture.detectChanges();
+
+    const ayuda = el.querySelector('.talla-ayuda')!;
+    expect(ayuda.textContent).toContain('Medidas habituales para la talla 4');
+    expect(ayuda.textContent).toContain('98–110 cm · 15–19 kg · 36–48 meses');
+
+    // Autocompletado accesible con la tabla de referencia.
+    expect(el.querySelector('#tallas-referencia-0')).toBeTruthy();
+    expect([...el.querySelectorAll('#tallas-referencia-0 option')].map((o) => o.getAttribute('value'))).toContain('16');
+
+    clickPorTexto(el, 'Aplicar medidas sugeridas');
+    const fila = c.tallas.at(0).getRawValue();
+    expect(fila.estaturaMinCm).toBe(98);
+    expect(fila.estaturaMaxCm).toBe(110);
+    expect(fila.pesoMinKg).toBe(15);
+    expect(fila.pesoMaxKg).toBe(19);
+    expect(fila.edadMinMeses).toBe(36);
+    expect(fila.edadMaxMeses).toBe(48);
+  });
+
+  it('no sobrescribe sin acción: escribir la talla deja intactas las medidas ya digitadas', () => {
+    const { fixture, c, el } = crear();
+    c.tallas.at(0).patchValue({
+      talla: 'XS',
+      color: 'AZUL',
+      estaturaMinCm: 96,
+      estaturaMaxCm: 108,
+    });
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Medidas habituales para la talla XS');
+    let fila = c.tallas.at(0).getRawValue();
+    expect(fila.estaturaMinCm).toBe(96);
+    expect(fila.estaturaMaxCm).toBe(108);
+
+    // Solo el botón explícito rellena, y las medidas siguen editables después.
+    clickPorTexto(el, 'Aplicar medidas sugeridas');
+    fila = c.tallas.at(0).getRawValue();
+    expect(fila.estaturaMinCm).toBe(100);
+    expect(fila.estaturaMaxCm).toBe(112);
+    c.tallas.at(0).patchValue({ estaturaMaxCm: 118 });
+    expect(c.tallas.at(0).getRawValue().estaturaMaxCm).toBe(118);
+  });
+
+  it('reutiliza las medidas definidas en otro color para respetar los mismos rangos', () => {
+    const { fixture, c, el } = crear();
+    c.tallas.at(0).patchValue({
+      talla: '6',
+      color: 'AZUL',
+      estaturaMinCm: 108,
+      estaturaMaxCm: 124,
+      pesoMinKg: 19,
+      pesoMaxKg: 25,
+      edadMinMeses: 48,
+      edadMaxMeses: 72,
+    });
+    c.agregarTalla();
+    c.tallas.at(1).patchValue({ talla: ' 6 ', color: 'ROSA' });
+    fixture.detectChanges();
+
+    const ayuda = el.querySelector('#talla-ayuda-1')!;
+    expect(ayuda.textContent).toContain('Mismas medidas que la talla 6 en Azul');
+    expect(ayuda.textContent).not.toContain('Aplicar medidas sugeridas');
+
+    ayuda.querySelector<HTMLButtonElement>('.talla-ayuda-boton')!.click();
+    const copiada = c.tallas.at(1).getRawValue();
+
+    expect(copiada.estaturaMinCm).toBe(108);
+    expect(copiada.estaturaMaxCm).toBe(124);
+    expect(copiada.pesoMaxKg).toBe(25);
+    expect(copiada.edadMinMeses).toBe(48);
+    expect(copiada.edadMaxMeses).toBe(72);
+  });
+
+  it('muestra la advertencia de medidas atípicas comparada con la referencia', () => {
+    const { fixture, c, el } = crear();
+    c.composicion.at(0).patchValue({ porcentaje: 100 });
+    c.tallas.at(0).patchValue({
+      talla: '4',
+      color: 'AZUL',
+      estaturaMinCm: 40,
+      estaturaMaxCm: 200,
+      pesoMinKg: 15,
+      pesoMaxKg: 19,
+      edadMinMeses: 36,
+      edadMaxMeses: 48,
+    });
+    fixture.detectChanges();
+
+    const advertencia = el.querySelector('.talla-ayuda-advertencia')!;
+    expect(advertencia.textContent).toContain('se alejan de lo habitual para la talla 4');
+    expect(advertencia.textContent).toContain('98–110 cm');
+    expect(advertencia.closest('[role="status"]')?.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('no ofrece sugerencias sobre variantes ya guardadas en edición', () => {
+    idRuta = '7';
+    const { fixture, el } = crear();
+    http.expectOne('/api/vendedor/prendas/7').flush(crearPrenda());
+    fixture.detectChanges();
+
+    expect(el.querySelector('.talla-ayuda')).toBeNull();
+    expect(el.querySelector('.talla-ayuda-advertencia')).toBeNull();
+  });
+});
+
+// === Punto 3 (UI-20): alergias del formulario coherentes con el perfil infantil ===
+
+describe('PrendaForm — alergias declaradas y detectadas (Punto 3)', () => {
+  let http: HttpTestingController;
+  let idRuta: string | null;
+
+  beforeEach(async () => {
+    idRuta = null;
+    URL.createObjectURL = vi.fn(() => 'blob:vista');
+    URL.revokeObjectURL = vi.fn();
+    await TestBed.configureTestingModule({
+      imports: [PrendaForm],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useFactory: () => ({
+            snapshot: { paramMap: convertToParamMap(idRuta ? { id: idRuta } : {}) },
+          }),
+        },
+      ],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  function crear() {
+    const fixture = TestBed.createComponent(PrendaForm);
+    fixture.detectChanges();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = fixture.componentInstance as any;
+    return { fixture, c, el: fixture.nativeElement as HTMLElement };
+  }
+
+  function bloqueoAlergias(el: HTMLElement): HTMLElement {
+    const bloque = [...el.querySelectorAll('fieldset')].find((f) =>
+      f.textContent?.includes('Información para alergias'),
+    );
+    expect(bloque, 'falta el fieldset «Información para alergias»').toBeTruthy();
+    return bloque!;
+  }
+
+  it('muestra las 4 alergias declarables con etiqueta del perfil y el grupo detectado sin controles', () => {
+    const { el } = crear();
+    const bloque = bloqueoAlergias(el);
+    const texto = bloque.textContent ?? '';
+
+    ['Tintes', 'Broches metálicos', 'Níquel', 'Formaldehído'].forEach((etiqueta) => {
+      expect(texto).toContain(etiqueta);
+    });
+
+    // Los del grupo declarado son checkboxes; el grupo de composición nunca los ofrece.
+    const declarada = bloque.querySelector('.catalog-checks label');
+    expect(declarada?.textContent).toContain('Tintes');
+    expect(texto).toContain('Declara tú');
+    expect(texto).toContain('Se detecta por la composición');
+    const inputsEnChips = bloque.querySelectorAll('.alergia-chip input');
+    expect(inputsEnChips.length).toBe(0);
+  });
+
+  it('chips en vivo: la composición por defecto detecta algodón y la edición lo reemplaza por sintéticos', () => {
+    const { fixture, c, el } = crear();
+    // Composición inicial del formulario: ALGODON 100
+    let bloque = bloqueoAlergias(el);
+    expect(bloque.textContent).toContain('Algodón');
+    expect(bloque.textContent).toContain('Contiene algodón');
+    expect(bloque.textContent).not.toContain('Fibras sintéticas');
+
+    // El vendedor edita la composición: 40% poliéster ya supera el umbral del 30%
+    c.composicion.at(0).patchValue({ material: 'POLIESTER', porcentaje: 40 });
+    fixture.detectChanges();
+
+    bloque = bloqueoAlergias(el);
+    const texto = bloque.textContent ?? '';
+    expect(texto).toContain('Fibras sintéticas');
+    expect((new RegExp('Contiene 40% fibras sintéticas')).test(texto)).toBe(true);
+    expect(texto).not.toContain('Contiene algodón');
+  });
+
+  it('no ofrece checkboxes para las alergias detectadas: están a cargo de la composición', () => {
+    const { el } = crear();
+    const bloque = bloqueoAlergias(el);
+    const etiquetasDelGrupo = bloque.querySelectorAll('.catalog-checks label');
+    expect(etiquetasDelGrupo.length).toBe(4);
+  });
+});

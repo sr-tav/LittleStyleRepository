@@ -146,11 +146,11 @@ class PedidoConsultaServiceTest {
 
     // Un pedido anterior a la migración, sin consecutivo, muestra su id para no quedar sin número
     @Test
-    void sinConsecutivoElListadoMuestraElIdInterno() {
+    void sinConsecutivoElListadoNoExponeElIdInterno() {
         when(pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(CLIENTE_ID))
                 .thenReturn(List.of(pedido(7L)));
 
-        assertThat(service.misPedidos().getFirst().numeroPedido()).isEqualTo(7L);
+        assertThat(service.misPedidos().getFirst().numeroPedido()).isNull();
     }
 
     // Pedido que no le pertenece al cliente se trata como inexistente: responde 404 para no filtrar información.

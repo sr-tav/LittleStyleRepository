@@ -451,15 +451,28 @@
   object-fit: cover;
 }
 
+.hero-product-link {
+  position: relative;
+  z-index: 0;
+  display: block;
+
+  &:focus-visible {
+    outline: 3px solid var(--ls-surface);
+    outline-offset: -3px;
+  }
+}
+
 .hero-veil {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: linear-gradient(75deg, rgba(35, 49, 39, 0.72) 0%, rgba(35, 49, 39, 0.25) 55%, transparent 80%);
 }
 
 /* Deja libre el carril de las flechas (1rem + 44px + 1rem) para que el texto no las tape. */
 .hero-copy {
   position: absolute;
+  z-index: 1;
   left: 4.5rem;
   right: 4.5rem;
   top: 50%;

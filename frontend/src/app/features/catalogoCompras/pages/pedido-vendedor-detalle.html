@@ -9,7 +9,14 @@
   } @else if (despacho(); as p) {
     <header class="catalog-heading">
       <div>
-        <h1>Pedido #{{ p.pedidoId }} · Tu paquete</h1>
+        <h1 class="pedido-referencia">
+          @if (p.numeroPedido !== null) {
+            <span class="pedido-referencia-numero">Pedido #{{ p.numeroPedido }}</span>
+          } @else {
+            <span class="pedido-referencia-numero">Pedido sin número</span>
+          }
+          <span class="pedido-destinatario">· {{ p.destinatario }} · Tu paquete</span>
+        </h1>
         <p class="catalog-subtitle">{{ estadoDe(p.estado) }} · {{ p.tienda }}</p>
       </div>
       <span class="state-chip">{{ estadoDe(p.estado) }}</span>
@@ -20,7 +27,17 @@
     }
 
     <dl class="pedido-resumen-grid" aria-label="Resumen del despacho">
-      <div><dt>Pedido</dt><dd>#{{ p.pedidoId }}</dd></div>
+      <div>
+        <dt>Pedido</dt>
+        <dd class="pedido-referencia">
+          @if (p.numeroPedido !== null) {
+            <span class="pedido-referencia-numero">#{{ p.numeroPedido }}</span>
+          } @else {
+            <span class="pedido-referencia-numero">Sin número</span>
+          }
+          <span class="pedido-destinatario">· {{ p.destinatario }}</span>
+        </dd>
+      </div>
       <div><dt>Estado de tu paquete</dt><dd>{{ estadoDe(p.estado) }}</dd></div>
       <div><dt>Tus productos</dt><dd>{{ p.items.length }} línea(s)</dd></div>
       <div><dt>Tu subtotal</dt><dd>{{ precio(totalPropio()) }}</dd></div>

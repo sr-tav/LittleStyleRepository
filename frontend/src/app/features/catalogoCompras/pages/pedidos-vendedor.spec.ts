@@ -21,6 +21,8 @@ describe('PedidosVendedor', () => {
         numeroGuia: null,
         fechaActualizacion: '2026-10-01T10:00:00',
         items: [{ prendaId: 10, nombre: 'Pantalón', talla: '4', cantidad: 2, precioUnitario: 50000, subtotal: 100000 }],
+        numeroPedido: 3,
+        destinatario: 'Laura Ruiz',
       },
     ];
     await TestBed.configureTestingModule({
@@ -39,7 +41,9 @@ describe('PedidosVendedor', () => {
     fixture.detectChanges();
 
     const root: HTMLElement = fixture.nativeElement;
-    expect(root.textContent).toContain('Pedido #7');
+    expect(root.textContent).toContain('Pedido #3');
+    expect(root.textContent).toContain('Laura Ruiz');
+    expect(root.textContent).not.toContain('Pedido #7');
     expect(root.textContent).toContain('Tu paquete');
     expect(root.textContent).toContain('En preparación');
     expect(root.textContent).toContain('100.000');

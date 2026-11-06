@@ -132,7 +132,9 @@ public class CatalogoClienteService {
         Page<Long> paginaIds;
         if (idsEfectivos != null) {
             if (idsEfectivos.isEmpty()) {
-                registrarBusqueda(q, categoriaFiltro, 0);
+                if (pagina == 0) {
+                    registrarBusqueda(q, categoriaFiltro, 0);
+                }
                 return PaginaResponse.from(Page.empty(paginable));
             }
             paginaIds = colorFiltro == null
@@ -151,7 +153,9 @@ public class CatalogoClienteService {
         }
         // Se registra aunque no haya resultados: las búsquedas sin coincidencias son la señal
         // de demanda insatisfecha más valiosa del reporte de búsquedas (US-16).
-        registrarBusqueda(q, categoriaFiltro, paginaIds.getTotalElements());
+        if (pagina == 0) {
+            registrarBusqueda(q, categoriaFiltro, paginaIds.getTotalElements());
+        }
         if (paginaIds.isEmpty()) {
             return PaginaResponse.from(Page.empty(paginable));
         }

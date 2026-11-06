@@ -114,15 +114,37 @@
           }
         </fieldset>
 
-        <fieldset class="preference-group">
+        <fieldset class="preference-group alergias-form">
           <legend>Información para alergias</legend>
           <p class="field-hint">El motor de recomendaciones usa estos datos para advertir o excluir la prenda.</p>
-          <div class="catalog-checks">
-            <label class="profile-checkbox"><input type="checkbox" formControlName="tintesSinteticos" /> {{ etiquetasAlergia.TINTES }} (sintéticos)</label>
-            <label class="profile-checkbox"><input type="checkbox" formControlName="brochesMetalicos" /> {{ etiquetasAlergia.BROCHES_METALICOS }}</label>
-            <label class="profile-checkbox"><input type="checkbox" formControlName="contieneNiquel" /> {{ etiquetasAlergia.NIQUEL }}</label>
-            <label class="profile-checkbox"><input type="checkbox" formControlName="tratamientoFormaldehido" /> {{ etiquetasAlergia.FORMALDEHIDO }}</label>
+
+          <span class="alergias-titulo" id="alergias-declaradas-titulo">Declara tú (las administra el vendedor)</span>
+          <div class="catalog-checks" role="group" aria-labelledby="alergias-declaradas-titulo">
+            @for (alergia of opcionesAlergiasDeclaradas; track alergia.valor) {
+              <label class="profile-checkbox">
+                <input type="checkbox" [formControlName]="alergia.control" />
+                {{ alergia.etiqueta }}
+              </label>
+            }
           </div>
+          <p class="field-hint">
+            Estos avisos se calculan a partir de los materiales y sus porcentajes; no son editables por separado.
+            Si cambias la composición, los chips se actualizan automáticamente.
+          </p>
+          <span class="alergias-titulo" id="alergias-detectadas-titulo">Se detecta por la composición</span>
+          <ul class="alergia-chips" aria-live="polite" aria-labelledby="alergias-detectadas-titulo">
+            @for (a of alergiasDetectadasDe(datosAlergia()); track a.valor) {
+              <li class="alergia-chip">
+                {{ a.etiqueta }}
+                <span class="alergia-chip-detalle">{{ a.detalle }}</span>
+              </li>
+            }
+          </ul>
+          @if (!alergiasDetectadasDe(datosAlergia()).length) {
+            <p class="field-hint">
+              La composición actual no genera alertas de fibras sintéticas, lana, algodón, látex ni cuero.
+            </p>
+          }
         </fieldset>
       </section>
 
@@ -182,7 +204,14 @@
               <div class="size-row-medidas">
                 <div class="field">
                   <label [for]="'talla-' + i">Talla</label>
-                  <input [id]="'talla-' + i" type="text" formControlName="talla" placeholder="4" maxlength="10" />
+                  <input [id]="'talla-' + i" type="text" formControlName="talla" placeholder="4" maxlength="10"
+                    autocomplete="off" [attr.list]="'tallas-referencia-' + i"
+                    [attr.aria-describedby]="'talla-ayuda-' + i" />
+                  <datalist [id]="'tallas-referencia-' + i">
+                    @for (nombre of nombresTallaReferencia; track nombre) {
+                      <option [value]="nombre"></option>
+                    }
+                  </datalist>
                 </div>
                 <div
                   class="field stock-variant-color"
@@ -260,6 +289,33 @@
                     placeholder="Opcional" />
                 </div>
               </div>
+              @if (ayudaTalla(i); as ayuda) {
+                <div class="talla-ayuda" [id]="'talla-ayuda-' + i" role="status" aria-live="polite">
+                  @if (ayuda.fuente; as fuente) {
+                    <p class="talla-ayuda-texto">
+                      <span aria-hidden="true">🔁</span>
+                      Mismas medidas que la talla {{ fuente.talla }} en
+                      {{ etiquetaColor(fuente.color) || 'el único color de la prenda' }}.
+                    </p>
+                    <button type="button" class="btn-ghost talla-ayuda-boton" (click)="copiarDeVariante(i, fuente.indice)">
+                      Copiar esas medidas
+                    </button>
+                  } @else if (ayuda.ref; as referencia) {
+                    <p class="talla-ayuda-texto">
+                      <span aria-hidden="true">💡</span>
+                      Medidas habituales para la talla {{ referencia.nombre }}: {{ textoSugerencia(referencia) }}.
+                    </p>
+                    <button type="button" class="btn-ghost talla-ayuda-boton" (click)="aplicarSugerencia(i)">
+                      Aplicar medidas sugeridas
+                    </button>
+                  }
+                  @if (ayuda.advertencia; as advertencia) {
+                    <p class="talla-ayuda-advertencia">
+                      <span aria-hidden="true">⚠</span> {{ advertencia }}
+                    </p>
+                  }
+                </div>
+              }
               <button type="button" class="icon-button" (click)="quitarTalla(i)"
                 [disabled]="tallas.length <= 1" [attr.aria-label]="'Quitar talla ' + (i + 1)" title="Quitar">✕</button>
               @if (invalido(fila)) {

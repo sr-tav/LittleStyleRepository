@@ -59,3 +59,14 @@ export interface ResumenCheckout {
   costoEnvio: number;
   total: number;
 }
+
+export interface DireccionGuardada {
+  guardada: boolean;
+  direccion: DireccionEnvio | null;
+  predeterminada: boolean;
+}
+export interface DireccionClienteGuardada {
+  id: number;
+  direccion: DireccionEnvio;
+  predeterminada: boolean;
+}

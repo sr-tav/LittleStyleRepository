@@ -50,6 +50,9 @@ export class CheckoutPage implements OnInit {
   protected readonly direccionSeleccionadaId = signal<number | null>(null);
   protected readonly editandoDireccion = signal(true);
   protected readonly editandoDireccionId = signal<number | null>(null);
+  protected readonly eliminandoDireccionId = signal<number | null>(null);
+  protected readonly eliminacionEnCursoId = signal<number | null>(null);
+  protected readonly guardandoPredeterminadaId = signal<number | null>(null);
   protected readonly perfilId = signal<number | null>(null);
   protected readonly paso = signal<'informacion' | 'resumen'>('informacion');
   protected readonly resumen = signal<ResumenCheckout | null>(null);
@@ -97,6 +100,9 @@ export class CheckoutPage implements OnInit {
         this.perfilId.set(perfil?.id ?? null);
         this.perfilNombre.set(perfil?.nombre ?? null);
         this.direccionesGuardadas.set(direcciones);
+        this.direccionSeleccionadaId.set(
+          direcciones.find((direccion) => direccion.predeterminada)?.id ?? null,
+        );
         this.editandoDireccion.set(direcciones.length === 0);
         this.cargando.set(false);
       },
@@ -355,5 +361,79 @@ export class CheckoutPage implements OnInit {
   protected stockDisponible(): boolean {
     const items = this.carrito.items();
     return items.length > 0 && items.every((item) => item.disponible);
+  }
+
+  protected confirmarEliminacionDireccion(id: number): void {
+    if (this.eliminacionEnCursoId() !== null) return;
+    this.eliminandoDireccionId.set(id);
+    this.error.set(null);
+  }
+
+  protected cancelarEliminacionDireccion(): void {
+    if (this.eliminacionEnCursoId() !== null) return;
+    this.eliminandoDireccionId.set(null);
+  }
+
+  protected eliminarDireccion(id: number): void {
+    if (this.eliminacionEnCursoId() !== null) return;
+
+    const eliminada = this.direccionesGuardadas().find((direccion) => direccion.id === id);
+    if (!eliminada) return;
+
+    this.error.set(null);
+    this.eliminacionEnCursoId.set(id);
+
+    this.checkoutService.eliminarDireccion(id).subscribe({
+      next: () => {
+        const restantes = this.direccionesGuardadas().filter((direccion) => direccion.id !== id);
+        const predeterminadaActual = restantes.find((direccion) => direccion.predeterminada);
+        const nuevaPredeterminada = eliminada.predeterminada
+          ? predeterminadaActual ?? restantes[0]
+          : predeterminadaActual;
+
+        this.direccionesGuardadas.set(restantes.map((direccion) => ({
+          ...direccion,
+          predeterminada: direccion.id === nuevaPredeterminada?.id,
+        })));
+
+        if (this.direccionSeleccionadaId() === id) {
+          this.direccionSeleccionadaId.set(nuevaPredeterminada?.id ?? null);
+        }
+        if (this.editandoDireccionId() === id) {
+          this.editandoDireccionId.set(null);
+          this.editandoDireccion.set(false);
+        }
+
+        this.eliminandoDireccionId.set(null);
+        this.eliminacionEnCursoId.set(null);
+      },
+      error: (error: unknown) => {
+        this.eliminacionEnCursoId.set(null);
+        this.error.set(procesarErrorApi(error));
+      },
+    });
+  }
+
+  protected marcarPredeterminada(id: number): void {
+    if (this.guardandoPredeterminadaId() !== null) return;
+
+    this.error.set(null);
+    this.guardandoPredeterminadaId.set(id);
+
+    this.checkoutService.marcarDireccionPredeterminada(id).subscribe({
+      next: (actualizada) => {
+        this.direccionesGuardadas.update((direcciones) =>
+          direcciones.map((direccion) => ({
+            ...direccion,
+            predeterminada: direccion.id === actualizada.id,
+          })),
+        );
+        this.guardandoPredeterminadaId.set(null);
+      },
+      error: (error: unknown) => {
+        this.guardandoPredeterminadaId.set(null);
+        this.error.set(procesarErrorApi(error));
+      },
+    });
   }
 }

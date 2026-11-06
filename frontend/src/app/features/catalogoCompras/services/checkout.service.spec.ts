@@ -105,26 +105,63 @@ describe('CheckoutService', () => {
     };
 
     service.listarDirecciones().subscribe((direcciones) => {
-      expect(direcciones).toEqual([{ id: 1, direccion }]);
+      expect(direcciones).toEqual([{ id: 1, direccion, predeterminada: true }]);
     });
     const listRequest = http.expectOne(`${environment.apiUrl}/cliente/checkout/direcciones`);
     expect(listRequest.request.method).toBe('GET');
-    listRequest.flush([{ id: 1, direccion }]);
+    listRequest.flush([{ id: 1, direccion, predeterminada: true }]);
 
     service.crearDireccion(direccion).subscribe((respuesta) => {
-      expect(respuesta).toEqual({ id: 2, direccion });
+      expect(respuesta).toEqual({ id: 2, direccion, predeterminada: false });
     });
     const createRequest = http.expectOne(`${environment.apiUrl}/cliente/checkout/direcciones`);
     expect(createRequest.request.method).toBe('POST');
     expect(createRequest.request.body).toEqual(direccion);
-    createRequest.flush({ id: 2, direccion });
+    createRequest.flush({ id: 2, direccion, predeterminada: false });
 
     service.actualizarDireccion(2, direccion).subscribe((respuesta) => {
-      expect(respuesta).toEqual({ id: 2, direccion });
+      expect(respuesta).toEqual({ id: 2, direccion, predeterminada: false });
     });
     const updateRequest = http.expectOne(`${environment.apiUrl}/cliente/checkout/direcciones/2`);
     expect(updateRequest.request.method).toBe('PUT');
     expect(updateRequest.request.body).toEqual(direccion);
-    updateRequest.flush({ id: 2, direccion });
+    updateRequest.flush({ id: 2, direccion, predeterminada: false });
+  });
+
+  it('elimina una dirección y permite marcar otra como predeterminada', () => {
+    const direccion = {
+      destinatario: 'Ana Ruiz',
+      direccion: 'Calle 1 # 2 - 3',
+      tipoVia: 'Calle',
+      numeroVia: '1',
+      numeroCruce: '2',
+      placa: '3',
+      complemento: null,
+      codigoPostal: '630001',
+      departamento: 'Quindío',
+      municipio: 'Armenia',
+      telefono: '3001234567',
+    };
+
+    service.eliminarDireccion(1).subscribe();
+
+    const deleteRequest = http.expectOne(
+      `${environment.apiUrl}/cliente/checkout/direcciones/1`,
+    );
+    expect(deleteRequest.request.method).toBe('DELETE');
+    deleteRequest.flush(null);
+
+    service.marcarDireccionPredeterminada(2).subscribe((respuesta) => {
+      expect(respuesta).toEqual({ id: 2, direccion, predeterminada: true });
+    });
+
+    const defaultRequest = http.expectOne(
+      `${environment.apiUrl}/cliente/checkout/direcciones/2/predeterminada`,
+    );
+    expect(defaultRequest.request.method).toBe('PUT');
+    expect(defaultRequest.request.body).toEqual({});
+    defaultRequest.flush({ id: 2, direccion, predeterminada: true });
   });
 });
+
+

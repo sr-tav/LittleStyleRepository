@@ -159,17 +159,18 @@ class CatalogoClienteControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // La búsqueda de texto se registra con el cliente y su agente, para que el tracking filtre repeticiones y bots
     @Test
-    void busquedaDeTextoSeRegistraConClienteYAgente() throws Exception {
+    void busquedaDeTextoNoSeRegistraPorElTrackingAntiguoDelControlador() throws Exception {
         when(catalogo.explorar(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
                 any(), anyInt(), anyInt(), any()))
                 .thenReturn(PaginaResponse.from(new PageImpl<>(List.of())));
 
-        mockMvc.perform(get("/api/cliente/catalogo").param("q", "vestido rosa").header("User-Agent", NAVEGADOR))
+        mockMvc.perform(get("/api/cliente/catalogo")
+                        .param("q", "vestido rosa")
+                        .header("User-Agent", NAVEGADOR))
                 .andExpect(status().isOk());
 
-        verify(tracking).registrarBusqueda(eq("vestido rosa"), eq(0L), eq(5L), eq(NAVEGADOR));
+        verify(tracking, never()).registrarBusqueda(any(), anyLong(), any(), any());
     }
 
     // Paginar o filtrar sin texto no es una búsqueda nueva

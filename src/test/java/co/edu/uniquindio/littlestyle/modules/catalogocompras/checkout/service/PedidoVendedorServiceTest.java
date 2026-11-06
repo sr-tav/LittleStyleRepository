@@ -77,7 +77,7 @@ class PedidoVendedorServiceTest {
     private Pedido pedidoConDespacho(long pedidoId, long despachoId, EstadoPedido estadoDespacho) {
         Pedido pedido = Pedido.builder().id(pedidoId).estado(EstadoPedido.REGISTRADO)
                 .subtotal(new BigDecimal("150000")).costoEnvio(new BigDecimal("7000"))
-                .total(new BigDecimal("157000")).fechaCreacion(LocalDateTime.now()).build();
+                .total(new BigDecimal("157000")).fechaCreacion(LocalDateTime.now()).numeroCliente(3).destinatario("Laura Ruiz").build();
         Despacho despacho = new Despacho();
         despacho.setId(despachoId);
         despacho.setPedido(pedido);
@@ -110,7 +110,9 @@ class PedidoVendedorServiceTest {
         Despacho d = despachoPropio(5L, 7L, EstadoPedido.REGISTRADO);
         when(despachoRepository.findAllByVendedorIdOrderByFechaActualizacionDesc(VENDEDOR_ID))
                 .thenReturn(List.of(d));
+
         Pedido pedido = pedidoConDespacho(7L, 5L, EstadoPedido.REGISTRADO);
+        d.setPedido(pedido);
         when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido));
 
         List<DespachoResponse> resumen = service.misDespachos();
@@ -119,6 +121,8 @@ class PedidoVendedorServiceTest {
         assertThat(resumen.getFirst().despachoId()).isEqualTo(5L);
         assertThat(resumen.getFirst().pedidoId()).isEqualTo(7L);
         assertThat(resumen.getFirst().items()).hasSize(1);
+        assertThat(resumen.getFirst().numeroPedido()).isEqualTo(3L);
+        assertThat(resumen.getFirst().destinatario()).isEqualTo("Laura Ruiz");
     }
 
     // Ver el detalle de un despacho de otro vendedor se rechaza con 403.

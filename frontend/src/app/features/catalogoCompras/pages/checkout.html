@@ -58,6 +58,9 @@
                 </label>
                 <p>{{ guardada.direccion.destinatario }}</p>
                 <p>{{ guardada.direccion.direccion }}</p>
+                @if (guardada.predeterminada) {
+                  <p class="address-default-badge">Dirección predeterminada</p>
+                }
                 @if (guardada.direccion.complemento) { <p>{{ guardada.direccion.complemento }}</p> }
                 @if (guardada.direccion.codigoPostal) { <p>Código postal: {{ guardada.direccion.codigoPostal }}</p> }
                 <p>{{ guardada.direccion.municipio }}{{ guardada.direccion.departamento ? ', ' + guardada.direccion.departamento : '' }}</p>
@@ -68,6 +71,53 @@
                 <button type="button" class="btn-ghost btn-inline" (click)="editarDireccion(guardada.id)">
                   Editar dirección
                 </button>
+
+                <div class="checkout-direccion-acciones">
+                  @if (!guardada.predeterminada) {
+                    <button
+                      type="button"
+                      class="btn-ghost btn-inline"
+                      [disabled]="guardandoPredeterminadaId() !== null || eliminacionEnCursoId() !== null"
+                      (click)="marcarPredeterminada(guardada.id)"
+                    >
+                      {{ guardandoPredeterminadaId() === guardada.id ? 'Actualizando…' : 'Marcar predeterminada' }}
+                    </button>
+                  }
+
+                  @if (eliminandoDireccionId() !== guardada.id) {
+                    <button
+                      type="button"
+                      class="btn-ghost btn-inline"
+                      [disabled]="eliminacionEnCursoId() !== null || guardandoPredeterminadaId() !== null"
+                      (click)="confirmarEliminacionDireccion(guardada.id)"
+                    >
+                      Eliminar dirección
+                    </button>
+                  } @else {
+                    <div
+                      role="group"
+                      [attr.aria-label]="'Confirmar eliminación de la dirección de ' + guardada.direccion.destinatario"
+                    >
+                      <p>¿Eliminar esta dirección guardada?</p>
+                      <button
+                        type="button"
+                        class="btn-ghost btn-inline"
+                        [disabled]="eliminacionEnCursoId() !== null"
+                        (click)="eliminarDireccion(guardada.id)"
+                      >
+                        {{ eliminacionEnCursoId() === guardada.id ? 'Eliminando…' : 'Sí, eliminar' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-ghost btn-inline"
+                        [disabled]="eliminacionEnCursoId() !== null"
+                        (click)="cancelarEliminacionDireccion()"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  }
+                </div>
               </section>
             }
             <div class="checkout-form-grid">

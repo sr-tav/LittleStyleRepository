@@ -127,11 +127,11 @@ public class Pedido {
     private List<LineaPedido> items = new ArrayList<>();
 
     /**
-     * Número que ve el cliente: su consecutivo propio o, si el pedido aún no lo tiene, el id interno.
-     * @return Número de pedido para mostrar al cliente.
+     * Número consecutivo del pedido para mostrarlo. Puede ser nulo en datos históricos sin migrar;
+     * el identificador interno nunca se usa como número visible.
      */
     public Long numeroVisible() {
-        return numeroCliente != null ? Long.valueOf(numeroCliente) : id;
+        return numeroCliente == null ? null : numeroCliente.longValue();
     }
 
     /** Agrega la línea y la asocia a este pedido. */

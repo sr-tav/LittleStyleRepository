@@ -168,22 +168,29 @@ public class CorreoService {
     }
 
     /** Avisa al vendedor que entró un pedido pagado con prendas de su tienda. */
+    /** Avisa al vendedor que entró un pedido pagado con prendas de su tienda. */
     @Async
-    public void enviarPedidoNuevoVendedor(String para, String tienda, Long pedidoId,
-                                          String cliente, List<ItemCorreo> items) {
+    public void enviarPedidoNuevoVendedor( String para, String tienda, Long numeroPedido, String destinatario, String cliente,
+            List<ItemCorreo> items) {
         if (!props.enviosHabilitados()) {
-            log.warn("Correo no configurado; se omite el aviso al vendedor del pedido {}", pedidoId);
+            log.warn("Correo no configurado; se omite el aviso al vendedor del pedido {}", numeroPedido);
             return;
         }
         try {
+            String referenciaPedido = numeroPedido == null
+                    ? "Pedido sin número · " + destinatario
+                    : "Pedido #" + numeroPedido + " · " + destinatario;
             String html = leerPlantilla("correo/pedido-vendedor-nuevo.html")
                     .replace("{{tienda}}", escaparHtml(tienda))
-                    .replace("{{pedidoId}}", String.valueOf(pedidoId))
+                    .replace("{{referenciaPedido}}", escaparHtml(referenciaPedido))
                     .replace("{{cliente}}", escaparHtml(cliente))
                     .replace("{{filas}}", filasHtml(items));
-            enviarHtml(para, "Nuevo pedido #" + pedidoId + " con tus productos", html);
+            String asunto = numeroPedido == null
+                    ? "Nuevo pedido con tus productos"
+                    : "Nuevo pedido #" + numeroPedido + " con tus productos";
+            enviarHtml(para, asunto, html);
         } catch (Exception ex) {
-            log.error("No fue posible enviar el aviso al vendedor del pedido {}", pedidoId, ex);
+            log.error("No fue posible enviar el aviso al vendedor del pedido {}", numeroPedido, ex);
         }
     }
 

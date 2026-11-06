@@ -7,6 +7,9 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.EstadoUsuario;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.auth.repository.UsuarioRepository;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.Carrito;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.ItemCarrito;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.repository.CarritoRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
@@ -81,6 +84,8 @@ class CarritoCheckoutIntegrationTest {
     private PedidoPagoService pedidoPagoService;
     @Autowired
     private EntityManager entityManager;
+    @Autowired
+    private CarritoRepository carritoRepository;
 
     @Test
     void protegeCarritoYNoPermiteModificarItemsDeOtroCliente() throws Exception {
@@ -111,7 +116,7 @@ class CarritoCheckoutIntegrationTest {
         String carrito = mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", clienteUno)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andReturn().getResponse().getContentAsString();
@@ -147,7 +152,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", clienteUno)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":1}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":1,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk());
         mockMvc.perform(delete("/api/cliente/carrito").header("Authorization", clienteUno))
                 .andExpect(status().isOk())
@@ -165,7 +170,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/cliente/checkout/resumen")
@@ -193,12 +198,12 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", clienteA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", clienteB)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].disponible").value(true));
         assertThat(stockTalla(prendaId)).isEqualTo(8);
@@ -292,7 +297,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", clienteUno)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/cliente/pagos/checkout")
@@ -319,7 +324,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", clienteDos)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":8,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].disponible").value(true));
     }
@@ -378,7 +383,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk());
 
         String primero = mockMvc.perform(post("/api/cliente/pagos/checkout")
@@ -420,7 +425,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaNiquel + ",\"talla\":\"2\",\"cantidad\":1,"
+                        .content("{\"prendaId\":" + prendaNiquel + ",\"talla\":\"2\",\"cantidad\":1,\"color\":\"AZUL\","
                                 + "\"perfilInfantilId\":" + perfilId + "}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("PRENDA_EXCLUIDA_ALERGIA"));
@@ -430,7 +435,7 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaNiquel + ",\"talla\":\"2\",\"cantidad\":1}"))
+                        .content("{\"prendaId\":" + prendaNiquel + ",\"talla\":\"2\",\"cantidad\":1,\"color\":\"AZUL\"}"))
                 .andExpect(status().isUnprocessableEntity());
 
         Long clienteId = usuarioRepository.findByEmail(correoCliente).map(Usuario::getId).orElseThrow();
@@ -452,10 +457,81 @@ class CarritoCheckoutIntegrationTest {
         mockMvc.perform(post("/api/cliente/carrito/items")
                         .header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,"
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":2,\"color\":\"AZUL\","
                                 + "\"perfilInfantilId\":" + perfilId + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    // El color es obligatorio para comprar, aunque la prenda tenga una sola variante
+    @Test
+    void rechazaAgregarSinColorYConUnColorQueLaPrendaNoOfrece() throws Exception {
+        String vendedor = registrar("color-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String cliente = registrar("color-cliente-" + System.nanoTime() + "@correo.com", "CLIENTE");
+        int prendaId = crearPrenda(vendedor);
+
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.color").value("Elige un color para agregar la prenda"));
+
+        mockMvc.perform(post("/api/cliente/carrito/items")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":1,\"color\":\"ROSA\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.talla").value("La combinación de talla y color no está disponible para esta prenda"));
+
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", cliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    // Backfill: una línea guardada antes del color obligatorio sigue visible, se puede editar
+    // y adopta el color de la variante al cambiar la cantidad
+    @Test
+    void mantieneUnaLineaAntiguaSinColorActualizableConBackfill() throws Exception {
+        String vendedor = registrar("antigua-vendedor-" + System.nanoTime() + "@correo.com", "VENDEDOR");
+        String correoCliente = "antigua-cliente-" + System.nanoTime() + "@correo.com";
+        String cliente = registrar(correoCliente, "CLIENTE");
+        int prendaId = crearPrenda(vendedor);
+
+        Usuario clienteUsuario = usuarioRepository.findByEmail(correoCliente).orElseThrow();
+        Carrito carrito = carritoRepository.saveAndFlush(
+                Carrito.builder().cliente(clienteUsuario).build());
+        ItemCarrito antigua = ItemCarrito.builder()
+                .prendaId((long) prendaId).talla("4").cantidad(1).build();
+        carrito.agregar(antigua);
+        carritoRepository.saveAndFlush(carrito);
+        Long itemId = carrito.getItems().get(0).getId();
+
+        mockMvc.perform(get("/api/cliente/carrito").header("Authorization", cliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].disponible").value(true));
+
+        mockMvc.perform(put("/api/cliente/carrito/items/{itemId}", itemId)
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cantidad\":2}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].color").value("AZUL"));
+
+        // Con la línea antigua el checkout también sigue funcionando
+        int perfilId = JsonPath.read(agregarPerfil(cliente), "$.id");
+        mockMvc.perform(post("/api/cliente/checkout/resumen")
+                        .header("Authorization", cliente)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                        {"perfilInfantilId":%d,
+                                         "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                                         "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
+                                         "complemento":"Apto 302","codigoPostal":"630001",
+                                         "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
+                                        """.formatted(perfilId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subtotal").value(65800));
     }
 
     private String registrar(String email, String rol) throws Exception {
