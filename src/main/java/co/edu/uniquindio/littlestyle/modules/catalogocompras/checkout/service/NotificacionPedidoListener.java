@@ -56,7 +56,7 @@ public class NotificacionPedidoListener {
             correo.enviarPedidoEnviado(
                     pedido.getCliente().getEmail(),
                     pedido.getCliente().getNombre(),
-                    pedido.getId(),
+                    pedido.numeroVisible(),
                     pedido.getNumeroGuia(),
                     pedido.getTotal().toPlainString(),
                     items);
@@ -81,7 +81,7 @@ public class NotificacionPedidoListener {
             correo.enviarPedidoEnviado(
                     pedido.getCliente().getEmail(),
                     pedido.getCliente().getNombre(),
-                    pedido.getId(),
+                    pedido.numeroVisible(),
                     despacho.getNumeroGuia(),
                     pedido.getTotal().toPlainString(),
                     items);
@@ -95,7 +95,7 @@ public class NotificacionPedidoListener {
         pedidoRepository.findById(evento.pedidoId()).ifPresent(pedido -> correo.enviarPedidoCreado(
                 pedido.getCliente().getEmail(),
                 pedido.getCliente().getNombre(),
-                pedido.getId(),
+                pedido.numeroVisible(),
                 pedido.getTotal().toPlainString(),
                 itemsDe(pedido)));
     }
@@ -107,7 +107,7 @@ public class NotificacionPedidoListener {
         pedidoRepository.findById(evento.pedidoId()).ifPresent(pedido -> correo.enviarPagoConfirmado(
                 pedido.getCliente().getEmail(),
                 pedido.getCliente().getNombre(),
-                pedido.getId(),
+                pedido.numeroVisible(),
                 pedido.getTotal().toPlainString(),
                 itemsDe(pedido)));
         avisarVendedores(evento.pedidoId());
@@ -173,7 +173,7 @@ public class NotificacionPedidoListener {
         pedidoRepository.findById(evento.pedidoId()).ifPresent(pedido -> correo.enviarCambioEstado(
                 pedido.getCliente().getEmail(),
                 pedido.getCliente().getNombre(),
-                pedido.getId(),
+                pedido.numeroVisible(),
                 evento.nuevo().etiqueta(),
                 pedido.getTotal().toPlainString()));
     }

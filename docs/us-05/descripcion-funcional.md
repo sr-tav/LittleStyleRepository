@@ -190,6 +190,17 @@ La raíz (`/`) redirige al inicio del rol o al login. Las rutas `/cliente` y `/c
 | Inicio por rol | UI-3 (cliente, ampliada en US-06), UI-18 (panel del vendedor) y UI-25 (panel del administrador) con barra de navegación que muestra nombre, rol y “Cerrar sesión”. Los paneles de vendedor y administrador son marcadores con mosaicos sin funcionalidad, pendientes de sus historias. |
 | Acceso denegado / 404 | Páginas informativas para rol no permitido y rutas inexistentes. |
 
+
+### Navegación global (auditoría)
+
+El `Navbar` compartido, que ya se renderiza en todas las páginas con sesión, incorpora tres ayudas de navegación para que las páginas hijas no tengan que repetirlas:
+
+- **Inicio:** enlace de texto «Inicio» junto al botón de menú, que lleva al inicio del rol (`AuthService.rutaInicio()`).
+- **Flecha de regreso:** botón con `aria-label="Volver a la página anterior"`, visible solo fuera del inicio; usa el historial del navegador y, si no hay historial, navega al inicio del rol.
+- **Migas de pan:** `nav.migas` con «Inicio › … › página actual», construidas a partir del `title` de cada ruta activa (sin el sufijo « | LittleStyle»). El último tramo no es enlace y lleva `aria-current="page"`. No se muestran en el inicio.
+
+Los enlaces «Volver al inicio» que ya existían en `perfiles-lista` y `pago-resultado` se conservan; no se agregaron enlaces equivalentes en otras páginas.
+
 ## Trazabilidad de requisitos no funcionales
 
 La columna de prueba identifica pruebas existentes que respaldan el mecanismo. No afirma que se hayan medido los porcentajes poblacionales especificados en el Plan de Calidad.

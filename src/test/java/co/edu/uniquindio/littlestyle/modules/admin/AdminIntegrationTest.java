@@ -41,6 +41,7 @@ class AdminIntegrationTest {
     private static final String PRENDA = """
             {"nombre":"Buzo US14","categoria":"PANTALONES","descripcion":"Prenda de prueba de moderacion",
              "instruccionesCuidado":"Lavar en agua fria","precio":32900,"colores":["AZUL"],
+             "estampados":["LISO"],
              "composicion":[{"material":"ALGODON","porcentaje":100}],
              "tallas":[{"talla":"4","estaturaMinCm":100,"estaturaMaxCm":110,
                         "pesoMinKg":15,"pesoMaxKg":20,"stock":8}]}
@@ -175,6 +176,7 @@ class AdminIntegrationTest {
                         .content("""
                                 {"perfilInfantilId":%d,
                                  "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                                  "codigoPostal":"630001","departamento":"Quindío",
                                  "municipio":"Armenia","telefono":"3001234567"}}
                                 """.formatted(perfilId)))

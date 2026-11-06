@@ -19,6 +19,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,6 +41,8 @@ import java.util.List;
 @Entity
 @Table(name = "pedidos", indexes = {
         @Index(name = "idx_pedidos_fecha_estado", columnList = "fecha_creacion, estado")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_pedidos_cliente_numero", columnNames = {"cliente_id", "numero_cliente"})
 })
 @Getter
 @Setter
@@ -55,6 +58,14 @@ public class Pedido {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
     private Usuario cliente;
+
+    /**
+     * Consecutivo del pedido dentro de las compras de su cliente (1, 2, 3…), independiente del {@link #id}
+     * de la base de datos. Lo asigna el servicio al crear el pedido; es nulo solo en datos anteriores a la
+     * migración (ver {@link #numeroVisible()}).
+     */
+    @Column(name = "numero_cliente")
+    private Integer numeroCliente;
 
     @Column(name = "perfil_infantil_id", nullable = false)
     private Long perfilInfantilId;
@@ -114,6 +125,14 @@ public class Pedido {
     @OrderBy("id ASC")
     @Builder.Default
     private List<LineaPedido> items = new ArrayList<>();
+
+    /**
+     * Número que ve el cliente: su consecutivo propio o, si el pedido aún no lo tiene, el id interno.
+     * @return Número de pedido para mostrar al cliente.
+     */
+    public Long numeroVisible() {
+        return numeroCliente != null ? Long.valueOf(numeroCliente) : id;
+    }
 
     /** Agrega la línea y la asocia a este pedido. */
     public void agregar(LineaPedido item) {

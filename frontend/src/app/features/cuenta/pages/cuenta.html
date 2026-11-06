@@ -116,8 +116,8 @@
             <h2>Dirección de envío</h2>
           </div>
           @if (!editandoDireccion() && !cargandoDireccion()) {
-            <button type="button" class="account-action" (click)="editarDireccion()">
-              {{ direccionGuardada() ? 'Editar' : 'Agregar dirección' }}
+            <button type="button" class="account-action" (click)="agregarDireccion()">
+              Agregar dirección
             </button>
           }
         </header>
@@ -125,7 +125,8 @@
         @if (cargandoDireccion()) {
           <p class="account-panel-description" role="status">Cargando dirección...</p>
         } @else if (editandoDireccion()) {
-          <form [formGroup]="direccionForm" (ngSubmit)="guardarDireccion()" novalidate>
+          <form [formGroup]="direccionForm" (ngSubmit)="guardarDireccion($event)" novalidate>
+            <h3>{{ editandoDireccionId() === null ? 'Agregar dirección' : 'Editar dirección' }}</h3>
             <div class="field-row">
               <div class="field">
                 <label for="direccionDestinatario">Nombre del destinatario</label>
@@ -142,11 +143,11 @@
                 }
               </div>
             </div>
-            <div class="field">
-              <label for="direccionCalle">Dirección de entrega</label>
-              <input id="direccionCalle" formControlName="direccion" autocomplete="street-address" />
+            <div class="field" [class.has-error]="invalidoDireccion(direccionForm.controls.direccion)">
+              <label for="direccionCalle">Dirección</label>
+              <input id="direccionCalle" formControlName="direccion" autocomplete="street-address" maxlength="100" placeholder="Carrera 12 # 34-56" [attr.aria-invalid]="invalidoDireccion(direccionForm.controls.direccion) ? 'true' : null" />
               @if (invalidoDireccion(direccionForm.controls.direccion)) {
-                <small class="field-error">Ingresa una dirección (máximo 200 caracteres).</small>
+                <small class="field-error">Ingresa una dirección válida. Ejemplo: Carrera 12 # 34-56.</small>
               }
             </div>
             <div class="field">
@@ -157,13 +158,6 @@
               }
             </div>
             <div class="field-row account-address-location">
-              <div class="field">
-                <label for="direccionCodigoPostal">Código postal</label>
-                <input id="direccionCodigoPostal" inputmode="numeric" maxlength="6" autocomplete="postal-code" formControlName="codigoPostal" />
-                @if (invalidoDireccion(direccionForm.controls.codigoPostal)) {
-                  <small class="field-error">Ingresa un código postal colombiano de 6 dígitos.</small>
-                }
-              </div>
               <div class="field">
                 <label for="direccionDepartamento">Departamento</label>
                 <select id="direccionDepartamento" formControlName="departamento" autocomplete="address-level1" (change)="cambioDepartamento($event)">
@@ -178,7 +172,7 @@
               </div>
               <div class="field">
                 <label for="direccionMunicipio">Municipio</label>
-                <select id="direccionMunicipio" formControlName="municipio" [attr.disabled]="departamentoSeleccionado() ? null : ''" autocomplete="address-level2">
+                <select id="direccionMunicipio" formControlName="municipio" (change)="cambioMunicipio()" [attr.disabled]="departamentoSeleccionado() ? null : ''" autocomplete="address-level2">
                   <option value="">Selecciona un municipio</option>
                   @for (municipio of municipios(); track municipio) {
                     <option [value]="municipio">{{ municipio }}</option>
@@ -188,29 +182,62 @@
                   <small class="field-error">Selecciona el municipio.</small>
                 }
               </div>
+              <div class="field">
+                <label for="direccionCodigoPostal">Código postal</label>
+                @if (!departamentoSeleccionado() || !direccionForm.controls.municipio.value) {
+                  <small>Selecciona primero un departamento y municipio.</small>
+                } @else if (codigosPostales(); as lista) {
+                  <select id="direccionCodigoPostal" formControlName="codigoPostal" autocomplete="postal-code">
+                    <option value="">Selecciona un código postal</option>
+                    @for (codigo of lista; track codigo) {
+                      <option [value]="codigo">{{ codigo }}</option>
+                    }
+                  </select>
+                } @else {
+                  <small class="field-error">No se encontró un catálogo de códigos postales para este municipio.</small>
+                }
+                @if (departamentoSeleccionado() && direccionForm.controls.municipio.value
+                  && codigosPostales() && invalidoDireccion(direccionForm.controls.codigoPostal)) {
+                  <small class="field-error">
+                    @if (direccionForm.controls.codigoPostal.errors?.['codigoPostalIncoherente'] === 'departamento') {
+                      El código postal no corresponde al departamento seleccionado.
+                    } @else if (direccionForm.controls.codigoPostal.errors?.['codigoPostalIncoherente'] === 'municipio') {
+                      El código postal no corresponde al municipio seleccionado.
+                    } @else {
+                      Selecciona el código postal del municipio.
+                    }
+                  </small>
+                }
+              </div>
             </div>
             <div class="account-form-actions">
-              <button type="submit" class="account-action" [disabled]="guardandoDireccion()">
-                {{ guardandoDireccion() ? 'Guardando...' : 'Guardar dirección' }}
+              <button type="button" class="account-action" [disabled]="guardandoDireccion()" (click)="guardarDireccion($event)">
+                {{ guardandoDireccion() ? 'Guardando...' : editandoDireccionId() === null ? 'Guardar dirección' : 'Guardar cambios' }}
               </button>
               <button type="button" class="account-secondary-action" (click)="cancelarEdicionDireccion()">
                 Cancelar
               </button>
             </div>
           </form>
-        } @else if (direccionGuardada(); as direccion) {
-          <dl class="account-details">
-            <div><dt>Destinatario</dt><dd>{{ direccion.destinatario }}</dd></div>
-            <div><dt>Dirección</dt><dd>{{ direccion.direccion }}</dd></div>
-            @if (direccion.complemento) {
-              <div><dt>Complemento</dt><dd>{{ direccion.complemento }}</dd></div>
-            }
-            <div><dt>Código postal</dt><dd>{{ direccion.codigoPostal }}</dd></div>
-            <div><dt>Municipio y departamento</dt><dd>{{ direccion.municipio }}, {{ direccion.departamento }}</dd></div>
-            <div><dt>Celular de contacto</dt><dd>{{ direccion.telefono }}</dd></div>
-          </dl>
         } @else {
-          <p class="account-panel-description">Aún no tienes una dirección de envío guardada.</p>
+          @if (direccionesGuardadas().length > 0) {
+            @for (guardada of direccionesGuardadas(); track guardada.id) {
+              <section class="checkout-direccion">
+                <h3>{{ guardada.direccion.direccion }}</h3>
+                <p>{{ guardada.direccion.destinatario }}</p>
+                @if (guardada.direccion.complemento) {
+                  <p>{{ guardada.direccion.complemento }}</p>
+                }
+                <p>{{ guardada.direccion.municipio }}, {{ guardada.direccion.departamento }} · {{ guardada.direccion.codigoPostal }}</p>
+                <p>Celular de contacto: {{ guardada.direccion.telefono }}</p>
+                <button type="button" class="account-secondary-action" (click)="editarDireccion(guardada.id)">
+                  Editar dirección
+                </button>
+              </section>
+            }
+          } @else {
+            <p class="account-panel-description">Aún no tienes una dirección de envío guardada.</p>
+          }
         }
       </section>
     }

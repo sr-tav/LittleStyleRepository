@@ -27,7 +27,11 @@ describe('CheckoutService', () => {
       perfilInfantilId: 3,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: null,
         codigoPostal: '630001',
         departamento: 'Quindío',
@@ -57,7 +61,11 @@ describe('CheckoutService', () => {
   it('consulta y guarda la dirección asociada a la cuenta del cliente', () => {
     const direccion = {
       destinatario: 'Ana Ruiz',
-      direccion: 'Calle 1 # 2-3',
+      direccion: 'Calle 1 # 2 - 3',
+      tipoVia: 'Calle',
+      numeroVia: '1',
+      numeroCruce: '2',
+      placa: '3',
       complemento: 'Apto. 302',
       codigoPostal: '630001',
       departamento: 'Quindío',
@@ -79,5 +87,44 @@ describe('CheckoutService', () => {
     expect(putRequest.request.method).toBe('PUT');
     expect(putRequest.request.body).toEqual(direccion);
     putRequest.flush({ guardada: true, direccion });
+  });
+
+  it('lista, crea y actualiza direcciones identificadas', () => {
+    const direccion = {
+      destinatario: 'Ana Ruiz',
+      direccion: 'Calle 1 # 2 - 3',
+      tipoVia: 'Calle',
+      numeroVia: '1',
+      numeroCruce: '2',
+      placa: '3',
+      complemento: null,
+      codigoPostal: '630001',
+      departamento: 'Quindío',
+      municipio: 'Armenia',
+      telefono: '3001234567',
+    };
+
+    service.listarDirecciones().subscribe((direcciones) => {
+      expect(direcciones).toEqual([{ id: 1, direccion }]);
+    });
+    const listRequest = http.expectOne(`${environment.apiUrl}/cliente/checkout/direcciones`);
+    expect(listRequest.request.method).toBe('GET');
+    listRequest.flush([{ id: 1, direccion }]);
+
+    service.crearDireccion(direccion).subscribe((respuesta) => {
+      expect(respuesta).toEqual({ id: 2, direccion });
+    });
+    const createRequest = http.expectOne(`${environment.apiUrl}/cliente/checkout/direcciones`);
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual(direccion);
+    createRequest.flush({ id: 2, direccion });
+
+    service.actualizarDireccion(2, direccion).subscribe((respuesta) => {
+      expect(respuesta).toEqual({ id: 2, direccion });
+    });
+    const updateRequest = http.expectOne(`${environment.apiUrl}/cliente/checkout/direcciones/2`);
+    expect(updateRequest.request.method).toBe('PUT');
+    expect(updateRequest.request.body).toEqual(direccion);
+    updateRequest.flush({ id: 2, direccion });
   });
 });

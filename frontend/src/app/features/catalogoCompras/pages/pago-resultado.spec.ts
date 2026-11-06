@@ -13,6 +13,7 @@ import { INTERVALO_CONSULTA_MS, MAX_CONSULTAS, PagoResultadoPage } from './pago-
 describe('PagoResultadoPage', () => {
   const base: ResultadoPago = {
     pedidoId: 55,
+    numeroPedido: 2,
     referencia: 'LS-55-ABC',
     estadoPago: 'APROBADA',
     estadoPedido: 'PAGADO',
@@ -69,13 +70,28 @@ describe('PagoResultadoPage', () => {
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
 
+  it('muestra el consecutivo del cliente y no el id interno del pedido', () => {
+    pagoService.verificar.mockReturnValue(of(base));
+    const { root } = crear();
+
+    expect(root.textContent).toContain('#2');
+    expect(root.textContent).not.toContain('#55');
+  });
+
+  it('si el pedido aún no tiene consecutivo muestra su id', () => {
+    pagoService.verificar.mockReturnValue(of({ ...base, numeroPedido: null }));
+    const { root } = crear();
+
+    expect(root.textContent).toContain('#55');
+  });
+
   it('confirma el pago aprobado con el número de pedido', () => {
     pagoService.verificar.mockReturnValue(of(base));
     const { root } = crear();
 
     expect(pagoService.verificar).toHaveBeenCalledWith('wompi-1');
     expect(root.textContent).toContain('¡Pago aprobado!');
-    expect(root.textContent).toContain('#55');
+    expect(root.textContent).toContain('#2');
     expect(root.textContent).toContain('LS-55-ABC');
     expect(carrito.cargar).toHaveBeenCalledTimes(1);
   });

@@ -41,6 +41,9 @@
               @if (item.color) {
                 <p>Color {{ item.color | colorEtiqueta }}</p>
               }
+              @if (item.estampado) {
+                <p>Estampado {{ item.estampado | estampadoEtiqueta }}</p>
+              }
               <p>Talla {{ item.talla }}</p>
               <p>{{ precio(item.precioUnitario) }}</p>
               @if (!item.disponible) {

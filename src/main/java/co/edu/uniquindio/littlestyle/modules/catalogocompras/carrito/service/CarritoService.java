@@ -18,6 +18,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.LineaR
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.service.ValidadorAlergiaCompra;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilResponse;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service.PerfilInfantilService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
@@ -32,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Operaciones sobre el carrito del cliente autenticado. Los cambios bloquean el carrito y la prenda para
@@ -78,10 +80,12 @@ public class CarritoService {
         Prenda prenda = bloquearPrendaActiva(request.prendaId());
         validarAlergias(prenda, request.perfilInfantilId());
         TallaPrenda talla = variante(prenda, request.talla(), request.color());
+        Estampado estampado = resolverEstampado(prenda, request.estampado());
         ItemCarrito existente = carrito.getItems().stream()
                 .filter(item -> item.getPrendaId().equals(prenda.getId())
                         && item.getTalla().equalsIgnoreCase(talla.getTalla())
-                        && item.getColor() == talla.getColor())
+                        && item.getColor() == talla.getColor()
+                        && item.getEstampado() == estampado)
                 .findFirst().orElse(null);
         long cantidadSolicitada = request.cantidad()
                 + (existente == null ? 0L : existente.getCantidad());
@@ -91,6 +95,7 @@ public class CarritoService {
                     .prendaId(prenda.getId())
                     .talla(talla.getTalla())
                     .color(talla.getColor())
+                    .estampado(estampado)
                     .cantidad(request.cantidad())
                     .tallaSugerida(normalizarSugerida(request.tallaSugerida()))
                     .build();
@@ -173,7 +178,7 @@ public class CarritoService {
                 .forEach(prenda -> prendas.put(prenda.getId(), prenda));
         Map<ClavePrendaTalla, Integer> cantidades = new HashMap<>();
         comprados.forEach(linea -> cantidades.merge(
-                new ClavePrendaTalla(linea.prendaId(), normalizarTalla(linea.talla()), linea.color()),
+                new ClavePrendaTalla(linea.prendaId(), normalizarTalla(linea.talla()), linea.color(), linea.estampado()),
                 linea.cantidad(), Math::addExact));
         List<ItemCarrito> quitar = new ArrayList<>();
         carrito.getItems().forEach(item -> {
@@ -184,7 +189,7 @@ public class CarritoService {
                             .ifPresent(variante -> item.setColor(variante.getColor()));
                 }
             }
-            ClavePrendaTalla clave = new ClavePrendaTalla(item.getPrendaId(), normalizarTalla(item.getTalla()), item.getColor());
+            ClavePrendaTalla clave = new ClavePrendaTalla(item.getPrendaId(), normalizarTalla(item.getTalla()), item.getColor(), item.getEstampado());
             int comprada = cantidades.getOrDefault(clave, 0);
             if (comprada == 0) {
                 return;
@@ -222,6 +227,28 @@ public class CarritoService {
     private Prenda bloquearPrendaActiva(Long prendaId) {
         return prendaRepository.bloquearPorIdYEstado(prendaId, EstadoPrenda.ACTIVA)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Prenda no encontrada"));
+    }
+
+    /**
+     * Determina el estampado de la línea: debe ser uno de los que ofrece la prenda. Si ofrece varios, el
+     * cliente debe elegir; si ofrece uno solo se asume; si no declara ninguno (prendas antiguas) queda nulo.
+     */
+    private static Estampado resolverEstampado(Prenda prenda, Estampado elegido) {
+        Set<Estampado> disponibles = prenda.estampadosDisponibles();
+        if (disponibles.isEmpty()) {
+            return null;
+        }
+        if (elegido == null) {
+            if (disponibles.size() == 1) {
+                return disponibles.iterator().next();
+            }
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Elige un estampado para esta prenda", "estampado");
+        }
+        if (!disponibles.contains(elegido)) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "El estampado elegido no está disponible para esta prenda", "estampado");
+        }
+        return elegido;
     }
 
     private TallaPrenda variante(Prenda prenda, String nombre, ColorPreferido color) {
@@ -266,7 +293,8 @@ public class CarritoService {
             cantidad = Math.addExact(cantidad, item.getCantidad());
             lineas.add(new ItemCarritoResponse(item.getId(), prenda.getId(), prenda.getNombre(),prenda.imagenPrincipal().map(imagen -> imagen.getUrl()).orElse(null),
                     item.getTalla(), item.getCantidad(), prenda.getPrecio(), subtotalLinea,
-                    disponible, item.getTallaSugerida(), tallaActual == null ? item.getColor() : tallaActual.getColor()));
+                    disponible, item.getTallaSugerida(), tallaActual == null ? item.getColor() : tallaActual.getColor(),
+                    item.getEstampado()));
         }
         BigDecimal costoEnvio = items.isEmpty() ? BigDecimal.ZERO : null;
         BigDecimal total = items.isEmpty() ? BigDecimal.ZERO : null;
@@ -325,5 +353,5 @@ public class CarritoService {
         return talla.trim().toUpperCase(Locale.ROOT);
     }
 
-    private record ClavePrendaTalla(Long prendaId, String talla, ColorPreferido color) { }
+    private record ClavePrendaTalla(Long prendaId, String talla, ColorPreferido color, Estampado estampado) { }
 }

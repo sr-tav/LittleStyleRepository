@@ -9,7 +9,6 @@ import { TallaSugerida} from '../components/talla-sugerida';
 import { RecomendacionItem } from '../models/recomendacion.models';
 import { RecomendacionService } from '../services/recomendacion.service';
 import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatura';
-import { AccesoRapidoPrenda } from '../../catalogoCompras/components/acceso-rapido-prenda';
 import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
 
 /**
@@ -20,7 +19,7 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
  */
 @Component({
   selector: 'app-recomendaciones-lista',
-  imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura, AccesoRapidoPrenda],
+  imports: [Navbar, RouterLink, TallaSugerida, PrendaMiniatura],
   template: `
   <app-navbar />
   <main class="reco-page">
@@ -51,12 +50,6 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
             <article class="reco-card">
               <div class="reco-card-media">
                 <app-prenda-miniatura [url]="r.imagenUrl" [nombre]="r.nombre" />
-                <app-acceso-rapido-prenda
-                  [prendaId]="r.prendaId"
-                  [nombre]="r.nombre"
-                  [disponible]="r.tieneStock"
-                  [tallasDisponibles]="r.tieneStock ? [r.tallaSugerida] : []"
-                />
               </div>
               <div class="reco-card-body">
                 <h2 class="reco-card-title">{{ r.nombre }}</h2>

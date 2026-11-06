@@ -2,6 +2,7 @@ package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model;
 
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.TallaPrenda;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,6 +64,11 @@ public class LineaPedido {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private ColorPreferido color;
+
+    /** Estampado elegido por el cliente al comprar; nulo en pedidos anteriores a la selección de estampado. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Estampado estampado;
 
     public String etiquetaTalla() {
         return TallaPrenda.etiqueta(talla, color);

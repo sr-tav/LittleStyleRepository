@@ -52,6 +52,8 @@ export interface LineaRecompra {
 /** Resultado del pago y estado asociado del pedido. */
 export interface ResultadoPago {
   pedidoId: number | null;
+  /** Consecutivo del pedido para el cliente; es el número que se muestra en pantalla. */
+  numeroPedido: number | null;
   referencia: string;
   estadoPago: EstadoTransaccionPago;
   estadoPedido: 'PENDIENTE_PAGO' | 'PAGADO' | 'REGISTRADO' | 'EN_PREPARACION' | 'ENVIADO' | 'CANCELADO' | null;

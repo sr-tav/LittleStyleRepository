@@ -26,6 +26,7 @@ public class ValidadorPrenda {
         validarNombre(request);
         validarDescripcion(request);
         validarComposicion(request);
+        validarEstampados(request);
         validarTallas(request);
     }
 
@@ -46,6 +47,13 @@ public class ValidadorPrenda {
     private void validarDescripcion(PrendaRequest request) {
         if (request.descripcion() == null || request.descripcion().isBlank()) {
             throw error("La descripción es obligatoria", "descripcion");
+        }
+    }
+
+    /** El vendedor debe declarar al menos un estampado; una prenda sin diseño se registra como «Liso». */
+    private void validarEstampados(PrendaRequest request) {
+        if (request.estampadosEfectivos().isEmpty()) {
+            throw error("Selecciona al menos un estampado (elige «Liso» si la prenda no tiene)", "estampados");
         }
     }
 

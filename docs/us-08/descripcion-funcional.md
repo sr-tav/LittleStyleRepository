@@ -106,8 +106,10 @@ es público (solo lectura, solo en almacenamiento local).
 - **UI-21 `/vendedor/inventario`:** edición en línea del stock y el mínimo de cada
   variante, identificada como `talla · color`, con total en vivo y resumen de mínimos;
   botón Alertas con contador.
-- **UI-22 `/vendedor/inventario/alertas`:** tarjetas con talla, color, actual, mínimo,
-  diferencia y acceso directo a la edición de stock.
+- **UI-22 `/vendedor/inventario/alertas`:** resumen de alertas agotadas y con stock bajo;
+  filtros por nivel y por las categorías del catálogo; tarjetas ordenadas por nivel y
+  diferencia, con stock actual/mínimo, mensaje contextual y botón directo para actualizar
+  el stock de la prenda.
 
 ## 9. Configuración
 | Propiedad | Defecto | Prod |

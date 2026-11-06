@@ -33,7 +33,10 @@ export const ORDEN_ESTADOS: EstadoPedido[] = [
 
 /** Resumen de un pedido mostrado en el historial del cliente. */
 export interface PedidoResumen {
+  /** Identificador interno; se usa en las rutas, no se muestra al cliente. */
   id: number;
+  /** Consecutivo del pedido para el cliente (1, 2, 3…); es el número que se muestra. */
+  numeroPedido: number;
   estado: EstadoPedido;
   total: number;
   fechaCreacion: string;
@@ -47,6 +50,7 @@ export interface PedidoItem {
   nombre: string;
   talla: string;
   color?: ColorPreferido | null;
+  estampado?: string | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -78,7 +82,10 @@ export interface DespachoBloque {
 
 /** Datos completos de un pedido, incluidos sus despachos e historial de estados. */
 export interface PedidoDetalle {
+  /** Identificador interno; se usa en las rutas, no se muestra al cliente. */
   id: number;
+  /** Consecutivo del pedido para el cliente (1, 2, 3…); es el número que se muestra. */
+  numeroPedido: number;
   estado: EstadoPedido;
   subtotal: number;
   costoEnvio: number;

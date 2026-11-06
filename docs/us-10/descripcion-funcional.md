@@ -75,7 +75,7 @@ El backend persiste un carrito por cliente en `Carrito`/`ItemCarrito`; define `G
 
 El servicio Angular usa signals para exponer ítems, cantidad, subtotal, envío y total, y consulta el servidor para cargar el estado autoritativo. LocalStorage guarda una copia por ID de cliente solo como caché inicial. `CarritoService`, instanciado en el componente raíz, elimina la clave de caché al detectar cierre de sesión o cambio de usuario; no se modificó el módulo auth.
 
-UI-10 se accede desde la ruta protegida por `roleGuard` en `/cliente/carrito`, el inicio de cliente y la barra superior. El tile del inicio presenta badge de unidades. Las tarjetas de la vitrina y novedades muestran las tallas con stock desde el listado; las recomendaciones muestran directamente la talla sugerida disponible. Al pasar el cursor o enfocar el acceso rápido se ven la acción y las tallas al mismo tiempo; al elegir una talla se agrega inmediatamente, sin abrir el detalle ni volver a pulsar “Agregar al carrito”. Si se pulsa esa acción sin elegir talla, se solicita seleccionar una. La ficha del producto mantiene la opción de agregar desde el detalle. La página permite cambiar cantidad, eliminar un producto y vaciar el carrito.
+UI-10 se accede desde la ruta protegida por `roleGuard` en `/cliente/carrito`, el inicio de cliente y la barra superior. El tile del inicio presenta badge de unidades. Las tarjetas de prendas no muestran información al pasar el cursor; el cliente abre el detalle con “Ver” y allí elige color y talla antes de agregar al carrito. La página permite cambiar cantidad, eliminar un producto y vaciar el carrito.
 
 Desde la ficha de la prenda, el cliente ve la cantidad disponible por variante (`talla + color`), selecciona el color y la talla, y ajusta las unidades con controles `−/+` sin superar las existencias indicadas. “Agregar al carrito” envía color, talla y cantidad. Cuando ninguna variante tiene unidades, el botón de compra se deshabilita y se muestra “En este momento no hay unidades disponibles”. El backend valida nuevamente el stock de la variante al agregar, por lo que un cambio concurrente de inventario no permite comprar más de lo disponible.
 
@@ -103,13 +103,13 @@ No se generan reservas al agregar, cambiar o eliminar líneas del carrito ni al 
 
 ### KAN-190 — Dirección y resumen previo al pago
 
-UI-11 en `/cliente/checkout` permite usar o editar la dirección guardada para la cuenta del cliente. Captura destinatario, dirección, complemento opcional (apartamento, piso, interior u otras indicaciones), código postal colombiano de seis dígitos, departamento, municipio y teléfono celular colombiano `3XXXXXXXXX`; departamento y municipio se eligen desde el catálogo completo local de municipios colombianos, y el municipio disponible depende del departamento seleccionado. Al cambiar de departamento se limpia el municipio anterior. Al continuar, guarda o actualiza esa única dirección asociada a la cuenta. La misma dirección se consulta y edita desde “Mi cuenta”, en la sección “Dirección de envío”, usando los mismos endpoints `/api/cliente/checkout/direccion`; los cambios hechos desde cualquiera de las dos pantallas quedan disponibles en la otra. El pedido conserva una copia cifrada de los datos de envío, independiente de futuras ediciones de la dirección guardada. Checkout usa automáticamente el perfil infantil activo de la cuenta para validar alergias; no vuelve a pedir que se seleccione. Al continuar, Angular envía la dirección y el perfil a `POST /api/cliente/checkout/resumen`; backend toma los productos del carrito persistido y vuelve a validar perfil, compatibilidad y stock físico, devolviendo los totales calculados.
+UI-11 en `/cliente/checkout` permite elegir una dirección de la cuenta para cada compra, sin seleccionar una automáticamente, o agregar una nueva. En “Mi cuenta” el cliente puede guardar varias direcciones y editar cada una de forma independiente. Cada dirección captura destinatario, dirección en un solo campo con formato colombiano (por ejemplo, «Carrera 12 # 34-56»), complemento opcional (apartamento, piso, interior u otras indicaciones), código postal colombiano de seis dígitos, departamento, municipio y teléfono celular colombiano `3XXXXXXXXX`; el frontend separa la dirección en sus cuatro componentes estructurados al guardarla. Departamento y municipio se eligen desde el catálogo completo local de municipios colombianos, y el municipio disponible depende del departamento seleccionado. Al cambiar de departamento se limpia el municipio anterior. Checkout exige elegir una dirección guardada o completar una nueva antes de continuar; crear o editar persiste el cambio y deja seleccionada esa dirección para la compra actual. El pedido conserva una copia cifrada de los datos de envío, independiente de futuras ediciones. Checkout usa automáticamente el perfil infantil activo de la cuenta para validar alergias; no vuelve a pedir que se seleccione. Al continuar, Angular envía la dirección y el perfil a `POST /api/cliente/checkout/resumen`; backend toma los productos del carrito persistido y vuelve a validar perfil, compatibilidad y stock físico, devolviendo los totales calculados.
 
 El catálogo de ubicaciones es estático y local, derivado de `RafaelRamosR/dane-codigos-municipios` (datos DANE publicados en 2023, licencia MIT); su atribución y licencia se conservan junto al código fuente en `frontend/src/app/features/catalogoCompras/data/LICENSE-municipios-colombia.txt`. La interfaz no depende de un servicio externo para cargar departamentos o municipios.
 
 UI-12 muestra líneas del resumen (producto, talla, cantidad, precio unitario/subtotal), dirección, subtotal, tarifa de envío correspondiente al departamento y municipio y total. El costo de envío se calcula una vez por compra, independientemente del número de prendas. El stepper es “Información de envío → Resumen → Pago”. Antes de iniciar el pago se puede regresar a editar dirección. Al pulsar “Pagar ahora”, `POST /api/cliente/pagos/checkout` valida nuevamente el carrito y guarda un snapshot cifrado asociado a la transacción; el pedido no se crea en este paso. Si el pago queda pendiente o es rechazado, el carrito sigue visible y se puede volver al checkout. Si Wompi lo aprueba, el backend crea el pedido como `PAGADO`, descuenta stock y retira del carrito las cantidades compradas. Al agotarse stock, registra el pedido cancelado para reembolso y mantiene el carrito para que el cliente pueda revisarlo.
 
-**SUPUESTOS aislados:** se conserva el cargo de envío simplificado por zona que se describe en KAN-187; la comparación puntual con transportadoras y sus límites están registrados en la sección “Revisión de tarifas con transportadoras”. Se mantiene una sola dirección editable por cuenta, sin libreta de varias direcciones ni campo específico para barrio. El código postal es obligatorio y debe tener seis dígitos numéricos, conforme al formato colombiano. El intento de pago y el pedido final conservan snapshots cifrados para que cambios posteriores del catálogo, perfil o dirección no alteren la compra iniciada o pagada. Las unidades no se reservan al iniciar el pago; se descuentan únicamente al aprobarse.
+**SUPUESTOS aislados:** se conserva el cargo de envío simplificado por zona que se describe en KAN-187; la comparación puntual con transportadoras y sus límites están registrados en la sección “Revisión de tarifas con transportadoras”. No se define una dirección predeterminada: el cliente elige una dirección en cada compra. El código postal es obligatorio y debe tener seis dígitos numéricos, conforme al formato colombiano. El intento de pago y el pedido final conservan snapshots cifrados para que cambios posteriores del catálogo, perfil o dirección no alteren la compra iniciada o pagada. Las unidades no se reservan al iniciar el pago; se descuentan únicamente al aprobarse.
 
 ### Ciclo de vida del pedido
 
@@ -117,7 +117,11 @@ En el flujo nuevo, el pedido se crea al aprobarse el pago y transita dentro de l
 
 El carrito y los intentos de pago no reservan inventario. La confirmación del proveedor crea el pedido y descuenta stock atómicamente solo después de validar todas sus líneas. El proceso programado que cancelaba pedidos `PENDIENTE_PAGO` a los 30 minutos fue retirado con el flujo de checkout; no se generan pedidos pendientes visibles antes del pago, el cliente abandona una compra anulando su pago en proceso.
 - Los datos personales de entrega (destinatario, dirección, complemento, código postal, departamento, municipio y teléfono) se cifran en la base de datos en la dirección guardada y en el snapshot del pedido, mediante el convertidor AES-GCM versionado existente y la clave de `app.crypto.perfil-key`. Las filas históricas creadas antes de este cambio en claro se leen por compatibilidad, pero requieren migración operativa para cifrarse en almacenamiento; no se afirma que se haya migrado información histórica productiva.
-- La dirección predeterminada de la cuenta se persiste en `direcciones_cliente` y solo se consulta/actualiza con la identidad autenticada del cliente. Al desactivar la cuenta se elimina esa dirección guardada; los snapshots de pedidos históricos tienen ciclo de conservación independiente y requieren política de retención.
+- Las direcciones de la cuenta se persisten en `direcciones_cliente` y solo se consultan/actualizan con la identidad autenticada del cliente; al desactivar la cuenta se eliminan. Los snapshots de pedidos históricos tienen ciclo de conservación independiente y requieren política de retención.
+
+### Estampado en la línea del carrito (auditoría)
+
+`ItemCarrito` guarda el `estampado` elegido en el detalle y la unicidad de la línea pasa a ser `(carrito, prenda, talla, color, estampado)`: la misma talla y color con estampados distintos son líneas separadas. `AgregarItemCarritoRequest.estampado` es obligatorio si la prenda ofrece varios, se asume si ofrece uno y se rechaza con 400 (campo `estampado`) si no pertenece a la prenda. `ItemCarritoResponse` lo devuelve y el carrito lo muestra junto al color. El stock sigue controlándose por talla y color. Requiere la migración `docs/us-08/migracion-estampados.sql`.
 
 ## Contratos backend
 
@@ -129,8 +133,11 @@ El endpoint HTTP del resumen invoca el Facade y valida la solicitud con Bean Val
 | `ResumenCheckoutResponse` | `perfilInfantilId`, `items`, `subtotal`, `costoEnvio`, `total`. |
 | `LineaResumenCheckoutResponse` | `prendaId`, `nombre`, `talla`, `color`, `cantidad`, `precioUnitario`, `subtotal`. |
 | `POST /api/cliente/checkout/resumen` | Recibe el perfil, toma líneas del carrito persistido y devuelve el resumen validado; requiere rol `CLIENTE`. |
-| `GET /api/cliente/checkout/direccion` | Devuelve la dirección guardada del cliente autenticado o `guardada=false`; no acepta IDs de otros clientes. |
-| `PUT /api/cliente/checkout/direccion` | Crea o actualiza la única dirección asociada a la cuenta autenticada, incluyendo complemento opcional. |
+| `GET /api/cliente/checkout/direccion` | Endpoint anterior de compatibilidad: devuelve la primera dirección guardada del cliente o `guardada=false`. |
+| `PUT /api/cliente/checkout/direccion` | Endpoint anterior de compatibilidad: crea o actualiza la primera dirección del cliente. |
+| `GET /api/cliente/checkout/direcciones` | Lista las direcciones del cliente autenticado con sus identificadores. |
+| `POST /api/cliente/checkout/direcciones` | Agrega una dirección a la cuenta autenticada. |
+| `PUT /api/cliente/checkout/direcciones/{id}` | Actualiza una dirección propia; oculta como no encontrada una dirección de otro cliente. |
 | `POST /api/cliente/pagos/checkout` | Inicia una transacción Wompi con el perfil, dirección y productos autoritativos del carrito; devuelve datos firmados con `pedidoId=null`. No crea pedido ni vacía el carrito. Ver US-11 para el contrato completo. |
 
 ## Estado y límites del flujo
@@ -147,3 +154,22 @@ El endpoint HTTP del resumen invoca el Facade y valida la solicitud con Bean Val
 ## Archivos y estado de pruebas
 
 Los casos, clases de prueba y resultados efectivamente ejecutados se registran en `casos-de-prueba.md`. El indicador de abandono de RNF-18 no se ha medido en producción; las pruebas automatizadas verifican comportamiento, no tasas de conversión.
+
+## Dirección estructurada (auditoría, punto 7)
+- La dirección de entrega ya no es un campo libre. Se captura con la nomenclatura colombiana:
+  **tipo de vía** (Calle, Carrera, Avenida, Avenida Calle, Avenida Carrera, Diagonal,
+  Transversal, Circular, Autopista, Variante, Kilómetro), **número de vía** (`45`, `45A`,
+  `45 bis`, `45 Sur`), **número de cruce** (mismo formato), **placa** (1 a 3 dígitos) y
+  **complemento** opcional (apartamento, torre, interior).
+- El servidor compone el texto `direccion` («Calle 45 # 12 - 34») a partir de las partes y
+  descarta el texto libre que envíe el cliente. `pedidos.direccion` guarda ese texto compuesto,
+  por lo que vendedor, correos y reportes siguen funcionando sin cambios.
+- Checkout y «Mi cuenta» presentan la dirección en un solo campo; el frontend la separa en componentes estructurados antes de enviarla al backend.
+- Validaciones en Angular y en backend (`DireccionEnvioRequest`): tipo de vía de la lista,
+  patrones de número de vía/cruce y placa; mensajes por campo.
+- `direcciones_cliente` agrega `tipo_via`, `numero_via`, `numero_cruce` y `placa` (cifradas).
+  Migración: `migracion-direccion-estructurada.sql`. Las direcciones guardadas antes del cambio
+  quedan con esas columnas en NULL y el cliente debe completarlas en su próximo checkout.
+- Para permitir varias direcciones por cliente, `DireccionClienteSchemaMigrator` elimina al iniciar
+  la aplicación el índice único histórico de `cliente_id` en MySQL/MariaDB o H2, sin borrar filas.
+- Fuera de este punto: la coherencia código postal ↔ departamento/municipio (punto 8).

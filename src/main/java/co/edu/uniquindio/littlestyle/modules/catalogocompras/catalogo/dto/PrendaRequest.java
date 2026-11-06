@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -71,6 +72,32 @@ public record PrendaRequest(
 
         @NotEmpty(message = "Agrega al menos una talla")
         @Size(max = 60, message = "La tabla admite máximo 60 combinaciones de talla y color")
-        List<@Valid @NotNull TallaRequest> tallas
+        List<@Valid @NotNull TallaRequest> tallas,
+
+        /**
+         * Estampados que ofrece la prenda (1 a 10); el cliente elige uno en el detalle. Si no llega, se usa
+         * {@link #estampado()} como único estampado.
+         */
+        @Size(max = 10, message = "Selecciona máximo 10 estampados")
+        Set<Estampado> estampados
 ) {
+    /** Solicitud sin lista de estampados: el estampado único declarado es el único que ofrece la prenda. */
+    public PrendaRequest(String nombre, CategoriaPrenda categoria, String descripcion, String instruccionesCuidado,
+                         String marca, BigDecimal precio, Set<ColorPreferido> colores, Estampado estampado,
+                         GeneroPrenda genero, Boolean tintesSinteticos, Boolean brochesMetalicos,
+                         Boolean contieneNiquel, Boolean tratamientoFormaldehido,
+                         List<ComponenteRequest> composicion, List<TallaRequest> tallas) {
+        this(nombre, categoria, descripcion, instruccionesCuidado, marca, precio, colores, estampado, genero,
+                tintesSinteticos, brochesMetalicos, contieneNiquel, tratamientoFormaldehido, composicion, tallas,
+                null);
+    }
+
+    /** Estampados efectivos: la lista declarada o, si falta, el estampado único. Nunca es nulo. */
+    public Set<Estampado> estampadosEfectivos() {
+        if (estampados != null && !estampados.isEmpty()) {
+            return EnumSet.copyOf(estampados);
+        }
+        return estampado == null ? EnumSet.noneOf(Estampado.class) : EnumSet.of(estampado);
+    }
+
 }

@@ -11,6 +11,7 @@ export interface ItemCarrito {
   disponible: boolean;
   tallaSugerida?: string | null;
   color?: string | null;
+  estampado?: string | null;
 }
 
 /** Contenido y totales calculados del carrito de compras. */
@@ -42,6 +43,8 @@ export interface AgregarItemCarritoRequest {
    */
   perfilInfantilId?: number | null;
   color?: string | null;
+  /** Estampado elegido en el detalle (obligatorio si la prenda ofrece más de uno). */
+  estampado?: string | null;
 }
 
 /** Cambio de cantidad solicitado para una línea del carrito. */

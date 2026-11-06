@@ -975,6 +975,7 @@
     width: 100%;
   }
 }
+
 .account-card {
   grid-template-columns: minmax(0, 1fr);
   max-width: 760px;
@@ -1132,6 +1133,32 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.account-address .field {
+  input,
+  select {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1.5px solid var(--ls-border);
+    border-radius: var(--ls-radius);
+    background: #fffef7;
+    color: var(--ls-ink);
+    font: inherit;
+    font-size: 0.97rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:focus {
+      outline: none;
+      border-color: var(--ls-primary);
+      box-shadow: 0 0 0 4px var(--ls-primary-soft);
+    }
+  }
+
+  &.has-error input {
+    border-color: var(--ls-error);
+    background: #fffafa;
+  }
+}
+
 .account-panel-description,
 .account-deactivation > p {
   color: var(--ls-muted);
@@ -1188,4 +1215,21 @@
     width: auto;
     margin: 0 0.5rem 0.5rem 0;
   }
+}
+
+.required-mark {
+  color: var(--ls-error);
+  margin-left: 0.15rem;
+}
+
+.optional-mark {
+  color: var(--ls-muted);
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.form-hint {
+  color: var(--ls-muted);
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
 }

@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto;
 
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -31,9 +32,15 @@ public record AgregarItemCarritoRequest(
         @Positive(message = "El identificador del perfil infantil debe ser positivo")
         Long perfilInfantilId,
 
-        ColorPreferido color
+        ColorPreferido color,
+        /** Estampado elegido en el detalle. Obligatorio si la prenda ofrece más de uno; si ofrece uno, se asume. */
+        Estampado estampado
 ) {
+        public AgregarItemCarritoRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida, Long perfilInfantilId, ColorPreferido color) {
+                this(prendaId, talla, cantidad, tallaSugerida, perfilInfantilId, color, null);
+        }
+
         public AgregarItemCarritoRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida, Long perfilInfantilId) {
-                this(prendaId, talla, cantidad, tallaSugerida, perfilInfantilId, null);
+                this(prendaId, talla, cantidad, tallaSugerida, perfilInfantilId, null, null);
         }
 }

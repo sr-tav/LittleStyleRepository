@@ -5,6 +5,7 @@ import co.edu.uniquindio.littlestyle.modules.auth.model.Rol;
 import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.CatalogoFixtures;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.AgregarItemCarritoRequest;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.dto.ItemCarritoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.model.Carrito;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.ComponenteComposicion;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
@@ -17,6 +18,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.recomendacion.strat
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.dto.PerfilResponse;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.AlergiaTextil;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Contextura;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Holgura;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.service.PerfilInfantilService;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
@@ -168,6 +170,111 @@ class CarritoServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getStatus())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    // Auditoría: el cliente elige estampado en el detalle; si la prenda ofrece varios debe indicar uno
+    @Test
+    void exigeElegirEstampadoCuandoLaPrendaOfreceVarios() {
+        Prenda prenda = prendaConEstampados(Estampado.FLORES, Estampado.RAYAS);
+        prepararCarrito(prenda);
+        when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(), true));
+
+        assertThatThrownBy(() -> servicio.agregar(solicitudConEstampado(null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Elige un estampado")
+                .satisfies(error -> {
+                    assertThat(((BusinessException) error).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(((BusinessException) error).getCampo()).isEqualTo("estampado");
+                });
+        verify(carritoRepository, never()).saveAndFlush(any(Carrito.class));
+    }
+
+    @Test
+    void rechazaUnEstampadoQueLaPrendaNoOfrece() {
+        Prenda prenda = prendaConEstampados(Estampado.FLORES, Estampado.RAYAS);
+        prepararCarrito(prenda);
+        when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(), true));
+
+        assertThatThrownBy(() -> servicio.agregar(solicitudConEstampado(Estampado.LUNARES)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("no está disponible para esta prenda");
+        verify(carritoRepository, never()).saveAndFlush(any(Carrito.class));
+    }
+
+    @Test
+    void guardaElEstampadoElegidoEnLaLinea() {
+        Prenda prenda = prendaConEstampados(Estampado.FLORES, Estampado.RAYAS);
+        prepararCarritoConGuardado(prenda);
+
+        var respuesta = servicio.agregar(solicitudConEstampado(Estampado.RAYAS));
+
+        assertThat(respuesta.items()).hasSize(1);
+        assertThat(respuesta.items().get(0).estampado()).isEqualTo(Estampado.RAYAS);
+        assertThat(carrito.getItems().get(0).getEstampado()).isEqualTo(Estampado.RAYAS);
+    }
+
+    @Test
+    void asumeElUnicoEstampadoDeLaPrendaSinQueElClienteLoIndique() {
+        Prenda prenda = prendaConEstampados(Estampado.LISO);
+        prepararCarritoConGuardado(prenda);
+
+        var respuesta = servicio.agregar(solicitudConEstampado(null));
+
+        assertThat(respuesta.items().get(0).estampado()).isEqualTo(Estampado.LISO);
+    }
+
+    // Una prenda antigua solo tiene su estampado único (campo anterior) y ese es el que se asume
+    @Test
+    void usaElEstampadoUnicoDeLasPrendasAnterioresALaSeleccionMultiple() {
+        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        prenda.setEstampado(Estampado.ESTRELLAS);
+        prepararCarritoConGuardado(prenda);
+
+        var respuesta = servicio.agregar(solicitudConEstampado(null));
+
+        assertThat(respuesta.items().get(0).estampado()).isEqualTo(Estampado.ESTRELLAS);
+    }
+
+    @Test
+    void mantieneLineasSeparadasParaLaMismaTallaConEstampadosDistintos() {
+        Prenda prenda = prendaConEstampados(Estampado.FLORES, Estampado.RAYAS);
+        prepararCarritoConGuardado(prenda);
+
+        servicio.agregar(solicitudConEstampado(Estampado.FLORES));
+        var respuesta = servicio.agregar(solicitudConEstampado(Estampado.RAYAS));
+
+        assertThat(respuesta.items()).hasSize(2);
+        assertThat(respuesta.items()).extracting(ItemCarritoResponse::estampado)
+                .containsExactlyInAnyOrder(Estampado.FLORES, Estampado.RAYAS);
+    }
+
+    @Test
+    void sumaLaCantidadSiElEstampadoEsElMismo() {
+        Prenda prenda = prendaConEstampados(Estampado.FLORES, Estampado.RAYAS);
+        prepararCarritoConGuardado(prenda);
+
+        servicio.agregar(solicitudConEstampado(Estampado.FLORES));
+        var respuesta = servicio.agregar(solicitudConEstampado(Estampado.FLORES));
+
+        assertThat(respuesta.items()).hasSize(1);
+        assertThat(respuesta.items().get(0).cantidad()).isEqualTo(2);
+    }
+
+    private Prenda prendaConEstampados(Estampado... estampados) {
+        Prenda prenda = CatalogoFixtures.prenda(7L, 2, 8, 4);
+        prenda.getEstampados().addAll(Set.of(estampados));
+        return prenda;
+    }
+
+    private AgregarItemCarritoRequest solicitudConEstampado(Estampado estampado) {
+        return new AgregarItemCarritoRequest(7L, "4", 1, null, 11L, null, estampado);
+    }
+
+    private void prepararCarritoConGuardado(Prenda prenda) {
+        prepararCarrito(prenda);
+        when(perfilInfantilService.obtener(11L)).thenReturn(perfil(11L, Set.of(), true));
+        when(prendaRepository.findAllById(any())).thenReturn(List.of(prenda));
+        when(carritoRepository.saveAndFlush(any(Carrito.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     private AgregarItemCarritoRequest solicitud(Long perfilInfantilId) {

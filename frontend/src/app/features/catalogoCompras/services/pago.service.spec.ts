@@ -32,7 +32,11 @@ describe('PagoService', () => {
       perfilInfantilId: 3,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: null,
         codigoPostal: '630001',
         departamento: 'Quindío',

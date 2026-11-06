@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { signal } from '@angular/core';
@@ -222,6 +222,7 @@ describe('DetalleProducto (US-09)', () => {
       cantidad: 2,
       tallaSugerida: null,
       color: 'AZUL',
+      estampado: 'LISO',
     });
     expect(carritoMock.abrirPanel).toHaveBeenCalledOnce();
   });
@@ -298,6 +299,7 @@ describe('DetalleProducto (US-09)', () => {
       cantidad: 1,
       tallaSugerida: null,
       color: 'ROSA',
+      estampado: 'LISO',
     });
     expect(carritoMock.abrirPanel).toHaveBeenCalledOnce();
   });
@@ -366,5 +368,61 @@ describe('DetalleProducto (US-09)', () => {
     http.verify();
 
     expect(el.textContent).not.toContain('No compatible');
+  });
+
+  describe('selección de estampado (auditoría)', () => {
+    /** Elige color y talla para dejar solo el estampado pendiente. */
+    function elegirColorYTalla(fixture: ComponentFixture<DetalleProducto>, el: HTMLElement): void {
+      el.querySelector<HTMLButtonElement>('.detalle-color[role="radio"]')!.click();
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('.detalle-talla[aria-label^="Talla 4"]')!.click();
+      fixture.detectChanges();
+    }
+
+    it('ofrece solo los estampados de la prenda y exige elegir uno antes de agregar', () => {
+      carritoMock.agregar.mockClear();
+      const { fixture, el, http } = crear(detalle({ estampado: 'FLORES', estampados: ['FLORES', 'RAYAS'] }));
+      http.verify();
+      elegirColorYTalla(fixture, el);
+
+      const opciones = Array.from(el.querySelectorAll<HTMLButtonElement>('.detalle-estampado'));
+      expect(opciones.map((b) => b.getAttribute('aria-label'))).toEqual(['Estampado Flores', 'Estampado Rayas']);
+      const agregar = el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!;
+      expect(agregar.disabled).toBe(true);
+      expect(el.textContent).toContain('Selecciona un estampado');
+
+      opciones[1].click();
+      fixture.detectChanges();
+
+      expect(opciones[1].getAttribute('aria-checked')).toBe('true');
+      expect(agregar.disabled).toBe(false);
+      agregar.click();
+      expect(carritoMock.agregar).toHaveBeenCalledWith(expect.objectContaining({ estampado: 'RAYAS' }));
+    });
+
+    it('con un solo estampado lo asume y no obliga a elegir', () => {
+      carritoMock.agregar.mockClear();
+      const { fixture, el, http } = crear(detalle({ estampado: 'LISO', estampados: ['LISO'] }));
+      http.verify();
+      elegirColorYTalla(fixture, el);
+
+      expect(el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!.disabled).toBe(false);
+      el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!.click();
+      expect(carritoMock.agregar).toHaveBeenCalledWith(expect.objectContaining({ estampado: 'LISO' }));
+    });
+
+    it('en prendas antiguas sin lista usa su estampado único', () => {
+      const { el, http } = crear(detalle({ estampado: 'ESTRELLAS', estampados: undefined }));
+      http.verify();
+
+      expect(Array.from(el.querySelectorAll('.detalle-estampado')).map((b) => b.textContent?.trim())).toEqual(['Estrellas']);
+    });
+
+    it('la ficha técnica lista todos los estampados de la prenda', () => {
+      const { el, http } = crear(detalle({ estampado: 'FLORES', estampados: ['FLORES', 'RAYAS'] }));
+      http.verify();
+
+      expect(el.textContent).toContain('Flores, Rayas');
+    });
   });
 });

@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { CarritoService } from '../../../catalogoCompras/services/carrito.service';
+import { VitrinaItem } from '../../../vitrina/models/vitrina.models';
 import { PerfilInfantil } from '../../../perfilesInfantiles/models/perfil-infantil.models';
 import { PerfilesService } from '../../../perfilesInfantiles/services/perfiles.service';
 import { VitrinaService } from '../../../vitrina/services/vitrina.service';
@@ -14,9 +15,11 @@ const VITRINA_VACIA = { contenido: [], pagina: 0, tamano: 8, totalElementos: 0, 
 
 describe('ClienteInicio', () => {
   let perfiles: PerfilInfantil[];
+  let itemsNovedades: VitrinaItem[];
 
   beforeEach(async () => {
     perfiles = [];
+    itemsNovedades = [];
     await TestBed.configureTestingModule({
       imports: [ClienteInicio],
       providers: [
@@ -42,7 +45,10 @@ describe('ClienteInicio', () => {
           },
         },
         { provide: PerfilesService, useValue: { listar: () => of(perfiles) } },
-        { provide: VitrinaService, useValue: { explorar: () => of(VITRINA_VACIA) } },
+        {
+          provide: VitrinaService,
+          useValue: { explorar: () => of({ ...VITRINA_VACIA, contenido: itemsNovedades }) },
+        },
       ],
     }).compileComponents();
   });
@@ -140,5 +146,28 @@ describe('ClienteInicio', () => {
     const root: HTMLElement = fixture.nativeElement;
     expect(root.querySelector('.hero')).not.toBeNull();
     expect(root.querySelector('app-footer')).not.toBeNull();
+  });
+
+  it('no muestra acceso rápido y conserva el enlace Ver al detalle de cada prenda', () => {
+    itemsNovedades = [
+      {
+        id: 10,
+        nombre: 'Pantalón Jogger Azul',
+        categoria: 'PANTALONES',
+        genero: 'UNISEX',
+        marca: 'Tienda Sol',
+        precio: 32900,
+        imagenUrl: '/media/a.png',
+        disponible: true,
+        tallasDisponibles: ['4', '6'],
+      },
+    ];
+    const fixture = TestBed.createComponent(ClienteInicio);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector('app-acceso-rapido-prenda')).toBeNull();
+    const enlace = root.querySelector<HTMLAnchorElement>('a[href="/cliente/catalogo/10"]');
+    expect(enlace?.textContent?.trim()).toBe('Ver');
   });
 });

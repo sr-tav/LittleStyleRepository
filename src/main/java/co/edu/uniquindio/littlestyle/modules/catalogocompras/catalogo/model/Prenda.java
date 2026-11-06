@@ -114,6 +114,18 @@ public class Prenda {
     @Builder.Default
     private Set<ColorPreferido> colores = EnumSet.noneOf(ColorPreferido.class);
 
+    /**
+     * Estampados que ofrece la prenda; el cliente elige uno en el detalle. Las prendas anteriores a este
+     * cambio no tienen filas aquí y solo ofrecen su {@link #estampado} único (ver {@link #estampadosDisponibles()}).
+     */
+    @ElementCollection(targetClass = Estampado.class)
+    @CollectionTable(name = "prenda_estampados", joinColumns = @JoinColumn(name = "prenda_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estampado", nullable = false, length = 20)
+    @BatchSize(size = 50)
+    @Builder.Default
+    private Set<Estampado> estampados = EnumSet.noneOf(Estampado.class);
+
     @ElementCollection
     @CollectionTable(name = "prenda_composicion", joinColumns = @JoinColumn(name = "prenda_id"))
     @BatchSize(size = 50)
@@ -175,5 +187,16 @@ public class Prenda {
             return candidatas.stream().filter(t -> t.getColor() == color).findFirst();
         }
         return candidatas.size() == 1 ? Optional.of(candidatas.getFirst()) : Optional.empty();
+    }
+
+    /**
+     * Estampados que el cliente puede elegir: los declarados por el vendedor o, en prendas anteriores a la
+     * selección múltiple, el único estampado guardado. Vacío si la prenda no declara ninguno.
+     */
+    public Set<Estampado> estampadosDisponibles() {
+        if (estampados != null && !estampados.isEmpty()) {
+            return EnumSet.copyOf(estampados);
+        }
+        return estampado == null ? EnumSet.noneOf(Estampado.class) : EnumSet.of(estampado);
     }
 }

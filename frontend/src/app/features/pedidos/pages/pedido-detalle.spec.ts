@@ -11,6 +11,7 @@ import { PedidoDetallePage } from './pedido-detalle';
 function detalle(): PedidoDetalle {
   return {
     id: 7,
+    numeroPedido: 3,
     estado: 'ENVIADO',
     subtotal: 100000,
     costoEnvio: 7000,
@@ -64,6 +65,15 @@ describe('PedidoDetallePage (US-12 / UI-16)', () => {
         { provide: PedidosService, useValue: pedidos },
       ],
     }).compileComponents();
+  });
+
+  it('muestra el consecutivo del cliente y no el id interno del pedido', () => {
+    const fixture = TestBed.createComponent(PedidoDetallePage);
+    fixture.detectChanges();
+
+    const encabezado = (fixture.nativeElement as HTMLElement).querySelector('.reco-eyebrow')?.textContent;
+    expect(encabezado).toContain('Pedido #3');
+    expect(encabezado).not.toContain('#7');
   });
 
   it('muestra guía, línea de tiempo, productos y totales', () => {

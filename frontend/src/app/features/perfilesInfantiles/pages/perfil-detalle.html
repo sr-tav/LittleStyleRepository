@@ -161,11 +161,12 @@
             </div>
           </div>
           <div class="field">
-            <label for="nombre">Nombre</label>
+            <label for="nombre">Nombre <span class="required-mark" aria-hidden="true">*</span></label>
             <input
               id="nombre"
               type="text"
               formControlName="nombre"
+              aria-required="true"
               maxlength="60"
               autocomplete="given-name"
             />
@@ -175,11 +176,12 @@
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="fechaNacimiento">Fecha de nacimiento</label>
+              <label for="fechaNacimiento">Fecha de nacimiento <span class="required-mark" aria-hidden="true">*</span></label>
               <input
                 id="fechaNacimiento"
                 type="date"
                 formControlName="fechaNacimiento"
+                aria-required="true"
                 [max]="maxFechaNacimiento"
               />
               @if (esInvalido(form.controls.fechaNacimiento)) {
@@ -187,8 +189,8 @@
               }
             </div>
             <div class="field">
-              <label for="contextura">Contextura</label>
-              <select id="contextura" formControlName="contextura">
+              <label for="contextura">Contextura <span class="required-mark" aria-hidden="true">*</span></label>
+              <select id="contextura" formControlName="contextura" aria-required="true">
                 <option value="">Selecciona una opción</option>
                 @for (opcion of contexturas; track opcion.valor) {
                   <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
@@ -243,11 +245,12 @@
               }
               <div class="measurement-form">
                 <div class="field">
-                  <label for="fechaMedicion">Fecha de medición</label>
+                  <label for="fechaMedicion">Fecha de medición <span class="required-mark" aria-hidden="true">*</span></label>
                   <input
                     id="fechaMedicion"
                     type="date"
                     formControlName="fechaMedicion"
+                    aria-required="true"
                     [min]="fechaMinimaMedicion()"
                     [max]="hoy"
                   />
@@ -256,11 +259,12 @@
                   }
                 </div>
                 <div class="field">
-                  <label for="estaturaCm">Estatura (cm)</label>
+                  <label for="estaturaCm">Estatura (cm) <span class="required-mark" aria-hidden="true">*</span></label>
                   <input
                     id="estaturaCm"
                     type="number"
                     formControlName="estaturaCm"
+                    aria-required="true"
                     min="40"
                     max="200"
                     step="0.1"
@@ -270,11 +274,12 @@
                   }
                 </div>
                 <div class="field">
-                  <label for="pesoKg">Peso (kg)</label>
+                  <label for="pesoKg">Peso (kg) <span class="required-mark" aria-hidden="true">*</span></label>
                   <input
                     id="pesoKg"
                     type="number"
                     formControlName="pesoKg"
+                    aria-required="true"
                     min="2"
                     max="120"
                     step="0.1"
@@ -321,7 +326,7 @@
               </svg>
             </span>
             <div>
-              <h2>Alergias textiles</h2>
+              <h2>Alergias textiles <span class="required-mark" aria-hidden="true">*</span></h2>
               <p>Selecciona las alergias conocidas o marca “Sin alergias”.</p>
             </div>
           </div>
@@ -334,7 +339,7 @@
             />
             Sin alergias
           </label>
-          <div class="allergy-options" role="group" aria-label="Alergias textiles">
+          <div class="allergy-options" role="group" aria-label="Alergias textiles" aria-required="true">
             @for (opcion of alergiasDisponibles; track opcion.valor) {
               <label class="checkbox profile-checkbox">
                 <input
@@ -350,12 +355,13 @@
           </div>
           @if (esOtraAlergia()) {
             <div class="field other-text-field">
-              <label for="otraAlergia">Describe la otra alergia</label>
+              <label for="otraAlergia">Describe la otra alergia <span class="required-mark" aria-hidden="true">*</span></label>
               <input
                 id="otraAlergia"
                 type="text"
                 formControlName="otraAlergia"
                 required
+                aria-required="true"
                 maxlength="60"
                 autocomplete="off"
               />
@@ -386,7 +392,10 @@
             </div>
           </div>
           <fieldset class="preference-group">
-            <legend>Colores preferidos</legend>
+            <legend>
+              Colores preferidos
+              <span class="optional-mark">(opcional; ayuda a mejorar las recomendaciones y, sin colores preferidos, el perfil queda incompleto)</span>
+            </legend>
             <div class="option-chip-grid">
               @for (opcion of coloresDisponibles; track opcion.valor) {
                 <button
@@ -409,7 +418,7 @@
               <p class="selection-limit" role="status">Límite alcanzado: máximo 10 colores.</p>
             }
             <div class="field other-text-field">
-              <label for="otroColor">Otro color (opcional)</label>
+              <label for="otroColor">Otro color <span class="optional-mark">(opcional)</span></label>
               <input
                 id="otroColor"
                 type="text"
@@ -424,7 +433,10 @@
             </div>
           </fieldset>
           <fieldset class="preference-group">
-            <legend>Estampados preferidos</legend>
+            <legend>
+              Estampados preferidos
+              <span class="optional-mark">(opcional; ayuda a mejorar las recomendaciones y, sin estampados preferidos, el perfil queda incompleto)</span>
+            </legend>
             <div class="option-chip-grid">
               @for (opcion of estampadosDisponibles; track opcion.valor) {
                 <button
@@ -450,7 +462,7 @@
               <p class="selection-limit" role="status">Límite alcanzado: máximo 10 estampados.</p>
             }
             <div class="field other-text-field">
-              <label for="otroEstampado">Otro estampado (opcional)</label>
+              <label for="otroEstampado">Otro estampado <span class="optional-mark">(opcional)</span></label>
               <input
                 id="otroEstampado"
                 type="text"
@@ -465,8 +477,8 @@
             </div>
           </fieldset>
           <div class="field">
-            <label for="holgura">Holgura preferida</label>
-            <select id="holgura" formControlName="holgura">
+            <label for="holgura">Holgura preferida <span class="required-mark" aria-hidden="true">*</span></label>
+            <select id="holgura" formControlName="holgura" aria-required="true">
               <option value="">Selecciona una opción</option>
               @for (opcion of holguras; track opcion.valor) {
                 <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
@@ -494,11 +506,12 @@
             </div>
             <div class="measurement-form">
               <div class="field">
-                <label for="fechaMedicion">Fecha de medición</label>
+                <label for="fechaMedicion">Fecha de medición <span class="required-mark" aria-hidden="true">*</span></label>
                 <input
                   id="fechaMedicion"
                   type="date"
                   formControlName="fechaMedicion"
+                  aria-required="true"
                   [min]="fechaMinimaMedicion()"
                   [max]="hoy"
                 />
@@ -509,11 +522,12 @@
                 }
               </div>
               <div class="field">
-                <label for="estaturaCm">Estatura (cm)</label>
+                <label for="estaturaCm">Estatura (cm) <span class="required-mark" aria-hidden="true">*</span></label>
                 <input
                   id="estaturaCm"
                   type="number"
                   formControlName="estaturaCm"
+                  aria-required="true"
                   min="40"
                   max="200"
                   step="0.1"
@@ -523,11 +537,12 @@
                 }
               </div>
               <div class="field">
-                <label for="pesoKg">Peso (kg)</label>
+                <label for="pesoKg">Peso (kg) <span class="required-mark" aria-hidden="true">*</span></label>
                 <input
                   id="pesoKg"
                   type="number"
                   formControlName="pesoKg"
+                  aria-required="true"
                   min="2"
                   max="120"
                   step="0.1"
@@ -586,11 +601,12 @@
               <div class="alert alert-error" role="alert">{{ errorMedicion() }}</div>
             }
             <div class="field">
-              <label for="fechaMedicion">Fecha</label>
+              <label for="fechaMedicion">Fecha de medición <span class="required-mark" aria-hidden="true">*</span></label>
               <input
                 id="fechaMedicion"
                 type="date"
                 formControlName="fechaMedicion"
+                aria-required="true"
                 [min]="fechaMinimaMedicion()"
                 [max]="hoy"
               />
@@ -599,11 +615,12 @@
               }
             </div>
             <div class="field">
-              <label for="estaturaCm">Estatura (cm)</label>
+              <label for="estaturaCm">Estatura (cm) <span class="required-mark" aria-hidden="true">*</span></label>
               <input
                 id="estaturaCm"
                 type="number"
                 formControlName="estaturaCm"
+                aria-required="true"
                 min="40"
                 max="200"
                 step="0.1"
@@ -613,11 +630,12 @@
               }
             </div>
             <div class="field">
-              <label for="pesoKg">Peso (kg)</label>
+              <label for="pesoKg">Peso (kg) <span class="required-mark" aria-hidden="true">*</span></label>
               <input
                 id="pesoKg"
                 type="number"
                 formControlName="pesoKg"
+                aria-required="true"
                 min="2"
                 max="120"
                 step="0.1"

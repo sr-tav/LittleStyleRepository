@@ -51,7 +51,7 @@ public class PedidoConsultaService {
                 .map(h -> new PedidoDetalleResponse.Movimiento(h.getAnterior(), h.getNuevo(),
                         h.getFechaCambio(), h.getNumeroGuia()))
                 .toList();
-        return new PedidoDetalleResponse(pedido.getId(), pedido.getEstado(), pedido.getSubtotal(),
+        return new PedidoDetalleResponse(pedido.getId(), pedido.numeroVisible(), pedido.getEstado(), pedido.getSubtotal(),
                 pedido.getCostoEnvio(), pedido.getTotal(), pedido.getFechaCreacion(), pedido.getNumeroGuia(),
                 pedido.getCiudad(), pedido.getDepartamento(),
                 pedido.getItems().stream().map(l -> PedidoDetalleResponse.Item.from(l, imagenDe(l))).toList(),

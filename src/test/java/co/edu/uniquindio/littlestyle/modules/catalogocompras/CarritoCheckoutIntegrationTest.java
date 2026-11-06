@@ -133,6 +133,7 @@ class CarritoCheckoutIntegrationTest {
                         .content("""
                                         {"perfilInfantilId":%d,
                                          "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                                         "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                                          "complemento":"Apto 302","codigoPostal":"630001",
                                          "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
                                         """.formatted(perfilId))
@@ -173,6 +174,7 @@ class CarritoCheckoutIntegrationTest {
                         .content("""
                                         {"perfilInfantilId":%d,
                                          "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                                         "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                                          "codigoPostal":"630001","departamento":"Quindío",
                                          "municipio":"Armenia","telefono":"3001234567"}}
                                         """.formatted(perfilId)))
@@ -218,6 +220,7 @@ class CarritoCheckoutIntegrationTest {
         String clienteDos = registrar("direccion-cliente-dos-" + System.nanoTime() + "@correo.com", "CLIENTE");
         String nuevaDireccion = """
                 {"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3","complemento":"Apto 302",
+                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                  "codigoPostal":"630001","departamento":"Quindío",
                  "municipio":"Armenia","telefono":"3001234567"}
                 """;
@@ -249,6 +252,7 @@ class CarritoCheckoutIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3","complemento":"Piso 2",
+                                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                                  "codigoPostal":"630001","departamento":"Quindío",
                                  "municipio":"Armenia","telefono":"3001234567"}
                                 """))
@@ -261,8 +265,8 @@ class CarritoCheckoutIntegrationTest {
 
         Long clienteUnoId = usuarioRepository.findByEmail(emailClienteUno)
                 .map(Usuario::getId).orElseThrow();
-        assertThat(direccionClienteRepository.findByClienteId(clienteUnoId)
-                .map(direccion -> direccion.getComplemento())).contains("Piso 2");
+        assertThat(direccionClienteRepository.findAllByClienteIdOrderByIdAsc(clienteUnoId))
+                .singleElement().extracting(direccion -> direccion.getComplemento()).isEqualTo("Piso 2");
         Object direccionCifrada = entityManager.createNativeQuery(
                         "select direccion, codigo_postal, departamento from direcciones_cliente where cliente_id = :clienteId")
                 .setParameter("clienteId", clienteUnoId)
@@ -273,7 +277,7 @@ class CarritoCheckoutIntegrationTest {
         assertThat(camposCifrados[2].toString()).startsWith("v1:").doesNotContain("Quindío");
         mockMvc.perform(delete("/api/auth/me").header("Authorization", clienteUno))
                 .andExpect(status().isNoContent());
-        assertThat(direccionClienteRepository.findByClienteId(clienteUnoId)).isEmpty();
+        assertThat(direccionClienteRepository.findAllByClienteIdOrderByIdAsc(clienteUnoId)).isEmpty();
     }
 
     @Test
@@ -298,6 +302,7 @@ class CarritoCheckoutIntegrationTest {
                         .content("""
                                 {"perfilInfantilId":%d,
                                  "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                                  "complemento":"Apto 302","codigoPostal":"630001",
                                  "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
                                 """.formatted(perfilUno)))
@@ -365,6 +370,7 @@ class CarritoCheckoutIntegrationTest {
         String cuerpo = """
                 {"perfilInfantilId":%d,
                  "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                  "complemento":null,"codigoPostal":"630001",
                  "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
                 """.formatted(perfilId);
@@ -531,6 +537,59 @@ class CarritoCheckoutIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    void permiteGuardarVariasDireccionesYEditarSoloLasPropias() throws Exception {
+        String clienteUno = registrar("direcciones-multiples-uno-" + System.nanoTime() + "@correo.com", "CLIENTE");
+        String clienteDos = registrar("direcciones-multiples-dos-" + System.nanoTime() + "@correo.com", "CLIENTE");
+        String direccionUno = """
+                {"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2 - 3",
+                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
+                 "complemento":null,"codigoPostal":"630001","departamento":"Quindío",
+                 "municipio":"Armenia","telefono":"3001234567"}
+                """;
+        String direccionDos = direccionUno.replace("\"Calle\"", "\"Carrera\"")
+                .replace("\"direccion\":\"Calle 1 # 2 - 3\"", "\"direccion\":\"Carrera 1 # 2 - 3\"");
+
+        String primera = mockMvc.perform(post("/api/cliente/checkout/direcciones")
+                        .header("Authorization", clienteUno)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(direccionUno))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.direccion.direccion").value("Calle 1 # 2 - 3"))
+                .andReturn().getResponse().getContentAsString();
+        int primeraId = JsonPath.read(primera, "$.id");
+        mockMvc.perform(post("/api/cliente/checkout/direcciones")
+                        .header("Authorization", clienteUno)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(direccionDos))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/cliente/checkout/direcciones").header("Authorization", clienteUno))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(primeraId))
+                .andExpect(jsonPath("$[1].direccion.tipoVia").value("Carrera"));
+        mockMvc.perform(get("/api/cliente/checkout/direcciones").header("Authorization", clienteDos))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        mockMvc.perform(put("/api/cliente/checkout/direcciones/{id}", primeraId)
+                        .header("Authorization", clienteUno)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(direccionDos))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.direccion.tipoVia").value("Carrera"));
+        mockMvc.perform(put("/api/cliente/checkout/direcciones/{id}", primeraId)
+                        .header("Authorization", clienteDos)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(direccionUno))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/cliente/checkout/direcciones").header("Authorization", clienteUno))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].direccion.tipoVia").value("Carrera"))
+                .andExpect(jsonPath("$[1].direccion.tipoVia").value("Carrera"));
     }
 
     private int stockTalla(int prendaId) {

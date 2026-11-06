@@ -5,7 +5,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { Footer } from '../../../../shared/components/footer/footer';
 import { Navbar } from '../../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../../auth/auth.validators';
-import { AccesoRapidoPrenda } from '../../../catalogoCompras/components/acceso-rapido-prenda';
 import { PrendaMiniatura } from '../../../catalogoCompras/components/prenda-miniatura';
 import { formatearPrecio } from '../../../catalogoCompras/models/prenda-opciones';
 import { CarritoService } from '../../../catalogoCompras/services/carrito.service';
@@ -24,7 +23,7 @@ const TAMANO_NOVEDADES = 8;
  */
 @Component({
   selector: 'app-cliente-inicio',
-  imports: [Navbar, RouterLink, PrendaMiniatura, AccesoRapidoPrenda, Footer],
+  imports: [Navbar, RouterLink, PrendaMiniatura, Footer],
   templateUrl: './cliente-inicio.html',
 })
 export class ClienteInicio implements OnInit, OnDestroy {

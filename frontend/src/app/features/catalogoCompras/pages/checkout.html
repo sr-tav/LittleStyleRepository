@@ -27,7 +27,7 @@
   @if (cargando()) {
     <section class="carrito-vacio" role="status"><p>Cargando información de envío…</p></section>
   } @else if (paso() === 'informacion') {
-    <form class="checkout-form" [formGroup]="form" (ngSubmit)="continuarAResumen()" novalidate>
+    <form class="checkout-form" [formGroup]="form" (ngSubmit)="continuarAResumen($event)" novalidate>
       <section class="checkout-panel">
         <div>
           <h2>Información de envío</h2>
@@ -43,33 +43,52 @@
           </p>
         }
 
-        @if (direccionGuardada(); as guardada) {
-          @if (!editandoDireccion()) {
-            <section class="checkout-direccion checkout-direccion-guardada" aria-label="Dirección guardada en tu cuenta">
-              <h3>Dirección guardada en tu cuenta</h3>
-              <p>{{ guardada.destinatario }}</p>
-              <p>{{ guardada.direccion }}</p>
-              @if (guardada.complemento) { <p>{{ guardada.complemento }}</p> }
-              @if (guardada.codigoPostal) { <p>Código postal: {{ guardada.codigoPostal }}</p> }
-              <p>{{ guardada.municipio }}{{ guardada.departamento ? ', ' + guardada.departamento : '' }}</p>
-              <p>{{ guardada.telefono }}</p>
+        @if (!editandoDireccion() && direccionesGuardadas().length > 0) {
+          <section aria-label="Direcciones guardadas en tu cuenta">
+            <h3>Elige una dirección para esta compra</h3>
+            @for (guardada of direccionesGuardadas(); track guardada.id) {
+              <section class="checkout-direccion checkout-direccion-guardada">
+                <label class="btn-ghost btn-inline">
+                  <input
+                    type="radio" name="direccionSeleccionada"
+                    [checked]="direccionSeleccionadaId() === guardada.id"
+                    (change)="seleccionarDireccion(guardada.id)"
+                  />
+                  Seleccionar para esta compra
+                </label>
+                <p>{{ guardada.direccion.destinatario }}</p>
+                <p>{{ guardada.direccion.direccion }}</p>
+                @if (guardada.direccion.complemento) { <p>{{ guardada.direccion.complemento }}</p> }
+                @if (guardada.direccion.codigoPostal) { <p>Código postal: {{ guardada.direccion.codigoPostal }}</p> }
+                <p>{{ guardada.direccion.municipio }}{{ guardada.direccion.departamento ? ', ' + guardada.direccion.departamento : '' }}</p>
+                <p>{{ guardada.direccion.telefono }}</p>
+                @if (!direccionCompleta(guardada.direccion)) {
+                  <p class="field-error">Esta dirección necesita completarse antes de usarla.</p>
+                }
+                <button type="button" class="btn-ghost btn-inline" (click)="editarDireccion(guardada.id)">
+                  Editar dirección
+                </button>
+              </section>
+            }
+            <div class="checkout-form-grid">
               <button
                 type="button" class="btn-primary btn-inline"
-                [disabled]="procesando() || carrito.items().length === 0 || perfilId() === null"
+                [disabled]="procesando() || carrito.items().length === 0 || perfilId() === null || direccionSeleccionadaId() === null"
                 (click)="usarDireccionGuardada()"
-              >{{ procesando() ? 'Validando…' : 'Usar esta dirección y continuar' }}</button>
-              <button type="button" class="btn-ghost btn-inline" (click)="editarDireccion()">
-                Editar dirección
+              >{{ procesando() ? 'Validando…' : 'Continuar con la dirección elegida' }}</button>
+              <button type="button" class="btn-ghost btn-inline" (click)="agregarDireccion()">
+                Agregar otra dirección
               </button>
-            </section>
-          } @else {
-            <p class="alert alert-info">
-              Completa o edita los datos para actualizar la dirección asociada a tu cuenta.
-            </p>
-          }
+            </div>
+          </section>
         }
 
         @if (editandoDireccion()) {
+          @if (direccionesGuardadas().length > 0) {
+            <p class="alert alert-info">
+              {{ editandoDireccionId() === null ? 'Agrega una dirección a tu cuenta.' : 'Edita la dirección seleccionada.' }}
+            </p>
+          }
           <div class="field">
             <label for="destinatario">Nombre del destinatario</label>
             <input id="destinatario" type="text" formControlName="destinatario" autocomplete="name" />
@@ -77,11 +96,11 @@
               <small class="field-error">Ingresa el destinatario (máximo 120 caracteres).</small>
             }
           </div>
-          <div class="field">
-            <label for="direccion">Dirección de entrega</label>
-            <input id="direccion" type="text" formControlName="direccion" autocomplete="street-address" />
+          <div class="field" [class.has-error]="form.controls.direccion.touched && form.controls.direccion.invalid">
+            <label for="direccion">Dirección</label>
+            <input id="direccion" type="text" formControlName="direccion" autocomplete="street-address" maxlength="100" placeholder="Carrera 12 # 34-56" [attr.aria-invalid]="form.controls.direccion.touched && form.controls.direccion.invalid ? 'true' : null" />
             @if (form.controls.direccion.touched && form.controls.direccion.invalid) {
-              <small class="field-error">Ingresa una dirección (máximo 200 caracteres).</small>
+              <small class="field-error">Ingresa una dirección válida. Ejemplo: Carrera 12 # 34-56.</small>
             }
           </div>
           <div class="field">
@@ -96,16 +115,6 @@
             }
           </div>
           <div class="checkout-form-grid">
-            <div class="field">
-              <label for="codigoPostal">Código postal</label>
-              <input
-                id="codigoPostal" type="text" inputmode="numeric" maxlength="6"
-                autocomplete="postal-code" formControlName="codigoPostal"
-              />
-              @if (form.controls.codigoPostal.touched && form.controls.codigoPostal.invalid) {
-                <small class="field-error">Ingresa un código postal colombiano de 6 dígitos.</small>
-              }
-            </div>
             <div class="field">
               <label for="departamento">Departamento</label>
               <select
@@ -125,6 +134,7 @@
               <label for="municipio">Municipio</label>
               <select
                 id="municipio" autocomplete="address-level2" formControlName="municipio"
+                (change)="cambioMunicipio()"
                 [attr.disabled]="departamentoSeleccionado() ? null : ''"
               >
                 <option value="">Selecciona un municipio</option>
@@ -134,6 +144,33 @@
               </select>
               @if (form.controls.municipio.touched && form.controls.municipio.invalid) {
                 <small class="field-error">Selecciona el municipio.</small>
+              }
+            </div>
+            <div class="field">
+              <label for="codigoPostal">Código postal</label>
+              @if (!departamentoSeleccionado() || !form.controls.municipio.value) {
+                <small>Selecciona primero un departamento y municipio.</small>
+              } @else if (codigosPostales(); as lista) {
+                <select id="codigoPostal" formControlName="codigoPostal" autocomplete="postal-code">
+                  <option value="">Selecciona un código postal</option>
+                  @for (codigo of lista; track codigo) {
+                    <option [value]="codigo">{{ codigo }}</option>
+                  }
+                </select>
+              } @else {
+                <small class="field-error">No se encontró un catálogo de códigos postales para este municipio.</small>
+              }
+              @if (departamentoSeleccionado() && form.controls.municipio.value
+                && codigosPostales() && form.controls.codigoPostal.touched && form.controls.codigoPostal.invalid) {
+                <small class="field-error">
+                  @if (form.controls.codigoPostal.errors?.['codigoPostalIncoherente'] === 'departamento') {
+                    El código postal no corresponde al departamento seleccionado.
+                  } @else if (form.controls.codigoPostal.errors?.['codigoPostalIncoherente'] === 'municipio') {
+                    El código postal no corresponde al municipio seleccionado.
+                  } @else {
+                    Selecciona el código postal del municipio.
+                  }
+                </small>
               }
             </div>
             <div class="field">
@@ -148,15 +185,16 @@
             </div>
           </div>
           <button
-            type="submit" class="btn-primary btn-inline"
+            type="button" class="btn-primary btn-inline"
             [disabled]="procesando() || carrito.items().length === 0 || perfilId() === null"
-          >{{ procesando() ? 'Guardando…' : 'Guardar dirección y continuar' }}</button>
-          @if (direccionGuardada()) {
+            (click)="continuarAResumen($event)"
+          >{{ procesando() ? 'Guardando…' : editandoDireccionId() === null ? 'Guardar dirección y continuar' : 'Guardar cambios y continuar' }}</button>
+          @if (direccionesGuardadas().length > 0) {
             <button
               type="button" class="btn-ghost btn-inline"
               [disabled]="procesando()"
               (click)="cancelarEdicionDireccion()"
-            >Cancelar edición</button>
+            >Cancelar</button>
           }
         }
       </section>
@@ -174,6 +212,7 @@
                 <strong>{{ item.nombre }}</strong>
                 <p>
                   @if (item.color) { Color {{ item.color | colorEtiqueta }} · }
+                  @if (item.estampado) { {{ item.estampado | estampadoEtiqueta }} · }
                   Talla {{ item.talla }} · Cantidad {{ item.cantidad }}
                 </p>
                 <p>{{ precio(item.precioUnitario) }} c/u</p>

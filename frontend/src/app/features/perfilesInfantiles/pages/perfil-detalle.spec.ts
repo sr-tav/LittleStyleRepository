@@ -147,6 +147,50 @@ describe('PerfilDetalle (UI-5)', () => {
     httpMock.expectNone('/api/cliente/perfiles');
   });
 
+  it('marca con asterisco los cuatro campos obligatorios del perfil', () => {
+    const { el } = crear();
+
+    for (const id of ['nombre', 'fechaNacimiento', 'contextura', 'holgura']) {
+      expect(el.querySelectorAll(`label[for="${id}"] .required-mark`)).toHaveLength(1);
+    }
+    expect(el.querySelectorAll('label .required-mark')).toHaveLength(7);
+    expect(el.querySelector('.form-hint')).toBeNull();
+  });
+
+  it('marca alergias como obligatorias y preferencias como opcionales con su explicación', () => {
+    const { el } = crear();
+
+    const alergias = Array.from(el.querySelectorAll('h2')).find((elemento) =>
+      elemento.textContent?.includes('Alergias textiles'),
+    );
+    expect(alergias?.querySelector('.required-mark')).not.toBeNull();
+    expect(el.querySelector('[aria-label="Alergias textiles"][aria-required="true"]')).not.toBeNull();
+
+    for (const [texto, faltaPreferencia] of [
+      ['Colores preferidos', 'sin colores preferidos'],
+      ['Estampados preferidos', 'sin estampados preferidos'],
+    ]) {
+      const grupo = Array.from(el.querySelectorAll('legend')).find((elemento) =>
+        elemento.textContent?.includes(texto),
+      );
+      expect(grupo?.querySelector('.optional-mark')?.textContent).toContain('(opcional;');
+      expect(grupo?.querySelector('.optional-mark')?.textContent).toContain(
+        'ayuda a mejorar las recomendaciones',
+      );
+      expect(grupo?.querySelector('.optional-mark')?.textContent).toContain(faltaPreferencia);
+      expect(grupo?.querySelector('.optional-mark')?.textContent).toContain('el perfil queda incompleto');
+    }
+  });
+
+  it('mantiene la validación del nombre obligatorio al enviar vacío', () => {
+    const { el, submitProfile, fixture } = crear();
+    submitProfile();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('El nombre es obligatorio.');
+    httpMock.expectNone('/api/cliente/perfiles');
+  });
+
   it('rechaza la fecha de hoy para no crear un bebé con cero días de edad', () => {
     const creado = crear();
     completarFormulario(creado);

@@ -136,12 +136,14 @@ export class DetalleProducto implements OnInit {
     const prenda = this.prenda();
     const talla = this.tallaSeleccionada();
     const color = this.colorSeleccionado();
+    const estampado = this.estampadoElegido();
     const cantidad = this.cantidadSeleccionada();
 
     if (
       !prenda ||
       !talla ||
       !color ||
+      (this.estampadosDisponibles().length > 0 && !estampado) ||
       cantidad < 1 ||
       cantidad > this.stockTallaSeleccionada() ||
       this.agregandoAlCarrito()
@@ -159,6 +161,7 @@ export class DetalleProducto implements OnInit {
       cantidad,
       tallaSugerida: this.sugerida()?.tallaSugerida || null,
       color,
+      estampado: estampado || null,
     }).subscribe({
       next: () => {
         this.mensajeCarrito.set('Prenda agregada al carrito.');
@@ -354,6 +357,35 @@ export class DetalleProducto implements OnInit {
   }
 
   protected readonly colorSeleccionado = signal('');
+
+  /** Estampados que ofrece la prenda: la lista declarada o, en prendas antiguas, su único estampado. */
+  protected readonly estampadosDisponibles = computed<string[]>(() => {
+    const prenda = this.prenda();
+    if (!prenda) return [];
+    if (prenda.estampados?.length) return prenda.estampados;
+    return prenda.estampado ? [prenda.estampado] : [];
+  });
+
+  private readonly estampadoSeleccionado = signal('');
+
+  /** Estampado elegido; si la prenda ofrece uno solo se asume sin que el cliente tenga que elegir. */
+  protected readonly estampadoElegido = computed(() => {
+    const disponibles = this.estampadosDisponibles();
+    const elegido = this.estampadoSeleccionado();
+    if (elegido && disponibles.includes(elegido)) return elegido;
+    return disponibles.length === 1 ? disponibles[0] : '';
+  });
+
+  protected readonly estampadosDe = (p: VitrinaDetalle) =>
+    (p.estampados?.length ? p.estampados : p.estampado ? [p.estampado] : [])
+      .map((e) => ETIQUETAS_ESTAMPADOS[e as keyof typeof ETIQUETAS_ESTAMPADOS] ?? e)
+      .join(', ') || '—';
+
+  protected seleccionarEstampado(estampado: string): void {
+    this.estampadoSeleccionado.set(estampado);
+    this.mensajeCarrito.set(null);
+    this.errorCarrito.set(null);
+  }
 
   protected readonly coloresDisponibles = computed(
     () => this.prenda()?.colores ?? [],

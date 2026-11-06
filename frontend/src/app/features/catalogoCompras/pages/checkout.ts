@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
+  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
   Validators,
@@ -10,25 +11,28 @@ import { forkJoin } from 'rxjs';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { ColorEtiquetaPipe } from '../../../shared/pipes/color-etiqueta.pipe';
+import { EstampadoEtiquetaPipe } from '../../../shared/pipes/estampado-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { PerfilActivoService } from '../../perfilesInfantiles/services/perfil-activo.service';
 import { PerfilesService } from '../../perfilesInfantiles/services/perfiles.service';
 import { formatearPrecio } from '../models/prenda-opciones';
-import { DireccionEnvio, ResumenCheckout } from '../models/checkout.models';
+import { DireccionClienteGuardada, DireccionEnvio, ResumenCheckout } from '../models/checkout.models';
+import { componerDireccion, parsearDireccion } from '../data/direccion-estructurada';
+import { codigoPostalCoherente, codigosPostalesDe } from '../data/codigos-postales-colombia';
 import { DEPARTAMENTOS_COLOMBIA, municipiosDe } from '../data/municipios-colombia';
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
 import { PagoWompi } from '../components/pago-wompi';
 
 /**
- * Gestiona la dirección de entrega, el perfil infantil y el resumen previo al pago.
+ * Gestiona las direcciones de entrega, el perfil infantil y el resumen previo al pago.
  * @see US-10
  * @see UI-11
  * @see UI-12
  */
 @Component({
   selector: 'app-checkout',
-  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi, ColorEtiquetaPipe],
+  imports: [Navbar, RouterLink, ReactiveFormsModule, PagoWompi, ColorEtiquetaPipe, EstampadoEtiquetaPipe],
   templateUrl: './checkout.html',
 })
 export class CheckoutPage implements OnInit {
@@ -42,8 +46,10 @@ export class CheckoutPage implements OnInit {
   protected readonly departamentoSeleccionado = signal('');
   protected readonly municipios = computed(() => municipiosDe(this.departamentoSeleccionado()));
   protected readonly perfilNombre = signal<string | null>(null);
-  protected readonly direccionGuardada = signal<DireccionEnvio | null>(null);
+  protected readonly direccionesGuardadas = signal<DireccionClienteGuardada[]>([]);
+  protected readonly direccionSeleccionadaId = signal<number | null>(null);
   protected readonly editandoDireccion = signal(true);
+  protected readonly editandoDireccionId = signal<number | null>(null);
   protected readonly perfilId = signal<number | null>(null);
   protected readonly paso = signal<'informacion' | 'resumen'>('informacion');
   protected readonly resumen = signal<ResumenCheckout | null>(null);
@@ -64,32 +70,34 @@ export class CheckoutPage implements OnInit {
    */
   protected readonly form = this.fb.nonNullable.group({
     destinatario: ['', [Validators.required, Validators.maxLength(120)]],
-    direccion: ['', [Validators.required, Validators.maxLength(200)]],
+    direccion: ['', [
+      Validators.required,
+      Validators.maxLength(100),
+      (control: AbstractControl) => parsearDireccion(control.value) ? null : { formatoDireccion: true },
+    ]],
     complemento: ['', [Validators.maxLength(120)]],
-    codigoPostal: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+    codigoPostal: ['', [Validators.required, Validators.pattern(/^\d{6}$/), codigoPostalCoherente]],
     departamento: ['', [Validators.required, Validators.maxLength(80)]],
     municipio: ['', [Validators.required, Validators.maxLength(80)]],
     telefono: ['', [Validators.required, Validators.pattern(/^3\d{9}$/)]],
   });
 
   /**
-   * Carga en paralelo los perfiles infantiles y la dirección de entrega guardada.
+   * Carga en paralelo los perfiles infantiles y las direcciones de entrega guardadas.
    * @returns No devuelve un valor.
    */
   ngOnInit(): void {
     forkJoin({
       perfiles: this.perfilesService.listar(),
-      direccion: this.checkoutService.obtenerDireccion(),
+      direcciones: this.checkoutService.listarDirecciones(),
     }).subscribe({
-      next: ({ perfiles, direccion }) => {
+      next: ({ perfiles, direcciones }) => {
         this.perfilActivoService.sincronizar(perfiles);
         const perfil = this.perfilActivoService.perfil();
         this.perfilId.set(perfil?.id ?? null);
         this.perfilNombre.set(perfil?.nombre ?? null);
-        const guardada = direccion.guardada ? direccion.direccion : null;
-        this.direccionGuardada.set(guardada);
-        this.editandoDireccion.set(guardada === null || !this.direccionCompleta(guardada));
-        if (guardada) this.cargarDireccionEnFormulario(guardada);
+        this.direccionesGuardadas.set(direcciones);
+        this.editandoDireccion.set(direcciones.length === 0);
         this.cargando.set(false);
       },
       error: (error: unknown) => {
@@ -104,12 +112,9 @@ export class CheckoutPage implements OnInit {
    * Guarda la dirección editada antes de continuar.
    * @returns No devuelve un valor.
    */
-  protected continuarAResumen(): void {
+  protected continuarAResumen(event?: Event): void {
+    event?.preventDefault();
     this.error.set(null);
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
     const perfilInfantilId = this.perfilId();
     if (perfilInfantilId === null) {
       this.error.set('Crea un perfil infantil antes de continuar con la compra.');
@@ -121,16 +126,22 @@ export class CheckoutPage implements OnInit {
     }
 
     if (this.editandoDireccion()) {
+      if (this.form.invalid) {
+        this.form.markAllAsTouched();
+        return;
+      }
       this.procesando.set(true);
-      this.checkoutService.guardarDireccion(this.direccionFormulario()).subscribe({
+      const direccion = this.direccionFormulario();
+      const id = this.editandoDireccionId();
+      const solicitud = id === null
+        ? this.checkoutService.crearDireccion(direccion)
+        : this.checkoutService.actualizarDireccion(id, direccion);
+      solicitud.subscribe({
         next: (respuesta) => {
-          if (!respuesta.guardada || !respuesta.direccion) {
-            this.error.set('No fue posible guardar la dirección de entrega.');
-            this.procesando.set(false);
-            return;
-          }
-          this.direccionGuardada.set(respuesta.direccion);
+          this.guardarDireccionEnLista(respuesta);
+          this.direccionSeleccionadaId.set(respuesta.id);
           this.cargarDireccionEnFormulario(respuesta.direccion);
+          this.editandoDireccionId.set(null);
           this.editandoDireccion.set(false);
           this.solicitarResumen(perfilInfantilId);
         },
@@ -142,6 +153,18 @@ export class CheckoutPage implements OnInit {
       return;
     }
 
+    const seleccionada = this.direccionesGuardadas().find(
+      (direccion) => direccion.id === this.direccionSeleccionadaId(),
+    );
+    if (!seleccionada) {
+      this.error.set('Selecciona una dirección de entrega para continuar.');
+      return;
+    }
+    if (!this.direccionCompleta(seleccionada.direccion)) {
+      this.error.set('Completa los datos de esta dirección antes de continuar.');
+      return;
+    }
+    this.cargarDireccionEnFormulario(seleccionada.direccion);
     this.procesando.set(true);
     this.solicitarResumen(perfilInfantilId);
   }
@@ -151,14 +174,27 @@ export class CheckoutPage implements OnInit {
    * @returns No devuelve un valor.
    */
   protected usarDireccionGuardada(): void {
-    const direccion = this.direccionGuardada();
-    if (!direccion) return;
-    this.cargarDireccionEnFormulario(direccion);
-    this.editandoDireccion.set(false);
     this.continuarAResumen();
   }
 
-  protected editarDireccion(): void {
+  protected seleccionarDireccion(id: number): void {
+    this.direccionSeleccionadaId.set(id);
+    this.error.set(null);
+  }
+
+  protected agregarDireccion(): void {
+    this.limpiarDireccionFormulario();
+    this.editandoDireccionId.set(null);
+    this.editandoDireccion.set(true);
+    this.error.set(null);
+  }
+
+  protected editarDireccion(id: number): void {
+    const guardada = this.direccionesGuardadas().find((direccion) => direccion.id === id);
+    if (!guardada) return;
+    this.direccionSeleccionadaId.set(id);
+    this.editandoDireccionId.set(id);
+    this.cargarDireccionEnFormulario(guardada.direccion);
     this.error.set(null);
     this.editandoDireccion.set(true);
   }
@@ -174,12 +210,24 @@ export class CheckoutPage implements OnInit {
     this.departamentoSeleccionado.set(departamento);
     this.form.controls.municipio.setValue('');
     this.form.controls.municipio.markAsUntouched();
+    this.form.controls.codigoPostal.setValue('');
+    this.form.controls.codigoPostal.markAsUntouched();
+  }
+
+  protected codigosPostales(): readonly string[] | null {
+    const { departamento, municipio } = this.form.getRawValue();
+    return codigosPostalesDe(departamento, municipio);
+  }
+
+  protected cambioMunicipio(): void {
+    this.form.controls.codigoPostal.setValue('');
+    this.form.controls.codigoPostal.markAsUntouched();
   }
 
   protected cancelarEdicionDireccion(): void {
-    const direccion = this.direccionGuardada();
-    if (!direccion) return;
-    this.cargarDireccionEnFormulario(direccion);
+    if (this.direccionesGuardadas().length === 0) return;
+    this.limpiarDireccionFormulario();
+    this.editandoDireccionId.set(null);
     this.editandoDireccion.set(false);
     this.error.set(null);
   }
@@ -223,13 +271,15 @@ export class CheckoutPage implements OnInit {
     this.departamentoSeleccionado.set(departamento);
     this.form.patchValue({
       destinatario: direccion.destinatario,
-      direccion: direccion.direccion,
+      direccion: direccion.direccion
+        || componerDireccion(direccion.tipoVia, direccion.numeroVia, direccion.numeroCruce, direccion.placa),
       complemento: direccion.complemento ?? '',
       codigoPostal: direccion.codigoPostal ?? '',
       departamento,
       municipio,
       telefono: direccion.telefono,
     });
+    this.form.controls.codigoPostal.updateValueAndValidity();
   }
 
   /**
@@ -238,10 +288,13 @@ export class CheckoutPage implements OnInit {
    */
   private direccionFormulario(): DireccionEnvio {
     const direccion = this.form.getRawValue();
+    const partesDireccion = parsearDireccion(direccion.direccion);
+    if (!partesDireccion) throw new Error('La dirección del checkout no tiene un formato válido.');
     return {
       ...direccion,
       destinatario: direccion.destinatario.trim(),
       direccion: direccion.direccion.trim(),
+      ...partesDireccion,
       complemento: direccion.complemento.trim() || null,
       codigoPostal: direccion.codigoPostal.trim(),
       departamento: direccion.departamento.trim(),
@@ -255,14 +308,30 @@ export class CheckoutPage implements OnInit {
    * @param direccion Dirección que se comprueba.
    * @returns `true` si los datos geográficos coinciden con el catálogo local.
    */
-  private direccionCompleta(direccion: DireccionEnvio): boolean {
+  protected direccionCompleta(direccion: DireccionEnvio): boolean {
     const departamento = this.departamentos.find(
       (opcion) => this.normalizarUbicacion(opcion) === this.normalizarUbicacion(direccion.departamento ?? ''),
     );
     const municipio = municipiosDe(departamento ?? '').find(
       (opcion) => this.normalizarUbicacion(opcion) === this.normalizarUbicacion(direccion.municipio ?? ''),
     );
-    return Boolean(direccion.codigoPostal && departamento && municipio);
+    return Boolean(
+      parsearDireccion(direccion.direccion)
+      && direccion.destinatario && direccion.codigoPostal && departamento && municipio && direccion.telefono,
+    );
+  }
+
+  private guardarDireccionEnLista(direccion: DireccionClienteGuardada): void {
+    const direcciones = this.direccionesGuardadas();
+    const indice = direcciones.findIndex((guardada) => guardada.id === direccion.id);
+    this.direccionesGuardadas.set(indice < 0
+      ? [...direcciones, direccion]
+      : direcciones.map((guardada) => guardada.id === direccion.id ? direccion : guardada));
+  }
+
+  private limpiarDireccionFormulario(): void {
+    this.form.reset();
+    this.departamentoSeleccionado.set('');
   }
 
   /**

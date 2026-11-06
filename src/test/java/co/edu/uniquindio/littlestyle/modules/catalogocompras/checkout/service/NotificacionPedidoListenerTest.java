@@ -122,6 +122,27 @@ class NotificacionPedidoListenerTest {
         verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(7L), eq("Ana"), anyList());
     }
 
+    // Auditoría 4.2: los correos al cliente citan su consecutivo (3); el aviso al vendedor conserva el
+    // id global (7), porque el vendedor recibe pedidos de muchos clientes y el consecutivo se repetiría.
+    @Test
+    void correosAlClienteUsanElConsecutivoYElVendedorElIdGlobal() {
+        Pedido pedido = pedido();
+        pedido.setNumeroCliente(3);
+        when(pedidoRepository.findById(7L)).thenReturn(Optional.of(pedido));
+        var vendedor = Usuario.builder().id(9L).nombre("Luis").nombreTienda("Tienda Sol")
+                .email("v@tienda.com").build();
+        var prenda = co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Prenda.builder()
+                .id(3L).vendedor(vendedor).build();
+        when(prendaRepository.findById(3L)).thenReturn(Optional.of(prenda));
+
+        listener.alCrearse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoCreadoEvent(7L));
+        listener.alPagarse(new co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.event.PedidoPagadoEvent(7L));
+
+        verify(correo).enviarPedidoCreado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
+        verify(correo).enviarPagoConfirmado(eq("a@b.com"), eq("Ana"), eq(3L), eq("107000"), anyList());
+        verify(correo).enviarPedidoNuevoVendedor(eq("v@tienda.com"), eq("Tienda Sol"), eq(7L), eq("Ana"), anyList());
+    }
+
     // Si Wompi rechaza el pago, el cliente se entera; aquí el listener trabaja con la
     // transacción directamente, sin necesidad de que exista el pedido.
     @Test

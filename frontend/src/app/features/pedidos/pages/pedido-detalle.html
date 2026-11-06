@@ -9,7 +9,7 @@
   } @else if (pedido(); as p) {
     <header class="reco-heading">
       <div>
-        <p class="reco-eyebrow">Pedido #{{ p.id }}</p>
+        <p class="reco-eyebrow">Pedido #{{ p.numeroPedido }}</p>
         <h1>{{ estadoDe(p.estado) }}</h1>
       </div>
       <div class="reco-acciones">
@@ -52,7 +52,7 @@
               <div><dt>Guía del paquete</dt><dd><strong>{{ d.numeroGuia }}</strong></dd></div>
             }
             <ul class="pedido-items">
-              @for (item of d.items; track item.prendaId + '-' + item.talla + '-' + (item.color ?? 'sin-color')) {
+              @for (item of d.items; track item.prendaId + '-' + item.talla + '-' + (item.color ?? 'sin-color') + '-' + (item.estampado ?? 'sin-estampado')) {
                 <li>
                   @if (item.imagenUrl) {
                     <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
@@ -63,6 +63,7 @@
                     <strong>{{ item.nombre }}</strong>
                     <span class="product-meta">
                       @if (item.color) { {{ colorDe(item.color) }} · }
+                      @if (item.estampado) { {{ item.estampado | estampadoEtiqueta }} · }
                       Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u
                     </span>
                   </div>
@@ -78,7 +79,7 @@
     <section class="vitrina-seccion" aria-label="Productos del pedido">
       <h3>Productos</h3>
       <ul class="pedido-items">
-        @for (item of p.items; track item.prendaId + '-' + item.talla + '-' + (item.color ?? 'sin-color')) {
+        @for (item of p.items; track item.prendaId + '-' + item.talla + '-' + (item.color ?? 'sin-color') + '-' + (item.estampado ?? 'sin-estampado')) {
           <li>
             @if (item.imagenUrl) {
               <img class="pedido-miniatura" [src]="item.imagenUrl" [alt]="item.nombre" loading="lazy" />
@@ -89,6 +90,7 @@
               <strong>{{ item.nombre }}</strong>
               <span class="product-meta">
                 @if (item.color) { {{ colorDe(item.color) }} · }
+                @if (item.estampado) { {{ item.estampado | estampadoEtiqueta }} · }
                 Talla {{ item.talla }} · {{ item.cantidad }} un. · {{ precio(item.precioUnitario) }} c/u
               </span>
             </div>

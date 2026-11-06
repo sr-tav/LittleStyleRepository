@@ -176,7 +176,11 @@ erDiagram
         BIGINT id PK
         BIGINT cliente_id FK,UK
         VARCHAR destinatario "cifrado"
-        VARCHAR direccion "cifrado"
+        VARCHAR direccion "cifrado, texto compuesto"
+        VARCHAR tipo_via "cifrado"
+        VARCHAR numero_via "cifrado"
+        VARCHAR numero_cruce "cifrado"
+        VARCHAR placa "cifrado"
         VARCHAR complemento "cifrado"
         VARCHAR codigo_postal "cifrado"
         VARCHAR departamento "cifrado"

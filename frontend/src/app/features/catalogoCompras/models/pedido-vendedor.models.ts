@@ -29,6 +29,7 @@ export interface PedidoVendedorItem {
   nombre: string;
   talla: string;
   color?: ColorPreferido | null;
+  estampado?: string | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;

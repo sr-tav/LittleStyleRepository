@@ -83,6 +83,8 @@ export interface Prenda {
   nivelStock: NivelStock;
   colores: ColorPreferido[];
   estampado: Estampado | null;
+  /** Estampados que ofrece la prenda (el cliente elige uno en el detalle). */
+  estampados?: Estampado[];
   tintesSinteticos: boolean;
   brochesMetalicos: boolean;
   contieneNiquel: boolean;
@@ -122,6 +124,8 @@ export interface PrendaRequest {
   precio: number;
   colores: ColorPreferido[];
   estampado: Estampado | null;
+  /** Estampados que ofrece la prenda (el cliente elige uno en el detalle). */
+  estampados?: Estampado[];
   tintesSinteticos: boolean;
   brochesMetalicos: boolean;
   contieneNiquel: boolean;

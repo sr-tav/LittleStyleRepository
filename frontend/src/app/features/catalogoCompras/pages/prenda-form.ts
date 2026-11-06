@@ -122,6 +122,18 @@ export class PrendaForm implements OnInit, OnDestroy {
   protected readonly materiales = OPCIONES_MATERIALES;
   protected readonly colores = OPCIONES_COLORES;
   protected readonly estampados = OPCIONES_ESTAMPADOS;
+
+  /**
+   * Marca o desmarca un estampado que ofrece la prenda.
+   * @param valor Estampado que se alterna.
+   * @returns No devuelve un valor.
+   */
+  protected alternarEstampado(valor: Estampado): void {
+    const control = this.form.controls.estampados;
+    const actuales = control.value;
+    control.setValue(actuales.includes(valor) ? actuales.filter((e) => e !== valor) : [...actuales, valor]);
+    control.markAsTouched();
+  }
   protected readonly limites = LIMITES_PRENDA;
   protected readonly etiquetasAlergia = ETIQUETAS_ALERGIAS;
 
@@ -169,7 +181,7 @@ export class PrendaForm implements OnInit, OnDestroy {
       Validators.min(100),
       Validators.max(10_000_000),
     ]),
-    estampado: this.fb.nonNullable.control<Estampado | ''>(''),
+    estampados: this.fb.nonNullable.control<Estampado[]>([], Validators.required),
     tintesSinteticos: this.fb.nonNullable.control(false),
     brochesMetalicos: this.fb.nonNullable.control(false),
     contieneNiquel: this.fb.nonNullable.control(false),
@@ -299,7 +311,7 @@ export class PrendaForm implements OnInit, OnDestroy {
       instruccionesCuidado: prenda.instruccionesCuidado ?? '',
       marca: prenda.marca ?? '',
       precio: prenda.precio,
-      estampado: prenda.estampado ?? '',
+      estampados: prenda.estampados?.length ? prenda.estampados : prenda.estampado ? [prenda.estampado] : [],
       tintesSinteticos: prenda.tintesSinteticos,
       brochesMetalicos: prenda.brochesMetalicos,
       contieneNiquel: prenda.contieneNiquel,
@@ -672,7 +684,8 @@ export class PrendaForm implements OnInit, OnDestroy {
       marca: texto(v.marca),
       precio: Number(v.precio),
       colores: this.coloresDeVariantes(),
-      estampado: v.estampado || null,
+      estampado: v.estampados[0] ?? null,
+      estampados: v.estampados,
       tintesSinteticos: v.tintesSinteticos,
       brochesMetalicos: v.brochesMetalicos,
       contieneNiquel: v.contieneNiquel,

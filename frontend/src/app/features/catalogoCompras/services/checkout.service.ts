@@ -4,17 +4,33 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import {
+  DireccionClienteGuardada,
   DireccionEnvio,
   DireccionGuardada,
   ResumenCheckout,
   ResumenCheckoutRequest,
 } from '../models/checkout.models';
 
-/** Consulta y guarda la dirección de entrega y calcula el resumen del checkout. */
+/** Administra las direcciones de entrega y calcula el resumen del checkout. */
 @Injectable({ providedIn: 'root' })
 export class CheckoutService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/cliente/checkout`;
+
+  /** Lista las direcciones guardadas del cliente autenticado. */
+  listarDirecciones(): Observable<DireccionClienteGuardada[]> {
+    return this.http.get<DireccionClienteGuardada[]>(`${this.baseUrl}/direcciones`);
+  }
+
+  /** Agrega una dirección a la cuenta del cliente autenticado. */
+  crearDireccion(direccion: DireccionEnvio): Observable<DireccionClienteGuardada> {
+    return this.http.post<DireccionClienteGuardada>(`${this.baseUrl}/direcciones`, direccion);
+  }
+
+  /** Actualiza una dirección guardada propia. */
+  actualizarDireccion(id: number, direccion: DireccionEnvio): Observable<DireccionClienteGuardada> {
+    return this.http.put<DireccionClienteGuardada>(`${this.baseUrl}/direcciones/${id}`, direccion);
+  }
 
   /**
    * Consulta la dirección de envío guardada del cliente.

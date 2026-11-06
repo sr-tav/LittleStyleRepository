@@ -125,6 +125,34 @@ class PedidoConsultaServiceTest {
         assertThat(detalle.items().getFirst().imagenUrl()).isEqualTo("/media/a.png");
     }
 
+    // Auditoría 4.2: el listado y el detalle muestran el consecutivo del cliente (2), no el id de la base (7)
+    @Test
+    void elClienteVeSuConsecutivoEnListadoYDetalle() {
+        Pedido propio = pedido(7L);
+        propio.setNumeroCliente(2);
+        when(pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(CLIENTE_ID)).thenReturn(List.of(propio));
+        when(pedidoRepository.findByIdAndClienteId(7L, CLIENTE_ID)).thenReturn(Optional.of(propio));
+        when(despachoRepository.findAllByPedidoIdOrderByIdAsc(7L)).thenReturn(List.of());
+        when(historialRepository.findAllByPedidoIdOrderByFechaCambioAsc(7L)).thenReturn(List.of());
+
+        var resumen = service.misPedidos().getFirst();
+        PedidoDetalleResponse detalle = service.detalle(7L);
+
+        assertThat(resumen.id()).isEqualTo(7L);
+        assertThat(resumen.numeroPedido()).isEqualTo(2L);
+        assertThat(detalle.id()).isEqualTo(7L);
+        assertThat(detalle.numeroPedido()).isEqualTo(2L);
+    }
+
+    // Un pedido anterior a la migración, sin consecutivo, muestra su id para no quedar sin número
+    @Test
+    void sinConsecutivoElListadoMuestraElIdInterno() {
+        when(pedidoRepository.findAllByClienteIdOrderByFechaCreacionDesc(CLIENTE_ID))
+                .thenReturn(List.of(pedido(7L)));
+
+        assertThat(service.misPedidos().getFirst().numeroPedido()).isEqualTo(7L);
+    }
+
     // Pedido que no le pertenece al cliente se trata como inexistente: responde 404 para no filtrar información.
     @Test
     void pedidoAjenoDevuelve404() {

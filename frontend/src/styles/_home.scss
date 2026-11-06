@@ -17,6 +17,46 @@
 .navbar-left {
   display: flex;
   justify-content: flex-start;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.navbar-inicio {
+  padding: 0 0.5rem;
+  color: var(--ls-primary-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.migas {
+  padding: 0.5rem 2rem;
+  border-bottom: 1px solid var(--ls-border);
+  background: var(--ls-surface);
+  color: var(--ls-muted);
+  font-size: 0.85rem;
+
+  ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li + li::before {
+    content: '›';
+    margin-right: 0.35rem;
+  }
+
+  [aria-current='page'] {
+    color: var(--ls-primary-dark);
+    font-weight: 600;
+  }
 }
 
 .navbar-brand-centro {

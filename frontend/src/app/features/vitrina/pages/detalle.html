@@ -111,6 +111,33 @@
             </p>
           }
 
+          @if (estampadosDisponibles().length > 0) {
+            <fieldset class="detalle-selector detalle-estampados">
+              <legend>
+                Estampado:
+                <strong>{{ estampadoElegido() ? estampadoDe(estampadoElegido()) : 'Selecciona un estampado' }}</strong>
+              </legend>
+              <div class="detalle-estampados-lista" role="radiogroup" aria-label="Estampado de la prenda">
+                @for (e of estampadosDisponibles(); track e) {
+                  <div class="detalle-estampado-opcion">
+                    <button
+                      type="button"
+                      class="detalle-estampado"
+                      [class.is-selected]="estampadoElegido() === e"
+                      role="radio"
+                      [attr.aria-checked]="estampadoElegido() === e"
+                      [disabled]="agregandoAlCarrito()"
+                      [attr.aria-label]="'Estampado ' + estampadoDe(e)"
+                      (click)="seleccionarEstampado(e)"
+                    >
+                      <strong>{{ estampadoDe(e) }}</strong>
+                    </button>
+                  </div>
+                }
+              </div>
+            </fieldset>
+          }
+
           <fieldset class="detalle-selector">
             <legend>
               Talla:
@@ -186,6 +213,7 @@
       !p.disponible ||
       !colorSeleccionado() ||
       !tallaSeleccionada() ||
+      (estampadosDisponibles().length > 0 && !estampadoElegido()) ||
       stockTallaSeleccionada() < 1 ||
       agregandoAlCarrito()
     "
@@ -251,8 +279,8 @@
             <dd>{{ p.colores.map(colorDe).join(', ') || '—' }}</dd>
           </div>
           <div class="detail-card-item">
-            <dt>Estampado</dt>
-            <dd>{{ estampadoDe(p.estampado) }}</dd>
+            <dt>Estampados</dt>
+            <dd>{{ estampadosDe(p) }}</dd>
           </div>
           <div class="detail-card-item detail-card-item-wide">
             <dt>Información para alergias</dt>
