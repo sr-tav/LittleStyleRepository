@@ -167,7 +167,15 @@ describe('ClienteInicio', () => {
 
     const root: HTMLElement = fixture.nativeElement;
     expect(root.querySelector('app-acceso-rapido-prenda')).toBeNull();
-    const enlace = root.querySelector<HTMLAnchorElement>('a[href="/cliente/catalogo/10"]');
+    const enlace = root.querySelector<HTMLAnchorElement>(
+      '.home-seccion .reco-card-cta a[href="/cliente/catalogo/10"]',
+    );;
     expect(enlace?.textContent?.trim()).toBe('Ver');
+    expect(enlace?.classList.contains('reco-card-link')).toBe(true);
+    const enlaceImagen = root.querySelector<HTMLAnchorElement>('.hero-product-link');
+    expect(enlaceImagen?.getAttribute('href')).toBe('/cliente/catalogo/10');
+    expect(enlaceImagen?.getAttribute('aria-label')).toBe(
+      'Ver detalle de Pantalón Jogger Azul',
+    );
   });
 });

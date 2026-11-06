@@ -374,7 +374,7 @@ class PagoWompiIntegrationTest {
 
         mockMvc.perform(post("/api/cliente/carrito/items").header("Authorization", cliente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":" + cantidad + "}"))
+                        .content("{\"prendaId\":" + prendaId + ",\"talla\":\"4\",\"cantidad\":" + cantidad + ",\"color\":\"AZUL\"}"))
                 .andExpect(status().isOk());
         return new Compra(cliente, vendedor, perfilId, prendaId);
     }

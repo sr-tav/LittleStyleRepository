@@ -79,4 +79,11 @@ public class DireccionCliente {
     @Convert(converter = TextoLegadoCifradoConverter.class)
     @Column(nullable = false, length = 512)
     private String telefono;
+
+    /**
+     * Dirección propuesta por defecto en el checkout; una sola por cliente y siempre
+     * la más antigua cuando se elimina la predeterminada (invariante del Punto 6).
+     */
+    @Column(nullable = false)
+    private Boolean predeterminada;
 }

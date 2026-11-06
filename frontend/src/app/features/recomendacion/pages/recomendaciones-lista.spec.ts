@@ -92,6 +92,7 @@ describe('RecomendacionesLista (US-07)', () => {
     const enlace = el.querySelector<HTMLAnchorElement>('a[href^="/cliente/catalogo/7"]');
     expect(enlace?.textContent?.trim()).toBe('Ver');
     expect(enlace?.getAttribute('href')).toMatch(/^\/cliente\/catalogo\/7(?:\?|$)/);
+    expect(enlace?.classList.contains('reco-card-link')).toBe(true);
   });
 
   it('avisa cuando no hay prendas compatibles', () => {

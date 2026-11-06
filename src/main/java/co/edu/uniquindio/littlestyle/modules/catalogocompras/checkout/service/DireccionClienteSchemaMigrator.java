@@ -35,15 +35,23 @@ public class DireccionClienteSchemaMigrator implements ApplicationRunner {
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metadata = connection.getMetaData();
             String database = metadata.getDatabaseProductName().toLowerCase(Locale.ROOT);
+            String tabla = nombreTabla(metadata);
+
+            if (tabla == null) {
+                return;
+            }
+
+            migrarPredeterminada(metadata, database, tabla);
+
             if (database.contains("mysql") || database.contains("mariadb")) {
                 eliminarIndicesMySql(metadata);
                 return;
             }
 
-            String tabla = nombreTabla(metadata);
-            if (tabla == null) return;
             List<String> indices = indicesUnicosDeCliente(metadata, tabla);
-            if (indices.isEmpty()) return;
+            if (indices.isEmpty()) {
+                return;
+            }
 
             boolean migracionCompleta = true;
             for (String indice : indices) {
@@ -66,8 +74,10 @@ public class DireccionClienteSchemaMigrator implements ApplicationRunner {
                             "No hay migración para la restricción de direcciones_cliente en " + database);
                 }
             }
+
             if (migracionCompleta) {
-                log.info("Restricción de una dirección por cliente eliminada; se conservaron las direcciones existentes");
+                log.info("Restricción de una dirección por cliente eliminada; "
+                        + "se conservaron las direcciones existentes");
             }
         }
     }
@@ -178,6 +188,96 @@ public class DireccionClienteSchemaMigrator implements ApplicationRunner {
         String comilla = metadata.getIdentifierQuoteString().trim();
         if (comilla.isEmpty()) return identificador;
         return comilla + identificador.replace(comilla, comilla + comilla) + comilla;
+    }
+
+    private void migrarPredeterminada(DatabaseMetaData metadata, String database, String tabla)
+            throws SQLException {
+        if (!columnaExiste(metadata, tabla, "predeterminada")) {
+            if (!database.contains("h2")
+                    && !database.contains("mysql")
+                    && !database.contains("mariadb")) {
+                throw new IllegalStateException(
+                        "No hay migración para direcciones_cliente.predeterminada en " + database);
+            }
+
+            jdbcTemplate.execute("ALTER TABLE " + identificar(metadata, tabla)
+                    + " ADD COLUMN " + identificar(metadata, "predeterminada") + " BOOLEAN");
+        }
+
+        List<EstadoDireccion> filas = jdbcTemplate.query(
+                "SELECT cliente_id, id, predeterminada FROM " + identificar(metadata, tabla)
+                        + " ORDER BY cliente_id, id",
+                (resultado, numeroFila) -> {
+                    boolean valor = resultado.getBoolean("predeterminada");
+                    Boolean predeterminada = resultado.wasNull() ? null : valor;
+                    return new EstadoDireccion(
+                            resultado.getLong("cliente_id"),
+                            resultado.getLong("id"),
+                            predeterminada);
+                });
+
+        Map<Long, List<EstadoDireccion>> porCliente = new LinkedHashMap<>();
+        for (EstadoDireccion fila : filas) {
+            porCliente.computeIfAbsent(fila.clienteId(), ignorado -> new ArrayList<>()).add(fila);
+        }
+
+        String actualizar = "UPDATE " + identificar(metadata, tabla)
+                + " SET " + identificar(metadata, "predeterminada") + " = ?"
+                + " WHERE " + identificar(metadata, "id") + " = ?";
+
+        for (List<EstadoDireccion> direcciones : porCliente.values()) {
+            EstadoDireccion seleccionada = direcciones.stream()
+                    .filter(direccion -> Boolean.TRUE.equals(direccion.predeterminada()))
+                    .findFirst()
+                    .orElse(direcciones.get(0));
+
+            for (EstadoDireccion direccion : direcciones) {
+                jdbcTemplate.update(actualizar,
+                        direccion.id().equals(seleccionada.id()),
+                        direccion.id());
+            }
+        }
+
+        if (columnaPermiteNulos(metadata, tabla, "predeterminada")) {
+            if (database.contains("h2")) {
+                jdbcTemplate.execute("ALTER TABLE " + identificar(metadata, tabla)
+                        + " ALTER COLUMN " + identificar(metadata, "predeterminada") + " SET NOT NULL");
+            } else if (database.contains("mysql") || database.contains("mariadb")) {
+                jdbcTemplate.execute("ALTER TABLE " + identificar(metadata, tabla)
+                        + " MODIFY COLUMN " + identificar(metadata, "predeterminada") + " BOOLEAN NOT NULL");
+            } else {
+                throw new IllegalStateException(
+                        "No hay migración para direcciones_cliente.predeterminada en " + database);
+            }
+        }
+    }
+
+    private boolean columnaExiste(DatabaseMetaData metadata, String tabla, String columna) throws SQLException {
+        try (ResultSet columnas = metadata.getColumns(null, null, null, null)) {
+            while (columnas.next()) {
+                if (tabla.equalsIgnoreCase(columnas.getString("TABLE_NAME"))
+                        && columna.equalsIgnoreCase(columnas.getString("COLUMN_NAME"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean columnaPermiteNulos(DatabaseMetaData metadata, String tabla, String columna)
+            throws SQLException {
+        try (ResultSet columnas = metadata.getColumns(null, null, null, null)) {
+            while (columnas.next()) {
+                if (tabla.equalsIgnoreCase(columnas.getString("TABLE_NAME"))
+                        && columna.equalsIgnoreCase(columnas.getString("COLUMN_NAME"))) {
+                    return columnas.getInt("NULLABLE") != DatabaseMetaData.columnNoNulls;
+                }
+            }
+        }
+        return false;
+    }
+
+    private record EstadoDireccion(Long clienteId, Long id, Boolean predeterminada) {
     }
 
     private static final class IndexInfo {

@@ -1233,3 +1233,23 @@
   font-size: 0.85rem;
   margin: 0 0 1rem;
 }
+
+.address-default-badge {
+  justify-self: start;
+  margin: 0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: var(--ls-primary-soft);
+  color: var(--ls-primary-dark);
+  font-weight: 700;
+}
+
+.checkout-direccion-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  button {
+    min-height: 44px;
+  }
+}

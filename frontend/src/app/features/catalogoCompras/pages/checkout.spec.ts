@@ -34,6 +34,30 @@ describe('CheckoutPage', () => {
     porcentajeCompletitud: 100,
     camposPendientes: [],
   };
+  const direccionPrueba: DireccionEnvio = {
+    destinatario: 'Ana Ruiz',
+    direccion: 'Calle 1 # 2 - 3',
+    tipoVia: 'Calle',
+    numeroVia: '1',
+    numeroCruce: '2',
+    placa: '3',
+    complemento: null,
+    codigoPostal: '630001',
+    departamento: 'Quindío',
+    municipio: 'Armenia',
+    telefono: '3001234567',
+  };
+
+  const primera: DireccionEnvio = { ...direccionPrueba };
+
+  const segunda: DireccionEnvio = {
+    ...direccionPrueba,
+    direccion: 'Carrera 12 # 34 - 56',
+    tipoVia: 'Carrera',
+    numeroVia: '12',
+    numeroCruce: '34',
+    placa: '56',
+  };
   const item = {
     id: 10,
     prendaId: 20,
@@ -49,25 +73,6 @@ describe('CheckoutPage', () => {
   const carritoMock = {
     items: vi.fn(() => carritoItems),
     cargar: vi.fn((): Observable<Carrito> => of(carritoRespuesta())),
-  };
-  const checkout = {
-    calcularResumen: vi.fn(() => of({
-      perfilInfantilId: 3,
-      items: [{
-        prendaId: 20,
-        nombre: 'Pantalón Jogger',
-        talla: '4',
-        cantidad: 2,
-        precioUnitario: 32900,
-        subtotal: 65800,
-      }],
-      subtotal: 65800,
-      costoEnvio: 7000,
-      total: 72800,
-    })),
-    listarDirecciones: vi.fn((): Observable<DireccionClienteGuardada[]> => of([])),
-    crearDireccion: vi.fn((direccion: DireccionEnvio) => of({ id: 1, direccion })),
-    actualizarDireccion: vi.fn((id: number, direccion: DireccionEnvio) => of({ id, direccion })),
   };
   const pagoService = { iniciar: vi.fn(() => of({
     pedidoId: null,
@@ -91,6 +96,8 @@ describe('CheckoutPage', () => {
     checkout.listarDirecciones.mockReset().mockReturnValue(of([]));
     checkout.crearDireccion.mockClear();
     checkout.actualizarDireccion.mockClear();
+    checkout.eliminarDireccion.mockClear();
+    checkout.marcarDireccionPredeterminada.mockClear();
     pagoService.iniciar.mockClear();
     widget.abrir.mockClear();
     localStorage.clear();
@@ -107,6 +114,32 @@ describe('CheckoutPage', () => {
     })
       .compileComponents();
   });
+
+  const checkout = {
+    calcularResumen: vi.fn(() => of({
+      perfilInfantilId: 3,
+      items: [{
+        prendaId: 20,
+        nombre: 'Pantalón Jogger',
+        talla: '4',
+        cantidad: 2,
+        precioUnitario: 32900,
+        subtotal: 65800,
+      }],
+      subtotal: 65800,
+      costoEnvio: 7000,
+      total: 72800,
+    })),
+    listarDirecciones: vi.fn((): Observable<DireccionClienteGuardada[]> => of([])),
+    crearDireccion: vi.fn((direccion: DireccionEnvio) =>
+      of({ id: 1, direccion, predeterminada: false })),
+    actualizarDireccion: vi.fn((id: number, direccion: DireccionEnvio) =>
+      of({ id, direccion, predeterminada: false })),
+    eliminarDireccion: vi.fn((_id: number) => of(void 0)),
+    marcarDireccionPredeterminada: vi.fn((id: number) =>
+      of({ id, direccion: direccionPrueba, predeterminada: true })),
+  };
+
 
   it('usa el perfil activo sin pedir seleccionarlo y presenta UI-12 con el pago habilitado', () => {
     const fixture = TestBed.createComponent(CheckoutPage);
@@ -243,28 +276,27 @@ describe('CheckoutPage', () => {
   });
 
   it('permite reutilizar la dirección de cuenta y editarla', () => {
-    checkout.listarDirecciones.mockReturnValue(of([{
-      id: 1,
-      direccion: {
-        destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2 - 3',
-        tipoVia: 'Calle',
-        numeroVia: '1',
-        numeroCruce: '2',
-        placa: '3',
-        complemento: 'Apto. 302',
-        codigoPostal: '630001',
-        departamento: 'Quindío',
-        municipio: 'Armenia',
-        telefono: '3001234567',
+    const direccionConComplemento: DireccionEnvio = {
+      ...direccionPrueba,
+      complemento: 'Apto. 302',
+    };
+
+    checkout.listarDirecciones.mockReturnValue(of([
+      {
+        id: 1,
+        direccion: direccionConComplemento,
+        predeterminada: true,
       },
-    }]));
+    ]));
+
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
 
     expect(root.textContent).toContain('Elige una dirección para esta compra');
-    expect(root.querySelector<HTMLInputElement>('input[name="direccionSeleccionada"]')?.checked).toBe(false);
+    expect(root.querySelector<HTMLInputElement>(
+      'input[name="direccionSeleccionada"]',
+    )?.checked).toBe(true);
     expect(root.querySelector<HTMLInputElement>('#direccion')).toBeNull();
 
     Array.from(root.querySelectorAll('button'))
@@ -303,8 +335,8 @@ describe('CheckoutPage', () => {
       placa: '56',
     };
     checkout.listarDirecciones.mockReturnValue(of([
-      { id: 1, direccion: primera },
-      { id: 2, direccion: segunda },
+      { id: 1, direccion: primera, predeterminada: false },
+      { id: 2, direccion: segunda, predeterminada: true },
     ]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
@@ -321,8 +353,8 @@ describe('CheckoutPage', () => {
     expect(selectorDireccion?.classList.contains('btn-ghost')).toBe(true);
     expect(selectorDireccion?.textContent).toContain('Seleccionar para esta compra');
     expect(continuar.parentElement).toBe(agregar.parentElement);
-    expect(Array.from(radios).every((radio) => !radio.checked)).toBe(true);
-    expect(continuar.disabled).toBe(true);
+    expect(Array.from(radios).map((radio) => radio.checked)).toEqual([false, true]);
+    expect(continuar.disabled).toBe(false);
     expect(checkout.calcularResumen).not.toHaveBeenCalled();
 
     radios[1].checked = true;
@@ -343,22 +375,10 @@ describe('CheckoutPage', () => {
       status: 404,
       error: { mensaje },
     })));
-    checkout.listarDirecciones.mockReturnValue(of([{
-      id: 1,
-      direccion: {
-        destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2 - 3',
-        tipoVia: 'Calle',
-        numeroVia: '1',
-        numeroCruce: '2',
-        placa: '3',
-        complemento: null,
-        codigoPostal: '630001',
-        departamento: 'Quindío',
-        municipio: 'Armenia',
-        telefono: '3001234567',
-      },
-    }]));
+    checkout.listarDirecciones.mockReturnValue(of([
+      { id: 1, direccion: primera, predeterminada: true },
+      { id: 2, direccion: segunda, predeterminada: false },
+    ]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
@@ -380,22 +400,10 @@ describe('CheckoutPage', () => {
     const agotado: ItemCarrito = { ...item, nombre: 'Pantalón de lino', disponible: false };
     carritoItems = [agotado];
     carritoMock.items.mockImplementation(() => carritoItems);
-    checkout.listarDirecciones.mockReturnValue(of([{
-      id: 1,
-      direccion: {
-        destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2 - 3',
-        tipoVia: 'Calle',
-        numeroVia: '1',
-        numeroCruce: '2',
-        placa: '3',
-        complemento: null,
-        codigoPostal: '630001',
-        departamento: 'Quindío',
-        municipio: 'Armenia',
-        telefono: '3001234567',
-      },
-    }]));
+    checkout.listarDirecciones.mockReturnValue(of([
+      { id: 1, direccion: primera, predeterminada: true },
+      { id: 2, direccion: segunda, predeterminada: false },
+    ]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
@@ -453,18 +461,14 @@ describe('CheckoutPage', () => {
     checkout.listarDirecciones.mockReturnValue(of([{
       id: 1,
       direccion: {
-        destinatario: 'Ana Ruiz',
+        ...direccionPrueba,
         direccion: 'Calle vieja 1',
         tipoVia: null,
         numeroVia: null,
         numeroCruce: null,
         placa: null,
-        complemento: null,
-        codigoPostal: '630001',
-        departamento: 'Quindío',
-        municipio: 'Armenia',
-        telefono: '3001234567',
       },
+      predeterminada: true,
     }]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
@@ -495,5 +499,111 @@ describe('CheckoutPage', () => {
     direccion.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
     expect(direccion.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('marca una dirección como predeterminada y actualiza las tarjetas', () => {
+    const direccionDos: DireccionEnvio = {
+      ...direccionPrueba,
+      direccion: 'Carrera 12 # 34 - 56',
+    };
+    checkout.listarDirecciones.mockReturnValue(of([
+      { id: 1, direccion: direccionPrueba, predeterminada: true },
+      { id: 2, direccion: direccionDos, predeterminada: false },
+    ]));
+    checkout.marcarDireccionPredeterminada.mockReturnValue(of({
+      id: 2,
+      direccion: direccionDos,
+      predeterminada: true,
+    }));
+
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const tarjetas = root.querySelectorAll<HTMLElement>('.checkout-direccion-guardada');
+
+    Array.from(tarjetas[1].querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Marcar predeterminada'))!
+      .click();
+    fixture.detectChanges();
+
+    expect(checkout.marcarDireccionPredeterminada).toHaveBeenCalledWith(2);
+    expect(tarjetas[0].textContent).not.toContain('Dirección predeterminada');
+    expect(tarjetas[1].textContent).toContain('Dirección predeterminada');
+  });
+
+  it('cancela la eliminación sin llamar al backend y elimina al confirmar', () => {
+    const direccionDos: DireccionEnvio = {
+      ...direccionPrueba,
+      direccion: 'Carrera 12 # 34 - 56',
+    };
+    checkout.listarDirecciones.mockReturnValue(of([
+      { id: 1, direccion: direccionPrueba, predeterminada: true },
+      { id: 2, direccion: direccionDos, predeterminada: false },
+    ]));
+
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const tarjeta = root.querySelectorAll<HTMLElement>('.checkout-direccion-guardada')[1];
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Eliminar dirección'))!
+      .click();
+    fixture.detectChanges();
+
+    expect(tarjeta.textContent).toContain('¿Eliminar esta dirección guardada?');
+    expect(checkout.eliminarDireccion).not.toHaveBeenCalled();
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.trim() === 'Cancelar')!
+      .click();
+    fixture.detectChanges();
+    expect(checkout.eliminarDireccion).not.toHaveBeenCalled();
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Eliminar dirección'))!
+      .click();
+    fixture.detectChanges();
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Sí, eliminar'))!
+      .click();
+    fixture.detectChanges();
+
+    expect(checkout.eliminarDireccion).toHaveBeenCalledWith(2);
+    expect(root.querySelectorAll('.checkout-direccion-guardada')).toHaveLength(1);
+  });
+
+  it('mantiene la dirección y anuncia el error si falla su eliminación', () => {
+    const direccionDos: DireccionEnvio = {
+      ...direccionPrueba,
+      direccion: 'Carrera 12 # 34 - 56',
+    };
+    checkout.listarDirecciones.mockReturnValue(of([
+      { id: 1, direccion: direccionPrueba, predeterminada: true },
+      { id: 2, direccion: direccionDos, predeterminada: false },
+    ]));
+    checkout.eliminarDireccion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({
+        status: 404,
+        error: { mensaje: 'Dirección no encontrada' },
+      })),
+    );
+
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const tarjeta = root.querySelectorAll<HTMLElement>('.checkout-direccion-guardada')[1];
+
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Eliminar dirección'))!
+      .click();
+    fixture.detectChanges();
+    Array.from(tarjeta.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Sí, eliminar'))!
+      .click();
+    fixture.detectChanges();
+
+    expect(root.querySelectorAll('.checkout-direccion-guardada')).toHaveLength(2);
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Dirección no encontrada');
   });
 });

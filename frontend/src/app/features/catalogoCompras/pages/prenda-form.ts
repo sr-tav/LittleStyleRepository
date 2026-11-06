@@ -15,7 +15,20 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { ColorPreferido, Estampado } from '../../perfilesInfantiles/models/perfil-infantil.models';
-import { ETIQUETAS_ALERGIAS, OPCIONES_COLORES, OPCIONES_ESTAMPADOS } from '../../perfilesInfantiles/models/perfil-opciones';
+import { OPCIONES_COLORES, OPCIONES_ESTAMPADOS } from '../../perfilesInfantiles/models/perfil-opciones';
+import {
+  alergiasDeclaradasDe,
+  alergiasDetectadasDe,
+  DatosAlergiaPrenda,
+  OPCIONES_ALERGIAS_DECLARABLES,
+} from '../data/filtro-alergia-estandar';
+import {
+  buscarTallaReferencia,
+  describirSugerencia,
+  NOMBRES_TALLAS_REFERENCIA,
+  RangosTallaReferencia,
+  TallaReferencia,
+} from '../data/tallas-referencia';
 import { LIMITES_PRENDA, OPCIONES_CATEGORIAS, OPCIONES_GENERO, OPCIONES_MATERIALES } from '../models/prenda-opciones';
 import {
   CategoriaPrenda,
@@ -32,6 +45,48 @@ import {pattern} from '@angular/forms/signals';
 interface FotoPendiente {
   archivo: File;
   vistaPrevia: string;
+}
+
+/** Campos corporales de una fila de talla que se pueden sugerir o copiar. */
+const CAMPOS_MEDIDAS = [
+  'estaturaMinCm',
+  'estaturaMaxCm',
+  'pesoMinKg',
+  'pesoMaxKg',
+  'edadMinMeses',
+  'edadMaxMeses',
+];
+
+/** Rangos copiables: la edad es opcional, aunque la referencia sugiera sus límites. */
+type MedidasAplicables = Omit<
+  RangosTallaReferencia,
+  'edadMinMeses' | 'edadMaxMeses'
+> & {
+  edadMinMeses: number | null;
+  edadMaxMeses: number | null;
+};
+
+/** Margen sobre el rango de la tabla de referencia antes de advertir (25 % del tramo). */
+const TOLERANCIA_REFERENCIA = 0.25;
+
+/** Variante ya definida en otro color con la misma talla; de ahí se copian las medidas. */
+interface VarianteFuente {
+  /** Índice de la fila fuente dentro del FormArray. */
+  indice: number;
+  /** Talla normalizada compartida. */
+  talla: string;
+  /** Color de la fuente para distinguirla en el mensaje. */
+  color: ColorPreferido | null;
+}
+
+/** Ayuda contextual de una fila de talla. */
+interface AyudaTalla {
+  /** Sugerencia de la tabla de referencia; oculta si hay una variante gemela que copiar. */
+  ref: TallaReferencia | null;
+  /** Variante existente con la misma talla en otro color. */
+  fuente: VarianteFuente | null;
+  /** Advertencia no bloqueante por medidas fuera de la referencia; nula si no aplica. */
+  advertencia: string | null;
 }
 
 const ENTERO = Validators.pattern(/^\d+$/);
@@ -135,7 +190,17 @@ export class PrendaForm implements OnInit, OnDestroy {
     control.markAsTouched();
   }
   protected readonly limites = LIMITES_PRENDA;
-  protected readonly etiquetasAlergia = ETIQUETAS_ALERGIAS;
+  /** Controles manuales, etiquetados y ordenados desde las opciones del perfil infantil. */
+  protected readonly opcionesAlergiasDeclaradas = OPCIONES_ALERGIAS_DECLARABLES;  /** Tallas de la tabla de referencia para el autocompletado del nombre de la talla. */
+  protected readonly nombresTallaReferencia = NOMBRES_TALLAS_REFERENCIA;
+  /** Texto de sugerencia decorado con los rangos de la tabla (UI-20). */
+  protected readonly textoSugerencia = describirSugerencia;
+  /**
+   * Alergias declarables y detectadas por composición (Punto 3): comparten módulo con la
+   * página de detalle para garantizar las mismas etiquetas que en el perfil infantil.
+   */
+  protected readonly alergiasDeclaradasDe = alergiasDeclaradasDe;
+  protected readonly alergiasDetectadasDe = alergiasDetectadasDe;
 
   protected readonly prendaId = signal<number | null>(null);
   protected readonly esNueva = computed(() => this.prendaId() === null);
@@ -196,6 +261,21 @@ export class PrendaForm implements OnInit, OnDestroy {
 
   protected get tallas(): FormArray<FormGroup> {
     return this.form.controls.tallas as FormArray<FormGroup>;
+  }
+
+  /**
+   * Vista cruda de los datos de alergia del formulario para los grupos y chips del template.
+   * @returns Valores actuales de flags declarados y pares material-porcentaje.
+   */
+  protected datosAlergia(): DatosAlergiaPrenda {
+    const valores = this.form.getRawValue();
+    return {
+      ...valores,
+      composicion: this.composicion.getRawValue().map((fila) => ({
+        material: fila['material'] as MaterialTextil,
+        porcentaje: Number(fila['porcentaje']),
+      })),
+    };
   }
 
   protected sumaComposicion(): number {
@@ -436,6 +516,142 @@ export class PrendaForm implements OnInit, OnDestroy {
       return;
     }
     this.tallas.removeAt(indice);
+  }
+
+  /**
+   * Sugerencia de la tabla de referencia para la fila: solo filas nuevas con talla reconocida.
+   * Las filas guardadas (edición) nunca reciben sugerencias ni se modifican automáticamente.
+   * @param indice Índice de la fila de talla.
+   * @returns Entrada de la tabla de referencia o `null` si no aplica.
+   */
+  protected referenciaDe(indice: number): TallaReferencia | null {
+    const fila = this.tallas.at(indice);
+    if (!fila || fila.getRawValue()['existente']) return null;
+    return buscarTallaReferencia(fila.getRawValue()['talla']);
+  }
+
+  /**
+   * Busca otra variante ya definida con la misma talla; copiarle las medidas garantiza la regla
+   * backend de rangos idénticos por talla en todos los colores (ValidadorPrenda.mismosRangos).
+   * @param indice Índice de la fila que busca su igual.
+   * @returns Variante fuente con sus medidas, o `null` si no existe.
+   */
+  protected varianteConMismasMedidas(indice: number): VarianteFuente | null {
+    const fila = this.tallas.at(indice);
+    if (!fila) return null;
+    const talla = normalizarTalla(fila.getRawValue()['talla']);
+    if (!talla) return null;
+    for (let j = 0; j < this.tallas.length; j++) {
+      if (j === indice) continue;
+      const valores = this.tallas.at(j).getRawValue();
+      if (normalizarTalla(valores['talla']) !== talla || !this.tieneMedidas(valores)) continue;
+      return { indice: j, talla, color: valores['color'] as ColorPreferido | null };
+    }
+    return null;
+  }
+
+  /**
+   * Comprueba si la variante tiene por lo menos una medida corporal escrita.
+   * @param valores Valores crudos de la fila de talla.
+   * @returns `true` si hay algún rango definido.
+   */
+  private tieneMedidas(valores: Record<string, unknown>): boolean {
+    return CAMPOS_MEDIDAS.some((campo) => valores[campo] != null);
+  }
+
+  /**
+   * Aplica las medidas sugeridas por la tabla de referencia a la fila (acción explícita del botón).
+   * @param indice Índice de la fila de talla.
+   * @returns No devuelve un valor.
+   */
+  protected aplicarSugerencia(indice: number): void {
+    this.establecerMedidas(indice, this.referenciaDe(indice));
+  }
+
+  /**
+   * Copia a la fila las medidas de la variante ya definida en otro color, para respetar
+   * la regla de mismos rangos por talla.
+   * @param indice Índice de la fila destino.
+   * @param fuenteIndice Índice de la fila fuente.
+   * @returns No devuelve un valor.
+   */
+  protected copiarDeVariante(indice: number, fuenteIndice: number): void {
+    const valores = this.tallas.at(fuenteIndice)?.getRawValue();
+    if (!valores) return;
+    this.establecerMedidas(indice, {
+      estaturaMinCm: Number(valores['estaturaMinCm']),
+      estaturaMaxCm: Number(valores['estaturaMaxCm']),
+      pesoMinKg: Number(valores['pesoMinKg']),
+      pesoMaxKg: Number(valores['pesoMaxKg']),
+      edadMinMeses: valores['edadMinMeses'] == null ? null : Number(valores['edadMinMeses']),
+      edadMaxMeses: valores['edadMaxMeses'] == null ? null : Number(valores['edadMaxMeses']),
+    });
+  }
+
+  /**
+   * Escribe las seis medidas en la fila y las marca como editadas.
+   * @param indice Índice de la fila destino.
+   * @param medidas Medidas a copiar.
+   * @returns No devuelve un valor.
+   */
+  private establecerMedidas(indice: number, medidas: MedidasAplicables | null): void {    if (!medidas) return;
+    const fila = this.tallas.at(indice);
+    const cambios: [string, number | null][] = [
+      ['estaturaMinCm', medidas.estaturaMinCm],
+      ['estaturaMaxCm', medidas.estaturaMaxCm],
+      ['pesoMinKg', medidas.pesoMinKg],
+      ['pesoMaxKg', medidas.pesoMaxKg],
+      ['edadMinMeses', medidas.edadMinMeses],
+      ['edadMaxMeses', medidas.edadMaxMeses],
+    ];
+    for (const [campo, valor] of cambios) {
+      fila.get(campo)?.setValue(valor);
+      fila.get(campo)?.markAsDirty();
+      fila.get(campo)?.markAsTouched();
+    }
+  }
+
+  /**
+   * Advertencia no bloqueante cuando las medidas escritas quedan a más de 25 % fuera del
+   * rango de la tabla de referencia. Los errores duros siguen siendo los del backend.
+   * @param indice Índice de la fila de talla.
+   * @returns Mensaje de advertencia o `null` si no hay nada fuera de rango.
+   */
+  protected advertenciaFueraDeReferencia(indice: number): string | null {
+    const referencia = this.referenciaDe(indice);
+    const valores = this.tallas.at(indice)?.getRawValue();
+    if (!referencia || !valores) return null;
+    const fuera = (min: unknown, max: unknown, refMin: number, refMax: number): boolean =>
+      min != null && max != null
+      && (+min < refMin - TOLERANCIA_REFERENCIA * (refMax - refMin)
+        || +max > refMax + TOLERANCIA_REFERENCIA * (refMax - refMin));
+    const partes: string[] = [];
+    if (fuera(valores['estaturaMinCm'], valores['estaturaMaxCm'], referencia.estaturaMinCm, referencia.estaturaMaxCm)) {
+      partes.push(`estatura ${referencia.estaturaMinCm}–${referencia.estaturaMaxCm} cm`);
+    }
+    if (fuera(valores['pesoMinKg'], valores['pesoMaxKg'], referencia.pesoMinKg, referencia.pesoMaxKg)) {
+      partes.push(`peso ${referencia.pesoMinKg}–${referencia.pesoMaxKg} kg`);
+    }
+    if (fuera(valores['edadMinMeses'], valores['edadMaxMeses'], referencia.edadMinMeses, referencia.edadMaxMeses)) {
+      partes.push(`edad ${referencia.edadMinMeses}–${referencia.edadMaxMeses} meses`);
+    }
+    if (!partes.length) return null;
+    return `Las medidas escritas se alejan de lo habitual para la talla ${referencia.nombre} `
+      + `(${partes.join(' · ')}). Puedes guardarlas si son intencionales.`;
+  }
+
+  /**
+   * Agrupa la ayuda contextual de la fila: sugerencia de la tabla, copia de la variante
+   * gemela en otro color y advertencia de medidas atípicas.
+   * @param indice Índice de la fila de talla.
+   * @returns Ayuda a mostrar o `null` si la fila no tiene nada que anunciar.
+   */
+  protected ayudaTalla(indice: number): AyudaTalla | null {
+    const fuente = this.varianteConMismasMedidas(indice);
+    const ref = fuente ? null : this.referenciaDe(indice);
+    const advertencia = this.advertenciaFueraDeReferencia(indice);
+    if (!ref && !fuente && !advertencia) return null;
+    return { ref, fuente, advertencia };
   }
 
   /**

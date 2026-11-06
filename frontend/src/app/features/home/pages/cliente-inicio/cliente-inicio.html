@@ -9,10 +9,13 @@
   <section class="hero" aria-label="Prendas destacadas" aria-roledescription="carrusel">
     @if (destacadas().length > 0) {
       <div class="hero-slide">
-        <img
-          [src]="destacadas()[slide()].imagenUrl"
-          [alt]="destacadas()[slide()].nombre"
-        />
+        <a
+          class="hero-product-link"
+          [routerLink]="['/cliente/catalogo', destacadas()[slide()].id]"
+          [attr.aria-label]="'Ver detalle de ' + destacadas()[slide()].nombre"
+        >
+          <img [src]="destacadas()[slide()].imagenUrl" alt="" />
+        </a>
         <div class="hero-veil" aria-hidden="true"></div>
         @if (destacadas().length > 1) {
           <button
@@ -121,10 +124,10 @@
                 <p class="reco-price">{{ precio(item) }}</p>
                 <div class="reco-card-cta">
                   <a
-                    class="btn-primary btn-inline btn-small"
+                    class="btn-primary btn-inline btn-small reco-card-link"
                     [routerLink]="['/cliente/catalogo', item.id]"
                     [attr.aria-label]="'Ver detalle de ' + item.nombre"
-                    >Ver</a
+                  >Ver</a
                   >
                 </div>
               </div>

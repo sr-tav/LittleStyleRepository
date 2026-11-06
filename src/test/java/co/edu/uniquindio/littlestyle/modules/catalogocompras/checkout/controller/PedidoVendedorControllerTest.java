@@ -47,14 +47,17 @@ class PedidoVendedorControllerTest {
     @Test
     void listarDevuelveSusDespachos() throws Exception {
         when(pedidos.misDespachos()).thenReturn(List.of(
-                new DespachoResponse(5L, 7L, 31L, "Tienda", EstadoPedido.EN_PREPARACION, null,
-                        LocalDateTime.now(), List.of())));
-
+                new DespachoResponse(
+                        5L, 7L, 3L, "Laura Ruiz", 31L, "Tienda",
+                        EstadoPedido.EN_PREPARACION, null, LocalDateTime.now(), List.of())
+                        ));
         mockMvc.perform(get("/api/vendedor/pedidos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].despachoId").value(5))
                 .andExpect(jsonPath("$[0].pedidoId").value(7))
-                .andExpect(jsonPath("$[0].stockMinimo").doesNotExist());
+                .andExpect(jsonPath("$[0].stockMinimo").doesNotExist())
+                .andExpect(jsonPath("$[0].numeroPedido").value(3))
+                .andExpect(jsonPath("$[0].destinatario").value("Laura Ruiz"));
     }
 
     @Test
@@ -76,8 +79,9 @@ class PedidoVendedorControllerTest {
 
     @Test
     void avanzarAEnvioConGuiaDevuelve200() throws Exception {
-        var detalle = new DespachoResponse(5L, 7L, 31L, "Tienda", EstadoPedido.ENVIADO, "COL123",
-                LocalDateTime.now(), List.of());
+        var detalle = new DespachoResponse(
+                5L, 7L, 3L, "Laura Ruiz", 31L, "Tienda",
+                EstadoPedido.ENVIADO, "COL123", LocalDateTime.now(), List.of());
         when(pedidos.avanzarEstado(eq(5L), any())).thenReturn(detalle);
 
         mockMvc.perform(put("/api/vendedor/pedidos/5/estado")
@@ -85,8 +89,11 @@ class PedidoVendedorControllerTest {
                         .content("{\"nuevo\":\"ENVIADO\",\"numeroGuia\":\"COL123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("ENVIADO"))
-                .andExpect(jsonPath("$.numeroGuia").value("COL123"));
+                .andExpect(jsonPath("$.numeroGuia").value("COL123"))
+                .andExpect(jsonPath("$.numeroPedido").value(3))
+                .andExpect(jsonPath("$.destinatario").value("Laura Ruiz"));
     }
+
 
     @Test
     void avanzarACanceladoDevuelve409() throws Exception {

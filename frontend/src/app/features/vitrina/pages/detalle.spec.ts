@@ -157,6 +157,29 @@ describe('DetalleProducto (US-09)', () => {
     expect(ficha?.textContent).toContain('Lavar a mano en agua fría');
   });
 
+  it('lista las alergias con las mismas etiquetas del perfil, declaradas y por composición (Punto 3)', () => {
+    const { el, http } = crear(detalle({
+      tintesSinteticos: true,
+      brochesMetalicos: false,
+      contieneNiquel: true,
+      tratamientoFormaldehido: false,
+    }));
+    http.verify();
+
+    const item = [...el.querySelectorAll('.detail-card-item')].find((i) =>
+      i.querySelector('dt')?.textContent?.includes('Información para alergias'),
+    );
+    expect(item).toBeTruthy();
+    const texto = item?.textContent ?? '';
+
+    // Las 4 declarables usan la etiqueta compartida del perfil; las detectadas por
+    // composición aparecen con su motivo entre paréntesis.
+    ['Tintes', 'Níquel'].forEach((etiqueta) => expect(texto).toContain(etiqueta));
+    ['Broches metálicos', 'Formaldehído'].forEach((etiqueta) => expect(texto).not.toContain(etiqueta));
+    expect(texto).toContain('Algodón (Contiene algodón)');
+    expect(texto).not.toContain('(sinteticos');
+  });
+
   it('muestra insignia de nuevo y tabla de medidas con estados', () => {
     const { el, http } = crear(detalle());
     http.verify();
@@ -423,6 +446,58 @@ describe('DetalleProducto (US-09)', () => {
       http.verify();
 
       expect(el.textContent).toContain('Flores, Rayas');
+    });
+  });
+
+  describe('color obligatorio (Punto 10)', () => {
+    it('deja el botón deshabilitado y anuncia la ayuda incluso con un solo color disponible', () => {
+      carritoMock.agregar.mockClear();
+      const { el, http } = crear(detalle());
+      http.verify();
+
+      const agregar = el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!;
+      expect(agregar.disabled).toBe(true);
+      expect(el.textContent).toContain('Elige un color para continuar');
+      // El color se ve con su nombre, no solo la muestra.
+      expect(el.querySelector('.detalle-color-nombre')?.textContent?.trim()).toBe('Azul');
+      expect(carritoMock.agregar).not.toHaveBeenCalled();
+    });
+
+    it('si se intenta agregar sin color, enfoca al selector y anuncia el error en vivo', async () => {
+      carritoMock.agregar.mockClear();
+      const { fixture, el, http } = crear(detalle());
+      http.verify();
+
+      el.querySelector<HTMLButtonElement>('.detalle-talla[aria-label^="Talla 4"]')!.click();
+      fixture.detectChanges();
+
+      // El botón está deshabilitado, pero el código de la acción defiende la regla igualmente
+      // (por ejemplo, si el estado cambia entre el render y el clic).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (fixture.componentInstance as any).agregarAlCarrito();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(el.querySelector('#selector-color'));
+      const error = el.querySelector('.detalle-agregar-carrito .alert-error');
+      expect(error?.getAttribute('role')).toBe('alert');
+      expect(error?.textContent).toContain('Elige un color para continuar');
+      expect(carritoMock.agregar).not.toHaveBeenCalled();
+    });
+
+    it('habilita el botón justo cuando se elige el color', () => {
+      carritoMock.agregar.mockClear();
+      const { fixture, el, http } = crear(detalle());
+      http.verify();
+
+      el.querySelector<HTMLButtonElement>('.detalle-color[role="radio"]')!.click();
+      el.querySelector<HTMLButtonElement>('.detalle-talla[aria-label^="Talla 4"]')!.click();
+      fixture.detectChanges();
+
+      const agregar = el.querySelector<HTMLButtonElement>('.detalle-agregar-carrito > .btn-primary')!;
+      expect(agregar.disabled).toBe(false);
+      expect(el.textContent).not.toContain('Elige un color para continuar');
+      expect(el.querySelector('.detalle-ayuda-seleccion')).toBeNull();
     });
   });
 });

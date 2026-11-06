@@ -4,6 +4,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.Cate
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.EstadoPrenda;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.EstadoPedido;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.BusquedaCatalogo;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardDemandaDetalleResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse;
 import co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardVentasDiaResponse;
@@ -197,20 +198,21 @@ public interface DashboardAnalyticsRepository extends JpaRepository<Pedido, Long
                                                          Pageable limite);
 
     /**
-     * Términos más buscados en el catálogo. Es una señal de demanda de toda la plataforma: una búsqueda no
-     * pertenece a ningún vendedor, así que no se filtra por vendedor ni por categoría.
+     * Términos más buscados del catálogo. Usa la misma fuente que el reporte US-16.
+     * Es una señal global: no se filtra por vendedor ni categoría.
      */
     @Query("""
             select new co.edu.uniquindio.littlestyle.modules.dashboard.dto.DashboardSerieResponse(
-                     b.termino, count(b))
-            from Busqueda b
-            where b.fecha >= :inicio and b.fecha < :fin
-            group by b.termino
-            order by count(b) desc, b.termino asc
+                     b.terminoNormalizado, count(b))
+            from BusquedaCatalogo b
+            where b.creadoEn >= :inicio and b.creadoEn < :fin
+            group by b.terminoNormalizado
+            order by count(b) desc, b.terminoNormalizado asc
             """)
-    List<DashboardSerieResponse> busquedasMasFrecuentes(@Param("inicio") LocalDateTime inicio,
-                                                        @Param("fin") LocalDateTime fin,
-                                                        Pageable limite);
+    List<DashboardSerieResponse> busquedasMasFrecuentes(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime fin,
+            Pageable limite);
 
     /** Unidades en inventario de prendas activas (foto actual, no depende del rango de fechas). */
     @Query("""

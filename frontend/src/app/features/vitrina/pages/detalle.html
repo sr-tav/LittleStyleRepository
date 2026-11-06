@@ -70,7 +70,13 @@
           </p>
         }
         @if (coloresDisponibles().length > 0) {
-          <fieldset class="detalle-selector">
+          <fieldset
+            id="selector-color"
+            class="detalle-selector"
+            #selectorColor
+            tabindex="-1"
+            [attr.aria-describedby]="!colorSeleccionado() ? 'ayuda-color' : null"
+          >
             <legend>
               Color:
               <strong>{{ colorSeleccionado() ? colorDe(colorSeleccionado()) : 'Selecciona un color' }}</strong>
@@ -86,17 +92,25 @@
                   [attr.aria-checked]="colorSeleccionado() === c"
                   [disabled]="!tieneStockColor(c) || agregandoAlCarrito()"
                   [attr.aria-label]="colorDe(c) + (tieneStockColor(c) ? ', disponible' : ', agotado')"
-                  [title]="colorDe(c)"
                   (click)="seleccionarColor(c)"
                 >
-          <span
-            class="detalle-color-muestra"
-            [style.background-color]="muestraColor(c)"
-            aria-hidden="true"
-          ></span>
+                  <span
+                    class="detalle-color-muestra"
+                    [style.background-color]="muestraColor(c)"
+                    aria-hidden="true"
+                  ></span>
+                  <span class="detalle-color-nombre">{{ colorDe(c) }}</span>
+                  @if (!tieneStockColor(c)) {
+                    <span class="detalle-color-agotado">Agotado</span>
+                  }
                 </button>
               }
             </div>
+            @if (!colorSeleccionado()) {
+              <p id="ayuda-color" class="detalle-ayuda-seleccion" role="status" aria-live="polite">
+                Elige un color para continuar
+              </p>
+            }
           </fieldset>
         } @else {
           <p class="alert alert-warning" role="status">
@@ -109,33 +123,6 @@
             <p class="alert alert-error" role="status">
               En este momento no hay unidades disponibles.
             </p>
-          }
-
-          @if (estampadosDisponibles().length > 0) {
-            <fieldset class="detalle-selector detalle-estampados">
-              <legend>
-                Estampado:
-                <strong>{{ estampadoElegido() ? estampadoDe(estampadoElegido()) : 'Selecciona un estampado' }}</strong>
-              </legend>
-              <div class="detalle-estampados-lista" role="radiogroup" aria-label="Estampado de la prenda">
-                @for (e of estampadosDisponibles(); track e) {
-                  <div class="detalle-estampado-opcion">
-                    <button
-                      type="button"
-                      class="detalle-estampado"
-                      [class.is-selected]="estampadoElegido() === e"
-                      role="radio"
-                      [attr.aria-checked]="estampadoElegido() === e"
-                      [disabled]="agregandoAlCarrito()"
-                      [attr.aria-label]="'Estampado ' + estampadoDe(e)"
-                      (click)="seleccionarEstampado(e)"
-                    >
-                      <strong>{{ estampadoDe(e) }}</strong>
-                    </button>
-                  </div>
-                }
-              </div>
-            </fieldset>
           }
 
           <fieldset class="detalle-selector">
@@ -169,6 +156,33 @@
               }
             </div>
           </fieldset>
+
+          @if (estampadosDisponibles().length > 0) {
+            <fieldset class="detalle-selector detalle-estampados">
+              <legend>
+                Estampado:
+                <strong>{{ estampadoElegido() ? estampadoDe(estampadoElegido()) : 'Selecciona un estampado' }}</strong>
+              </legend>
+              <div class="detalle-estampados-lista" role="radiogroup" aria-label="Estampado de la prenda">
+                @for (e of estampadosDisponibles(); track e) {
+                  <div class="detalle-estampado-opcion">
+                    <button
+                      type="button"
+                      class="detalle-estampado"
+                      [class.is-selected]="estampadoElegido() === e"
+                      role="radio"
+                      [attr.aria-checked]="estampadoElegido() === e"
+                      [disabled]="agregandoAlCarrito()"
+                      [attr.aria-label]="'Estampado ' + estampadoDe(e)"
+                      (click)="seleccionarEstampado(e)"
+                    >
+                      <strong>{{ estampadoDe(e) }}</strong>
+                    </button>
+                  </div>
+                }
+              </div>
+            </fieldset>
+          }
 
           @if (colorSeleccionado() && tallaSeleccionada()) {
             @if (stockTallaSeleccionada() > 0) {
@@ -226,7 +240,9 @@
             </p>
           }
           @if (errorCarrito(); as mensaje) {
-            <p class="alert alert-error" role="alert">{{ mensaje }}</p>
+            <p id="error-carrito" class="alert alert-error" role="alert" aria-live="assertive">
+              {{ mensaje }}
+            </p>
           }
         </div>
       </div>

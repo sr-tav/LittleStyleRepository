@@ -65,7 +65,13 @@ import { formatearPrecio } from '../../catalogoCompras/models/prenda-opciones';
                   <p class="reco-affinity">Afinidad de estilo: +{{ r.afinidad }}</p>
                 }
                 <div class="reco-card-cta">
-                  <a class="btn-primary btn-inline btn-small" [routerLink]="['/cliente/catalogo', r.prendaId]" [queryParams]="{ perfilId: perfilId() }" [attr.aria-label]="'Ver ' + r.nombre">Ver</a>
+                  <a
+                    class="btn-primary btn-inline btn-small reco-card-link"
+                    [routerLink]="['/cliente/catalogo', r.prendaId]"
+                    [queryParams]="{ perfilId: perfilId() }"
+                    [attr.aria-label]="'Ver detalle de ' + r.nombre"
+                  >Ver</a
+                  >
                 </div>
               </div>
             </article>

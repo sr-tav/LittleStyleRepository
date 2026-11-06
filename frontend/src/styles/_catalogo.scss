@@ -566,6 +566,99 @@
   }
 }
 
+/* Ayuda de la fila de talla (UI-20): sugerencia de la tabla de referencia, copia de la
+   variante gemela en otro color y advertencia de medidas atípicas. Vive en la primera
+   columna con ancho completo para no empujar la fila hacia los lados; en móviles la fila
+   ya se apila en tarjeta (ver los cortes de media más abajo). */
+.talla-ayuda {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--ls-info-soft);
+  border-radius: 10px;
+
+  p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--ls-ink);
+  }
+}
+
+.talla-ayuda-texto {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+/* Menos específica que .talla-ayuda p para no pelearse encima del bloque de sugerencia. */
+.talla-ayuda p.talla-ayuda-advertencia {
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  background: var(--ls-warning-soft);
+  color: var(--ls-warning);
+}
+
+/* Fitts: aplicar o copiar queda al alcance con un objetivo cómodo (≥ 44 px). */
+.talla-ayuda-boton {
+  min-height: 44px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+}
+
+/* Alergias del formulario (Punto 3): dos grupos coherentes con el perfil infantil.
+   "Declara tú" son checkboxes del vendedor; "Se detecta por la composición" son chips
+   de solo lectura que se actualizan al editar la composición. Los chips son texto
+   plano visible desde el inicio: la información nunca depende del hover ni del color. */
+.alergias-form .alergias-titulo {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ls-ink);
+}
+
+.alergia-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  padding: 0;
+  list-style: none;
+}
+
+.alergia-chip {
+  max-width: 100%;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .alergias-form .catalog-checks {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+}
+
+.alergia-chip .alergia-chip-detalle {
+  color: var(--ls-muted);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+/* En móviles el fieldset apila cada control en su línea: los checkboxes y chips
+   parten de envolverse, así que basta forzar la columna única de los checks. */
+@media (max-width: 600px) {
+  .alergias-form .catalog-checks {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+}
+
 /* Inventario por talla (UI-20): nombre + stock + mínimo con el mismo ritmo
    visual de la tabla (etiqueta arriba, valor abajo) para que las líneas base
    queden alineadas. Grilla propia de 3 columnas: compartiendo la de .size-row

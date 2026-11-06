@@ -301,9 +301,19 @@ public class CarritoService {
         return new CarritoResponse(lineas, cantidad, subtotal, costoEnvio, total);
     }
 
-    /** Valida que la prenda, la talla, la cantidad y el perfil (si llega) sean válidos. */
+    /** Valida que la prenda, la talla, la cantidad, el color y el perfil (si llega) sean válidos. */
     private void validarAgregar(AgregarItemCarritoRequest request) {
-        if (request == null || request.prendaId() == null || request.prendaId() <= 0
+        if (request == null) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "La solicitud de agregar al carrito es obligatoria", "prendaId");
+        }
+        if (request.color() == null) {
+            // Defensa en profundidad: además de @NotNull en el DTO, el color nunca se deduce
+            // cuando la prenda tiene una sola variante; el cliente debe elegirlo explícitamente.
+            throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "Elige un color para agregar la prenda", "color");
+        }
+        if (request.prendaId() == null || request.prendaId() <= 0
                 || request.talla() == null || request.talla().isBlank()
                 || request.cantidad() == null || request.cantidad() <= 0
                 || request.perfilInfantilId() != null && request.perfilInfantilId() <= 0) {

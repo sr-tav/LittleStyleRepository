@@ -61,10 +61,10 @@ describe('CarritoService', () => {
   });
 
   it('sincroniza operaciones con el backend y deriva cantidad, subtotal y total', () => {
-    service.agregar({ prendaId: 20, talla: '4', cantidad: 2 }).subscribe();
+    service.agregar({ prendaId: 20, talla: '4', cantidad: 2, color: 'AZUL' }).subscribe();
     const request = http.expectOne(`${BASE_URL}/items`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ prendaId: 20, talla: '4', cantidad: 2, perfilInfantilId: 7 });
+    expect(request.request.body).toEqual({ prendaId: 20, talla: '4', cantidad: 2, color: 'AZUL', perfilInfantilId: 7 });
     request.flush(CARRITO);
 
     expect(service.items()).toEqual(CARRITO.items);
@@ -91,12 +91,13 @@ describe('CarritoService', () => {
 
   it('envía perfilInfantilId null cuando no hay perfil activo', () => {
     perfilActivo = null;
-    service.agregar({ prendaId: 20, talla: '4', cantidad: 1 }).subscribe();
+    service.agregar({ prendaId: 20, talla: '4', cantidad: 1, color: 'AZUL' }).subscribe();
     const request = http.expectOne(`${BASE_URL}/items`);
     expect(request.request.body).toEqual({
       prendaId: 20,
       talla: '4',
       cantidad: 1,
+      color: 'AZUL',
       perfilInfantilId: null,
     });
     request.flush({ items: [], cantidad: 0, subtotal: 0, costoEnvio: 0, total: 0 });
@@ -110,7 +111,7 @@ describe('CarritoService', () => {
     expect(service.items()).toEqual([]);
     http.expectOne(BASE_URL).flush({ items: [], cantidad: 0, subtotal: 0, costoEnvio: 0, total: 0 });
 
-    service.agregar({ prendaId: 20, talla: '4', cantidad: 1 }).subscribe();
+    service.agregar({ prendaId: 20, talla: '4', cantidad: 1, color: 'AZUL' }).subscribe();
     http.expectOne(`${BASE_URL}/items`).flush(CARRITO);
     expect(localStorage.getItem('ls_carrito_usuario_22')).not.toBeNull();
 

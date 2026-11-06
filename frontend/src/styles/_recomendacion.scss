@@ -46,7 +46,7 @@
 /* ---------- Grilla de productos: tarjetas de igual altura ---------- */
 .reco-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
   align-items: stretch;
   gap: 1.25rem;
   margin: 0;
@@ -60,6 +60,7 @@
 }
 
 .reco-card {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -71,13 +72,6 @@
   border-radius: 18px;
   background: var(--ls-surface);
   box-shadow: var(--ls-shadow);
-  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-
-  &:hover {
-    transform: translateY(-3px);
-    border-color: var(--ls-primary);
-    box-shadow: 0 14px 32px rgb(20 50 35 / 16%);
-  }
 }
 
 /* Ancla visual: todas las fotos con la misma proporción 4/5 */
@@ -98,12 +92,7 @@
 
   .prenda-thumb {
     object-fit: cover;
-    transition: transform 0.25s ease;
   }
-}
-
-.reco-card:hover .prenda-thumb {
-  transform: scale(1.05);
 }
 
 .reco-card-body {
@@ -142,6 +131,23 @@
 
   .btn-inline {
     width: 100%;
+  }
+
+  .reco-card-link {
+    min-height: 44px;
+
+    &::after {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      border-radius: 17px;
+      content: '';
+    }
+
+    &:focus-visible::after {
+      outline: 3px solid var(--ls-primary-dark);
+      outline-offset: -3px;
+    }
   }
 }
 
@@ -320,10 +326,6 @@
 }
 
 @media (max-width: 480px) {
-  .reco-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-  }
 
   .reco-heading h1 {
     font-size: 1.45rem;

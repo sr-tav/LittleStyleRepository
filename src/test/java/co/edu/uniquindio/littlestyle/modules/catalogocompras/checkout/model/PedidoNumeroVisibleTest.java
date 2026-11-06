@@ -16,9 +16,9 @@ class PedidoNumeroVisibleTest {
     }
 
     @Test
-    void sinConsecutivoMuestraElIdInterno() {
+    void sinConsecutivoNoExponeElIdInterno() {
         Pedido anteriorALaMigracion = Pedido.builder().id(12L).build();
 
-        assertThat(anteriorALaMigracion.numeroVisible()).isEqualTo(12L);
+        assertThat(anteriorALaMigracion.numeroVisible()).isNull();
     }
 }

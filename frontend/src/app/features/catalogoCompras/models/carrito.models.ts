@@ -42,7 +42,8 @@ export interface AgregarItemCarritoRequest {
    * PRENDA_EXCLUIDA_ALERGIA si la prenda choca con una alergia grave.
    */
   perfilInfantilId?: number | null;
-  color?: string | null;
+  /** Color elegido por el cliente; el backend lo exige siempre, no lo deduce. */
+  color: string;
   /** Estampado elegido en el detalle (obligatorio si la prenda ofrece más de uno). */
   estampado?: string | null;
 }

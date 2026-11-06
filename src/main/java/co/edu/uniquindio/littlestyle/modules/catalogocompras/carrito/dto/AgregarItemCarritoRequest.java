@@ -32,15 +32,10 @@ public record AgregarItemCarritoRequest(
         @Positive(message = "El identificador del perfil infantil debe ser positivo")
         Long perfilInfantilId,
 
+        /** Color elegido por el cliente. Siempre obligatorio: nunca se deduce en el servidor. */
+        @NotNull(message = "Elige un color para agregar la prenda")
         ColorPreferido color,
         /** Estampado elegido en el detalle. Obligatorio si la prenda ofrece más de uno; si ofrece uno, se asume. */
         Estampado estampado
 ) {
-        public AgregarItemCarritoRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida, Long perfilInfantilId, ColorPreferido color) {
-                this(prendaId, talla, cantidad, tallaSugerida, perfilInfantilId, color, null);
-        }
-
-        public AgregarItemCarritoRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida, Long perfilInfantilId) {
-                this(prendaId, talla, cantidad, tallaSugerida, perfilInfantilId, null, null);
-        }
 }

@@ -22,7 +22,6 @@ import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
 export class PedidoVendedorDetallePage implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
   private readonly pedidos = inject(PedidosVendedorService);
-
   protected readonly despacho = signal<DespachoVendedor | null>(null);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);

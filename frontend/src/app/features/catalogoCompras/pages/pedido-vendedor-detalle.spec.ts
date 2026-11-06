@@ -51,6 +51,8 @@ describe('PedidoVendedorDetallePage', () => {
           imagenUrl: '/media/a.png',
         },
       ],
+      numeroPedido: 3,
+      destinatario: 'Laura Ruiz',
     };
   }
 
@@ -60,7 +62,9 @@ describe('PedidoVendedorDetallePage', () => {
     fixture.detectChanges();
 
     const root: HTMLElement = fixture.nativeElement;
-    expect(root.textContent).toContain('Pedido #7');
+    expect(root.textContent).toContain('Pedido #3');
+    expect(root.textContent).toContain('Laura Ruiz');
+    expect(root.textContent).not.toContain('Pedido #7');
     expect(root.textContent).toContain('Tu paquete');
     expect(root.textContent).toContain('Pantalón Jogger Azul');
     expect(root.textContent).toContain('En preparación');
