@@ -1,6 +1,7 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto;
 
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -17,9 +18,15 @@ public record ItemResumenCheckoutRequest(
         Integer cantidad,
         /** Talla sugerida por el motor al agregar al carrito; nula si no hubo sugerencia (RNF-11). */
         String tallaSugerida,
-        ColorPreferido color
+        ColorPreferido color,
+        /** Estampado elegido por el cliente; nulo en líneas anteriores a la selección de estampado. */
+        Estampado estampado
 ) {
+        public ItemResumenCheckoutRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida, ColorPreferido color){
+                this(prendaId, talla, cantidad, tallaSugerida, color, null);
+        }
+
         public ItemResumenCheckoutRequest(Long prendaId, String talla, Integer cantidad, String tallaSugerida){
-                this(prendaId, talla, cantidad, tallaSugerida, null);
+                this(prendaId, talla, cantidad, tallaSugerida, null, null);
         }
 }

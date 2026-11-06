@@ -74,6 +74,10 @@ public class CheckoutFacade {
                     .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST,
                             item.color() == null ? "Elige un color para esta talla"
                                     : "La combinación de talla y color no está disponible para esta prenda", "talla"));
+            if (item.estampado() != null && !prenda.estampadosDisponibles().contains(item.estampado())) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                        "El estampado elegido no está disponible para esta prenda", "estampado");
+            }
             ClaveTalla clave = new ClaveTalla(prenda.getId(), normalizarTalla(talla.getTalla()), talla.getColor());
             cantidadesSolicitadas.merge(clave, (long) item.cantidad(), Long::sum);
 
@@ -81,7 +85,7 @@ public class CheckoutFacade {
             subtotal = subtotal.add(subtotalLinea);
             lineas.add(new LineaResumenCheckoutResponse(prenda.getId(), prenda.getNombre(),
                     talla.getTalla(), item.cantidad(), prenda.getPrecio(), subtotalLinea,
-                    item.tallaSugerida(), talla.getColor()));
+                    item.tallaSugerida(), talla.getColor(), item.estampado()));
         }
 
         validarStockDisponible(prendas, cantidadesSolicitadas);

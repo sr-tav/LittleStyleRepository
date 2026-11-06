@@ -10,7 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Dirección de envío guardada por el cliente (una por cliente), con los datos personales cifrados. */
+/** Dirección de envío guardada por el cliente, con los datos personales cifrados. */
 @Entity
 @Table(name = "direcciones_cliente")
 @Getter
@@ -32,8 +32,8 @@ public class DireccionCliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cliente_id", nullable = false)
     private Usuario cliente;
 
     @Convert(converter = TextoLegadoCifradoConverter.class)
@@ -43,6 +43,22 @@ public class DireccionCliente {
     @Convert(converter = TextoLegadoCifradoConverter.class)
     @Column(nullable = false, length = 512)
     private String direccion;
+
+    @Convert(converter = TextoLegadoCifradoConverter.class)
+    @Column(length = 512)
+    private String tipoVia;
+
+    @Convert(converter = TextoLegadoCifradoConverter.class)
+    @Column(length = 512)
+    private String numeroVia;
+
+    @Convert(converter = TextoLegadoCifradoConverter.class)
+    @Column(length = 512)
+    private String numeroCruce;
+
+    @Convert(converter = TextoLegadoCifradoConverter.class)
+    @Column(length = 512)
+    private String placa;
 
     @Convert(converter = TextoLegadoCifradoConverter.class)
     @Column(length = 512)

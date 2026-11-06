@@ -10,10 +10,12 @@ import java.util.List;
 
 /**
  * Estado de un pago para la página de resultado. Si se requiere reembolso por falta de stock, incluye las
- * prendas agotadas y las líneas que siguen disponibles para volver a comprarlas.
+ * prendas agotadas y las líneas que siguen disponibles para volver a comprarlas. {@code numeroPedido} es el
+ * consecutivo del pedido para el cliente, distinto del id interno.
  */
 public record ResultadoPagoResponse(
         Long pedidoId,
+        Long numeroPedido,
         String referencia,
         EstadoTransaccionPago estadoPago,
         EstadoPedido estadoPedido,

@@ -4,7 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { Carrito, ItemCarrito } from '../models/carrito.models';
-import { DireccionEnvio } from '../models/checkout.models';
+import { DireccionClienteGuardada, DireccionEnvio } from '../models/checkout.models';
 import { CarritoService } from '../services/carrito.service';
 import { CheckoutService } from '../services/checkout.service';
 import { PagoService } from '../services/pago.service';
@@ -65,11 +65,9 @@ describe('CheckoutPage', () => {
       costoEnvio: 7000,
       total: 72800,
     })),
-    obtenerDireccion: vi.fn(() => of({
-      guardada: false,
-      direccion: null as DireccionEnvio | null,
-    })),
-    guardarDireccion: vi.fn((direccion: DireccionEnvio) => of({ guardada: true, direccion })),
+    listarDirecciones: vi.fn((): Observable<DireccionClienteGuardada[]> => of([])),
+    crearDireccion: vi.fn((direccion: DireccionEnvio) => of({ id: 1, direccion })),
+    actualizarDireccion: vi.fn((id: number, direccion: DireccionEnvio) => of({ id, direccion })),
   };
   const pagoService = { iniciar: vi.fn(() => of({
     pedidoId: null,
@@ -90,11 +88,9 @@ describe('CheckoutPage', () => {
     carritoMock.items.mockImplementation(() => carritoItems);
     carritoMock.cargar.mockImplementation(() => of(carritoRespuesta()));
     checkout.calcularResumen.mockClear();
-    checkout.obtenerDireccion.mockReset().mockReturnValue(of({
-      guardada: false,
-      direccion: null,
-    }));
-    checkout.guardarDireccion.mockClear();
+    checkout.listarDirecciones.mockReset().mockReturnValue(of([]));
+    checkout.crearDireccion.mockClear();
+    checkout.actualizarDireccion.mockClear();
     pagoService.iniciar.mockClear();
     widget.abrir.mockClear();
     localStorage.clear();
@@ -130,11 +126,11 @@ describe('CheckoutPage', () => {
     };
 
     llenar('#destinatario', 'Ana Ruiz');
-    llenar('#direccion', 'Calle 1 # 2-3');
+    llenar('#direccion', 'Calle 1 # 2 - 3');
     llenar('#complemento', 'Apto. 302, torre 1');
-    llenar('#codigoPostal', '630001');
     llenar('#departamento', 'Quindío');
     llenar('#municipio', 'Armenia');
+    llenar('#codigoPostal', '630001');
     llenar('#telefono', '1234567890');
     root.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit', { bubbles: true }));
     fixture.detectChanges();
@@ -143,23 +139,32 @@ describe('CheckoutPage', () => {
     expect(root.textContent).toContain('celular colombiano válido');
 
     llenar('#telefono', '3001234567');
-    llenar('#codigoPostal', '63001');
+    llenar('#codigoPostal', '');
     root.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit', { bubbles: true }));
     fixture.detectChanges();
 
     expect(checkout.calcularResumen).not.toHaveBeenCalled();
-    expect(root.textContent).toContain('código postal colombiano de 6 dígitos');
+    expect(root.textContent).toContain('Selecciona el código postal del municipio');
 
     llenar('#codigoPostal', '630001');
     llenar('#telefono', '3001234567');
-    root.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit', { bubbles: true }));
+    const form = root.querySelector<HTMLFormElement>('form');
+    if (!form) throw new Error('No se encontró el formulario de checkout');
+    const formSubmit = vi.fn();
+    form.addEventListener('submit', formSubmit);
+    form.querySelector<HTMLButtonElement>('button.btn-primary')?.click();
     fixture.detectChanges();
 
+    expect(formSubmit).not.toHaveBeenCalled();
     expect(checkout.calcularResumen).toHaveBeenCalledWith({
       perfilInfantilId: 3,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: 'Apto. 302, torre 1',
         codigoPostal: '630001',
         departamento: 'Quindío',
@@ -167,9 +172,14 @@ describe('CheckoutPage', () => {
         telefono: '3001234567',
       },
     });
-    expect(checkout.guardarDireccion).toHaveBeenCalledWith({
+
+    expect(checkout.crearDireccion).toHaveBeenCalledWith({
       destinatario: 'Ana Ruiz',
-      direccion: 'Calle 1 # 2-3',
+      direccion: 'Calle 1 # 2 - 3',
+      tipoVia: 'Calle',
+      numeroVia: '1',
+      numeroCruce: '2',
+      placa: '3',
       complemento: 'Apto. 302, torre 1',
       codigoPostal: '630001',
       departamento: 'Quindío',
@@ -177,7 +187,7 @@ describe('CheckoutPage', () => {
       telefono: '3001234567',
     });
     expect(root.textContent).toContain('Resumen de la compra');
-    expect(root.textContent).toContain('Calle 1 # 2-3');
+    expect(root.textContent).toContain('Calle 1 # 2 - 3');
     expect(root.textContent).toContain('72.800');
     const botonPago = root.querySelector<HTMLButtonElement>('.carrito-resumen app-pago-wompi button');
     expect(botonPago?.textContent).toContain('Pagar ahora');
@@ -190,7 +200,11 @@ describe('CheckoutPage', () => {
       perfilInfantilId: 3,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: 'Apto. 302, torre 1',
         codigoPostal: '630001',
         departamento: 'Quindío',
@@ -202,24 +216,55 @@ describe('CheckoutPage', () => {
     expect(navegar).toHaveBeenCalledWith(['/cliente/pago/resultado'], { queryParams: { id: 'wompi-1' } });
   });
 
+  it('solo muestra el desplegable postal después de elegir departamento y municipio', () => {
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Selecciona primero un departamento y municipio.');
+    expect(root.querySelector('#codigoPostal')).toBeNull();
+
+    const elegir = (selector: string, value: string) => {
+      const control = root.querySelector<HTMLSelectElement>(selector);
+      if (!control) throw new Error(`No existe el campo ${selector}`);
+      control.value = value;
+      control.dispatchEvent(new Event('change', { bubbles: true }));
+      fixture.detectChanges();
+    };
+
+    elegir('#departamento', 'Quindío');
+    expect(root.querySelector('#codigoPostal')).toBeNull();
+    elegir('#municipio', 'Armenia');
+
+    expect(root.querySelector('select#codigoPostal')).not.toBeNull();
+    expect(root.querySelector('input#codigoPostal')).toBeNull();
+    expect(Array.from(root.querySelectorAll<HTMLOptionElement>('#codigoPostal option'))
+      .map((option) => option.value).filter(Boolean))
+      .toContain('630001');
+  });
+
   it('permite reutilizar la dirección de cuenta y editarla', () => {
-    checkout.obtenerDireccion.mockReturnValue(of({
-      guardada: true,
+    checkout.listarDirecciones.mockReturnValue(of([{
+      id: 1,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: 'Apto. 302',
         codigoPostal: '630001',
         departamento: 'Quindío',
         municipio: 'Armenia',
         telefono: '3001234567',
       },
-    }));
+    }]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(root.textContent).toContain('Dirección guardada en tu cuenta');
+    expect(root.textContent).toContain('Elige una dirección para esta compra');
+    expect(root.querySelector<HTMLInputElement>('input[name="direccionSeleccionada"]')?.checked).toBe(false);
     expect(root.querySelector<HTMLInputElement>('#direccion')).toBeNull();
 
     Array.from(root.querySelectorAll('button'))
@@ -227,8 +272,69 @@ describe('CheckoutPage', () => {
       ?.click();
     fixture.detectChanges();
 
-    expect(root.querySelector<HTMLInputElement>('#direccion')?.value).toBe('Calle 1 # 2-3');
+    expect(root.querySelector<HTMLInputElement>('#direccion')?.value).toBe('Calle 1 # 2 - 3');
     expect(root.querySelector<HTMLInputElement>('#complemento')?.value).toBe('Apto. 302');
+    expect(root.querySelector('#tipoVia')).toBeNull();
+    expect(root.querySelector('#numeroVia')).toBeNull();
+    expect(root.querySelector('#numeroCruce')).toBeNull();
+    expect(root.querySelector('#placa')).toBeNull();
+  });
+
+  it('no selecciona una dirección por defecto y usa la elegida para el resumen', () => {
+    const primera: DireccionEnvio = {
+      destinatario: 'Ana Ruiz',
+      direccion: 'Calle 1 # 2 - 3',
+      tipoVia: 'Calle',
+      numeroVia: '1',
+      numeroCruce: '2',
+      placa: '3',
+      complemento: null,
+      codigoPostal: '630001',
+      departamento: 'Quindío',
+      municipio: 'Armenia',
+      telefono: '3001234567',
+    };
+    const segunda: DireccionEnvio = {
+      ...primera,
+      direccion: 'Carrera 12 # 34 - 56',
+      tipoVia: 'Carrera',
+      numeroVia: '12',
+      numeroCruce: '34',
+      placa: '56',
+    };
+    checkout.listarDirecciones.mockReturnValue(of([
+      { id: 1, direccion: primera },
+      { id: 2, direccion: segunda },
+    ]));
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const radios = root.querySelectorAll<HTMLInputElement>('input[name="direccionSeleccionada"]');
+    const selectorDireccion = radios[0]?.closest('label');
+    const continuar = Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Continuar con la dirección elegida'));
+    const agregar = Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Agregar otra dirección'));
+    if (!continuar) throw new Error('No se encontró el botón para continuar');
+    if (!agregar) throw new Error('No se encontró el botón para agregar dirección');
+
+    expect(selectorDireccion?.classList.contains('btn-ghost')).toBe(true);
+    expect(selectorDireccion?.textContent).toContain('Seleccionar para esta compra');
+    expect(continuar.parentElement).toBe(agregar.parentElement);
+    expect(Array.from(radios).every((radio) => !radio.checked)).toBe(true);
+    expect(continuar.disabled).toBe(true);
+    expect(checkout.calcularResumen).not.toHaveBeenCalled();
+
+    radios[1].checked = true;
+    radios[1].dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    continuar.click();
+    fixture.detectChanges();
+
+    expect(checkout.calcularResumen).toHaveBeenCalledWith({
+      perfilInfantilId: 3,
+      direccion: segunda,
+    });
   });
 
   it('muestra una indicación clara si una prenda dejó de estar disponible al calcular el checkout', () => {
@@ -237,22 +343,33 @@ describe('CheckoutPage', () => {
       status: 404,
       error: { mensaje },
     })));
-    checkout.obtenerDireccion.mockReturnValue(of({
-      guardada: true,
+    checkout.listarDirecciones.mockReturnValue(of([{
+      id: 1,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: null,
         codigoPostal: '630001',
         departamento: 'Quindío',
         municipio: 'Armenia',
         telefono: '3001234567',
       },
-    }));
+    }]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    root.querySelector<HTMLButtonElement>('.checkout-direccion-guardada button')?.click();
+    const seleccion = root.querySelector<HTMLInputElement>('input[name="direccionSeleccionada"]');
+    if (!seleccion) throw new Error('No se encontró el selector de dirección');
+    seleccion.checked = true;
+    seleccion.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Continuar con la dirección elegida'))
+      ?.click();
     fixture.detectChanges();
 
     expect(root.querySelector('[role="alert"]')?.textContent).toContain(mensaje);
@@ -263,22 +380,33 @@ describe('CheckoutPage', () => {
     const agotado: ItemCarrito = { ...item, nombre: 'Pantalón de lino', disponible: false };
     carritoItems = [agotado];
     carritoMock.items.mockImplementation(() => carritoItems);
-    checkout.obtenerDireccion.mockReturnValue(of({
-      guardada: true,
+    checkout.listarDirecciones.mockReturnValue(of([{
+      id: 1,
       direccion: {
         destinatario: 'Ana Ruiz',
-        direccion: 'Calle 1 # 2-3',
+        direccion: 'Calle 1 # 2 - 3',
+        tipoVia: 'Calle',
+        numeroVia: '1',
+        numeroCruce: '2',
+        placa: '3',
         complemento: null,
         codigoPostal: '630001',
         departamento: 'Quindío',
         municipio: 'Armenia',
         telefono: '3001234567',
       },
-    }));
+    }]));
     const fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    root.querySelector<HTMLButtonElement>('.checkout-direccion-guardada button')?.click();
+    const seleccion = root.querySelector<HTMLInputElement>('input[name="direccionSeleccionada"]');
+    if (!seleccion) throw new Error('No se encontró el selector de dirección');
+    seleccion.checked = true;
+    seleccion.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent?.includes('Continuar con la dirección elegida'))
+      ?.click();
     fixture.detectChanges();
 
     expect(root.textContent).toContain('Pantalón Jogger');
@@ -321,4 +449,51 @@ describe('CheckoutPage', () => {
       total: null,
     };
   }
+  it('una dirección guardada sin estructura obliga a completarla', () => {
+    checkout.listarDirecciones.mockReturnValue(of([{
+      id: 1,
+      direccion: {
+        destinatario: 'Ana Ruiz',
+        direccion: 'Calle vieja 1',
+        tipoVia: null,
+        numeroVia: null,
+        numeroCruce: null,
+        placa: null,
+        complemento: null,
+        codigoPostal: '630001',
+        departamento: 'Quindío',
+        municipio: 'Armenia',
+        telefono: '3001234567',
+      },
+    }]));
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+
+    root.querySelector<HTMLButtonElement>('.checkout-direccion-guardada button')?.click();
+    fixture.detectChanges();
+    expect(root.querySelector<HTMLInputElement>('#direccion')?.value).toBe('Calle vieja 1');
+    expect(root.querySelector('#tipoVia')).toBeNull();
+    expect(root.querySelector('#numeroVia')).toBeNull();
+  });
+
+  it('rechaza una dirección inválida y muestra el ejemplo del formato esperado', () => {
+    const fixture = TestBed.createComponent(CheckoutPage);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const direccion = root.querySelector<HTMLInputElement>('#direccion')!;
+    direccion.value = 'Calle ABC';
+    direccion.dispatchEvent(new Event('input', { bubbles: true }));
+    root.querySelector<HTMLFormElement>('form')?.dispatchEvent(new Event('submit', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(root.textContent).toContain('Ingresa una dirección válida. Ejemplo: Carrera 12 # 34-56.');
+    expect(direccion.getAttribute('aria-invalid')).toBe('true');
+    expect(checkout.calcularResumen).not.toHaveBeenCalled();
+
+    direccion.value = 'Carrera 13 # 7 - 8';
+    direccion.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+    expect(direccion.getAttribute('aria-invalid')).toBeNull();
+  });
 });

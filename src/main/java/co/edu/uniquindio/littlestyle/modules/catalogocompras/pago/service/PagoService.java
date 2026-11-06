@@ -339,6 +339,7 @@ public class PagoService {
         }
         return new ResultadoPagoResponse(
                 pedido == null ? null : pedido.getId(),
+                pedido == null ? null : pedido.numeroVisible(),
                 transaccion.getReferencia(),
                 transaccion.getEstado(),
                 pedido == null ? null : pedido.getEstado(),

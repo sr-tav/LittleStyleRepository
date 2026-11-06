@@ -22,6 +22,8 @@ Los roles `VENDEDOR` y `ADMINISTRADOR` no tienen autorización para las rutas `/
 
 - Consultar los datos de la propia cuenta (`GET /api/auth/me`).
 - Actualizar datos personales: nombre, apellido, correo, teléfono y, para vendedores, nombre de tienda.
+- En “Mi cuenta”, capturar la dirección de envío en un solo campo con nomenclatura colombiana (por ejemplo, «Calle 45A # 12 - 34»); el frontend envía sus componentes estructurados al backend.
+- Guardar varias direcciones de envío desde “Mi cuenta”, agregarlas y editarlas individualmente; checkout las muestra sin selección automática y exige elegir una para cada compra.
 - Cambiar contraseña de forma opcional, verificando contraseña actual, requisitos de seguridad y confirmación. Una actualización correcta devuelve JWT nuevo con los claims vigentes.
 - Solicitar la eliminación de la cuenta propia con confirmación. La cuenta queda en estado `ELIMINADO`, distinto de `SUSPENDIDO` (reservado para suspensiones de moderación); el administrador no puede eliminar su propia cuenta desde la aplicación.
 - En la misma transacción, publicar el evento de dominio `CuentaEliminadaEvent` para que el módulo de perfiles elimine perfiles infantiles, mediciones y colecciones de preferencias. Los datos identificables de la cuenta se anonimizan, se invalida la contraseña y se reemplaza el correo por uno técnico único, liberando el correo original para un nuevo registro. Los tokens emitidos antes de la eliminación dejan de autenticar de inmediato.
@@ -31,6 +33,7 @@ Los roles `VENDEDOR` y `ADMINISTRADOR` no tienen autorización para las rutas `/
 
 ### Perfiles y mediciones
 
+- El formulario identifica con asterisco las alergias como obligatorias (declarando alergias o “Sin alergias”) y señala colores y estampados como opcionales; indica por separado que las preferencias ayudan a mejorar las recomendaciones y que, sin colores preferidos o sin estampados preferidos, el perfil queda incompleto. Las validaciones existentes se conservan.
 - Crear, listar, consultar por identificador, actualizar y eliminar perfiles infantiles.
 - Mostrar la edad de menores de un mes en días para evitar que una edad distinta de cero se interprete como “0 meses”.
 - Crear el perfil y su medición inicial mediante una única operación de servicio `@Transactional`; un error al validar o guardar la medición revierte también el perfil.

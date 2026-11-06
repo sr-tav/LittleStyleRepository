@@ -1,7 +1,12 @@
 /** Dirección de entrega asociada a una compra. */
 export interface DireccionEnvio {
   destinatario: string;
+  /** Texto compuesto por el servidor, p. ej. «Calle 45 # 12 - 34». */
   direccion: string;
+  tipoVia: string | null;
+  numeroVia: string | null;
+  numeroCruce: string | null;
+  placa: string | null;
   complemento: string | null;
   codigoPostal: string | null;
   departamento: string | null;
@@ -13,6 +18,12 @@ export interface DireccionEnvio {
 export interface DireccionGuardada {
   guardada: boolean;
   direccion: DireccionEnvio | null;
+}
+
+/** Dirección guardada con su identificador para seleccionarla o editarla. */
+export interface DireccionClienteGuardada {
+  id: number;
+  direccion: DireccionEnvio;
 }
 
 /** Datos necesarios para crear un pedido. */
@@ -33,6 +44,7 @@ export interface LineaResumenCheckout {
   nombre: string;
   talla: string;
   color?: string | null;
+  estampado?: string | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;

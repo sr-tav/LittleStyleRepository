@@ -1,5 +1,6 @@
 package co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.repository;
 
+import co.edu.uniquindio.littlestyle.modules.auth.model.Usuario;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.model.Pedido;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
@@ -17,6 +18,18 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Pedido p where p.id = :id")
     Optional<Pedido> bloquearPorId(@Param("id") Long id);
+
+    /**
+     * Bloquea la fila del cliente para que dos compras simultáneas suyas no reciban el mismo consecutivo;
+     * debe llamarse dentro de la transacción que crea el pedido.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from Usuario u where u.id = :clienteId")
+    Optional<Usuario> bloquearCliente(@Param("clienteId") Long clienteId);
+
+    /** Mayor consecutivo de pedido del cliente; 0 si todavía no tiene pedidos numerados. */
+    @Query("select coalesce(max(p.numeroCliente), 0) from Pedido p where p.cliente.id = :clienteId")
+    int ultimoNumeroDelCliente(@Param("clienteId") Long clienteId);
 
     /** Pedido si pertenece al cliente. */
     Optional<Pedido> findByIdAndClienteId(Long id, Long clienteId);

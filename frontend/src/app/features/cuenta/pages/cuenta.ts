@@ -6,7 +6,9 @@ import { Usuario } from '../../../core/models/auth.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
-import { DireccionEnvio } from '../../catalogoCompras/models/checkout.models';
+import { DireccionClienteGuardada, DireccionEnvio } from '../../catalogoCompras/models/checkout.models';
+import { componerDireccion, parsearDireccion } from '../../catalogoCompras/data/direccion-estructurada';
+import { codigoPostalCoherente, codigosPostalesDe } from '../../catalogoCompras/data/codigos-postales-colombia';
 import { DEPARTAMENTOS_COLOMBIA, municipiosDe } from '../../catalogoCompras/data/municipios-colombia';
 import { CheckoutService } from '../../catalogoCompras/services/checkout.service';
 
@@ -26,7 +28,7 @@ export class Cuenta implements OnInit {
   private readonly checkoutService = inject(CheckoutService);
 
   protected readonly usuario = signal<Usuario | null>(null);
-  protected readonly direccionGuardada = signal<DireccionEnvio | null>(null);
+  protected readonly direccionesGuardadas = signal<DireccionClienteGuardada[]>([]);
   protected readonly cargando = signal(true);
   protected readonly cargandoDireccion = signal(true);
   protected readonly guardando = signal(false);
@@ -36,6 +38,7 @@ export class Cuenta implements OnInit {
   protected readonly confirmarDesactivacion = signal(false);
   protected readonly editandoDatos = signal(false);
   protected readonly editandoDireccion = signal(false);
+  protected readonly editandoDireccionId = signal<number | null>(null);
   protected readonly cambiandoPassword = signal(false);
   protected readonly enviado = signal(false);
   protected readonly direccionEnviada = signal(false);
@@ -62,9 +65,13 @@ export class Cuenta implements OnInit {
    */
   protected readonly direccionForm = this.fb.nonNullable.group({
     destinatario: ['', [Validators.required, Validators.maxLength(120)]],
-    direccion: ['', [Validators.required, Validators.maxLength(200)]],
+    direccion: ['', [
+      Validators.required,
+      Validators.maxLength(100),
+      (control: AbstractControl) => parsearDireccion(control.value) ? null : { formatoDireccion: true },
+    ]],
     complemento: ['', [Validators.maxLength(120)]],
-    codigoPostal: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+    codigoPostal: ['', [Validators.required, Validators.pattern(/^\d{6}$/), codigoPostalCoherente]],
     departamento: ['', [Validators.required]],
     municipio: ['', [Validators.required]],
     telefono: ['', [Validators.required, Validators.pattern(/^3\d{9}$/)]],
@@ -83,7 +90,7 @@ export class Cuenta implements OnInit {
   });
 
   /**
-   * Carga los datos del usuario y, para clientes, consulta también la dirección guardada.
+   * Carga los datos del usuario y, para clientes, consulta sus direcciones guardadas.
    * @returns No devuelve un valor.
    */
   ngOnInit(): void {
@@ -103,7 +110,7 @@ export class Cuenta implements OnInit {
         this.form.controls.nombreTienda.updateValueAndValidity();
         this.cargando.set(false);
         if (usuario.rol === 'CLIENTE') {
-          this.cargarDireccion();
+          this.cargarDirecciones();
         } else {
           this.cargandoDireccion.set(false);
         }
@@ -128,19 +135,28 @@ export class Cuenta implements OnInit {
     this.error.set(null);
   }
 
-  protected editarDireccion(): void {
-    const direccion = this.direccionGuardada();
-    if (direccion) this.cargarDireccionEnFormulario(direccion);
-    else this.limpiarDireccionFormulario();
+  protected agregarDireccion(): void {
+    this.limpiarDireccionFormulario();
+    this.editandoDireccionId.set(null);
+    this.direccionEnviada.set(false);
+    this.error.set(null);
+    this.mensaje.set(null);
+    this.editandoDireccion.set(true);
+  }
+
+  protected editarDireccion(id: number): void {
+    const guardada = this.direccionesGuardadas().find((direccion) => direccion.id === id);
+    if (!guardada) return;
+    this.cargarDireccionEnFormulario(guardada.direccion);
+    this.editandoDireccionId.set(id);
     this.error.set(null);
     this.mensaje.set(null);
     this.editandoDireccion.set(true);
   }
 
   protected cancelarEdicionDireccion(): void {
-    const direccion = this.direccionGuardada();
-    if (direccion) this.cargarDireccionEnFormulario(direccion);
-    else this.limpiarDireccionFormulario();
+    this.limpiarDireccionFormulario();
+    this.editandoDireccionId.set(null);
     this.direccionForm.markAsPristine();
     this.editandoDireccion.set(false);
     this.direccionEnviada.set(false);
@@ -158,13 +174,26 @@ export class Cuenta implements OnInit {
     this.departamentoSeleccionado.set(departamento);
     this.direccionForm.controls.municipio.setValue('');
     this.direccionForm.controls.municipio.markAsUntouched();
+    this.direccionForm.controls.codigoPostal.setValue('');
+    this.direccionForm.controls.codigoPostal.markAsUntouched();
+  }
+
+  protected codigosPostales(): readonly string[] | null {
+    const { departamento, municipio } = this.direccionForm.getRawValue();
+    return codigosPostalesDe(departamento, municipio);
+  }
+
+  protected cambioMunicipio(): void {
+    this.direccionForm.controls.codigoPostal.setValue('');
+    this.direccionForm.controls.codigoPostal.markAsUntouched();
   }
 
   /**
    * Valida, normaliza y guarda la dirección de envío del cliente.
    * @returns No devuelve un valor.
    */
-  protected guardarDireccion(): void {
+  protected guardarDireccion(event?: Event): void {
+    event?.preventDefault();
     if (this.guardandoDireccion()) return;
     this.error.set(null);
     this.mensaje.set(null);
@@ -175,10 +204,17 @@ export class Cuenta implements OnInit {
     }
 
     const values = this.direccionForm.getRawValue();
+    const partesDireccion = parsearDireccion(values.direccion);
+    if (!partesDireccion) {
+      this.direccionForm.controls.direccion.setErrors({ formatoDireccion: true });
+      this.direccionForm.markAllAsTouched();
+      return;
+    }
     const direccion: DireccionEnvio = {
       ...values,
       destinatario: values.destinatario.trim(),
       direccion: values.direccion.trim(),
+      ...partesDireccion,
       complemento: values.complemento.trim() || null,
       codigoPostal: values.codigoPostal.trim(),
       departamento: values.departamento,
@@ -186,19 +222,26 @@ export class Cuenta implements OnInit {
       telefono: values.telefono.trim(),
     };
     this.guardandoDireccion.set(true);
-    this.checkoutService.guardarDireccion(direccion).subscribe({
+    const id = this.editandoDireccionId();
+    const solicitud = id === null
+      ? this.checkoutService.crearDireccion(direccion)
+      : this.checkoutService.actualizarDireccion(id, direccion);
+    solicitud.subscribe({
       next: (respuesta) => {
         this.guardandoDireccion.set(false);
-        if (!respuesta.guardada || !respuesta.direccion) {
-          this.error.set('No fue posible guardar la dirección de envío.');
-          return;
-        }
-        this.direccionGuardada.set(respuesta.direccion);
+        const direcciones = this.direccionesGuardadas();
+        const indice = direcciones.findIndex((guardada) => guardada.id === respuesta.id);
+        this.direccionesGuardadas.set(indice < 0
+          ? [...direcciones, respuesta]
+          : direcciones.map((guardada) => guardada.id === respuesta.id ? respuesta : guardada));
         this.cargarDireccionEnFormulario(respuesta.direccion);
         this.direccionForm.markAsPristine();
         this.direccionEnviada.set(false);
+        this.editandoDireccionId.set(null);
         this.editandoDireccion.set(false);
-        this.mensaje.set('La dirección de envío se actualizó.');
+        this.mensaje.set(id === null
+          ? 'La dirección de envío se agregó.'
+          : 'La dirección de envío se actualizó.');
       },
       error: (error: unknown) => {
         this.guardandoDireccion.set(false);
@@ -340,15 +383,13 @@ export class Cuenta implements OnInit {
   }
 
   /**
-   * Consulta y establece la dirección de envío guardada.
+   * Consulta y establece las direcciones de envío guardadas.
    * @returns No devuelve un valor.
    */
-  private cargarDireccion(): void {
-    this.checkoutService.obtenerDireccion().subscribe({
-      next: (respuesta) => {
-        const direccion = respuesta.guardada ? respuesta.direccion : null;
-        this.direccionGuardada.set(direccion);
-        if (direccion) this.cargarDireccionEnFormulario(direccion);
+  private cargarDirecciones(): void {
+    this.checkoutService.listarDirecciones().subscribe({
+      next: (direcciones) => {
+        this.direccionesGuardadas.set(direcciones);
         this.cargandoDireccion.set(false);
       },
       error: (error: unknown) => {
@@ -373,13 +414,19 @@ export class Cuenta implements OnInit {
     this.departamentoSeleccionado.set(departamento);
     this.direccionForm.patchValue({
       destinatario: direccion.destinatario,
-      direccion: direccion.direccion,
+      direccion: direccion.direccion || this.componerDireccionGuardada(direccion),
       complemento: direccion.complemento ?? '',
       codigoPostal: direccion.codigoPostal ?? '',
       departamento,
       municipio,
       telefono: direccion.telefono,
     });
+    this.direccionForm.controls.codigoPostal.updateValueAndValidity();
+  }
+
+  private componerDireccionGuardada(direccion: DireccionEnvio): string {
+    return componerDireccion(direccion.tipoVia, direccion.numeroVia, direccion.numeroCruce, direccion.placa)
+      || direccion.direccion;
   }
 
   private limpiarDireccionFormulario(): void {

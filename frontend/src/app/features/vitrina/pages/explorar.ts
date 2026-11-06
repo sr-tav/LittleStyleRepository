@@ -5,7 +5,6 @@ import { EMPTY, Subject, catchError, debounceTime, distinctUntilChanged, switchM
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { procesarErrorApi } from '../../auth/auth.validators';
-import { AccesoRapidoPrenda } from '../../catalogoCompras/components/acceso-rapido-prenda';
 import { PrendaMiniatura } from '../../catalogoCompras/components/prenda-miniatura';
 import {
   OPCIONES_CATEGORIAS,
@@ -35,7 +34,7 @@ const ORDENES = [
  */
 @Component({
   selector: 'app-explorar',
-  imports: [Navbar, RouterLink, PrendaMiniatura, AccesoRapidoPrenda],
+  imports: [Navbar, RouterLink, PrendaMiniatura],
   templateUrl: './explorar.html',
 })
 export class Explorar {

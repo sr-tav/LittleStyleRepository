@@ -83,6 +83,14 @@ describe('Explorar (US-09)', () => {
     expect(enlace).not.toBeNull();
   });
 
+  it('no muestra acceso rápido y conserva el enlace Ver al detalle de cada prenda', () => {
+    const { el } = crear();
+
+    expect(el.querySelector('app-acceso-rapido-prenda')).toBeNull();
+    const enlace = el.querySelector<HTMLAnchorElement>('a[href="/cliente/catalogo/10"]');
+    expect(enlace?.textContent?.trim()).toBe('Ver');
+  });
+
   it('cambiar un filtro vuelve a la primera página con ese parámetro', () => {
     const { fixture, el } = crear();
 

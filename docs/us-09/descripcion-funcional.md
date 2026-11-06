@@ -41,6 +41,10 @@ No incluye carrito (US-10) ni compra.
   vendedor. Una talla disponible en un color agotado en otro no se presenta
   como comprable: el cliente debe elegir la combinación con stock.
 
+### Selección de estampado en el detalle (auditoría)
+
+El detalle del producto muestra bajo el color un selector «Estampado» con **solo** los estampados que ofrece la prenda (`estampados`; en prendas antiguas, su `estampado` único). Si ofrece más de uno, el cliente debe elegir uno antes de agregar al carrito; si ofrece uno solo, se asume. La elección se envía como `estampado` en `POST /api/cliente/carrito/items`. La ficha técnica lista todos los estampados de la prenda.
+
 ## 4. Seguridad y datos
 Solo CLIENTE (`/api/cliente/**` + `@PreAuthorize`). Sin datos del vendedor.
 

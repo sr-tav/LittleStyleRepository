@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
 import { ColorEtiquetaPipe } from '../../../shared/pipes/color-etiqueta.pipe';
+import { EstampadoEtiquetaPipe } from '../../../shared/pipes/estampado-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { formatearPrecio } from '../models/prenda-opciones';
 import { ItemCarrito } from '../models/carrito.models';
@@ -15,7 +16,7 @@ import { CarritoService } from '../services/carrito.service';
  */
 @Component({
   selector: 'app-carrito',
-  imports: [Navbar, RouterLink, ColorEtiquetaPipe],
+  imports: [Navbar, RouterLink, ColorEtiquetaPipe, EstampadoEtiquetaPipe],
   templateUrl: './carrito.html',
 })
 export class CarritoPage {

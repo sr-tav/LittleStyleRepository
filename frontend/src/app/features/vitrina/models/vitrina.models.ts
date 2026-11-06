@@ -39,6 +39,8 @@ export interface VitrinaDetalle {
   disponible: boolean;
   colores: string[];
   estampado: string | null;
+  /** Estampados que ofrece la prenda; el cliente elige uno antes de agregarla al carrito. */
+  estampados?: string[];
   composicion: { material: string; porcentaje: number }[];
   tallas: VitrinaTalla[];
   fechaActualizacion: string;

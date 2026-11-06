@@ -84,6 +84,16 @@ describe('RecomendacionesLista (US-07)', () => {
     expect(el.textContent).toContain('Afinidad de estilo: +8');
   });
 
+  it('no muestra acceso rápido y conserva el enlace Ver al detalle de cada prenda', () => {
+    recomendaciones.listar.mockReturnValue(of([item()]));
+    const { el } = crear();
+
+    expect(el.querySelector('app-acceso-rapido-prenda')).toBeNull();
+    const enlace = el.querySelector<HTMLAnchorElement>('a[href^="/cliente/catalogo/7"]');
+    expect(enlace?.textContent?.trim()).toBe('Ver');
+    expect(enlace?.getAttribute('href')).toMatch(/^\/cliente\/catalogo\/7(?:\?|$)/);
+  });
+
   it('avisa cuando no hay prendas compatibles', () => {
     recomendaciones.listar.mockReturnValue(of([]));
     const { el } = crear();

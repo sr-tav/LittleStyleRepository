@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Component } from '@angular/core';
+import { provideRouter, Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
 
@@ -115,5 +116,70 @@ describe('Navbar', () => {
       expect(enlace, rol).not.toBeNull();
       expect(enlace?.textContent).toContain('Mis incidencias');
     }
+  });
+
+  describe('navegación (auditoría)', () => {
+    @Component({ template: '' })
+    class PaginaVacia {}
+
+    /** Crea el navbar y navega a la ruta indicada antes de renderizar. */
+    async function crearEn(
+      ruta: string,
+      rol = 'CLIENTE',
+      rutaInicio = '/cliente',
+    ): Promise<HTMLElement> {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [Navbar],
+        providers: [
+          provideRouter([
+            { path: 'cliente', component: PaginaVacia },
+            { path: 'vendedor', component: PaginaVacia },
+            { path: 'admin', component: PaginaVacia },
+            {
+              path: 'cliente/hijos',
+              title: 'Mis hijos | LittleStyle',
+              component: PaginaVacia,
+              children: [{ path: ':id', title: 'Perfil | LittleStyle', component: PaginaVacia }],
+            },
+          ]),
+          { provide: AuthService, useValue: { rol: () => rol, usuario: () => null, rutaInicio: () => rutaInicio } },
+          { provide: CarritoService, useValue: { panelAbierto: signal(false), items: signal([]), cantidad: signal(0), subtotal: signal(0), alternarPanel: vi.fn(), cerrarPanel: vi.fn(), cambiarCantidad: vi.fn(), quitar: vi.fn() } },
+        ],
+      }).compileComponents();
+      await TestBed.inject(Router).navigateByUrl(ruta);
+      const fixture = TestBed.createComponent(Navbar);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it('muestra el enlace «Inicio» en páginas internas y lo dirige al inicio del rol', async () => {
+      const root = await crearEn('/cliente/hijos/5');
+      const inicio = root.querySelector<HTMLAnchorElement>('a.navbar-inicio');
+      expect(inicio?.textContent?.trim()).toBe('Inicio');
+      expect(inicio?.getAttribute('href')).toBe('/cliente');
+    });
+
+    it('oculta «Inicio», la flecha de regreso y las migas en las páginas principales', async () => {
+      for (const [ruta, rol, rutaInicio] of [
+        ['/cliente', 'CLIENTE', '/cliente'],
+        ['/vendedor', 'VENDEDOR', '/vendedor'],
+        ['/admin', 'ADMINISTRADOR', '/admin'],
+      ]) {
+        const root = await crearEn(ruta, rol, rutaInicio);
+        expect(root.querySelector('.navbar-inicio'), ruta).toBeNull();
+        expect(root.querySelector('.navbar-volver'), ruta).toBeNull();
+        expect(root.querySelector('nav.migas'), ruta).toBeNull();
+      }
+    });
+
+    it('en páginas internas conserva Inicio y la flecha de regreso sin mostrar migas de pan', async () => {
+      const root = await crearEn('/cliente/hijos/5');
+      expect(root.querySelector('.navbar-volver')).not.toBeNull();
+      expect(root.querySelector('a.navbar-inicio[href="/cliente"]')).not.toBeNull();
+      expect(root.querySelector('nav.migas')).toBeNull();
+    });
   });
 });

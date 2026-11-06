@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { Navbar } from '../../../shared/components/navbar/navbar';
+import { EstampadoEtiquetaPipe } from '../../../shared/pipes/estampado-etiqueta.pipe';
 import { procesarErrorApi } from '../../auth/auth.validators';
 import { ETIQUETAS_ESTADO } from '../../pedidos/models/pedido.models';
 import { formatearPrecio } from '../models/prenda-opciones';
@@ -15,7 +16,7 @@ import { PedidosVendedorService } from '../services/pedidos-vendedor.service';
  */
 @Component({
   selector: 'app-pedido-vendedor-detalle',
-  imports: [Navbar, RouterLink],
+  imports: [Navbar, RouterLink, EstampadoEtiquetaPipe],
   templateUrl: './pedido-vendedor-detalle.html',
 })
 export class PedidoVendedorDetallePage implements OnInit {

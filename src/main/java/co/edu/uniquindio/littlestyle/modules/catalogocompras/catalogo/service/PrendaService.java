@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.*;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.repository.PrendaRepository;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.inventario.service.AlertasInventarioService;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import co.edu.uniquindio.littlestyle.shared.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -117,7 +118,13 @@ public class PrendaService {
         prenda.setInstruccionesCuidado(r.instruccionesCuidado().trim());
         prenda.setMarca(textoOpcional(r.marca()));
         prenda.setPrecio(r.precio());
-        prenda.setEstampado(r.estampado());
+        Set<Estampado> estampados = r.estampadosEfectivos();
+        prenda.getEstampados().clear();
+        prenda.getEstampados().addAll(estampados);
+        // El estampado principal alimenta al motor de recomendación: el indicado si es válido o el primero.
+        prenda.setEstampado(r.estampado() != null && estampados.contains(r.estampado())
+                ? r.estampado()
+                : estampados.stream().min(Comparator.naturalOrder()).orElse(null));
         prenda.setGenero(r.genero() != null ? r.genero() : GeneroPrenda.UNISEX);
         prenda.setTintesSinteticos(Boolean.TRUE.equals(r.tintesSinteticos()));
         prenda.setBrochesMetalicos(Boolean.TRUE.equals(r.brochesMetalicos()));

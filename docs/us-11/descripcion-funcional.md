@@ -98,6 +98,19 @@ Wompi no invoca el callback del Widget cuando el cliente cierra el modal sin pag
 
 UI-15 lista el nombre de la prenda, talla, color, cantidad solicitada y stock actual de cada variante que no puedo comprarse. Como el carrito no se vacía antes de aprobar, el cliente puede revisar/ajustar directamente las cantidades conservadas y volver al checkout; el pedido cancelado no se reabre. La pantalla también ofrece volver al catálogo.
 
+### Número de pedido consecutivo por cliente (auditoría)
+
+Cada pedido guarda `numero_cliente`: el consecutivo del cliente (1, 2, 3…), asignado al crear el pedido tras la aprobación del pago. El cliente ve ese número en «Mis pedidos», en el detalle, en la pantalla de resultado del pago y en los correos; el `id` global deja de mostrarse al cliente.
+
+- **Asignación:** `PedidoCheckoutService.siguienteNumeroDePedido` bloquea la fila del cliente (`PESSIMISTIC_WRITE`) y calcula `máximo + 1`, de modo que dos pagos simultáneos del mismo cliente no repiten número. El índice único `uk_pedidos_cliente_numero (cliente_id, numero_cliente)` es la segunda barrera.
+- **Contratos:** `PedidoResumenResponse`, `PedidoDetalleResponse` y `ResultadoPagoResponse` agregan `numeroPedido`; `id`/`pedidoId` se conservan porque las URLs (`/cliente/pedidos/{id}`), el vendedor, los despachos y el historial siguen usando el identificador interno.
+- **Vendedor:** el correo y las vistas del vendedor mantienen el `id` global, porque el consecutivo solo es único dentro de cada cliente.
+- **Pedidos anteriores:** `Pedido.numeroVisible()` devuelve el `id` si `numero_cliente` es nulo; la migración `migracion-numero-pedido-cliente.sql` rellena los existentes.
+
+### Estampado en el pedido (auditoría)
+
+El `estampado` de la línea del carrito viaja por `ItemResumenCheckoutRequest` → `LineaResumenCheckoutResponse` → `LineaPedido` (columna `pedido_items.estampado`, nula en pedidos anteriores) y se devuelve en `PedidoDetalleResponse.Item`, de modo que el cliente y el vendedor ven qué estampado se compró. El resumen rechaza con 400 un estampado que la prenda no ofrezca.
+
 ## Contratos backend
 
 | Contrato | Descripción |
@@ -107,11 +120,12 @@ UI-15 lista el nombre de la prenda, talla, color, cantidad solicitada y stock ac
 | `POST /api/cliente/pagos/verificar` | Rol `CLIENTE`. Body `{ "transaccionId": "..." }`. Consulta Wompi, aplica el estado y responde `ResultadoPagoResponse`. 504 si Wompi no responde a tiempo, 503 si no está disponible, 502 si responde algo inválido. |
 | `GET /api/cliente/pagos/{referencia}` | Rol `CLIENTE`. Estado local del pago sin consultar Wompi. |
 | `POST /api/pagos/wompi/eventos` | Público (sin JWT), protegido por checksum SHA-256 y vigencia de 10 minutos. 200 recibido (se aplica en segundo plano); 401 firma inválida o evento vencido; 503 cola llena. |
-| `ResultadoPagoResponse` | `pedidoId` (nulo hasta aprobación), `referencia`, `estadoPago`, `estadoPedido`, `motivoReembolso`, `metodoPago`, `total`, `prendasAgotadas`, `lineasDisponibles`. |
+| `ResultadoPagoResponse` | `pedidoId` (nulo hasta aprobación), `numeroPedido` (consecutivo del cliente), `referencia`, `estadoPago`, `estadoPedido`, `motivoReembolso`, `metodoPago`, `total`, `prendasAgotadas`, `lineasDisponibles`. |
 
 ## Persistencia
 
 - `transacciones_pago`: cliente, pedido opcional (solo para compatibilidad histórica), snapshot cifrado del checkout, clave de idempotencia, referencia única, id de Wompi, monto en centavos, moneda, estado, método, motivo de reembolso y fechas. Se requiere la migración SQL manual documentada en `migracion-checkout-pago.sql` antes de desplegar con `ddl-auto=validate`.
+- `pedidos.numero_cliente` (nuevo, único por cliente): requiere `migracion-numero-pedido-cliente.sql` con `ddl-auto=validate`.
 - `transacciones_pago_agotadas`: prendas/tallas sin stock al aprobarse el pago.
 - No se almacenan datos de tarjeta ni de cuenta: el cliente los ingresa solo en el widget de Wompi.
 

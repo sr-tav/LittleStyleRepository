@@ -135,7 +135,7 @@ class CheckoutFacadeTest {
 
     private ResumenCheckoutRequest solicitud() {
         return new ResumenCheckoutRequest(11L,
-                new DireccionEnvioRequest("Ana Ruiz", "Calle 1 # 2-3", null,
+                new DireccionEnvioRequest("Ana Ruiz", null, "Calle", "1", "2", "3", null,
                         "630001", "Quindío", "Armenia", "3001234567"));
     }
 

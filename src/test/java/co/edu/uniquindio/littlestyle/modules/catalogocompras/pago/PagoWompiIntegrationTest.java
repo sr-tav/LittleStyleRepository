@@ -217,6 +217,7 @@ class PagoWompiIntegrationTest {
         String solicitud = """
                 {"perfilInfantilId":%d,
                  "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                  "complemento":null,"codigoPostal":"630001",
                  "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
                 """.formatted(compra.perfilId());
@@ -251,6 +252,7 @@ class PagoWompiIntegrationTest {
         String solicitud = """
                 {"perfilInfantilId":%d,
                  "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                  "complemento":null,"codigoPostal":"630001",
                  "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
                 """.formatted(compra.perfilId());
@@ -337,6 +339,7 @@ class PagoWompiIntegrationTest {
         String solicitud = """
                 {"perfilInfantilId":%d,
                  "direccion":{"destinatario":"Ana Ruiz","direccion":"Calle 1 # 2-3",
+                 "tipoVia":"Calle","numeroVia":"1","numeroCruce":"2","placa":"3",
                  "complemento":null,"codigoPostal":"630001",
                  "departamento":"Quindío","municipio":"Armenia","telefono":"3001234567"}}
                 """.formatted(compra.perfilId());

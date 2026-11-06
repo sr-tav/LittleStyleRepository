@@ -868,3 +868,16 @@ li.is-actual .pedido-punto {
   }
 
 }
+
+/* Estampados del detalle: mismo aspecto que las tallas, con clases propias para no mezclarse con ellas. */
+.detalle-estampados-lista {
+  @extend .detalle-tallas;
+}
+
+.detalle-estampado-opcion {
+  @extend .detalle-talla-opcion;
+}
+
+.detalle-estampado {
+  @extend .detalle-talla;
+}

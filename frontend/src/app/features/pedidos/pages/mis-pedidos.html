@@ -27,10 +27,10 @@
           <a
             class="pedido-tarjeta"
             [routerLink]="['/cliente/pedidos', p.id]"
-            [attr.aria-label]="'Ver detalle del pedido ' + p.id + ', ' + estado(p)"
+            [attr.aria-label]="'Ver detalle del pedido ' + p.numeroPedido + ', ' + estado(p)"
           >
             <div class="pedido-tarjeta-info">
-              <strong>Pedido #{{ p.id }}</strong>
+              <strong>Pedido #{{ p.numeroPedido }}</strong>
               <span class="product-meta">{{ p.cantidadItems }} prenda(s) · {{ precioTotal(p) }} · {{ fechaDe(p.fechaCreacion) }}</span>
               @if (p.numeroGuia) {
                 <span class="product-meta">Guía: {{ p.numeroGuia }}</span>

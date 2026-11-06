@@ -14,6 +14,7 @@ describe('MisPedidos (US-12 / UI-17)', () => {
     listarRespuesta = [
       {
         id: 7,
+        numeroPedido: 2,
         estado: 'ENVIADO',
         total: 107000,
         fechaCreacion: '2026-10-01T10:00:00',
@@ -37,7 +38,9 @@ describe('MisPedidos (US-12 / UI-17)', () => {
     fixture.detectChanges();
 
     const root: HTMLElement = fixture.nativeElement;
-    expect(root.textContent).toContain('Pedido #7');
+    // El cliente ve su consecutivo (2), no el id de la base de datos (7); el enlace sí usa el id interno
+    expect(root.textContent).toContain('Pedido #2');
+    expect(root.textContent).not.toContain('Pedido #7');
     expect(root.textContent).toContain('Enviado');
     expect(root.textContent).toContain('107.000');
     expect(root.textContent).toContain('COL123');

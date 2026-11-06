@@ -5,6 +5,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.Prenda
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.dto.TallaRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.catalogo.model.MaterialTextil;
 import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.ColorPreferido;
+import co.edu.uniquindio.littlestyle.modules.perfilesinfantiles.model.Estampado;
 import co.edu.uniquindio.littlestyle.shared.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

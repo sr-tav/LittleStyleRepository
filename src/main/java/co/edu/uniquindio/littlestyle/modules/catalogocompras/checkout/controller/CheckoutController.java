@@ -6,6 +6,7 @@ import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.Pedido
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoEstadoResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.PedidoResumenResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionEnvioRequest;
+import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionClienteResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.DireccionGuardadaResponse;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.checkout.dto.ItemResumenCheckoutRequest;
 import co.edu.uniquindio.littlestyle.modules.catalogocompras.carrito.service.CarritoService;
@@ -31,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Checkout y pedidos del cliente autenticado: dirección de envío, resumen de compra, historial y detalle de
+ * Checkout y pedidos del cliente autenticado: direcciones de envío, resumen de compra, historial y detalle de
  * pedidos, y cancelación antes del pago.
  */
 @RestController
@@ -47,6 +48,27 @@ public class CheckoutController {
     private final DireccionClienteService direccionClienteService;
 
     /** Devuelve la dirección de envío guardada del cliente, si tiene una. */
+    @GetMapping("/direcciones")
+    public ResponseEntity<List<DireccionClienteResponse>> listarDirecciones() {
+        return ResponseEntity.ok(direccionClienteService.listar());
+    }
+
+    /** Crea una dirección de envío para el cliente autenticado. */
+    @PostMapping("/direcciones")
+    public ResponseEntity<DireccionClienteResponse> crearDireccion(
+            @Valid @RequestBody DireccionEnvioRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(direccionClienteService.crear(request));
+    }
+
+    /** Actualiza una dirección propia. */
+    @PutMapping("/direcciones/{id}")
+    public ResponseEntity<DireccionClienteResponse> actualizarDireccion(
+            @PathVariable Long id,
+            @Valid @RequestBody DireccionEnvioRequest request) {
+        return ResponseEntity.ok(direccionClienteService.actualizar(id, request));
+    }
+
+    /** Devuelve la primera dirección guardada del cliente, para compatibilidad con clientes anteriores. */
     @GetMapping("/direccion")
     public ResponseEntity<DireccionGuardadaResponse> obtenerDireccion() {
         return ResponseEntity.ok(direccionClienteService.obtener());

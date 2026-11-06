@@ -45,6 +45,7 @@ describe('PrendaForm (UI-20)', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function completar(c: any) {
     c.form.patchValue({
+      estampados: ['LISO'],
       nombre: 'Vestido Floral', categoria: 'VESTIDOS', descripcion: 'Vestido cómodo',
       precio: 45900,
       instruccionesCuidado: '  Lavar a mano en agua fría ',

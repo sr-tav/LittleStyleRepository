@@ -95,15 +95,24 @@
       <section class="profile-section catalog-section" aria-labelledby="sec-caract">
         <h2 id="sec-caract" class="catalog-section-title"><span aria-hidden="true">✨</span> Características</h2>
 
-        <div class="field">
-          <label for="estampado">Estampado</label>
-          <select id="estampado" formControlName="estampado">
-            <option value="">Sin especificar</option>
+        <fieldset class="preference-group" [class.has-error]="invalido(form.controls.estampados)">
+          <legend>Estampados que ofrece la prenda *</legend>
+          <p class="field-hint">El cliente elegirá uno en el detalle. Si la prenda no tiene diseño, elige «Liso».</p>
+          <div class="catalog-checks">
             @for (e of estampados; track e.valor) {
-              <option [value]="e.valor">{{ e.etiqueta }}</option>
+              <label class="profile-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="form.controls.estampados.value.includes(e.valor)"
+                  (change)="alternarEstampado(e.valor)"
+                /> {{ e.etiqueta }}
+              </label>
             }
-          </select>
-        </div>
+          </div>
+          @if (invalido(form.controls.estampados)) {
+            <span class="field-error">Selecciona al menos un estampado (elige «Liso» si la prenda no tiene).</span>
+          }
+        </fieldset>
 
         <fieldset class="preference-group">
           <legend>Información para alergias</legend>

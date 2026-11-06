@@ -73,7 +73,7 @@ public class PedidoCheckoutService {
                         .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                                 "Una prenda del carrito ya no está disponible. Vuelve al carrito para retirarla o elegir otra antes de continuar.")));
         List<ItemResumenCheckoutRequest> items = carrito.items().stream()
-                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(), item.tallaSugerida(), item.color()))
+                .map(item -> new ItemResumenCheckoutRequest(item.prendaId(), item.talla(), item.cantidad(), item.tallaSugerida(), item.color(), item.estampado()))
                 .toList();
         ResumenCheckoutResponse resumen = checkoutFacade.calcularResumen(
                 new ResumenCheckoutRequest(request.perfilInfantilId(), request.direccion()), items);
@@ -95,6 +95,7 @@ public class PedidoCheckoutService {
         LocalDateTime ahora = LocalDateTime.now(clock);
         Pedido pedido = Pedido.builder()
                 .cliente(cliente)
+                .numeroCliente(siguienteNumeroDePedido(clienteId))
                 .perfilInfantilId(snapshot.perfilInfantilId())
                 .estado(EstadoPedido.PENDIENTE_PAGO)
                 .destinatario(snapshot.direccion().destinatario())
@@ -119,6 +120,7 @@ public class PedidoCheckoutService {
                 .subtotal(linea.subtotal())
                 .tallaSugerida(linea.tallaSugerida())
                 .color(linea.color())
+                .estampado(linea.estampado())
                 .build()));
         pedidoRepository.saveAndFlush(pedido);
         historialRepository.save(HistorialEstadoPedido.builder()
@@ -131,11 +133,24 @@ public class PedidoCheckoutService {
         return pedido;
     }
 
+    /**
+     * Siguiente consecutivo de pedido del cliente (1, 2, 3…). Bloquea antes la fila del cliente para que dos
+     * compras simultáneas suyas no reciban el mismo número; el bloqueo dura lo que la transacción de creación.
+     */
+    int siguienteNumeroDePedido(Long clienteId) {
+        pedidoRepository.bloquearCliente(clienteId);
+        return pedidoRepository.ultimoNumeroDelCliente(clienteId) + 1;
+    }
+
     /** Copia la dirección sin espacios sobrantes; el complemento vacío queda nulo. */
     private static DireccionEnvioRequest normalizarDireccion(DireccionEnvioRequest direccion) {
         return new DireccionEnvioRequest(
                 direccion.destinatario().trim(),
                 direccion.direccion().trim(),
+                direccion.tipoVia().trim(),
+                direccion.numeroVia().trim(),
+                direccion.numeroCruce().trim(),
+                direccion.placa().trim(),
                 direccion.complemento() == null || direccion.complemento().isBlank()
                         ? null : direccion.complemento().trim(),
                 direccion.codigoPostal().trim(),

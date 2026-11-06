@@ -238,11 +238,11 @@ describe('AlertasStock (UI-22)', () => {
     expect(tarjetas.length).toBe(2);
     expect(tarjetas[0].textContent).toContain('Talla');
     expect(tarjetas[0].textContent).toContain('-3');
-    expect(tarjetas[0].textContent).toContain('Requiere reabastecimiento');
-    expect(tarjetas[1].classList).toContain('alert-card-AGOTADO');
-    expect(tarjetas[1].textContent).toContain('Sin stock para venta');
+    expect(tarjetas[0].classList).toContain('alert-card-AGOTADO');
+    expect(tarjetas[0].textContent).toContain('Sin stock para venta');
+    expect(tarjetas[1].classList).toContain('alert-card-STOCK_BAJO');
+    expect(tarjetas[1].textContent).toContain('Quedan 2 unidades; tu mínimo es 5');
     http.verify();
   });
 });
-
 
