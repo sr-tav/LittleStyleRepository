@@ -10,6 +10,10 @@ services:
     image: littlestyle-backend
     restart: unless-stopped
     env_file: ${LITTLESTYLE_ENV_FILE:-.env}
+    # El "hoy" del negocio es el de Colombia (antigüedad de mediciones, fechas de pedidos, reportes).
+    # Sin esto el contenedor corre en UTC y de 7 p. m. a medianoche usa el día siguiente.
+    environment:
+      TZ: America/Bogota
     # Con Jenkins en la misma máquina; la JVM toma el 75 % de este límite
     mem_limit: 1g
     expose:
