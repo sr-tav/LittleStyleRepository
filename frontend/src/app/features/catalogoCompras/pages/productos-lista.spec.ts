@@ -10,6 +10,10 @@ describe('ProductosLista (UI-19)', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    // El Navbar usa AuthService y CarritoService reales: sin esto, una sesión CLIENTE que dejó
+    // otro spec (con --coverage el afterEach global de test-setup no se aplica a todos los
+    // archivos) dispara GET /api/cliente/carrito y rompe http.verify().
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [ProductosLista],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
