@@ -270,7 +270,7 @@ footer b { color: var(--verde-osc); font-size: 13px; }
 .indice { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: var(--sombra); }
 .indice th { text-align: left; font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--verde-osc);
   background: var(--p2); padding: 11px 18px; }
-.indice td { padding: 8px 18px; font-size: 15px; font-weight: 800; border-top: 1px dashed var(--borde); }
+.indice td { padding: 5px 18px; font-size: 15px; font-weight: 800; border-top: 1px dashed var(--borde); }
 .indice td small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
 .indice .t-talla { width: 90px; }
 .indice .t-talla { font-size: 18px; font-weight: 900; color: var(--verde-osc); }

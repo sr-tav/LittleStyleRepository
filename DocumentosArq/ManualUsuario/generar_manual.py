@@ -36,7 +36,8 @@ PARTES = [
     ('V', 'Compra de prendas', 'Del catálogo al pago, paso a paso.', 'conjunto', '#233127'),
     ('VI', 'Seguimiento de pedidos', 'Consulta el estado de cada compra.', 'chaqueta', '#3e9c55'),
     ('VII', 'Gestión del vendedor', 'Productos, inventario, alertas y despachos.', 'camisa', '#2b7d40'),
-    ('VIII', 'Panel administrativo', 'Supervisión general de la plataforma.', 'buzo', '#233127'),
+    ('VIII', 'Panel administrativo', 'Supervisa la plataforma, las cuentas y las publicaciones.', 'buzo', '#233127'),
+    ('IX', 'Incidencias, auditoría y reportes', 'Atiende solicitudes, revisa el registro y analiza la operación.', 'jogger', '#3e9c55'),
 ]
 
 PAGINAS = []
@@ -365,13 +366,138 @@ PAGINAS += [
 divisor(7)
 PAGINAS += [
     paso('VIII', '1', 'Panel administrativo',
-         'La cuenta de administrador accede al <b>Panel administrativo</b>, punto de partida para la supervisión general de LittleStyle.',
-         [(None, '<b>Usuarios</b>: clientes y vendedores.'),
-          (None, '<b>Moderación</b>: publicaciones del catálogo.'),
-          (None, '<b>Categorías</b>: categorías generales.'),
-          (None, '<b>Reportes</b>: dashboards y exportación en PDF.')],
-         [img('50_admin', '/admin', crop=(150, 60, 1290, 560))],
-         nota='Estos módulos se habilitarán progresivamente en las próximas versiones de la plataforma.', layout='ancha'),
+         'Al iniciar sesión como administrador llegas al <b>Panel administrativo</b>, el resumen del estado de toda la plataforma.',
+         [(1, '<b>Indicadores</b>: usuarios activos (con suspendidos, bloqueados y eliminados), prendas publicadas y pendientes de revisión, '
+              'incidencias abiertas y en revisión, y la <b>tasa de resolución</b> en menos de 24 horas.'),
+          (2, '<b>“Actualizar”</b> vuelve a consultar el resumen; al lado se muestra la hora de la última actualización.'),
+          (3, '<b>Accesos rápidos</b> a Usuarios, Reportes, Moderación, Auditoría e Incidencias. Cada indicador también es un enlace a su módulo.')],
+         [img('50_admin', '/admin', crop=(100, 80, 1340, 640))],
+         nota='“Prendas publicadas” incluye las que aún no se revisan: la moderación ocurre después de publicar. '
+              'Si no hay incidencias cerradas en los últimos 30 días, la tasa se muestra como “—”.', layout='ancha'),
+    paso('VIII', '2', 'Menú del administrador',
+         'El ícono <b>☰</b> abre el menú lateral con todos los módulos administrativos.',
+         [(1, '<b>Panel administrativo</b>: el resumen general.'),
+          (None, '<b>Auditoría</b>: registro de las acciones de los administradores.'),
+          (None, '<b>Incidencias</b>: apelaciones, reportes y soporte.'),
+          (None, '<b>Moderación</b>: revisión de las prendas publicadas.'),
+          (None, '<b>Reportes</b>: dashboard de ventas, demanda e inventario.'),
+          (None, '<b>Usuarios</b>: cuentas de clientes y vendedores.')],
+         [img('51_menu_admin', '/admin', crop=(0, 0, 1000, 900))],
+         nota='Clientes y vendedores no pueden abrir las rutas administrativas: el sistema les muestra “Acceso denegado”.',
+         layout='izquierda'),
+    paso('VIII', '3', 'Gestión de usuarios',
+         'En <b>“Usuarios”</b> ves todas las cuentas de la plataforma con su rol, su tienda (si es vendedor) y su estado.',
+         [(1, '<b>Filtros</b>: rol, estado y búsqueda por nombre o correo. <b>“Limpiar”</b> los restablece.'),
+          (2, 'El <b>estado</b> de la cuenta: Activo, Suspendido, Bloqueado o Eliminado.'),
+          (3, '<b>“Cambiar estado”</b> suspende, bloquea o habilita la cuenta.'),
+          (4, '<b>“Eliminar cuenta”</b> borra la cuenta de forma permanente.'),
+          (5, 'Recorre las páginas con <b>Anterior</b> y <b>Siguiente</b>.')],
+         [img('52_usuarios', '/admin/usuarios', crop=(150, 80, 1290, 1174), pos={2: 'abajo', 3: 'abajo', 4: 'abajo'})],
+         nota='Las cuentas de administrador y las ya eliminadas no tienen acciones. Tampoco puedes cambiar tu propia cuenta.',
+         layout='ancha-lado'),
+    paso('VIII', '4', 'Suspender, bloquear o habilitar',
+         'Al presionar <b>“Cambiar estado”</b> se abre una ventana con las acciones posibles según el estado actual de la cuenta.',
+         [(1, 'Elige la acción: <b>Suspender</b>, <b>Bloquear</b> o <b>Habilitar</b>.'),
+          (2, 'Escribe el <b>motivo</b> (de 10 a 500 caracteres). Queda registrado en la auditoría.'),
+          (3, 'Presiona <b>“Confirmar”</b>, o <b>“Cancelar”</b> para cerrar sin cambios.')],
+         [img('53_usuario_estado', '/admin/usuarios', crop=(440, 170, 1000, 730))],
+         nota='Una cuenta suspendida o bloqueada no puede iniciar sesión. Si es un vendedor, sus prendas dejan de verse en el catálogo '
+              'sin perder su stock.', tipo='importante'),
+    paso('VIII', '5', 'Eliminar una cuenta',
+         '<b>“Eliminar cuenta”</b> abre una confirmación que explica qué se va a borrar.',
+         [(1, 'El aviso indica que se borran los datos personales y, si es un vendedor, también su tienda, sus productos y sus imágenes.'),
+          (2, 'Escribe el <b>motivo</b> de la eliminación (mínimo 10 caracteres).'),
+          (3, 'Presiona <b>“Eliminar definitivamente”</b> para confirmar.')],
+         [img('54_usuario_eliminar', '/admin/usuarios', crop=(440, 170, 1000, 730))],
+         nota='Esta acción es permanente y no se puede deshacer. Si solo quieres impedir el acceso, usa “Suspender” o “Bloquear”.',
+         tipo='importante', layout='izquierda'),
+    paso('VIII', '6', 'Moderación de prendas',
+         'En <b>“Moderación”</b> revisas las publicaciones del catálogo. La cola muestra primero las prendas <b>sin revisar</b>, '
+         'luego las que tienen reportes abiertos y después las actualizadas más recientemente.',
+         [(1, '<b>Filtros</b>: estado de moderación, estado de la prenda, correo del vendedor y nombre.'),
+          (2, 'El <b>estado de moderación</b>: Sin revisar, Aprobada o Desactivada.'),
+          (3, 'En una prenda desactivada se ve el <b>motivo</b> que recibió el vendedor.'),
+          (4, '<b>“Ver detalle”</b> abre la ficha completa de la prenda.'),
+          (5, 'Paginación de la cola.')],
+         [img('55_moderacion', '/admin/moderacion', crop=(150, 80, 1290, 1180))],
+         nota='“Sin revisar” no significa oculta: la prenda ya está publicada mientras espera la revisión.', layout='ancha-lado'),
+    paso('VIII', '7', 'Revisar el detalle de una prenda',
+         'El detalle aparece debajo de la cola con todo lo que necesitas para decidir.',
+         [(1, '<b>Fotos</b> de la prenda; las miniaturas permiten cambiar de imagen.'),
+          (2, '<b>Existencias por variante</b>: cada fila es una combinación de talla y color, con su stock, estatura y peso.'),
+          (3, '<b>Seguridad del material</b>: tintes sintéticos, broches metálicos, níquel y formaldehído. Los que aplican se resaltan.'),
+          (4, '<b>“Aprobar”</b> marca la prenda como revisada; <b>“Desactivar”</b> la oculta a los clientes. '
+              'En una prenda desactivada aparece <b>“Restaurar”</b>.'),
+          (None, 'Más abajo están la descripción y la composición textil.')],
+         [img('56_moderacion_detalle', '/admin/moderacion', crop=(170, 1190, 1270, 2180))],
+         nota='Las decisiones se aplican a toda la prenda, no a una talla o color en particular. El sistema nunca borra el producto '
+              'ni su inventario.', layout='ancha-lado'),
+    paso('VIII', '8', 'Desactivar una prenda',
+         'Si una publicación incumple las normas, presiona <b>“Desactivar”</b>. Se abre una ventana para justificar la decisión.',
+         [(1, 'Escribe el <b>motivo</b> (de 10 a 500 caracteres). El vendedor lo verá en “Mis productos”.'),
+          (2, 'Presiona <b>“Desactivar”</b>. La prenda deja de mostrarse en el catálogo.'),
+          (None, 'El vendedor puede <b>apelar</b> la decisión; su apelación llega a <b>Incidencias</b> (Parte IX).')],
+         [img('57_moderacion_desactivar', '/admin/moderacion', crop=(440, 170, 1000, 730))],
+         nota='Mientras la apelación está pendiente, el vendedor no puede editar ni volver a publicar la prenda.'),
+]
+
+# ---------------- Parte IX
+divisor(8)
+PAGINAS += [
+    paso('IX', '1', 'Bandeja de incidencias',
+         'En <b>“Incidencias”</b> atiendes las apelaciones de cuentas y de prendas, los reportes de productos y las solicitudes de soporte.',
+         [(1, '<b>Filtros</b>: estado, tipo, rol del reportante y búsqueda por asunto o correo.'),
+          (2, 'Los reportes y apelaciones de producto muestran la <b>referencia</b> de la prenda.'),
+          (3, 'El <b>estado</b>: Abierta, En revisión, Resuelta o Rechazada.'),
+          (4, '<b>“Elegir acción”</b>: en una abierta, <i>Tomar</i> (pasa a revisión) o <i>Rechazar</i>; en una en revisión, <i>Resolver</i>.'),
+          (5, 'Las incidencias cerradas muestran la <b>respuesta</b> enviada al reportante.')],
+         [img('58_incidencias', '/admin/incidencias', crop=(150, 80, 1290, 1080), pos={3: 'abajo'})], layout='ancha-lado'),
+    paso('IX', '2', 'Resolver o rechazar una incidencia',
+         'Al elegir <b>Resolver</b> o <b>Rechazar</b> se abre una ventana para responderle a quien reportó.',
+         [(1, 'Escribe una <b>respuesta</b> clara (de 10 a 4.000 caracteres) que explique la decisión.'),
+          (2, 'Presiona <b>“Resolver”</b> o <b>“Rechazar”</b> para cerrar la incidencia.'),
+          (None, 'La respuesta queda registrada, aparece en <b>Mis incidencias</b> del usuario y se le notifica por correo.')],
+         [img('59_incidencia_resolver', '/admin/incidencias', crop=(440, 170, 1000, 730))],
+         nota='La tasa de resolución del panel cuenta las incidencias cerradas en menos de 24 horas. '
+              'Tomar una incidencia apenas llega ayuda a cumplir ese objetivo.', layout='izquierda'),
+    paso('IX', '3', 'Cómo llegan las incidencias',
+         'Clientes y vendedores reportan desde su propia cuenta, en la opción <b>“Mis incidencias”</b> del menú.',
+         [(1, 'Si el administrador desactiva una prenda, el vendedor ve el motivo en <b>Mis productos</b>.'),
+          (2, 'El botón <b>“Apelar”</b> abre Mis incidencias con la prenda y el asunto ya cargados.'),
+          (3, 'En <b>Mis incidencias</b> cada usuario ve su historial, el estado y la respuesta del equipo, y puede crear una nueva solicitud.'),
+          (None, 'El cliente también puede usar <b>“Reportar producto”</b> desde el detalle de una prenda.')],
+         [img('63_apelar', '/vendedor/productos', crop=(150, 330, 1290, 480), usar=[2],
+              extra=[(1, 750, 372, 295, 86)]),
+          img('64_mis_incidencias', '/mis-incidencias', crop=(150, 80, 1290, 470), usar=[], extra=[(3, 194, 305, 1053, 72)])],
+         layout='doble'),
+    paso('IX', '4', 'Auditoría',
+         'La <b>Auditoría</b> es un registro de solo lectura de todas las acciones de los administradores: cambios de estado de cuentas, '
+         'decisiones de moderación e incidencias atendidas.',
+         [(1, '<b>“Verificar integridad”</b> recalcula la cadena de registros para comprobar que nadie los alteró.'),
+          (2, 'El resultado indica si la cadena está <b>íntegra</b> y cuántos registros se verificaron, o cuál es el primer registro inconsistente.'),
+          (3, '<b>Filtros</b>: correo del administrador, acción, entidad, id, resultado y rango de fechas.'),
+          (4, 'La columna <b>Cambio</b> muestra el valor anterior tachado y el nuevo valor.'),
+          (5, 'El <b>resultado</b> de cada acción: Éxito o Fallo, junto con el motivo escrito.')],
+         [img('60_auditoria', '/admin/auditoria', crop=(150, 80, 1290, 940), pos={4: 'abajo', 5: 'abajo'})],
+         nota='Los registros no se pueden editar ni borrar. Si la verificación encuentra una inconsistencia, comunícala al responsable '
+              'técnico y no intentes corregirla a mano.', tipo='importante', layout='ancha-lado'),
+    paso('IX', '5', 'Reportes administrativos',
+         'La opción <b>“Reportes”</b> abre el dashboard de la operación. El administrador ve toda la plataforma; un vendedor, solo su tienda.',
+         [(1, '<b>Filtros</b>: período (últimos 30 días, este mes o últimos 6 meses), fechas desde y hasta, y categoría. El panel se actualiza solo.'),
+          (2, '<b>Indicadores</b>: ventas totales, unidades vendidas, ticket promedio, pedidos, inventario disponible y variantes con stock bajo.'),
+          (3, '<b>Rankings</b>: prendas más consultadas, más vendidas y palabras más buscadas en el catálogo.'),
+          (4, '<b>Gráficos</b>: demanda por talla (unidades) y ventas por categoría (COP).')],
+         [img('61_dashboard', '/dashboard', crop=(0, 80, 1440, 1170), usar=[1, 2, 3, 4])],
+         nota='El inventario no depende de las fechas: siempre muestra el stock actual. Una variante es una combinación de prenda, talla '
+              'y color, por eso el stock bajo se cuenta por cada color.', layout='ancha'),
+    paso('IX', '6', 'Exportar un reporte',
+         'Al final del dashboard está el bloque <b>“Exportar reporte”</b>. Usa los mismos filtros de fechas y categoría del panel.',
+         [(1, 'Elige el <b>reporte</b>: Ventas, Demanda, Inventario o Búsquedas.'),
+          (2, 'Elige el <b>formato</b>: PDF para presentar o imprimir, Excel (.xlsx) para analizar, o CSV para otras herramientas.'),
+          (3, '<b>“Descargar”</b> genera el archivo; una barra muestra el avance y puedes cancelar.'),
+          (4, '<b>“Imprimir”</b> abre el diálogo de impresión del navegador. Solo está disponible en PDF: con Excel o CSV el botón se deshabilita y aparece un aviso.')],
+         [img('62_exportar', '/dashboard', crop=(0, 820, 1440, 1400))],
+         nota='Si el reporte supera los 5.000 registros, el sistema pide acotar las fechas o elegir una categoría.', layout='ancha'),
 ]
 
 PAGINAS.append(dict(k='faq'))
@@ -502,29 +628,30 @@ def render_portada():
   <svg class="cuerda" viewBox="0 0 1280 120" preserveAspectRatio="none"><path d="M-10 30 Q640 120 1290 30" fill="none" stroke="#f2ecad" stroke-width="3"/></svg>
   <div class="tendedero">{pinzas}</div>
   <div class="portada-texto">
-    <span class="tag claro">Manual de usuario · Versión 1.0</span>
+    <span class="tag claro">Manual de usuario · Versión 1.1</span>
     <h1>Little<b>Style</b></h1>
     <p class="lema">La talla perfecta para cada etapa.</p>
-    <p class="sub">Regístrate, crea los perfiles de tus hijos, compra con talla sugerida y, si eres vendedor, gestiona tu tienda. Todo desde nuestra página web.</p>
+    <p class="sub">Regístrate, crea los perfiles de tus hijos, compra con talla sugerida, gestiona tu tienda si eres vendedor y supervisa la plataforma si eres administrador. Todo desde nuestra página web.</p>
   </div>
   <div class="etiqueta-autores">
     <i class="ojal"></i>
     <small>Realizado por</small>
     <p>Oscar Tomás Aristizabal Velásquez<br>Valentina González Díaz<br>Valentina Rodríguez Castro</p>
-    <small>Ingeniería de Software III · Universidad del Quindío · Octubre 2026</small>
+    <small>Ingeniería de Software III · Universidad del Quindío · Noviembre 2026</small>
   </div>
 </section>'''
 
 
 def render_bienvenida(num):
     total_pasos = sum(1 for p in PAGINAS if p['k'] == 'paso')
+    total_capturas = len({im['src'] for p in PAGINAS if p['k'] == 'paso' for im in p['imagenes']})
     c = f'''<header class="cab"><span class="tag">Bienvenida</span></header>
 <h2 class="titulo"><span>Bienvenido al manual de LittleStyle</span></h2>
 <div class="bienvenida">
   <div>
     <p class="intro grande">LittleStyle es una plataforma de moda infantil que crece con tus hijos: recomienda la talla correcta
     según sus medidas reales, filtra las prendas que no son seguras para sus alergias textiles y te permite comprar con pagos seguros.</p>
-    <p class="intro">Esta guía te acompaña en cada paso, ya seas <b>cliente</b> (padre, madre o acudiente) o <b>vendedor</b> de ropa infantil.
+    <p class="intro">Esta guía te acompaña en cada paso, ya seas <b>cliente</b> (padre, madre o acudiente), <b>vendedor</b> de ropa infantil o <b>administrador</b> de la plataforma.
     Cada pantalla es una captura real de la plataforma con marcadores numerados que corresponden a las instrucciones.</p>
     <h3 class="sub-h">Aquí aprenderás a:</h3>
     <ul class="checks">
@@ -533,6 +660,7 @@ def render_bienvenida(num):
       <li>Encontrar prendas con la talla sugerida y comprarlas</li>
       <li>Hacer seguimiento a tus pedidos</li>
       <li>Publicar productos, controlar inventario y despachar pedidos como vendedor</li>
+      <li>Administrar cuentas, moderar prendas, atender incidencias y consultar reportes</li>
     </ul>
   </div>
 
@@ -545,9 +673,9 @@ def render_bienvenida(num):
   </div>
 </div>
 <div class="medidas">
-  <div><b>8</b><span>partes</span></div><div><b>{total_pasos}</b><span>pasos guiados</span></div>
-  <div><b>35</b><span>capturas reales</span></div><div><b>3</b><span>roles de usuario</span></div>
-  <p>Versión documentada:<br>LittleStyle a octubre de 2026</p>
+  <div><b>{len(PARTES)}</b><span>partes</span></div><div><b>{total_pasos}</b><span>pasos guiados</span></div>
+  <div><b>{total_capturas}</b><span>capturas reales</span></div><div><b>3</b><span>roles de usuario</span></div>
+  <p>Versión documentada:<br>LittleStyle a noviembre de 2026</p>
 </div>'''
     return marco(c, num)
 
@@ -556,7 +684,7 @@ def render_intro(num):
     roles = [
         ('Cliente', 'Padre, madre o acudiente', 'Registra perfiles infantiles, consulta la talla sugerida, compra y sigue sus pedidos.', 'pijama'),
         ('Vendedor', 'Tienda de ropa infantil', 'Publica prendas con su ficha textil y tabla de tallas, controla inventario y despacha pedidos.', 'camisa'),
-        ('Administrador', 'Equipo LittleStyle', 'Supervisa usuarios, publicaciones, categorías y reportes de la plataforma.', 'buzo'),
+        ('Administrador', 'Equipo LittleStyle', 'Gestiona cuentas, modera prendas, atiende incidencias, revisa la auditoría y consulta reportes.', 'buzo'),
     ]
     tarjetas = ''.join(
         f'<article class="rol"><img src="prendas/{im}.png" alt=""><h3>{t}</h3><small>{s}</small><p>{d}</p></article>'
@@ -589,6 +717,9 @@ def render_indice(num, entradas):
     return marco(c, num)
 
 
+N_PREGUNTAS = 8
+
+
 def render_faq(num):
     preguntas = [
         ('No puedo iniciar sesión', 'Verifica el correo y la contraseña. Tras 5 intentos fallidos el acceso se bloquea 15 minutos; espera y vuelve a intentarlo.'),
@@ -596,7 +727,9 @@ def render_faq(num):
         ('No me deja agregar una prenda al carrito', 'La prenda puede estar agotada en esa talla o ser incompatible con una alergia grave del perfil activo.'),
         ('Pagué pero el pedido sigue pendiente', 'La confirmación de Wompi puede tardar unos minutos. Abre el pedido y presiona “Actualizar”. Si el pago se aprobó tarde sobre un pedido anulado, se reembolsa automáticamente.'),
         ('¿Cómo sé cuándo llega mi pedido?', 'En “Mis pedidos” verás el estado de cada paquete y el número de guía cuando el vendedor lo envíe.'),
-        ('Soy vendedor y no veo una prenda en el catálogo', 'Revisa que esté publicada (estado Activo; el ícono del ojo la oculta o publica) y que tenga stock en al menos una talla.'),
+        ('Soy vendedor y no veo una prenda en el catálogo', 'Revisa que esté publicada (estado Activo; el ícono del ojo la oculta o publica) y que tenga stock en al menos una talla. Si un administrador la desactivó, verás el motivo y el botón “Apelar”.'),
+        ('Soy administrador y una acción no se aplicó', 'Lee el mensaje de la ventana: si la operación falló, el estado no cambió. Revisa la Auditoría antes de repetirla para no duplicar decisiones.'),
+        ('¿Dónde veo la respuesta a mi incidencia?', 'En “Mis incidencias”, desde el menú. Ahí aparece el estado de cada solicitud y la respuesta del equipo; también se envía a tu correo.'),
     ]
     tarjetas = ''.join(f'<article class="faq"><h3><b class="boton">?</b>{q}</h3><p>{a}</p></article>' for q, a in preguntas)
     c = f'''<header class="cab"><span class="tag">Ayuda</span></header>
@@ -638,7 +771,7 @@ def construir():
         elif pg['k'] == 'paso':
             paginas_html.append(render_paso(pg, num))
         elif pg['k'] == 'faq':
-            entradas.append(('?', 'Preguntas frecuentes', 'Solución a los problemas más comunes.', '6 preguntas', num))
+            entradas.append(('?', 'Preguntas frecuentes', 'Solución a los problemas más comunes.', f'{N_PREGUNTAS} preguntas', num))
             paginas_html.append(render_faq(num))
         else:
             paginas_html.append(render_cierre(num))
