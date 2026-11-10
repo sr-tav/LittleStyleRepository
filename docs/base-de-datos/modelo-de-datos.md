@@ -353,7 +353,25 @@ Leyenda: línea continua = llave foránea física; línea punteada = referencia 
 
 ## 6. Respaldo y recuperación
 
-Pendiente de formalizar. RDS MySQL tiene backups automáticos diarios y recuperación a un punto en el
-tiempo cuando el periodo de retención es mayor que 0, pero la configuración de retención de la
-instancia del proyecto no está documentada en el repositorio. Las imágenes de prendas viven en S3
-(producción) o en el volumen Docker `uploads` (local), que tampoco tiene respaldo definido.
+La base de datos de producción (RDS MySQL en AWS) se respalda con una **copia mensual**:
+
+- **Qué:** un snapshot manual de la instancia RDS completa (esquema y datos).
+- **Cuándo:** una vez al mes, el primer día hábil.
+- **Cómo:** en la consola de AWS, *RDS → Databases → instancia de LittleStyle → Actions → Take
+  snapshot*, con el nombre `littlestyle-backup-AAAA-MM` (por ejemplo, `littlestyle-backup-2026-11`).
+- **Dónde:** los snapshots quedan en la misma cuenta y región de AWS, en *RDS → Snapshots*. Los
+  snapshots manuales no se borran solos, aunque se elimine la instancia.
+- **Retención:** se conservan los snapshots de los últimos meses y se eliminan los más antiguos
+  para no acumular costos.
+
+**Recuperación:** se restaura el snapshot del mes deseado en una instancia nueva (*Snapshots →
+Actions → Restore snapshot*) y se apunta el backend a ella cambiando `DB_HOST`. Como la restauración
+devuelve la base al estado de la fecha del snapshot, se pueden perder los cambios hechos desde la
+última copia (hasta un mes de datos).
+
+**Consideraciones:**
+
+- Los datos de menores y direcciones están cifrados con `PERFIL_ENC_KEY`; esa clave debe conservarse
+  aparte, porque sin ella una base restaurada no se puede leer.
+- El respaldo cubre solo la base de datos. Las imágenes de prendas viven en S3 (producción) o en el
+  volumen Docker `uploads` (local) y no se incluyen en esta copia.
